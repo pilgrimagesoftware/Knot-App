@@ -1,4 +1,21 @@
 
+## 1.25.0 - 2026-10-09
+
+### Added
+- Mark agent shells with KNOT_AGENT; hermetic PTY tests
+
+
+### Documentation
+- Point links at Knot-App
+
+
+### Fixed
+- Bound the output drain in every subprocess runner
+- Bound the workspace window's runtime teardown
+- File bug reports on Knot-App
+
+
+
 ## 1.24.1 - 2026-10-08
 
 ### Fixed
