@@ -3013,12 +3013,13 @@ checksum = "829258540ea51bb9ea4a71686beffe5c99586901ba9f39944d06e4a180ab63fe"
 
 [[package]]
 name = "gpui-terminal"
-version = "0.2.1"
-source = "git+https://github.com/pilgrimagesoftware/gpui-terminal?tag=v0.2.1#c257c2720959bfafca3c9eb7e861631dd19b6a47"
+version = "0.2.2"
+source = "git+https://github.com/pilgrimagesoftware/gpui-terminal?tag=v0.2.2#d1a5f007d1be92f415b8774fcc9a3678747034e0"
 dependencies = [
  "alacritty_terminal",
  "async-channel",
  "gpui-kit",
+ "libc",
  "parking_lot",
  "portable-pty",
  "thiserror 2.0.21",
@@ -3577,9 +3578,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.48.0"
+version = "1.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0f8fee8c926415c58d6ae43a08523a26faccb2323f5e6b644fe7dd4ef6b82"
+checksum = "b67d3d2e287e4b86c10b3f3b641033d1f89b74bdb39d05f34952e2b9a6fe21cd"
 dependencies = [
  "console",
  "once_cell",
@@ -3757,7 +3758,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "knot"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "gpui-kit",
  "gpui-terminal",
@@ -3796,7 +3797,7 @@ dependencies = [
 
 [[package]]
 name = "knot-acp"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "parking_lot",
  "serde",
@@ -3808,7 +3809,7 @@ dependencies = [
 
 [[package]]
 name = "knot-activity"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-agents",
  "knot-core",
@@ -3819,7 +3820,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agent-launch"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-acp",
  "knot-core",
@@ -3833,7 +3834,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agents"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3844,7 +3845,7 @@ dependencies = [
 
 [[package]]
 name = "knot-core"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "arc-swap",
  "directories",
@@ -3859,7 +3860,7 @@ dependencies = [
 
 [[package]]
 name = "knot-discovery"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
@@ -3870,7 +3871,7 @@ dependencies = [
 
 [[package]]
 name = "knot-forge"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3882,7 +3883,7 @@ dependencies = [
 
 [[package]]
 name = "knot-git"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "insta",
  "tempfile",
@@ -3891,7 +3892,7 @@ dependencies = [
 
 [[package]]
 name = "knot-history"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "directories",
  "parking_lot",
@@ -3905,7 +3906,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3925,7 +3926,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-probe"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3936,7 +3937,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-tools"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "async-trait",
  "knot-activity",
@@ -3961,7 +3962,7 @@ dependencies = [
 
 [[package]]
 name = "knot-messaging"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-agents",
  "parking_lot",
@@ -3972,7 +3973,7 @@ dependencies = [
 
 [[package]]
 name = "knot-processes"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "parking_lot",
  "tempfile",
@@ -3981,7 +3982,7 @@ dependencies = [
 
 [[package]]
 name = "knot-subagents"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "serde_json",
  "thiserror 2.0.21",
@@ -3990,7 +3991,7 @@ dependencies = [
 
 [[package]]
 name = "knot-tasks"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -4001,7 +4002,7 @@ dependencies = [
 
 [[package]]
 name = "knot-terminal"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "gpui-terminal",
  "knot-acp",
@@ -4019,7 +4020,7 @@ dependencies = [
 
 [[package]]
 name = "knot-watch"
-version = "1.24.1"
+version = "1.25.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
@@ -4106,9 +4107,9 @@ checksum = "34b357333733e8260735ba5894eb928c02ecc69c78715f01a8019e7fa7f2db4c"
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
 
 [[package]]
 name = "libfuzzer-sys"
@@ -7415,7 +7416,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -7598,9 +7599,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.53.1"
+version = "1.53.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
+checksum = "e95f91fcc7a621e8b030f6aa23c71fe9838ae2fb4d8118b75602a328f5144044"
 dependencies = [
  "bytes",
  "libc",
@@ -8085,9 +8086,9 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "uuid"
-version = "1.26.1"
+version = "1.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ef6dac1e96601b4fb3acccccff2139741fcb757cb9a36089bf5be91cfb285ce"
+checksum = "97277d36b9c3ace13e58fa6e753f8b0bbbf302a18dd193240d70f9e29681059a"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",

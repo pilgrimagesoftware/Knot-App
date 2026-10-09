@@ -11,7 +11,7 @@ This repository is moving Knot from its original Swift/macOS implementation to a
 ![Rust](https://img.shields.io/badge/Rust-2024-orange)
 ![GPUI-Kit](https://img.shields.io/badge/UI-GPUI--Kit-blue)
 ![License](https://img.shields.io/badge/License-AGPL--3.0-green)
-[![Downloads](https://img.shields.io/github/downloads/pilgrimagesoftware/Knot/total.svg?color=orange)](https://tooomm.github.io/github-release-stats/?username=pilgrimagesoftware&repository=Knot)
+[![Downloads](https://img.shields.io/github/downloads/pilgrimagesoftware/Knot-App/total.svg?color=orange)](https://tooomm.github.io/github-release-stats/?username=pilgrimagesoftware&repository=Knot-App)
 
 ## Current State
 
@@ -57,8 +57,8 @@ The port is in progress. The Rust UI and backend are usable for the implemented 
 ## Build And Test
 
 ```bash
-git clone https://github.com/pilgrimagesoftware/Knot.git
-cd knot-rust
+git clone https://github.com/pilgrimagesoftware/Knot-App.git
+cd Knot-App
 
 # Run formatting, the file-size gate, linting, tests, and the workspace build.
 make
@@ -91,6 +91,8 @@ xattr -d com.apple.quarantine "/Applications/Knot.app"
 # ad-hoc sign
 codesign --force --deep --sign - "/Applications/Knot.app"
 ```
+
+Shell agents run your own shell with your dotfiles. If your prompt theme starts a daemon per shell (powerlevel10k's `gitstatusd` does), see [docs/agent-shells.md](docs/agent-shells.md) to turn it off in agent terminals.
 
 ## Architecture
 

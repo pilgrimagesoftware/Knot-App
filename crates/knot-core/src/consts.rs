@@ -237,7 +237,7 @@ pub const EXEC_PATH_FALLBACK_DIRS: &[&str] = &["/opt/homebrew/bin",
 /// `Cargo.toml`'s `repository` URL; a test holds the two together, so the
 /// `gh` submission and the browser fallback cannot drift from it or from
 /// each other.
-pub const KNOT_REPO: &str = "pilgrimagesoftware/Knot";
+pub const KNOT_REPO: &str = "pilgrimagesoftware/Knot-App";
 
 #[cfg(test)]
 mod tests;

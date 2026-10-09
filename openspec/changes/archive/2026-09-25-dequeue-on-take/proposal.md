@@ -16,7 +16,7 @@ and reads as if it were still waiting.
 - The in-flight queue row, and the rule that it cannot be edited, go away:
   no queued row is ever in flight.
 
-Issue: https://github.com/pilgrimagesoftware/Knot/issues/485
+Issue: https://github.com/pilgrimagesoftware/Knot-App/issues/151
 
 ## Capabilities
 

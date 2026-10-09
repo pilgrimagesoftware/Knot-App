@@ -175,7 +175,7 @@ fn report_needs_both_fields(cx: &mut TestAppContext) {
 
 #[gpui_kit::test]
 fn a_filed_issue_closes_the_dialog(cx: &mut TestAppContext) {
-    let url = "https://github.com/pilgrimagesoftware/Knot/issues/7".to_owned();
+    let url = "https://github.com/pilgrimagesoftware/Knot-App/issues/7".to_owned();
     let stub = Stub::answering(Outcome::Filed(url));
     let (mut cx, report) = open_dialog(cx, &stub);
     fill(&mut cx, &report, "Crash", "It crashed.");
