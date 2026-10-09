@@ -7,16 +7,16 @@
 The Personas window and the Prompts window SHALL each have an "Import from
 Library…" action beside "Add". Choosing it SHALL open the Import window, or
 bring it to the front if it is already open (see `import-ui`), where the
-Knot-Library section lists what can be imported.
+Library section lists what can be imported.
 
-The Bench window SHALL NOT have this action until Knot-Library publishes
-bench entries.
+The Bench window SHALL NOT have this action until the library format has a
+bench kind.
 
 #### Scenario: Importing from the Personas window
 
 - **WHEN** the user chooses "Import from Library…" in the Personas window
-- **THEN** the Import window opens, and its Knot-Library section fetches
-  and lists the library's personas and prompts
+- **THEN** the Import window opens, and its Library section reads
+  Knot-Library and lists its personas and prompts
 
 #### Scenario: Imported personas appear in the open window
 

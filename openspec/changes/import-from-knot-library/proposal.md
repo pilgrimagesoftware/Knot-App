@@ -20,26 +20,34 @@ identity, so the next copy-paste makes a duplicate.
 
 ## What Changes
 
-- **A third import source.** The Import window gains a Knot-Library section
-  beside the Claude subagent and Skwad sections. It lists the library's
+- **A third import source.** The Import window gains a Library section
+  beside the Claude subagent and Skwad sections. It lists a library's
   personas and prompts, each with its title and one-line description, for the
   user to pick from. It runs on the same review-then-confirm flow as the
   other sources.
+- **Any number of library locations.** Knot-Library is built in and always
+  available. The user can also save other locations that publish the same
+  format, each with a name: a GitHub repository (`owner/repo`, optional
+  branch), an `https://` web address, or a folder on disk, such as a team's
+  own library or a local clone they're writing. A picker in the Library
+  section chooses which one to read. Saved locations persist, and can be
+  renamed and removed.
 - **Library items keep their identity.** An imported persona or prompt takes
   the library item's UUID. "Already held" for this source means Knot has a
   record with that id, so importing twice adds nothing. That also covers the
   seven built-in personas, which the library publishes under the same UUIDs
   Knot ships them with.
-- **Downloads are verified.** Knot fetches `index.json` from the library's
-  default branch, then fetches each selected item pinned to the index's
-  `commit`. It rejects any item whose bytes don't match the index's `sha256`
+- **Downloads are verified.** Knot reads the chosen location's `index.json`,
+  then reads each selected item. From a GitHub location (including the
+  built-in one), each item is pinned to the index's `commit`. From any
+  location, it rejects an item whose bytes don't match the index's `sha256`
   and `size`, which is what Knot-Library's `content-index` spec asks of a
-  client.
+  client. An item path can't escape its location.
 - **Reachable from the library windows.** The Personas and Prompts windows
   get an "Import from Library…" action that opens the Import window.
-- **Fails in place.** If the library can't be reached, or publishes an index
-  format this Knot doesn't know, the Knot-Library section says so and offers
-  to retry. The other sources keep working.
+- **Fails in place.** If the chosen location can't be reached, or publishes
+  an index format this Knot doesn't know, the Library section says so and
+  offers to retry. The other sources and locations keep working.
 
 ## Capabilities
 
@@ -49,33 +57,41 @@ None. This extends the existing import.
 
 ### Modified Capabilities
 
-- `data-import`: a Knot-Library source, the identity rule for its items, and
-  download verification.
-- `import-ui`: the Knot-Library section, including what it shows while
-  fetching and when the fetch fails.
+- `data-import`: library locations (built-in and saved), the library format,
+  the identity rule for library items, and download verification.
+- `import-ui`: the Library section, with its location picker, what it shows
+  while reading and when reading fails, and adding, renaming and removing
+  saved locations.
+- `settings-persistence`: saved library locations are a durable-data
+  collection in a document of their own.
 - `library-windows`: the "Import from Library…" action on the Personas and
   Prompts windows.
 
 ## Impact
 
-- **New crate `knot-library`**: the `index.json` model, splitting an item
-  into front matter and body, the sha256 check, and a `LibraryFetcher` trait
-  with an HTTPS implementation. It has no knowledge of Knot's settings.
+- **New crate `knot-library`**: the `Location` model, the `index.json`
+  model, splitting an item into front matter and body, the sha256 check, path
+  containment, and a `LibraryFetcher` trait with GitHub, web and folder
+  implementations. It has no knowledge of Knot's settings.
 - **`knot-core`**: `import::library`, which maps fetched items onto
   `Persona` and `Prompt` records, and `Settings` inserts that take a
   caller-supplied UUID. Today `add_persona` and `add_prompt` always mint a
-  fresh one. Also the library URL constants in `consts.rs`.
-- **`knot`**: the Import window's new section, and the action on the
-  Personas and Prompts windows.
+  fresh one. Also the saved-locations collection
+  (`library-locations.json`, with add, rename and remove) and the built-in
+  location's constants in `consts.rs`.
+- **`knot`**: the Import window's new section, its location picker and its
+  add-location dialog, and the action on the Personas and Prompts windows.
 - **New dependencies** (workspace): `ureq` (blocking HTTPS, rustls) and
   `sha2`. Nothing in the workspace makes outbound HTTP requests today.
 - **Network access**: this is the first feature in Knot that reaches the
   internet without the user running a tool themselves. It only happens while
-  the Import window is open, and it only reads from
-  `raw.githubusercontent.com`.
-- **No data-model change.** `Persona` and `Prompt` gain no fields, and nothing
-  persisted changes shape.
+  the Import window is open, and only for the chosen location: Knot-Library
+  on `raw.githubusercontent.com` by default, or a host the user saved.
+- **Data model.** `Persona` and `Prompt` gain no fields. The only new
+  persisted data is the saved-locations document, and a store without one
+  loads as before.
 - **Out of scope**: bench entries (Knot-Library has no `bench` kind yet),
-  updating an already-imported item when the library changes it, submitting
+  updating an already-imported item when the library changes it, private or
+  authenticated locations, submitting
   items to the library (Knot-App#43), and making Restore Defaults read the
   library.

@@ -36,6 +36,8 @@
 
 - Import library personas and prompts with their library ids, so a re-import
   is recognised by identity, not by name.
+- Let the user import from any number of locations that publish the
+  Knot-Library format, not just the built-in one.
 - Meet Knot-Library's client obligations: pin item fetches to the index
   commit, verify sha256 and size, and skip unknown kinds.
 - Reuse the Import window's review-then-confirm flow rather than inventing a
@@ -50,6 +52,11 @@
   the additive rule, so it needs its own change (see Open Questions).
 - Submitting to the library (Knot-App#43).
 - Caching the index across launches, or browsing offline.
+- Private or authenticated locations (a private GitHub repository, a URL
+  behind a login). A local clone of a private repository works today as a
+  folder location.
+- Listing several locations at once, or remembering which one was last
+  chosen. The picker opens on Knot-Library.
 - Searching or filtering by tag. With ten items, a list is enough. The index
   carries tags, so a filter can come later without a format change.
 
@@ -57,8 +64,8 @@
 
 ### A source in the Import window, not a browser of its own
 
-The library is listed as a third section of the Import window, "Knot-Library",
-with a sub-list each for Personas and Prompts. Each row shows the item's
+The library is listed as a third section of the Import window, "Library",
+with a location picker and a sub-list each for Personas and Prompts. Each row shows the item's
 title and description and has a checkbox. The Personas and Prompts windows'
 "Import from Library…" action opens the Import window.
 
@@ -66,6 +73,73 @@ title and description and has a checkbox. The Personas and Prompts windows'
   selection, outcome and refresh behavior `import-ui` already specifies, and
   the user would have two places to import from that behave slightly
   differently.
+
+### Locations
+
+A `Location` is one of three kinds:
+
+| Kind | Entered as | Index | Item |
+| --- | --- | --- | --- |
+| GitHub | `owner/repo`, optional branch | `raw.githubusercontent.com/<owner>/<repo>/<branch or HEAD>/index.json` | `.../<commit>/<path>`, pinned |
+| Web | an `https://` base URL | `<base>/index.json` | `<base>/<path>` |
+| Folder | a directory, from the folder picker | `<dir>/index.json` | `<dir>/<path>` |
+
+The built-in Knot-Library is a GitHub location (`pilgrimagesoftware/Knot-Library`,
+branch `master`). It's a constant, not a saved record, so it can't be
+removed or edited, and it's there even when nothing has been saved.
+
+Only GitHub locations can pin an item to the index's `commit`; a web or
+folder location has no commit to address. Every kind still checks each
+item's sha256 against the index, so an item that changed after the index
+was generated is refused rather than imported unseen. For a folder, that
+also tells a library author their index is stale.
+
+`HEAD` as the default branch lets a user enter just `owner/repo` without
+knowing whether the default branch is `main` or `master`, and needs no
+GitHub API call.
+
+- *Rejected: GitHub only.* A team library on an internal web server, or a
+  library someone is writing locally, has no reason to be on GitHub. The
+  three kinds share one fetcher trait, so the extra kinds are small.
+- *Rejected: plain `http://`.* The content becomes agent instructions; it
+  shouldn't be changeable in transit.
+
+### Saved locations are durable data
+
+A saved location is `LibraryLocation { id: Uuid, name: String, location:
+Location }`. Saved locations are objects the user creates and names, so by
+`settings-persistence`'s own rule they're durable data, not preferences:
+they get a collection document of their own, `library-locations.json`,
+written through the same atomic collection writer as personas and prompts.
+A store without the document loads with no saved locations.
+
+`Location` serializes as a tagged enum (`{"kind": "github", "repo":
+"owner/repo", "branch": null}` and so on), so a later kind can be added
+without breaking older documents.
+
+### Managing locations in the Library section
+
+The picker lists Knot-Library, then the saved locations by name. Beside it
+are Add, Rename and Remove; Rename and Remove are disabled while Knot-Library
+is chosen. Add opens a small dialog: name, kind, and the kind's field (the
+folder kind uses the platform folder picker). Saving checks form only, not
+reachability: an unreachable location shows the same error state as an
+offline Knot-Library, with a retry.
+
+The dialog says that a location's personas and prompts become agent
+instructions, so only locations the user trusts should be added. Knot can't
+judge content; the user can.
+
+- *Rejected: managing locations in Settings.* Locations exist to be imported
+  from, and the Import window is where that happens. A Settings pane would
+  separate adding a location from seeing what's in it.
+
+### Path containment
+
+An index's `path` is resolved inside the location. A path that is absolute
+or has a `..` component makes that item unreadable. For a folder this stops
+an index from reading arbitrary files; for web and GitHub it stops an index
+from pointing Knot at another host's content under the location's name.
 
 ### Identity is the library id
 
@@ -103,10 +177,12 @@ present, and blank fields, the same way the existing adders do. The
 import maps an item onto a record and calls these, and they persist through
 the same `write_persisting` path as any other edit.
 
-### A `knot-library` crate for the remote side
+### A `knot-library` crate for reading libraries
 
 `knot-library` holds:
 
+- `Location` (GitHub, Web, Folder), its form checks (`owner/repo`,
+  `https://`), and the index and item addresses for each kind.
 - `Index` and `IndexItem` (serde, camelCase), with `format` checked against
   a supported version (`1`).
 - `ItemKind`: `Persona` and `Prompt`, plus `Other(String)` for kinds this
@@ -118,9 +194,11 @@ the same `write_persisting` path as any other edit.
   describes.
 - `verify(bytes, &IndexItem)`: compares the size, then the lowercase hex
   SHA-256 (`sha2`).
-- A `LibraryFetcher` trait: `fetch_index()` and
-  `fetch_item(commit, path)`. `HttpsFetcher` implements it with `ureq`
-  (rustls, 10 s timeout, a `Knot/<version>` user agent). Tests use a fixture
+- `resolve(path)`: refuses an absolute path or a `..` component.
+- A `LibraryFetcher` trait: `fetch_index()` and `fetch_item(&Index,
+  &IndexItem)`. `HttpsFetcher` serves GitHub and web locations with `ureq`
+  (rustls, 10 s timeout, a `Knot/<version>` user agent); `FolderFetcher`
+  reads files. `fetcher_for(&Location)` picks one. Tests use a fixture
   fetcher.
 
 The crate knows nothing about `Settings`. `knot-core::import::library`
@@ -136,8 +214,9 @@ turns verified items into records and applies the identity rule.
 
 ### When fetching happens
 
-The section fetches `index.json` when the Import window opens and again on
-the window's existing refresh action. Never on the render path. While the
+The section reads the chosen location's `index.json` when the Import window
+opens, when another location is chosen, and on the window's existing
+refresh action. Never on the render path. While the
 fetch is in flight, the section shows that it's loading. Item files are
 fetched only when the user confirms the import, and only for the selected
 items, each pinned to the index's `commit`. An item that fails to download
@@ -150,8 +229,18 @@ newer Knot") with a retry, and the other sections are unaffected.
 
 ## Risks / Trade-offs
 
+- **Untrusted content from saved locations.** A persona's instructions go
+  straight into an agent's prompt. Mitigation: locations are added only by
+  the user, the add dialog says what the content becomes, `https` is
+  required for remote locations, paths can't escape the location, and
+  nothing is imported without the user picking it.
+- **Web and folder items aren't pinned.** Without a commit, an item can
+  change between reading the index and reading the item. The sha256 check
+  turns that into a reported, unreadable item, not a silent import of
+  something else.
+
 - **First outbound network access.** Opening the Import window now makes a
-  request to GitHub. Mitigation: it only happens in that window, it's
+  request to GitHub, or to the host of the chosen location. Mitigation: it only happens in that window, it's
   read-only and anonymous, and it's stated in the spec. The proposal names
   it so it's a decision, not a side effect.
 - **GitHub raw caching.** The default-branch `index.json` can lag a merge by
