@@ -92,7 +92,7 @@ URL, which also fails; a transferable issue beats a lost report.
 [submodule "Knot-Library"]
 	path = Knot-Library
 	url = ../Knot-Library.git
-	branch = main
+	branch = master
 ```
 
 Relative URLs resolve against the meta-repository's own remote, so an SSH
@@ -105,13 +105,14 @@ meta-repository does not silently fall behind.
 | Repository | License | Default branch | Contents at creation |
 | --- | --- | --- | --- |
 | Knot (meta) | AGPL-3.0 | `main` | README, LICENSE, `.gitmodules`, issue chooser, dependabot |
-| Knot-MCP | AGPL-3.0 | `develop` (git-flow, like the app) | README, LICENSE, AGENTS.md, `openspec/` init |
-| Knot-Library | CC BY 4.0 | `main` | README, LICENSE, `personas/.gitkeep` |
+| Knot-MCP | MIT | `develop` (git-flow, `master` for releases) | README, LICENSE, AGENTS.md, `openspec/` init |
+| Knot-Library | CC BY 4.0 | `master` | README, LICENSE, `personas/.gitkeep` |
 
 Knot-MCP follows the app's git-flow and ruleset shape because it will ship
-software; its CI ruleset is added with its first code. Knot-Library holds
-prompts and data rather than code, so a content license suits it better than
-AGPL, and a single `main` branch is enough.
+software; its CI ruleset is added with its first code. It is MIT, not AGPL.
+Knot-Library holds prompts and data rather than code, so a content license
+suits it better than AGPL, and a single `master` branch is enough. Both
+repositories were created with `master`; it is kept rather than renamed.
 
 ### Local checkouts stay where they are
 
