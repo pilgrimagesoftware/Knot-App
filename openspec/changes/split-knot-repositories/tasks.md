@@ -13,8 +13,8 @@
 - [x] 2.1 Change `KNOT_REPO` in `crates/knot-core/src/consts.rs` to `pilgrimagesoftware/Knot-App` and update the tests and fixtures in `crates/knot`, `crates/knot-forge` that name the repository; verify `make test`
 - [x] 2.2 Update `repository` in `Cargo.toml`, `homepage` in `crates/knot/Cargo.toml`, the README badges and clone command, and repository names in `AGENTS.md`, `CONTRIBUTING.md` and `.claude/skills/project-*`; verify `grep -rn "pilgrimagesoftware/Knot\b"` outside `target/` finds only intended meta-repository references
 - [x] 2.3 Rewrite full `github.com/pilgrimagesoftware/Knot/issues/N` URLs in `openspec/changes/archive/` to their new Knot-App numbers from `knot-app-issue-map.tsv`; `/pull/N` URLs have no successor and stay as they are; verify the grep finds only `/pull/` URLs there
-- [ ] 2.4 Check the `pilgrimagesoftware/github-actions` reusable workflows and `.github/workflows/package.yml` for the literal repository name; verify by a green CI run of the PR and a `package.yml` run on it
-- [ ] 2.5 Open, merge (merge commit) and release the reference PR through the git-flow release workflows; verify a GitHub Release exists on Knot-App whose build files a test bug report on Knot-App (then close that issue)
+- [x] 2.4 Check the `pilgrimagesoftware/github-actions` reusable workflows and `.github/workflows/package.yml` for the literal repository name; verify by a green CI run of the PR and a `package.yml` run on it
+- [x] 2.5 Open, merge (merge commit) and release the reference PR through the git-flow release workflows; verify a GitHub Release exists on Knot-App whose build files a test bug report on Knot-App (then close that issue)
 
 ## 3. Create Knot-MCP and Knot-Library
 
