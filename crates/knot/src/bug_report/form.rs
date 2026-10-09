@@ -126,7 +126,7 @@ mod tests {
     /// Each hand-off has its own confirmation, and every one keeps the URL.
     #[test]
     fn the_filed_message_follows_the_handoff() {
-        let url = "https://github.com/pilgrimagesoftware/Knot/issues/7";
+        let url = "https://github.com/pilgrimagesoftware/Knot-App/issues/7";
         let messages = [Handoff::None, Handoff::Shown, Handoff::ByHand].map(|handoff| {
                                                                            filed_message(url,
                                                                                          handoff)

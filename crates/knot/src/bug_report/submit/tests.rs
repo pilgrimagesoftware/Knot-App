@@ -31,7 +31,7 @@ impl ForgeRunner for Gh {
     }
 }
 
-const FILED: &str = "https://github.com/pilgrimagesoftware/Knot/issues/7";
+const FILED: &str = "https://github.com/pilgrimagesoftware/Knot-App/issues/7";
 
 fn report() -> Report {
     Report { kind:        IssueKind::Bug,

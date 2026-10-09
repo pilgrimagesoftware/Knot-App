@@ -5,8 +5,8 @@ use crate::error::ForgeError;
 use crate::repo_slug::RepoSlug;
 use crate::runner::stub::StubRunner;
 
-const REPO: &str = "pilgrimagesoftware/Knot";
-const URL: &str = "https://github.com/pilgrimagesoftware/Knot/issues/1";
+const REPO: &str = "pilgrimagesoftware/Knot-App";
+const URL: &str = "https://github.com/pilgrimagesoftware/Knot-App/issues/1";
 
 fn slug() -> RepoSlug {
     RepoSlug { owner: "acme".to_owned(),

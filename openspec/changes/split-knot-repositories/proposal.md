@@ -9,11 +9,18 @@ them in the app repository would tie their history, CI and releases to the
 app's. Giving each its own repository, gathered under a meta-repository named
 `Knot`, keeps them separate while leaving one place to check out everything.
 
+The app repository is also still a GitHub fork of `Kochava-Studios/skwad`, the
+Swift app it was ported from. Knot is its own product now; it should stand
+alone rather than sit in Skwad's fork network.
+
 ## What Changes
 
-- **Rename** `pilgrimagesoftware/Knot` to `pilgrimagesoftware/Knot-App`.
-  Issues, pull requests, releases, rulesets, secrets and Actions history move
-  with it.
+- **Move** the app from `pilgrimagesoftware/Knot` to a new, non-fork
+  `pilgrimagesoftware/Knot-App`: every branch and tag, settings, labels,
+  rulesets and security features, and every issue (open and closed) by
+  `gh issue transfer`. Issues get new numbers. Pull requests, releases and
+  Actions history cannot move and are lost when the old repository is deleted;
+  the next release is cut fresh on Knot-App.
 - **Update every reference** in the app repository to the new name before the
   old name is reused: the bug reporter's target repository
   (`knot_core::consts::KNOT_REPO`), the `repository` and `homepage` URLs in
@@ -29,10 +36,12 @@ app's. Giving each its own repository, gathered under a meta-repository named
 - **Point local clones** at the new name: the primary checkout's and every
   worktree's `origin` remote.
 
-**BREAKING** for anyone with a clone of the app: once the meta-repository takes
-the name `Knot`, GitHub stops redirecting `pilgrimagesoftware/Knot` to the app,
-so an un-updated clone fetches the meta-repository. Released builds of Knot
-that file bug reports would file them on the meta-repository.
+**BREAKING** for anyone with a clone of the app: there is no redirect from
+`pilgrimagesoftware/Knot` to Knot-App, so an un-updated clone fails to fetch once
+the old repository is deleted, and fetches the meta-repository once that takes
+the name. Released builds of Knot that file bug reports fail in between and
+file them on the meta-repository after. Links to old issue and pull request
+numbers break.
 
 ## Non-Goals
 
@@ -61,12 +70,15 @@ of that repository's name changes. This change sets `skip_specs: true`.
 
 ## Impact
 
-- GitHub: one rename, three new public repositories, submodule wiring.
+- GitHub: Knot-App created and populated, the old fork deleted, three new
+  public repositories (Knot-App, Knot-MCP, Knot-Library) plus the
+  meta-repository, submodule wiring.
 - `crates/knot-core/src/consts.rs` - `KNOT_REPO` becomes
   `pilgrimagesoftware/Knot-App`; tests that name the repository follow.
 - `Cargo.toml`, `crates/knot/Cargo.toml` - `repository` and `homepage`.
 - `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/skills/project-*` -
   repository name and links.
-- `openspec/changes/archive/*` - full issue and pull request URLs.
+- `openspec/changes/archive/*` - full issue URLs, renumbered from the transfer
+  map; pull request URLs have no successor.
 - Released builds before this change file bug reports on the meta-repository;
   the meta-repository's issue template redirects reporters to Knot-App.

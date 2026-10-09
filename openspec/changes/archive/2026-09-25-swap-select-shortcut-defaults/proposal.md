@@ -1,6 +1,6 @@
 # Proposal
 
-Issue: https://github.com/pilgrimagesoftware/Knot/issues/486
+Issue: https://github.com/pilgrimagesoftware/Knot-App/issues/152
 
 ## Why
 
