@@ -37,7 +37,7 @@ fn settings_window(cx: &mut TestAppContext) -> Fixture {
                                let settings = knot_core::Settings::with_store_root(dir.path());
                                crate::settings_global::install(settings.clone(), cx);
                                install_actions_and_keys(&settings, Arc::clone(&store), cx);
-                               open_settings_window(&handle, store, cx);
+                               open_settings_window(&handle, cx);
                                let window = handle.borrow().expect("the settings window opened");
                                let view = window.downcast::<Root>()
                                                 .expect("the settings window's root is a Root")

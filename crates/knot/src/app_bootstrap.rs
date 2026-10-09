@@ -32,6 +32,8 @@ use crate::app_support::observe_system_appearance;
 use crate::bug_report::register_report_issue_action;
 use crate::command_center::CommandCenterWindow;
 use crate::import_window::register_import_action;
+use crate::library_window::Library;
+use crate::library_window::open_library_window;
 use crate::mcp_lifetime::hold_mcp_server;
 use crate::mcp_status;
 use crate::mcp_status::McpServerStatus;
@@ -202,11 +204,16 @@ actions!(knot_app, [CloseWindow, MinimizeWindow, ZoomWindow]);
 // item is disabled wherever there is no workspace to add an agent to.
 actions!(knot_app, [NewAgent]);
 
-// The Window menu's two openers. Unlike the items above these are wired, and
+// The Window menu's openers. Unlike the items above these are wired, and
 // enabled at all times: they are how a user gets back to a window, so an
 // enablement rule that depended on a window being focused would disable them
 // exactly when they are needed.
 actions!(knot_app, [OpenCommandCenter, OpenWorkspaces]);
+
+// The Window menu's library openers (#20): Personas, Prompts and Bench each
+// moved out of the settings window into their own single-instance window,
+// reached the same way Command Center and Workspaces are.
+actions!(knot_app, [OpenPersonas, OpenPrompts, OpenBench]);
 
 /// Every user-facing quit path lands here - the application menu's Quit
 /// Knot item and the `cmd-q` binding both dispatch `Quit` - so the guard
@@ -385,13 +392,12 @@ pub(crate) fn install_actions_and_keys(settings: &knot_core::Settings,
     let settings_window: Rc<RefCell<Option<AnyWindowHandle>>> = Rc::new(RefCell::new(None));
     {
         let settings_window = Rc::clone(&settings_window);
-        let store = Arc::clone(&store);
         cx.on_action(move |_: &OpenSettings, cx| {
               // No reload here any more. This read from disk because
               // reopening the window with a snapshot captured at bootstrap
               // would show old values and overwrite a since-saved change -
               // and the window has no snapshot now.
-              open_settings_window(&settings_window, Arc::clone(&store), cx);
+              open_settings_window(&settings_window, cx);
           });
     }
 }
@@ -412,6 +418,24 @@ fn register_window_actions(store: Arc<Mutex<knot_agents::AgentStore>>,
           });
     }
     crate::keymap::register_global_handlers(Arc::clone(&store), cx);
+    {
+        let store = Arc::clone(&store);
+        cx.on_action(move |_: &OpenPersonas, cx| {
+              open_library_window(Library::Personas, Arc::clone(&store), cx);
+          });
+    }
+    {
+        let store = Arc::clone(&store);
+        cx.on_action(move |_: &OpenPrompts, cx| {
+              open_library_window(Library::Prompts, Arc::clone(&store), cx);
+          });
+    }
+    {
+        let store = Arc::clone(&store);
+        cx.on_action(move |_: &OpenBench, cx| {
+              open_library_window(Library::Bench, Arc::clone(&store), cx);
+          });
+    }
     cx.on_action(move |_: &OpenWorkspaces, cx| {
           crate::window_registry::activate_or_open(
               crate::window_registry::WindowKey::WorkspaceManager,

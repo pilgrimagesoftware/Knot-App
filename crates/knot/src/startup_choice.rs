@@ -1,8 +1,8 @@
 //! The Startup Prompt picker both editors show - the agent editor's and the
-//! Settings window's bench-entry editor's - and what each choice submits as.
+//! Bench window's bench-entry editor's - and what each choice submits as.
 //!
 //! Contract: `openspec/specs/agent-editor-ui/spec.md`, "Startup prompt
-//! control", and `openspec/specs/settings-ui/spec.md`, "Bench tab".
+//! control", and `openspec/specs/library-windows/spec.md`, "Bench window".
 
 use gpui_kit::App;
 use gpui_kit::SharedString;

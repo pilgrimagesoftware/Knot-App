@@ -1,6 +1,6 @@
-//! The Prompts tab: the prompt library, with add, edit and delete.
+//! The Prompts window: the prompt library, with add, edit and delete.
 //!
-//! Contract: `openspec/specs/settings-ui/spec.md`, "Prompts tab".
+//! Contract: `openspec/specs/library-windows/spec.md`, "Prompts window".
 //!
 //! Deleting a prompt nothing uses happens at once; deleting one that agents
 //! or bench entries name as their startup prompt asks first and says how
@@ -23,13 +23,13 @@ use knot_core::{Prompt, PromptReferences, StartupPrompt};
 use uuid::Uuid;
 
 use super::super::prompt_editor::open_prompt_editor;
-use crate::settings_window::SettingsWindow;
+use crate::library_window::LibraryWindow;
 
 /// A prompt's text as one line for its row: line breaks become spaces, and
 /// the result is truncated like a persona preview.
 pub(crate) fn prompt_preview(text: &str, max_chars: usize) -> String {
     let one_line = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    SettingsWindow::persona_preview(&one_line, max_chars)
+    LibraryWindow::persona_preview(&one_line, max_chars)
 }
 
 /// How many `agents` and `bench` entries name prompt `id` as their startup
@@ -46,7 +46,7 @@ pub(crate) fn prompt_references(id: Uuid, agents: &[knot_agents::Agent],
                                     .count(), }
 }
 
-impl SettingsWindow {
+impl LibraryWindow {
     fn live_prompt_references(&self, id: Uuid, cx: &App) -> PromptReferences {
         let bench = crate::settings_global::read(cx).bench_agents.clone();
         prompt_references(id, self.store.lock().agents(), &bench)
@@ -63,13 +63,13 @@ impl SettingsWindow {
 
     fn prompt_row(&self, prompt: Prompt, index: usize, cx: &mut Context<Self>)
                   -> impl IntoElement + use<> {
-        let settings_window = cx.entity();
+        let library_window = cx.entity();
         let preview = prompt_preview(&prompt.text, 80);
         let edit = crate::controls::icon_button(("prompt-edit", index),
                                                 "icons/pencil.svg",
                                                 knot_core::l10n::t("settings.prompts.edit"),
                                                 false).on_click({
-                       let parent = settings_window.downgrade();
+                       let parent = library_window.downgrade();
                        let prompt = prompt.clone();
                        move |_, _, app| {
                            open_prompt_editor(parent.clone(), Some(prompt.clone()), app);
@@ -79,11 +79,11 @@ impl SettingsWindow {
                                                   "icons/trash.svg",
                                                   knot_core::l10n::t("settings.prompts.delete"),
                                                   true).on_click({
-                                                           let settings_window =
-                                                               settings_window.clone();
+                                                           let library_window =
+                                                               library_window.clone();
                                                            let prompt = prompt.clone();
                                                            move |_, window, app| {
-                                                               confirm_delete(&settings_window,
+                                                               confirm_delete(&library_window,
                                                                               &prompt,
                                                                               window,
                                                                               app);
@@ -102,7 +102,7 @@ impl SettingsWindow {
     }
 
     pub(crate) fn render_prompts(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let settings_window = cx.entity();
+        let library_window = cx.entity();
         let prompts = crate::settings_global::read(cx).prompts.clone();
         let list = if prompts.is_empty() {
             div().text_sm()
@@ -117,8 +117,8 @@ impl SettingsWindow {
                                      .map(|(index, prompt)| self.prompt_row(prompt, index, cx)))
                     .into_any_element()
         };
-        // Only the list scrolls, as on the Personas tab: the group's title
-        // and its add action stay in place.
+        // Only the list scrolls, as in the Personas window: the group's
+        // title and its add action stay in place.
         let list = crate::capped_scroll::capped_scroll("prompts-list", px(420.), list);
         v_flex().gap_3().child(
             crate::controls::group(knot_core::l10n::t("settings.prompts.prompts"))
@@ -129,7 +129,7 @@ impl SettingsWindow {
                                                      knot_core::l10n::t("settings.prompts.add"),
                                                      false)
                             .on_click({
-                                let parent = settings_window.downgrade();
+                                let parent = library_window.downgrade();
                                 move |_, _, app| open_prompt_editor(parent.clone(), None, app)
                             }),
                     ),
@@ -141,12 +141,12 @@ impl SettingsWindow {
 
 /// Delete `prompt` at once when nothing uses it; otherwise confirm first,
 /// saying how many agents and bench entries will lose their startup prompt.
-fn confirm_delete(settings_window: &gpui_kit::Entity<SettingsWindow>, prompt: &Prompt,
+fn confirm_delete(library_window: &gpui_kit::Entity<LibraryWindow>, prompt: &Prompt,
                   window: &mut gpui_kit::Window, app: &mut App) {
     let id = prompt.id;
-    let references = settings_window.read(app).live_prompt_references(id, app);
+    let references = library_window.read(app).live_prompt_references(id, app);
     if references.is_empty() {
-        settings_window.update(app, |view, cx| view.delete_prompt(id, cx));
+        library_window.update(app, |view, cx| view.delete_prompt(id, cx));
         return;
     }
     let body = knot_core::l10n::t_with("settings.prompts.delete_body",
@@ -159,14 +159,14 @@ fn confirm_delete(settings_window: &gpui_kit::Entity<SettingsWindow>, prompt: &P
                                           &knot_core::l10n::pluralize(references.bench as u64,
                                                                       "count.bench_entry",
                                                                       "count.bench_entries"))]);
-    let settings_window = settings_window.clone();
+    let library_window = library_window.clone();
     window.open_alert_dialog(app, move |alert, _, _| {
-              let settings_window = settings_window.clone();
+              let library_window = library_window.clone();
               alert.title(knot_core::l10n::t("settings.prompts.delete_title"))
                    .description(body.clone())
                    .confirm()
                    .on_ok(move |_, _, app| {
-                       settings_window.update(app, |view, cx| view.delete_prompt(id, cx));
+                       library_window.update(app, |view, cx| view.delete_prompt(id, cx));
                        true
                    })
           });

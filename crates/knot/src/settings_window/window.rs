@@ -6,7 +6,6 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use gpui_kit::AnyWindowHandle;
 use gpui_kit::App;
@@ -21,7 +20,6 @@ use gpui_kit::component::input::InputEvent;
 use gpui_kit::component::input::InputState;
 #[cfg(target_os = "macos")]
 use gpui_kit::px;
-use parking_lot::Mutex;
 
 use super::tab::SettingsTab;
 // macOS-only: the module it names is `cfg(target_os = "macos")`, and so
@@ -34,8 +32,7 @@ use crate::mcp_status::McpServerStatus;
 use crate::window_options::settings_window_options;
 
 /// Opens the settings window, or brings it forward if already open.
-pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>,
-                                   store: Arc<Mutex<knot_agents::AgentStore>>, cx: &mut App) {
+pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>, cx: &mut App) {
     if let Some(existing) = *handle.borrow()
        && existing.update(cx, |_, window, _| window.activate_window())
                   .is_ok()
@@ -107,8 +104,7 @@ pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>
                                                           this.save_mcp_port(cx);
                                                       }
                                                   });
-                                 SettingsWindow { store,
-                                                  selected_tab: SettingsTab::General,
+                                 SettingsWindow { selected_tab: SettingsTab::General,
                                                   selected_agent_type,
                                                   mcp_selected_agent_type:
                                                       knot_core::agent_type::DEFAULT.to_string(),
@@ -226,26 +222,22 @@ fn spawn_mcp_state_poll(view: Entity<SettingsWindow>, cx: &mut App) {
 }
 
 pub(crate) struct SettingsWindow {
-    /// The live agent store, for questions this window's own `Settings`
-    /// snapshot can't answer truthfully - whether a persona is still
-    /// assigned to an agent, which changes while this window is open.
-    pub(super) store: Arc<Mutex<knot_agents::AgentStore>>,
-    pub(super) selected_tab: SettingsTab,
-    pub(super) selected_agent_type: String,
-    pub(super) mcp_selected_agent_type: String,
-    pub(super) agent_options_input: Entity<InputState>,
-    pub(super) ai_api_key_input: Entity<InputState>,
-    pub(super) autopilot_custom_prompt_input: Entity<InputState>,
-    pub(super) mcp_port_input: Entity<InputState>,
+    pub(super) selected_tab:                          SettingsTab,
+    pub(super) selected_agent_type:                   String,
+    pub(super) mcp_selected_agent_type:               String,
+    pub(super) agent_options_input:                   Entity<InputState>,
+    pub(super) ai_api_key_input:                      Entity<InputState>,
+    pub(super) autopilot_custom_prompt_input:         Entity<InputState>,
+    pub(super) mcp_port_input:                        Entity<InputState>,
     /// The MCP server's state as the MCP tab last drew it. The poll
     /// compares against this rather than repainting every tick.
-    pub(super) last_mcp_state: knot_mcp::ServerState,
-    pub(super) _agent_options_subscription: Subscription,
-    pub(super) _ai_api_key_subscription: Subscription,
+    pub(super) last_mcp_state:                        knot_mcp::ServerState,
+    pub(super) _agent_options_subscription:           Subscription,
+    pub(super) _ai_api_key_subscription:              Subscription,
     pub(super) _autopilot_custom_prompt_subscription: Subscription,
-    pub(super) _mcp_port_subscription: Subscription,
+    pub(super) _mcp_port_subscription:                Subscription,
     /// The Keyboard tab's armed recorder and last rejection.
-    pub(super) keyboard: super::keyboard::KeyboardPaneState,
+    pub(super) keyboard:                              super::keyboard::KeyboardPaneState,
     /// The Coding tab's last adapter version check per agent type, keyed by
     /// `agent_type` so switching the picker doesn't lose another type's
     /// in-flight or completed check.

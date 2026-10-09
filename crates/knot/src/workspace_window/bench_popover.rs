@@ -92,8 +92,7 @@ impl WorkspaceWindow {
     }
 
     /// Remove bench entry `id` and leave the popover open on the updated
-    /// list - the Settings window's Bench tab removes through the same
-    /// settings helper.
+    /// list - the Bench window removes through the same settings helper.
     pub(super) fn remove_bench_entry(&mut self, id: Uuid, cx: &App) {
         if let Err(error) =
             crate::settings_global::write_persisting(cx, |settings| settings.remove_bench_agent(id))

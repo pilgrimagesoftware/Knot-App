@@ -1,7 +1,8 @@
-//! The bench-entry editor the Bench tab opens: a name and a startup prompt,
-//! the two fields an entry does not take from the agent it was saved from.
+//! The bench-entry editor the Bench window opens: a name and a startup
+//! prompt, the two fields an entry does not take from the agent it was saved
+//! from.
 //!
-//! Contract: `openspec/specs/settings-ui/spec.md`, "Bench tab".
+//! Contract: `openspec/specs/library-windows/spec.md`, "Bench window".
 
 use gpui_kit::App;
 use gpui_kit::AppContext;
@@ -32,13 +33,13 @@ use gpui_kit::px;
 use uuid::Uuid;
 
 use crate::app_support::observe_system_appearance;
-use crate::settings_window::SettingsWindow;
-use crate::settings_window::persona_editor::persona_editor_window_options;
+use crate::library_window::LibraryWindow;
+use crate::library_window::persona_editor::persona_editor_window_options;
 use crate::startup_choice::{self, StartupChoice};
 
 /// Opens the editor for bench entry `entry`.
-pub(crate) fn open_bench_editor(parent: WeakEntity<SettingsWindow>,
-                                entry: knot_core::BenchAgent, cx: &mut App) {
+pub(crate) fn open_bench_editor(parent: WeakEntity<LibraryWindow>, entry: knot_core::BenchAgent,
+                                cx: &mut App) {
     let options =
         persona_editor_window_options(knot_core::l10n::t("settings.bench_editor.title"), cx);
     let (choice, custom_text) = startup_choice::initial_choice(entry.startup_prompt.as_ref());
@@ -74,7 +75,7 @@ fn repaint_on_change<E>(_: &mut BenchEditor, _: Entity<E>, event: &InputEvent,
 }
 
 pub(crate) struct BenchEditor {
-    parent:         WeakEntity<SettingsWindow>,
+    parent:         WeakEntity<LibraryWindow>,
     id:             Uuid,
     name_input:     Entity<InputState>,
     choice:         StartupChoice,
