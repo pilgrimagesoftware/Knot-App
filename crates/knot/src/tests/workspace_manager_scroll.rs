@@ -6,11 +6,10 @@
 //! reached. The question is about layout, so it is asked of a drawn window:
 //! the list's painted bounds must end inside it.
 //!
-//! Contract: `openspec/changes/workspace-manager-scroll/specs/
-//! workspace-manager-ui/spec.md`, "The workspace list scrolls". A row is
-//! visible when its painted bounds lie inside the list's viewport - the
-//! `workspace-manager-list` selector, which sits on the viewport rather than on
-//! the scrolled column of rows.
+//! Contract: `openspec/specs/workspace-manager-ui/spec.md`, "The workspace
+//! list scrolls". A row is visible when its painted bounds lie inside the
+//! list's viewport - the `workspace-manager-list` selector, which sits on the
+//! viewport rather than on the scrolled column of rows.
 
 use gpui_kit::Bounds;
 use gpui_kit::Pixels;
