@@ -5,7 +5,7 @@
 Knot has no keyboard route to its main navigation: moving between workspace
 windows, picking an agent, returning to its input, and opening the dashboard or
 pull-request panel all take the mouse, which is a barrier for keyboard-only
-users (issue [#454](https://github.com/pilgrimagesoftware/Knot/issues/454)).
+users (issue [#142](https://github.com/pilgrimagesoftware/Knot-App/issues/142)).
 The shortcuts that do exist are hard-coded, so a chord that clashes with a
 user's other tools cannot be moved.
 
