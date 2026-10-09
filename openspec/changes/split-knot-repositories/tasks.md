@@ -18,8 +18,10 @@
 
 ## 3. Create Knot-MCP and Knot-Library
 
-- [ ] 3.1 Create public `pilgrimagesoftware/Knot-MCP` with an AGPL-3.0 LICENSE, README describing the cross-Knot, multi-user MCP server as planned, AGENTS.md, and `openspec init`; create `develop` as default branch alongside `main`; verify `gh repo view` shows it public with default branch `develop`
-- [ ] 3.2 Create public `pilgrimagesoftware/Knot-Library` with a CC BY 4.0 LICENSE, README describing it as the home of importable personas and shared data (format to be defined), and `personas/.gitkeep`; verify `gh repo view` and that `main` holds the three files
+- [x] 3.1 Create public `pilgrimagesoftware/Knot-MCP` with an MIT LICENSE; create `develop` from `master` as the default branch; verify `gh repo view` shows it public, MIT, default branch `develop`
+- [ ] 3.2 Add to Knot-MCP a README describing the cross-Knot, multi-user MCP server as planned, AGENTS.md, and `openspec init`, on `develop`
+- [x] 3.3 Create public `pilgrimagesoftware/Knot-Library` with a CC BY 4.0 `LICENSE.md` on `master`; verify `gh repo view` shows license `CC-BY-4.0` and default branch `master`
+- [ ] 3.4 Add to Knot-Library a README describing it as the home of importable personas and shared data (format to be defined), and `personas/.gitkeep`; verify `master` holds them
 
 ## 4. Create the meta-repository
 
