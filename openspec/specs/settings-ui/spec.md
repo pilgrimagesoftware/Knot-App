@@ -93,11 +93,14 @@ immediately on change.
 
 ### Requirement: Window scope
 
-The settings window SHALL show a tab strip with eight tabs — General,
-Coding, Personas, Autopilot, Voice, MCP, Appearance, Keyboard — in that order,
-with General selected by default when the window opens. Every tab SHALL render
+The settings window SHALL show a tab strip with seven tabs — General,
+Coding, Autopilot, Voice, MCP, Appearance, Keyboard — in that order, with
+General selected by default when the window opens. Every tab SHALL render
 its real pane; none render a placeholder. No "check for updates" control
 SHALL be shown anywhere in the window.
+
+Personas, Prompts and Bench are not tabs. Each has a window of its own (see
+`library-windows`).
 
 The Keyboard tab's contents are specified by `keybindings`. The Swift reference
 has no Keyboard tab.
@@ -111,7 +114,12 @@ has no Keyboard tab.
 #### Scenario: Keyboard is the last tab
 
 - **WHEN** the settings window opens
-- **THEN** Keyboard is the eighth tab, after Appearance
+- **THEN** Keyboard is the seventh tab, after Appearance
+
+#### Scenario: The libraries are not tabs
+
+- **WHEN** the settings window opens
+- **THEN** its tab strip has no Personas, Prompts or Bench tab
 
 ### Requirement: Agent Panel control
 
@@ -180,51 +188,6 @@ dialog and cannot retype from memory.
 - **WHEN** `agent_options["claude"]` is `"--foo"` and the user switches the
   picker from Claude to Codex (with no stored value yet)
 - **THEN** the Options field shows empty, not `"--foo"`
-
-### Requirement: Personas tab
-
-The Personas tab SHALL list every non-deleted persona (name and a
-truncated instructions preview) with per-row edit and delete actions, an
-"Add Persona…" action, and a "Restore Defaults" action gated behind a
-confirmation dialog.
-
-#### Scenario: Empty list shows a message, not nothing
-
-- **WHEN** no personas exist
-- **THEN** the Personas tab shows "No personas defined" instead of an
-  empty list
-
-#### Scenario: Adding a persona
-
-- **WHEN** the user clicks "Add Persona…", enters a name and instructions,
-  and saves
-- **THEN** a new persona is added via `add_persona` and appears in the list
-  immediately
-
-#### Scenario: Editing a persona
-
-- **WHEN** the user clicks the edit action on an existing persona, changes
-  its instructions, and saves
-- **THEN** `update_persona` is called with that persona's id and the list
-  reflects the new instructions
-
-#### Scenario: Canceling an edit discards changes
-
-- **WHEN** the user opens the editor for a persona, changes a field, and
-  cancels instead of saving
-- **THEN** the persona's stored name and instructions are unchanged
-
-#### Scenario: Deleting a persona
-
-- **WHEN** the user clicks the delete action on a persona
-- **THEN** `remove_persona` is called for that persona's id immediately,
-  with no confirmation prompt
-
-#### Scenario: Restoring defaults requires confirmation
-
-- **WHEN** the user clicks "Restore Defaults"
-- **THEN** a confirmation dialog appears before `restore_default_personas`
-  is called; canceling the dialog calls nothing
 
 ### Requirement: Autopilot tab
 
@@ -475,97 +438,3 @@ to a previously-visited tab SHALL show it exactly as it was left.
 - **WHEN** the user has unsaved text in one pane's editable field and
   switches to another tab, then back
 - **THEN** the unsaved text is still present, unchanged
-
-### Requirement: Prompts tab
-
-The Settings window SHALL have a Prompts tab listing every library prompt
-(name and a truncated, single-line preview of its text) in library order,
-with per-row edit and delete actions and an "Add Prompt…" action. Adding and
-editing SHALL use one editor with a name field and a multi-line text field;
-its save action SHALL be disabled while either field is blank.
-
-The editor SHALL list the prompt variables (see `prompt-library` - Prompt
-variables) with what each expands to, and choosing one SHALL insert it at the
-text field's caret. It SHALL flag unknown variable names as warnings without
-disabling save (see `prompt-library` - Unknown variables and escaping).
-
-Deleting a prompt that no agent or bench entry references SHALL happen
-immediately. Deleting one that is referenced SHALL first ask for
-confirmation, and the confirmation SHALL say how many agents and bench
-entries reference it, since each of them will launch without a startup
-prompt afterwards.
-
-#### Scenario: Empty library shows a message
-
-- **WHEN** the library holds no prompts
-- **THEN** the Prompts tab shows a message saying no prompts are defined
-  instead of an empty list
-
-#### Scenario: Adding a prompt
-
-- **WHEN** the user clicks "Add Prompt…", enters a name and text, and saves
-- **THEN** the prompt is added to the library and appears at the end of the
-  list immediately
-
-#### Scenario: Save is disabled for a blank field
-
-- **WHEN** the prompt editor's name is filled in and its text is blank
-- **THEN** the save action is disabled
-
-#### Scenario: Inserting a variable from the list
-
-- **WHEN** the user places the caret in the text field and chooses
-  `folder.name` from the variable list
-- **THEN** `{{folder.name}}` is inserted at the caret
-
-#### Scenario: Canceling an edit discards changes
-
-- **WHEN** the user opens the editor for a prompt, changes its text, and
-  cancels
-- **THEN** the prompt's stored name and text are unchanged
-
-#### Scenario: Deleting a referenced prompt asks first
-
-- **WHEN** the user deletes a prompt that one agent and one bench entry
-  reference
-- **THEN** a confirmation names one agent and one bench entry, and canceling
-  it leaves the prompt in the library
-
-#### Scenario: Deleting an unreferenced prompt does not ask
-
-- **WHEN** the user deletes a prompt nothing references
-- **THEN** it is removed immediately, with no confirmation
-
-### Requirement: Bench tab
-
-The Settings window SHALL have a Bench tab listing every bench entry (avatar,
-name, folder's last path component, and its startup prompt's name or "Custom"
-or nothing) with per-row edit and remove actions. Editing SHALL change the
-entry's name and startup prompt only; the other template fields come from the
-agent the entry was saved from and are changed by saving that agent to the
-bench again.
-
-Removing an entry SHALL ask for confirmation naming the entry, matching the
-Swift app's bench dropdown.
-
-The Swift app edits the bench only from the New Agent button's dropdown, and
-there only removes entries. The Rust port keeps that dropdown (see
-`agent-list-ui` - The New Agent button opens the bench) and adds this tab for
-editing, which the dropdown has no room for.
-
-#### Scenario: Empty bench shows how to fill it
-
-- **WHEN** the bench holds no entries
-- **THEN** the Bench tab shows a message saying an agent is added from its
-  row menu's Save to Bench or Bench Agent
-
-#### Scenario: Renaming a bench entry
-
-- **WHEN** the user edits a bench entry's name and saves
-- **THEN** the stored entry carries the new name and its other fields are
-  unchanged
-
-#### Scenario: Removing a bench entry asks first
-
-- **WHEN** the user removes a bench entry and cancels the confirmation
-- **THEN** the entry is still on the bench

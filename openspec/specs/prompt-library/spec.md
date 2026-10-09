@@ -150,7 +150,7 @@ The Swift app has no prompt variables.
 
 A `{{...}}` whose name is not one of the prompt variables SHALL be left
 exactly as typed, braces included, and SHALL NOT prevent the prompt from
-being sent or inserted. Anything that edits prompt text - the Prompts tab's
+being sent or inserted. Anything that edits prompt text - the Prompts window's
 editor and the agent editor's custom startup-prompt field - SHALL flag each
 unknown name as a warning, without blocking save, so a misspelling is caught
 before it reaches an agent.

@@ -29,9 +29,6 @@ impl SettingsWindow {
         match tab {
             SettingsTab::General => px(560.),
             SettingsTab::Coding => px(440.),
-            SettingsTab::Personas => px(600.),
-            SettingsTab::Prompts => px(600.),
-            SettingsTab::Bench => px(560.),
             SettingsTab::Autopilot => px(660.),
             SettingsTab::Voice => px(520.),
             SettingsTab::Mcp => px(600.),
@@ -67,9 +64,6 @@ impl Render for SettingsWindow {
         let body = match self.selected_tab {
             SettingsTab::General => self.render_general(cx).into_any_element(),
             SettingsTab::Coding => self.render_coding(cx).into_any_element(),
-            SettingsTab::Personas => self.render_personas(cx).into_any_element(),
-            SettingsTab::Prompts => self.render_prompts(cx).into_any_element(),
-            SettingsTab::Bench => self.render_bench(cx).into_any_element(),
             SettingsTab::Autopilot => self.render_autopilot(cx).into_any_element(),
             SettingsTab::Voice => self.render_voice(cx).into_any_element(),
             SettingsTab::Mcp => self.render_mcp(cx).into_any_element(),
@@ -77,17 +71,12 @@ impl Render for SettingsWindow {
             SettingsTab::Keyboard => self.render_keyboard(cx).into_any_element(),
         };
 
-        // The list tabs and Keyboard manage their own scroll region (only the
-        // list scrolls; the title, blurb and action rows stay pinned) -
-        // scrolling the body too would let both containers move at once and
-        // make the group's title/border appear to drift.
+        // Keyboard manages its own scroll region (only the list scrolls; the
+        // title, blurb and action rows stay pinned) - scrolling the body too
+        // would let both containers move at once and make the group's
+        // title/border appear to drift.
         let settings_body = div().id("settings-body").flex_1().min_h_0();
-        let settings_body = if matches!(self.selected_tab,
-                                        SettingsTab::Personas
-                                        | SettingsTab::Prompts
-                                        | SettingsTab::Bench
-                                        | SettingsTab::Keyboard)
-        {
+        let settings_body = if matches!(self.selected_tab, SettingsTab::Keyboard) {
             settings_body.overflow_hidden()
                          .child(body)
                          .into_any_element()

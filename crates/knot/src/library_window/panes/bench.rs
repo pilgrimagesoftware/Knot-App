@@ -1,9 +1,9 @@
-//! The Bench tab: every bench entry, with edit (name and startup prompt)
+//! The Bench window: every bench entry, with edit (name and startup prompt)
 //! and remove.
 //!
-//! Contract: `openspec/specs/settings-ui/spec.md`, "Bench tab". The workspace
-//! window's bench popover lists the same entries for deploying; this tab is
-//! where they are edited, which the popover has no room for.
+//! Contract: `openspec/specs/library-windows/spec.md`, "Bench window". The
+//! workspace window's bench popover lists the same entries for deploying;
+//! this window is where they are edited, which the popover has no room for.
 
 use gpui_kit::Context;
 use gpui_kit::IntoElement;
@@ -19,7 +19,7 @@ use knot_core::{BenchAgent, Prompt, StartupPrompt};
 use uuid::Uuid;
 
 use super::super::bench_editor::open_bench_editor;
-use crate::settings_window::SettingsWindow;
+use crate::library_window::LibraryWindow;
 
 /// What a bench row says about its startup prompt: the library prompt's
 /// name (or "Missing prompt"), "Custom", or nothing.
@@ -35,7 +35,7 @@ pub(crate) fn startup_summary(startup: Option<&StartupPrompt>, library: &[Prompt
     }
 }
 
-impl SettingsWindow {
+impl LibraryWindow {
     fn remove_bench_entry(&mut self, id: Uuid, cx: &mut Context<Self>) {
         if let Err(error) =
             crate::settings_global::write_persisting(cx, |settings| settings.remove_bench_agent(id))
@@ -48,7 +48,7 @@ impl SettingsWindow {
     fn bench_row(&self, entry: BenchAgent, library: &[Prompt], index: usize,
                  cx: &mut Context<Self>)
                  -> impl IntoElement + use<> {
-        let settings_window = cx.entity();
+        let library_window = cx.entity();
         let muted = cx.theme().muted_foreground;
         let folder = knot_core::folder_name(&entry.folder).unwrap_or_else(|| entry.folder.clone());
         let detail = match startup_summary(entry.startup_prompt.as_ref(), library) {
@@ -59,7 +59,7 @@ impl SettingsWindow {
                                                 "icons/pencil.svg",
                                                 knot_core::l10n::t("settings.bench.edit"),
                                                 false).on_click({
-                                                          let parent = settings_window.downgrade();
+                                                          let parent = library_window.downgrade();
                                                           let entry = entry.clone();
                                                           move |_, _, app| {
                                                               open_bench_editor(parent.clone(),
@@ -71,21 +71,21 @@ impl SettingsWindow {
                                                   "icons/trash.svg",
                                                   knot_core::l10n::t("settings.bench.remove"),
                                                   true).on_click({
-                         let settings_window = settings_window.clone();
+                         let library_window = library_window.clone();
                          let (id, name) = (entry.id, entry.name.clone());
                          move |_, window, app| {
-                             let settings_window = settings_window.clone();
+                             let library_window = library_window.clone();
                              let body = knot_core::l10n::t_with("settings.bench.remove_body",
                                                                 &[("name", &name)]);
                              window.open_alert_dialog(app, move |alert, _, _| {
-                                 let settings_window = settings_window.clone();
+                                 let library_window = library_window.clone();
                                  alert.title(knot_core::l10n::t("settings.bench.remove_title"))
                                       .description(body.clone())
                                       .confirm()
                                       .on_ok(move |_, _, app| {
-                                          settings_window.update(app, |view, cx| {
-                                                             view.remove_bench_entry(id, cx)
-                                                         });
+                                          library_window.update(app, |view, cx| {
+                                                            view.remove_bench_entry(id, cx)
+                                                        });
                                           true
                                       })
                              });

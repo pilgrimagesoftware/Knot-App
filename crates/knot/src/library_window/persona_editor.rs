@@ -26,7 +26,7 @@ use gpui_kit::size;
 use uuid::Uuid;
 
 use crate::app_support::observe_system_appearance;
-use crate::settings_window::SettingsWindow;
+use crate::library_window::LibraryWindow;
 
 pub(crate) fn persona_editor_window_options(title: impl Into<gpui_kit::SharedString>, cx: &App)
                                             -> WindowOptions {
@@ -39,7 +39,7 @@ pub(crate) fn persona_editor_window_options(title: impl Into<gpui_kit::SharedStr
 
 /// Opens the persona add/edit window. `persona` is `None` for "Add Persona…"
 /// and `Some` (fields pre-filled) for a row's edit button.
-pub(crate) fn open_persona_editor(parent: WeakEntity<SettingsWindow>,
+pub(crate) fn open_persona_editor(parent: WeakEntity<LibraryWindow>,
                                   persona: Option<knot_core::Persona>, cx: &mut App) {
     let editing_id = persona.as_ref().map(|p| p.id);
     let title = if editing_id.is_some() {
@@ -77,7 +77,7 @@ pub(crate) fn open_persona_editor(parent: WeakEntity<SettingsWindow>,
 }
 
 pub(crate) struct PersonaEditor {
-    parent:             WeakEntity<SettingsWindow>,
+    parent:             WeakEntity<LibraryWindow>,
     editing_id:         Option<Uuid>,
     name_input:         Entity<InputState>,
     instructions_input: Entity<TextareaState>,

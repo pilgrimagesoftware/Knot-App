@@ -19,6 +19,7 @@ mod import_window;
 mod keybindings;
 mod l10n_catalog;
 mod layout_model;
+mod library_windows;
 mod markdown_view;
 mod mcp_lifetime;
 mod mcp_state_row;

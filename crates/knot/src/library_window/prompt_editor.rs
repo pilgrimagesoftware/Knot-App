@@ -1,10 +1,10 @@
-//! The prompt add/edit window the Prompts tab opens.
+//! The prompt add/edit window the Prompts window opens.
 //!
-//! Contract: `openspec/specs/settings-ui/spec.md`, "Prompts tab". Laid out
-//! like the persona editor beside it: a name field and a multi-line text
-//! field, with the variable list and unknown-variable warning from
-//! [`crate::prompt_text`] under the text, and Create or Save disabled while
-//! either field is blank.
+//! Contract: `openspec/specs/library-windows/spec.md`, "Prompts window".
+//! Laid out like the persona editor beside it: a name field and a
+//! multi-line text field, with the variable list and unknown-variable
+//! warning from [`crate::prompt_text`] under the text, and Create or Save
+//! disabled while either field is blank.
 
 use gpui_kit::App;
 use gpui_kit::AppContext;
@@ -35,12 +35,12 @@ use gpui_kit::px;
 use uuid::Uuid;
 
 use crate::app_support::observe_system_appearance;
-use crate::settings_window::SettingsWindow;
-use crate::settings_window::persona_editor::persona_editor_window_options;
+use crate::library_window::LibraryWindow;
+use crate::library_window::persona_editor::persona_editor_window_options;
 
 /// Opens the prompt editor: `prompt` is `None` for "Add Prompt…" and `Some`
 /// for a row's edit action.
-pub(crate) fn open_prompt_editor(parent: WeakEntity<SettingsWindow>,
+pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
                                  prompt: Option<knot_core::Prompt>, cx: &mut App) {
     let editing_id = prompt.as_ref().map(|p| p.id);
     let title = if editing_id.is_some() {
@@ -89,7 +89,7 @@ fn repaint_on_change<E>(_: &mut PromptEditor, _: Entity<E>, event: &InputEvent,
 }
 
 pub(crate) struct PromptEditor {
-    parent:         WeakEntity<SettingsWindow>,
+    parent:         WeakEntity<LibraryWindow>,
     editing_id:     Option<Uuid>,
     name_input:     Entity<InputState>,
     text_input:     Entity<TextareaState>,

@@ -32,6 +32,9 @@ pub(crate) enum WindowKey {
     Workspace(Uuid),
     CommandCenter,
     WorkspaceManager,
+    Personas,
+    Prompts,
+    Bench,
 }
 
 /// One open window.
@@ -139,7 +142,11 @@ impl WindowRegistry {
                 .filter(|(_, registered)| live.contains(&registered.handle))
                 .filter_map(|(key, _)| match key {
                     WindowKey::Workspace(id) => Some(*id),
-                    WindowKey::CommandCenter | WindowKey::WorkspaceManager => None,
+                    WindowKey::CommandCenter
+                    | WindowKey::WorkspaceManager
+                    | WindowKey::Personas
+                    | WindowKey::Prompts
+                    | WindowKey::Bench => None,
                 })
                 .collect()
     }

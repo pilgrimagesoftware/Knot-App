@@ -42,7 +42,7 @@ impl Settings {
     }
 
     /// Change a bench entry's name and startup prompt - the two fields the
-    /// Bench tab edits; everything else comes from the agent it was saved
+    /// Bench window edits; everything else comes from the agent it was saved
     /// from. An unknown id changes nothing.
     pub fn update_bench_agent(&mut self, id: Uuid, name: impl Into<String>,
                               startup_prompt: Option<StartupPrompt>)

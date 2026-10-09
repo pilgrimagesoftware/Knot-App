@@ -177,9 +177,6 @@ settings:
   tabs:
     general: "General"
     coding: "Coding"
-    personas: "Personas"
-    prompts: "Prompts"
-    bench: "Bench"
     autopilot: "Autopilot"
     voice: "Voice"
     mcp: "MCP"
@@ -368,6 +365,9 @@ menu:
   window:
     command_center: "Command Center"
     workspaces: "Workspaces"
+    personas: "Personas"
+    prompts: "Prompts"
+    bench: "Bench"
   # One agent row's context menu, and the menu bar's Agents menu,
   # which is built from the same entry list.
   agent:
@@ -589,6 +589,18 @@ import:
     unreadable: "could not be read from disk"
     malformed: "could not be decoded"
     missing_persona: "its persona was not in the source, so it arrived without one"
+
+# Window titles for the three library windows (#20): Personas, Prompts and
+# Bench, each its own single-instance window split out of settings. The rest
+# of their copy still lives under `settings.personas`, `settings.prompts`
+# and `settings.bench` - only the titlebar text moved key.
+library:
+  personas:
+    title: "Personas"
+  prompts:
+    title: "Prompts"
+  bench:
+    title: "Bench"
 
 plan:
   title: "Plan"
