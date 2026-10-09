@@ -53,8 +53,16 @@ action is irreversible. Rejected: open issues must not be lost.
 3. Land one PR in Knot-App updating every hard-coded reference, and release it.
    Its CI run proves Actions, rulesets and the reusable release workflows work
    in the new repository.
-4. Delete the old `Knot` once the maintainer is satisfied with Knot-App.
-5. Only then create the meta-repository `Knot`.
+4. Take the old `Knot` out of the Skwad fork network (**Leave fork network**)
+   once the maintainer is satisfied with Knot-App, rather than deleting it.
+5. Clear it out - releases, tags, every branch but `main`, its rulesets - and
+   replace `main` with the meta-repository's own, unrelated history.
+
+Reusing the repository rather than deleting it keeps its 447 pull requests
+and their reviews, which could not be transferred, and leaves no window in
+which released builds' bug reports have nowhere to go. Its issues had already
+moved to Knot-App, so the leave-network warning about issues no longer
+mattered.
 
 Alternative: create the meta-repository under another name (`Knot-Meta`).
 Rejected: the request is for the family's front door to be
@@ -62,15 +70,14 @@ Rejected: the request is for the family's front door to be
 
 ### Released builds' bug reports
 
-A released build files on `pilgrimagesoftware/Knot`. Between step 4 and 5 that
-repository does not exist and the report fails; afterwards it is the
-meta-repository. The meta-repository keeps issues enabled with a
+A released build files on `pilgrimagesoftware/Knot`, which is the
+meta-repository from step 5 on and exists throughout. The meta-repository keeps issues enabled with a
 `config.yml` issue template chooser whose only link sends reporters to
 Knot-App's issues, and blank issues disabled - but `gh issue create`, which
 the reporter uses, bypasses templates. The meta-repository's README and the
 chooser say where app bugs belong, and the maintainer transfers stray issues
-with `gh issue transfer`. Cut a release at step 3, before deleting the old
-repository, so the window stays short.
+with `gh issue transfer`. Cut a release at step 3, so builds that file
+on Knot-App replace the old ones quickly.
 
 Alternative: disable issues on the meta-repository. Rejected: `gh issue
 create` would fail and the reporter would fall back to the browser compose
@@ -129,20 +136,22 @@ examples.
   rather than merging unrelated trees, which makes the problem visible.
 - [Bug reports from released builds fail, then land on the meta-repository]
   → Issue chooser, README note, `gh issue transfer`; a release at step 3.
-- [Links to old issue and pull request numbers break] → Archived OpenSpec
-  issue URLs are rewritten from the transfer map; pull request links cannot be.
+- [Links to old issue numbers break] → Archived OpenSpec issue URLs are
+  rewritten from the transfer map. Pull request links keep working: the pull
+  requests stay in `Knot`.
 - [External links (blog, homepage) break after step 4] → Search
   `pilgrimagesoftware.com` sources for the old URL during step 3.
 - [The reusable release workflows or package signing reference the name] →
-  Step 3's CI run and a dry run of `package.yml` on the PR catch this before
-  the old repository is deleted.
+  Step 3's CI run and the release's `package.yml` run catch this before the
+  old repository is cleared.
 
 ## Migration Plan
 
-Steps 1-5 above, then create Knot-MCP and Knot-Library and add all three
-submodules. Rollback before step 4: transfer issues back to `Knot` and point
-`origin` at it again. After step 4 there is no rollback; pull requests and
-releases are gone.
+Steps 1-5 above, with Knot-MCP and Knot-Library created before the
+submodules are added. Rollback before step 5: transfer issues back to `Knot`
+and point `origin` at it again. Leaving the fork network cannot be undone;
+after step 5 the old branches, tags and releases are gone from `Knot`, though
+every commit survives in Knot-App.
 
 ## Open Questions
 

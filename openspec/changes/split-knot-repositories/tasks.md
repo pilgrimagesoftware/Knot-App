@@ -6,7 +6,7 @@
 - [x] 1.2 Copy repository settings, labels (`gh label clone`) and the `develop`/`main` rulesets, and enable the security features (Dependabot alerts and updates, secret scanning and push protection, private vulnerability reporting, code scanning default setup); squash merge is disabled to match the rulesets' merge methods; verify the settings, label and ruleset JSON diff clean against the old repository
 - [x] 1.3 Transfer every issue, open and closed, oldest first with `gh issue transfer`, recording old→new numbers in `knot-app-issue-map.tsv` beside the checkout; verify the old repository lists no issues and Knot-App holds 43 open and 154 closed
 - [x] 1.4 Set the primary checkout's `origin` to `git@github.com:pilgrimagesoftware/Knot-App.git`; verify `git fetch origin` succeeds and `develop` matches `origin/develop`
-- [ ] 1.5 After 2.5, delete `pilgrimagesoftware/Knot` (maintainer, once satisfied with Knot-App); verify `gh repo view pilgrimagesoftware/Knot` fails
+- [x] 1.5 After 2.5, take `pilgrimagesoftware/Knot` out of the Skwad fork network with **Leave fork network** (maintainer) instead of deleting it; verify `gh repo view pilgrimagesoftware/Knot --json isFork` is `false`
 
 ## 2. Update references in Knot-App
 
@@ -25,11 +25,11 @@
 
 ## 4. Create the meta-repository
 
-- [ ] 4.1 Confirm steps 1-3 are done, the Knot-App release is out and the old repository is deleted (1.5); verify `gh repo view pilgrimagesoftware/Knot` fails, so the name is free
-- [ ] 4.2 Create public `pilgrimagesoftware/Knot` (default branch `main`, AGPL-3.0) with a README introducing the three repositories and `git clone --recurse-submodules`; verify `gh repo view pilgrimagesoftware/Knot --json name` returns `Knot`, not `Knot-App`
-- [ ] 4.3 Add the three submodules with the relative URLs and branches in design.md, and commit; verify a fresh `git clone --recurse-submodules` over HTTPS and over SSH checks out all three
-- [ ] 4.4 Add `.github/ISSUE_TEMPLATE/config.yml` (blank issues disabled, link to Knot-App issues) and a `gitsubmodule` dependabot config; verify the issue chooser on GitHub shows the Knot-App link
-- [ ] 4.5 Protect the meta-repository's `main` (pull request required, no force-push); verify with `gh api repos/pilgrimagesoftware/Knot/rulesets`
+- [x] 4.1 Confirm sections 1-2 are done and every commit on every branch and tag of `pilgrimagesoftware/Knot` exists in Knot-App; record the old refs in `old-knot-refs.txt` beside the checkout, then delete its releases, tags, branches other than `main`, and its `develop`/`main` rulesets; verify `git ls-remote` lists only `main` and its pull requests remain
+- [x] 4.2 Replace `main` of `pilgrimagesoftware/Knot` with a fresh, unrelated history (default branch `main`, AGPL-3.0) holding a README introducing the three repositories and `git clone --recurse-submodules`; verify `gh repo view pilgrimagesoftware/Knot --json defaultBranchRef` is `main`
+- [x] 4.3 Add the three submodules with the relative URLs and branches in design.md, and commit; verify a fresh `git clone --recurse-submodules` over HTTPS and over SSH checks out all three
+- [x] 4.4 Add `.github/ISSUE_TEMPLATE/config.yml` (blank issues disabled, links to Knot-App, Knot-MCP and Knot-Library issues) and a `gitsubmodule` dependabot config; verify the issue chooser on GitHub shows the Knot-App link
+- [x] 4.5 Protect the meta-repository's `main` (pull request required, no force-push); verify with `gh api repos/pilgrimagesoftware/Knot/rulesets`
 
 ## 5. Announce
 
