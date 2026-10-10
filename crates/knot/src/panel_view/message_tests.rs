@@ -1,6 +1,7 @@
-//! Message timestamp visibility (cmd-hold-timestamps): a prompt's or
-//! response's timestamp paints only while ⌘ is held, per `acp-panel-ui`'s
-//! "Message timestamps are shown only while ⌘ is held" requirement.
+//! Message timestamp layout (cmd-hold-timestamps, issue #221): a prompt's or
+//! response's timestamp row keeps its slot in the conversation whether or
+//! not ⌘ is held, so toggling ⌘ changes only the label's paint, never the
+//! surrounding layout.
 
 use gpui_kit::AppContext;
 use gpui_kit::Context;
@@ -66,10 +67,10 @@ impl Render for MessageProbe {
     }
 }
 
-/// Draws one user message with `cmd_held` and returns whether its timestamp
-/// painted - the scenario in `acp-panel-ui`'s "Message timestamps are shown
-/// only while ⌘ is held" requirement.
-fn message_timestamp_painted(cmd_held: bool, cx: &mut TestAppContext) -> bool {
+/// Draws one user message with `cmd_held` and returns the timestamp row's
+/// bounds, so a test can compare them across ⌘ states.
+fn message_timestamp_bounds(cmd_held: bool, cx: &mut TestAppContext)
+                            -> Option<gpui_kit::Bounds<gpui_kit::Pixels>> {
     let mut state = PanelState::new();
     state.push_user_message("hi".to_owned());
     let window = cx.update(|cx| {
@@ -85,15 +86,24 @@ fn message_timestamp_painted(cmd_held: bool, cx: &mut TestAppContext) -> bool {
                    });
     let mut cx = VisualTestContext::from_window(window.into(), cx);
     cx.run_until_parked();
-    cx.debug_bounds("panel-message-timestamp").is_some()
+    cx.debug_bounds("panel-message-timestamp")
 }
 
 #[gpui_kit::test]
-fn no_timestamp_paints_while_cmd_is_not_held(cx: &mut TestAppContext) {
-    assert!(!message_timestamp_painted(false, cx));
+fn the_timestamp_row_lays_out_even_while_cmd_is_not_held(cx: &mut TestAppContext) {
+    assert!(message_timestamp_bounds(false, cx).is_some());
 }
 
 #[gpui_kit::test]
-fn a_timestamp_paints_while_cmd_is_held(cx: &mut TestAppContext) {
-    assert!(message_timestamp_painted(true, cx));
+fn the_timestamp_row_lays_out_while_cmd_is_held(cx: &mut TestAppContext) {
+    assert!(message_timestamp_bounds(true, cx).is_some());
+}
+
+#[gpui_kit::test]
+fn holding_cmd_does_not_move_the_message_below_the_timestamp(cx: &mut TestAppContext) {
+    let held = message_timestamp_bounds(true, cx).expect("row present while held");
+    let not_held = message_timestamp_bounds(false, cx).expect("row present while not held");
+    // Same bounds in both states is exactly "no reflow when ⌘ is pressed or
+    // released" - the row is always in the layout, only its paint changes.
+    assert_eq!(held, not_held);
 }
