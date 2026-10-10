@@ -15,7 +15,7 @@
 
 ## 3. `knot-core`
 
-- [ ] 3.1 Add `Settings::insert_persona(Persona)` and `Settings::insert_prompt(Prompt)`, refusing a duplicate id and blank fields; test both, including the uppercase built-in id against a lowercase library id
+- [x] 3.1 Add `Settings::insert_persona(Persona)` and `Settings::insert_prompt(Prompt)`, refusing a duplicate id and blank fields; test both, including the uppercase built-in id against a lowercase library id
 - [ ] 3.2 Add `import::library`: classify each index item as importable, already present, or deleted built-in, and import the selected verified items as `PersonaType::User` personas and prompts, reporting added, skipped and unreadable in an `ImportResult`
 - [ ] 3.3 Add the saved-locations collection: `LibraryLocation { id, name, location }` in `library-locations.json` (path in `StorePaths`, atomic collection writer, absent document loads as empty), with add, rename and remove; test a round trip and a store that predates the document
 - [ ] 3.4 Test the `data-import` scenarios: built-in already held, renamed copy still held, deleted built-in not revived, re-import after delete, unknown kind skipped, format 2 refused, one bad hash among good items

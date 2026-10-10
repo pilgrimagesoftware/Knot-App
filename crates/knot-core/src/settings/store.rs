@@ -77,7 +77,7 @@ use crate::consts::{
     TITLE_FONT_DEFAULT, TITLE_FONT_SIZE_DEFAULT, UI_FONT_DEFAULT, UI_FONT_SIZE_DEFAULT,
     VOICE_ENGINE_DEFAULT, VOICE_PUSH_TO_TALK_KEY_DEFAULT,
 };
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// The whole persisted configuration surface. Load with [`Settings::load`],
 /// mutate through the helpers (each persists), or set fields directly and call
@@ -490,6 +490,22 @@ impl Settings {
         Ok(self.personas.last().expect("just pushed"))
     }
 
+    /// Insert a persona carrying its own id - the library import's path,
+    /// where identity comes from the source rather than being minted here.
+    /// Refused, leaving the roster unchanged, when a persona with that id is
+    /// already present (`Uuid` compares parsed values, so case doesn't
+    /// matter) or its name or instructions are blank.
+    pub fn insert_persona(&mut self, persona: Persona) -> Result<()> {
+        if self.personas.iter().any(|p| p.id == persona.id) {
+            return Err(duplicate_persona_id(persona.id));
+        }
+        if persona.name.trim().is_empty() || persona.instructions.trim().is_empty() {
+            return Err(blank_persona());
+        }
+        self.personas.push(persona);
+        self.persist_personas()
+    }
+
     /// Rewrite name/instructions for an existing persona of any type. A no-op
     /// if `id` is not present.
     pub fn update_persona(&mut self, id: Uuid, name: impl Into<String>,
@@ -669,6 +685,14 @@ fn exchange_entries(object: &mut serde_json::Map<String, Value>, left: &str, rig
         }
         (None, None) => {}
     }
+}
+
+fn blank_persona() -> Error {
+    Error::Config("a persona needs a name and instructions".to_string())
+}
+
+fn duplicate_persona_id(id: Uuid) -> Error {
+    Error::Config(format!("a persona with id {id} already exists"))
 }
 
 #[cfg(test)]
