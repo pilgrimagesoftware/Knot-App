@@ -78,7 +78,7 @@ fn reorder_and_move_to_workspace_update_membership() {
     let first = store.create("/tmp/first", CreateOptions::default());
     let second = store.create("/tmp/second", CreateOptions::default());
     let source = store.workspaces()[0].id;
-    store.reorder(source, 0, 1);
+    assert!(store.move_agent_to_gap(source, first, 2));
     assert_eq!(store.workspaces()[0].agent_ids, vec![second, first]);
     let target = workspace("target");
     let target_id = target.id;
@@ -91,6 +91,69 @@ fn reorder_and_move_to_workspace_update_membership() {
                     .unwrap()
                     .agent_ids,
                vec![first]);
+}
+
+/// Three agents, `a`, `b`, `c`, in a workspace of their own, in that order.
+fn three_agents() -> (AgentStore, Uuid, [Uuid; 3]) {
+    let mut store = AgentStore::new();
+    let ids = ["a", "b", "c"].map(|folder| {
+                                 store.create(format!("/tmp/{folder}"), CreateOptions::default())
+                             });
+    let workspace_id = store.workspaces()[0].id;
+    (store, workspace_id, ids)
+}
+
+#[test]
+fn an_owner_moves_with_its_companion() {
+    let (mut store, workspace_id, [a, b, c]) = three_agents();
+    let companion = store.create_shell_companion(a)
+                         .expect("a can own a companion");
+    // Order is now a, companion, b, c.
+    assert!(store.move_agent_to_gap(workspace_id, a, 4),
+            "a moves below c, carrying its companion");
+    assert_eq!(store.workspaces()[0].agent_ids, vec![b, c, a, companion]);
+}
+
+#[test]
+fn a_gap_inside_a_companion_group_is_refused() {
+    let (mut store, workspace_id, [a, b, c]) = three_agents();
+    let companion = store.create_shell_companion(a)
+                         .expect("a can own a companion");
+    // Order is a, companion, b, c. The gap between a and its companion is
+    // index 1.
+    assert!(!store.move_agent_to_gap(workspace_id, b, 1),
+            "b cannot land between a and its companion");
+    assert_eq!(store.workspaces()[0].agent_ids, vec![a, companion, b, c]);
+}
+
+#[test]
+fn the_gaps_either_side_of_a_group_leave_the_order_alone() {
+    let (mut store, workspace_id, [a, b, c]) = three_agents();
+    let companion = store.create_shell_companion(a)
+                         .expect("a can own a companion");
+    // Order is a, companion, b, c.
+    assert!(!store.move_agent_to_gap(workspace_id, a, 0),
+            "the gap above the group");
+    assert!(!store.move_agent_to_gap(workspace_id, a, 2),
+            "the gap below the group");
+    assert_eq!(store.workspaces()[0].agent_ids, vec![a, companion, b, c]);
+}
+
+#[test]
+fn a_companion_id_is_refused() {
+    let (mut store, workspace_id, [a, _b, _c]) = three_agents();
+    let companion = store.create_shell_companion(a)
+                         .expect("a can own a companion");
+    assert!(!store.move_agent_to_gap(workspace_id, companion, 0),
+            "a companion does not move on its own");
+    assert_eq!(store.workspaces()[0].agent_ids, vec![a, companion, _b, _c]);
+}
+
+#[test]
+fn gap_len_moves_an_agent_to_the_end() {
+    let (mut store, workspace_id, [a, b, c]) = three_agents();
+    assert!(store.move_agent_to_gap(workspace_id, a, 3));
+    assert_eq!(store.workspaces()[0].agent_ids, vec![b, c, a]);
 }
 
 /// Deleting a workspace takes its arrangement with it, in the teardown rather

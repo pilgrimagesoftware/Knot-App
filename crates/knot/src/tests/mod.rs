@@ -57,6 +57,7 @@ mod workspace_dialog;
 mod workspace_manager_drag;
 mod workspace_manager_scroll;
 mod workspace_title;
+mod workspace_window_agent_drag;
 mod workspace_window_config;
 mod workspace_window_open;
 
