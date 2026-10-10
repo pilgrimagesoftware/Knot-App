@@ -1,4 +1,11 @@
 
+## 1.26.0 - 2026-10-10
+
+### Added
+- Move Personas, Prompts and Bench into their own windows
+
+
+
 ## 1.25.0 - 2026-10-09
 
 ### Added
