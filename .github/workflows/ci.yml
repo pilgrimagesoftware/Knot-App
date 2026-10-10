@@ -88,3 +88,25 @@ jobs:
 
       - name: Build
         run: make build
+
+  # Windows isn't in the `workspace` matrix above: its steps lean on `make`
+  # and Unix tools (awk, sort -V) that aren't on a windows-latest runner by
+  # default. This job proves `cargo build` alone, matching crates/knot's
+  # AppKit code being `cfg(target_os = "macos")`-gated with Linux/Windows
+  # fallbacks throughout - fmt/clippy/test parity for Windows is a follow-up,
+  # not required for #216.
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          cache-key: windows-latest
+
+      - name: Build
+        run: cargo build --workspace
