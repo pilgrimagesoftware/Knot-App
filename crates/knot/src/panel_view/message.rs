@@ -50,11 +50,15 @@ const PROMPT_HOVER_GROUP: &str = "panel-prompt";
 /// One message's render inputs, grouped so `render_message` keeps a short
 /// parameter list as the panel gains styling.
 pub(super) struct Message<'a> {
-    pub(super) state:   &'a PanelState,
-    pub(super) index:   usize,
-    pub(super) is_last: bool,
-    pub(super) style:   &'a PanelStyle,
-    pub(super) list:    &'a ListState,
+    pub(super) state:    &'a PanelState,
+    pub(super) index:    usize,
+    pub(super) is_last:  bool,
+    pub(super) style:    &'a PanelStyle,
+    pub(super) list:     &'a ListState,
+    /// Whether ⌘ is currently held over the panel's window, per
+    /// `WorkspaceWindow::key_hints` - the same signal that drives the
+    /// sidebar's own key hints (cmd-hold-timestamps).
+    pub(super) cmd_held: bool,
 }
 
 /// The small, subtitle-colored relative-time label for one message, with a
@@ -63,6 +67,7 @@ pub(super) struct Message<'a> {
 fn render_timestamp(sent_at: SystemTime, kind: &'static str, index: usize) -> impl IntoElement {
     let absolute = absolute_timestamp(sent_at);
     div().id((kind, index as u64))
+         .debug_selector(|| "panel-message-timestamp".into())
          // Smaller than `text_xs` (12px): this is a secondary annotation
          // beside the message, not body text.
          .text_size(px(10.))
@@ -78,7 +83,8 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                   index,
                   is_last,
                   style,
-                  list, } = ctx;
+                  list,
+                  cmd_held, } = ctx;
     match message {
         // Right-aligned, tinted background - visually distinct from the
         // assistant's plain left-aligned text, per acp-panel-ui's
@@ -92,10 +98,9 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .items_end()
                 .gap_0p5()
                 .children(
-                    state
-                        .sent_at
-                        .get(index)
-                        .copied()
+                    cmd_held
+                        .then(|| state.sent_at.get(index).copied())
+                        .flatten()
                         .map(|at| render_timestamp(at, "panel-prompt-time", index)),
                 )
                 .child(
@@ -165,10 +170,9 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .min_w_0()
                 .gap_1()
                 .children(
-                    state
-                        .sent_at
-                        .get(index)
-                        .copied()
+                    cmd_held
+                        .then(|| state.sent_at.get(index).copied())
+                        .flatten()
                         .map(|at| render_timestamp(at, "panel-response-time", index)),
                 )
                 // Plain `w_full().min_w_0()`, deliberately *not* a

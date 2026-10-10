@@ -49,14 +49,14 @@ pub(crate) const LIST_OVERDRAW: f32 = 400.;
 /// a manual jump from a message's action bar - the last so the caller can
 /// drop auto-scroll without the reconciler pulling the view back to the tail.
 pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, list: ListState, style: &PanelStyle,
-                           callbacks: PanelCallbacks)
+                           callbacks: PanelCallbacks, cmd_held: bool)
                            -> impl IntoElement {
     let row_state = Arc::clone(&state);
     let row_list = list.clone();
     let row_style = style.clone();
     gpui_kit::list(list.clone(), move |index, window, _cx| {
         let state = row_state.lock();
-        render_row(index, &state, &row_style, &row_list, &callbacks, window)
+        render_row(index, &state, &row_style, &row_list, &callbacks, window, cmd_held)
     }).size_full()
       // `min_w_0` so a wide child (a markdown table, a long command line)
       // clips instead of stretching the pane and pushing the input row's
@@ -88,9 +88,12 @@ pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, list: ListState, style
 /// neighbouring rows.
 ///
 /// `window` is the frame's, carried only so the permission row can ask the
-/// live keymap what its decision buttons are bound to.
+/// live keymap what its decision buttons are bound to. `cmd_held` is
+/// `WorkspaceWindow::key_hints.shown().is_some()` - the sidebar's own ⌘-hold
+/// signal, reused so every message's timestamp shows and hides with it
+/// (cmd-hold-timestamps).
 fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListState,
-              callbacks: &PanelCallbacks, window: &Window)
+              callbacks: &PanelCallbacks, window: &Window, cmd_held: bool)
               -> gpui_kit::AnyElement {
     let row = match row_at(state, index) {
         Some(PanelRow::Message(message_index)) => {
@@ -115,7 +118,8 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
                                              index: message_index,
                                              is_last: Some(message_index) == last_index,
                                              style,
-                                             list },
+                                             list,
+                                             cmd_held },
                                    message,
                                    callbacks)
                 }

@@ -398,6 +398,7 @@ impl WorkspaceWindow {
                                 )
                                 .with_shell(on_cancel_shell, on_discard_shell)
                                 .with_reply(on_reply),
+                                self.key_hints.shown().is_some(),
                             ))
                             // Shown while scrolling, per the user's macOS
                             // scroll bar setting (#583). Before the jump
