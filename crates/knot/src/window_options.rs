@@ -10,6 +10,7 @@ use gpui_kit::px;
 use gpui_kit::size;
 
 use crate::consts;
+use crate::library_window::Library;
 use crate::settings_window::SettingsTab;
 use crate::settings_window::SettingsWindow;
 
@@ -250,6 +251,16 @@ pub(crate) fn settings_window_options(cx: &App) -> WindowOptions {
     let height = SettingsWindow::pane_target_height(SettingsTab::General);
     os_bar_window(Some(knot_core::l10n::t("settings.title").into()),
                   size(SETTINGS_WINDOW_WIDTH, height),
+                  Some(size(px(480.), px(320.))),
+                  cx)
+}
+
+/// A library window's size: the same width as settings, since both are
+/// single-pane utility windows, and `library`'s own target height (the cap
+/// its pane had as a settings tab, unchanged by the move).
+pub(crate) fn library_window_options(library: Library, cx: &App) -> WindowOptions {
+    os_bar_window(Some(library.title().into()),
+                  size(SETTINGS_WINDOW_WIDTH, library.height()),
                   Some(size(px(480.), px(320.))),
                   cx)
 }

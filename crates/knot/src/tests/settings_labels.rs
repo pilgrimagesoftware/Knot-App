@@ -10,11 +10,9 @@ use std::collections::BTreeSet;
 use knot_core::AiProvider;
 use knot_core::AppearanceMode;
 use knot_core::AutopilotAction;
-use uuid::Uuid;
 
 use crate::settings_window::SettingsTab;
 use crate::settings_window::SettingsWindow;
-use crate::tests::workspace;
 
 #[test]
 fn appearance_label_names_every_mode() {
@@ -75,53 +73,6 @@ fn every_vendor_agent_type_has_its_own_icon() {
     }
     assert_eq!(SettingsWindow::agent_type_icon("anything-else"),
                IconName::Bot);
-}
-
-#[test]
-fn persona_preview_returns_short_instructions_unchanged() {
-    assert_eq!(SettingsWindow::persona_preview("be terse", 80), "be terse");
-}
-
-/// A persona assigned to an agent can't be deleted - the count drives
-/// both the disabled delete button and its tooltip.
-#[test]
-fn personas_in_use_counts_only_the_agents_that_reference_each_persona() {
-    let assigned = Uuid::new_v4();
-    let unused = Uuid::new_v4();
-    let mut store = knot_agents::AgentStore::new();
-    let ws = workspace("One");
-    store.add_workspace(ws.clone());
-    store.set_current_workspace(ws.id);
-    store.create("~/alpha",
-                 knot_agents::CreateOptions { persona_id: Some(assigned),
-                                              ..Default::default() });
-    store.create("~/beta",
-                 knot_agents::CreateOptions { persona_id: Some(assigned),
-                                              ..Default::default() });
-    store.create("~/gamma", knot_agents::CreateOptions::default());
-
-    let in_use = SettingsWindow::personas_in_use(store.agents());
-
-    assert_eq!(in_use.get(&assigned).copied(), Some(2));
-    assert_eq!(in_use.get(&unused).copied(), None);
-}
-
-#[test]
-fn persona_delete_tooltip_names_the_reason_it_is_disabled() {
-    assert_eq!(SettingsWindow::persona_delete_tooltip(0), "Delete persona");
-    assert_eq!(SettingsWindow::persona_delete_tooltip(1),
-               "In use by 1 agent");
-    assert_eq!(SettingsWindow::persona_delete_tooltip(3),
-               "In use by 3 agents");
-}
-
-#[test]
-fn persona_preview_truncates_long_instructions_with_ellipsis() {
-    let instructions = "a".repeat(100);
-    let preview = SettingsWindow::persona_preview(&instructions, 80);
-    assert_eq!(preview.chars().count(), 81);
-    assert!(preview.ends_with('…'));
-    assert_eq!(&preview[..80], "a".repeat(80).as_str());
 }
 
 #[test]
@@ -247,20 +198,17 @@ fn settings_tab_labels_are_distinct() {
     assert_eq!(labels.len(), SettingsTab::ALL.len());
 }
 
-/// The seven ported panes, in the Swift reference's order, with Prompts and
-/// Bench after Personas (`prompt-library`, `settings-ui` - the reference has
-/// neither), then Keyboard, which the reference has no counterpart for
-/// (`keybindings`), and nothing else. Settings holds what the user configures;
-/// an import is something they run, and lives in its own window off the File
-/// menu - see `tests::import_window`.
+/// The seven remaining panes, in the Swift reference's order, then Keyboard,
+/// which the reference has no counterpart for (`keybindings`), and nothing
+/// else. Personas, Prompts and Bench moved out into their own windows (#20,
+/// see `tests::library_windows`), and an import is something the user runs
+/// rather than configures, so it lives in its own window off the File menu
+/// too (see `tests::import_window`).
 #[test]
 fn settings_tab_covers_every_swift_pane_then_keyboard() {
     assert_eq!(SettingsTab::ALL.to_vec(),
                vec![SettingsTab::General,
                     SettingsTab::Coding,
-                    SettingsTab::Personas,
-                    SettingsTab::Prompts,
-                    SettingsTab::Bench,
                     SettingsTab::Autopilot,
                     SettingsTab::Voice,
                     SettingsTab::Mcp,

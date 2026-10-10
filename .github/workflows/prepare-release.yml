@@ -19,6 +19,9 @@ jobs:
       # follows; the default (Cargo.toml CHANGELOG.md) would leave those out of
       # the release commit.
       commit-files: "Cargo.toml Cargo.lock crates/*/Cargo.toml CHANGELOG.md"
+      # Merge the release PR on its own once main's required checks pass.
+      auto-merge: true
+      merge-method: merge
     secrets:
       PSW_CI_APP_ID: ${{ secrets.PSW_CI_APP_ID }}
       PSW_CI_PRIVATE_KEY: ${{ secrets.PSW_CI_PRIVATE_KEY }}

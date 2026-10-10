@@ -47,7 +47,7 @@ impl SettingsWindow {
             }
         }
         // Only the list scrolls: the blurb above and Restore Defaults below
-        // stay where they are, like the Personas tab's title and actions.
+        // stay where they are, like the Personas window's title and actions.
         let list = div().id("keyboard-shortcuts-list")
                         .flex_1()
                         .min_h_0()

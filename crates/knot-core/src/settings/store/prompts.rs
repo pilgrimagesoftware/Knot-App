@@ -15,7 +15,7 @@ use crate::error::{Error, Result};
 use crate::settings::prompts::{Prompt, StartupPrompt};
 
 /// How many saved agents and bench entries name one library prompt as their
-/// startup prompt - what the Prompts tab's delete confirmation reports.
+/// startup prompt - what the Prompts window's delete confirmation reports.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PromptReferences {
     pub agents: usize,

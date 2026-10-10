@@ -18,9 +18,8 @@ alone rather than sit in Skwad's fork network.
 - **Move** the app from `pilgrimagesoftware/Knot` to a new, non-fork
   `pilgrimagesoftware/Knot-App`: every branch and tag, settings, labels,
   rulesets and security features, and every issue (open and closed) by
-  `gh issue transfer`. Issues get new numbers. Pull requests, releases and
-  Actions history cannot move and are lost when the old repository is deleted;
-  the next release is cut fresh on Knot-App.
+  `gh issue transfer`. Issues get new numbers. Pull requests cannot move and
+  stay in the old repository; releases are cut fresh on Knot-App.
 - **Update every reference** in the app repository to the new name before the
   old name is reused: the bug reporter's target repository
   (`knot_core::consts::KNOT_REPO`), the `repository` and `homepage` URLs in
@@ -37,11 +36,10 @@ alone rather than sit in Skwad's fork network.
   worktree's `origin` remote.
 
 **BREAKING** for anyone with a clone of the app: there is no redirect from
-`pilgrimagesoftware/Knot` to Knot-App, so an un-updated clone fails to fetch once
-the old repository is deleted, and fetches the meta-repository once that takes
-the name. Released builds of Knot that file bug reports fail in between and
-file them on the meta-repository after. Links to old issue and pull request
-numbers break.
+`pilgrimagesoftware/Knot` to Knot-App, so an un-updated clone fetches the
+meta-repository, whose history is unrelated to the app's. Released builds of
+Knot from before the move file bug reports on the meta-repository. Links to
+old issue numbers break; old pull request links still resolve.
 
 ## Non-Goals
 
@@ -70,9 +68,9 @@ of that repository's name changes. This change sets `skip_specs: true`.
 
 ## Impact
 
-- GitHub: Knot-App created and populated, the old fork deleted, three new
-  public repositories (Knot-App, Knot-MCP, Knot-Library) plus the
-  meta-repository, submodule wiring.
+- GitHub: Knot-App created and populated, Knot-MCP and Knot-Library created,
+  and the old `Knot` taken out of the Skwad fork network, cleared and reused
+  as the meta-repository with submodule wiring.
 - `crates/knot-core/src/consts.rs` - `KNOT_REPO` becomes
   `pilgrimagesoftware/Knot-App`; tests that name the repository follow.
 - `Cargo.toml`, `crates/knot/Cargo.toml` - `repository` and `homepage`.

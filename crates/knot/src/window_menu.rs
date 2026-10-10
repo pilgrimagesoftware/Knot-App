@@ -1,6 +1,7 @@
-//! The menu bar's **Window** menu: Knot's two global windows, one item per
-//! open workspace window on its Select Workspace shortcut, and the window
-//! commands.
+//! The menu bar's **Window** menu: Knot's global windows (Command Center and
+//! Workspaces), the three library windows split out of settings (#20), one
+//! item per open workspace window on its Select Workspace shortcut, and the
+//! window commands.
 //!
 //! Contract: `openspec/specs/app-menu/spec.md`, and `keybindings` for what
 //! the workspace items do.
@@ -19,7 +20,10 @@ use gpui_kit::MenuItem;
 use uuid::Uuid;
 
 use crate::app_bootstrap::MinimizeWindow;
+use crate::app_bootstrap::OpenBench;
 use crate::app_bootstrap::OpenCommandCenter;
+use crate::app_bootstrap::OpenPersonas;
+use crate::app_bootstrap::OpenPrompts;
 use crate::app_bootstrap::OpenWorkspaces;
 use crate::app_bootstrap::ZoomWindow;
 use crate::consts::NUMBERED_SHORTCUTS;
@@ -79,15 +83,21 @@ pub(crate) fn window_menu_snapshot(store: &knot_agents::AgentStore, open: &[Uuid
 /// Knot's own items first, then a separator, then the list of open windows
 /// macOS appends and maintains below them. Without the separator a
 /// workspace called "Zoom" is indistinguishable from the Zoom command, and
-/// these items shift down every time a window opens. The two openers are
-/// their own group: they open windows, the workspace items raise one, and
-/// Minimize and Zoom manipulate the focused one.
+/// these items shift down every time a window opens. The openers are two
+/// groups of their own, each followed by a separator: Command Center and
+/// Workspaces, then the three library windows (#20) - all four open a
+/// window; the workspace items that follow raise one instead, and Minimize
+/// and Zoom manipulate the focused one.
 pub(crate) fn window_menu(snapshot: &WindowMenuSnapshot) -> Menu {
-    let mut items = vec![MenuItem::action(knot_core::l10n::t("menu.window.command_center"),
-                                          OpenCommandCenter),
-                         MenuItem::action(knot_core::l10n::t("menu.window.workspaces"),
-                                          OpenWorkspaces),
-                         MenuItem::separator(),];
+    let mut items =
+        vec![MenuItem::action(knot_core::l10n::t("menu.window.command_center"),
+                              OpenCommandCenter),
+             MenuItem::action(knot_core::l10n::t("menu.window.workspaces"), OpenWorkspaces),
+             MenuItem::separator(),
+             MenuItem::action(knot_core::l10n::t("menu.window.personas"), OpenPersonas),
+             MenuItem::action(knot_core::l10n::t("menu.window.prompts"), OpenPrompts),
+             MenuItem::action(knot_core::l10n::t("menu.window.bench"), OpenBench),
+             MenuItem::separator(),];
     if !snapshot.workspaces.is_empty() {
         items.extend(snapshot.workspaces
                              .iter()

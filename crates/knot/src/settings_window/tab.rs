@@ -4,9 +4,6 @@
 pub(crate) enum SettingsTab {
     General,
     Coding,
-    Personas,
-    Prompts,
-    Bench,
     Autopilot,
     Voice,
     Mcp,
@@ -15,16 +12,13 @@ pub(crate) enum SettingsTab {
 }
 
 impl SettingsTab {
-    pub(crate) const ALL: [SettingsTab; 10] = [SettingsTab::General,
-                                               SettingsTab::Coding,
-                                               SettingsTab::Personas,
-                                               SettingsTab::Prompts,
-                                               SettingsTab::Bench,
-                                               SettingsTab::Autopilot,
-                                               SettingsTab::Voice,
-                                               SettingsTab::Mcp,
-                                               SettingsTab::Terminal,
-                                               SettingsTab::Keyboard];
+    pub(crate) const ALL: [SettingsTab; 7] = [SettingsTab::General,
+                                              SettingsTab::Coding,
+                                              SettingsTab::Autopilot,
+                                              SettingsTab::Voice,
+                                              SettingsTab::Mcp,
+                                              SettingsTab::Terminal,
+                                              SettingsTab::Keyboard];
 
     /// The tab's title. `Terminal` is titled "Appearance": the pane grew
     /// from terminal appearance into the window's look as a whole, and the
@@ -33,9 +27,6 @@ impl SettingsTab {
         match self {
             SettingsTab::General => knot_core::l10n::t("settings.tabs.general"),
             SettingsTab::Coding => knot_core::l10n::t("settings.tabs.coding"),
-            SettingsTab::Personas => knot_core::l10n::t("settings.tabs.personas"),
-            SettingsTab::Prompts => knot_core::l10n::t("settings.tabs.prompts"),
-            SettingsTab::Bench => knot_core::l10n::t("settings.tabs.bench"),
             SettingsTab::Autopilot => knot_core::l10n::t("settings.tabs.autopilot"),
             SettingsTab::Voice => knot_core::l10n::t("settings.tabs.voice"),
             SettingsTab::Mcp => knot_core::l10n::t("settings.tabs.mcp"),

@@ -14,9 +14,9 @@ use gpui_kit::px;
 use uuid::Uuid;
 
 use super::super::persona_editor::open_persona_editor;
-use crate::settings_window::SettingsWindow;
+use crate::library_window::LibraryWindow;
 
-impl SettingsWindow {
+impl LibraryWindow {
     /// Truncates `instructions` to `max_chars`, appending an ellipsis when
     /// truncated so a persona list row stays a single line.
     pub(crate) fn persona_preview(instructions: &str, max_chars: usize) -> String {
@@ -92,7 +92,7 @@ impl SettingsWindow {
     fn persona_row(&self, persona: knot_core::Persona, index: usize, in_use: usize,
                    cx: &mut Context<Self>)
                    -> impl IntoElement + use<> {
-        let settings_window = cx.entity();
+        let library_window = cx.entity();
         let id = persona.id;
         let preview = Self::persona_preview(&persona.instructions, 80);
         h_flex()
@@ -123,7 +123,7 @@ impl SettingsWindow {
                                             false,
                                         )
                                         .on_click({
-                                            let parent = settings_window.downgrade();
+                                            let parent = library_window.downgrade();
                                             let persona = persona.clone();
                                             move |_, _, app| {
                                                 open_persona_editor(
@@ -147,15 +147,15 @@ impl SettingsWindow {
                                         )
                                         .disabled(in_use > 0)
                                         .on_click({
-                                            let settings_window = settings_window.clone();
+                                            let library_window = library_window.clone();
                                             let name = persona.name.clone();
                                             move |_, window, app| {
-                                                let settings_window = settings_window.clone();
+                                                let library_window = library_window.clone();
                                                 window.open_alert_dialog(app, {
                                                     let name = name.clone();
                                                     move |alert, _, _| {
-                                                        let settings_window =
-                                                            settings_window.clone();
+                                                        let library_window =
+                                                            library_window.clone();
                                                         alert
                                                         .title(knot_core::l10n::t("settings.personas.delete_persona"))
                                                         .description(knot_core::l10n::t_with(
@@ -164,7 +164,7 @@ impl SettingsWindow {
                                                         ))
                                                         .confirm()
                                                         .on_ok(move |_, _, app| {
-                                                            settings_window.update(app, |view, cx| {
+                                                            library_window.update(app, |view, cx| {
                                                                 view.delete_persona(id, cx);
                                                             });
                                                             true
@@ -178,7 +178,7 @@ impl SettingsWindow {
     }
 
     pub(crate) fn render_personas(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let settings_window = cx.entity();
+        let library_window = cx.entity();
         let personas: Vec<knot_core::Persona> = crate::settings_global::read(cx).active_personas()
                                                                                 .into_iter()
                                                                                 .cloned()
@@ -222,7 +222,7 @@ impl SettingsWindow {
                                 false,
                             )
                             .on_click({
-                                let parent = settings_window.downgrade();
+                                let parent = library_window.downgrade();
                                 move |_, _, app| {
                                     open_persona_editor(parent.clone(), None, app);
                                 }
@@ -236,11 +236,11 @@ impl SettingsWindow {
                                 false,
                             )
                             .on_click({
-                                let settings_window = settings_window.clone();
+                                let library_window = library_window.clone();
                                 move |_, window, app| {
-                                    let settings_window = settings_window.clone();
+                                    let library_window = library_window.clone();
                                     window.open_alert_dialog(app, move |alert, _, _| {
-                                        let settings_window = settings_window.clone();
+                                        let library_window = library_window.clone();
                                         alert
                                             .title(knot_core::l10n::t("settings.personas.restore_defaults"))
                                             .description(
@@ -248,7 +248,7 @@ impl SettingsWindow {
                                             )
                                             .confirm()
                                             .on_ok(move |_, _, app| {
-                                                settings_window.update(app, |view, cx| {
+                                                library_window.update(app, |view, cx| {
                                                     view.restore_default_personas(cx);
                                                 });
                                                 true
