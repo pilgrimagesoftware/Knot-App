@@ -2,7 +2,10 @@
   "format": 1,
   "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9011223344",
   "generatedAt": "2026-01-01T00:00:00Z",
-  "kinds": ["persona", "prompt"],
+  "kinds": {
+    "persona": { "directory": "personas", "count": 1 },
+    "prompt": { "directory": "prompts", "count": 1 }
+  },
   "items": [
     {
       "kind": "persona",

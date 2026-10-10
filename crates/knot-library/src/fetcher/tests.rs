@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use super::*;
-use crate::index::ItemKind;
+use crate::index::{ItemKind, KindInfo};
 
 /// An in-memory fetcher for tests: no network, no disk.
 struct FixtureFetcher {
@@ -28,7 +28,9 @@ fn fixture_fetcher_serves_index_and_item_from_memory() {
     let index = Index { format:       1,
                         commit:       "abc".to_string(),
                         generated_at: "2026-01-01T00:00:00Z".to_string(),
-                        kinds:        vec!["persona".to_string()],
+                        kinds:        BTreeMap::from([("persona".to_string(),
+                                                        KindInfo { directory: "personas".to_string(),
+                                                                   count:     1, })]),
                         items:        vec![], };
     let fetcher = FixtureFetcher { index: index.clone(),
                                    items: HashMap::from([("personas/x.md".to_string(),
@@ -64,7 +66,7 @@ fn fetcher_for_picks_https_for_github_and_web() {
 #[test]
 fn folder_fetcher_reads_index_and_item_from_disk() {
     let dir = tempfile::tempdir().unwrap();
-    let json = r#"{"format":1,"commit":"abc","generatedAt":"2026-01-01T00:00:00Z","kinds":["persona"],"items":[]}"#;
+    let json = r#"{"format":1,"commit":"abc","generatedAt":"2026-01-01T00:00:00Z","kinds":{"persona":{"directory":"personas","count":0}},"items":[]}"#;
     std::fs::write(dir.path().join("index.json"), json).unwrap();
     let location = Location::Folder { path: dir.path().to_path_buf(), };
     let fetcher = FolderFetcher;

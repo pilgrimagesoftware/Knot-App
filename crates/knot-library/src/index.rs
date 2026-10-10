@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::{LibraryError, Result};
@@ -5,13 +7,24 @@ use crate::error::{LibraryError, Result};
 /// The only index format this Knot understands.
 pub const SUPPORTED_FORMAT: u32 = 1;
 
+/// Where one `kind`'s items live and how many the index claims, from
+/// `index.json`'s `kinds` map. Knot does not read either field today - it
+/// classifies items from `items` directly - but both must parse, since a
+/// client throwing a field away on write is exactly what `content-index`
+/// asks a reader not to do.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KindInfo {
+    pub directory: String,
+    pub count:     u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Index {
     pub format:       u32,
     pub commit:       String,
     #[serde(rename = "generatedAt")]
     pub generated_at: String,
-    pub kinds:        Vec<String>,
+    pub kinds:        BTreeMap<String, KindInfo>,
     pub items:        Vec<IndexItem>,
 }
 
