@@ -29,8 +29,8 @@ fn fixture_fetcher_serves_index_and_item_from_memory() {
                         commit:       "abc".to_string(),
                         generated_at: "2026-01-01T00:00:00Z".to_string(),
                         kinds:        BTreeMap::from([("persona".to_string(),
-                                                        KindInfo { directory: "personas".to_string(),
-                                                                   count:     1, })]),
+                                                       KindInfo { directory: "personas".to_string(),
+                                                                  count:     1, })]),
                         items:        vec![], };
     let fetcher = FixtureFetcher { index: index.clone(),
                                    items: HashMap::from([("personas/x.md".to_string(),

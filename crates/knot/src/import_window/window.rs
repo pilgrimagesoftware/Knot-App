@@ -37,6 +37,7 @@ use uuid::Uuid;
 use super::library::LibraryState;
 use super::library_dialog::LibraryDialogState;
 use super::outcome::{ImportOutcome, summarise};
+use super::tab::ImportTab;
 use crate::app_support::observe_system_appearance;
 use crate::window_options::import_window_options;
 
@@ -66,6 +67,7 @@ pub(crate) struct ImportWindow {
     pub(super) workspace_selection: BTreeSet<Uuid>,
     pub(super) library:             LibraryState,
     pub(super) library_dialog:      LibraryDialogState,
+    pub(super) tab:                 ImportTab,
     pub(super) outcome:             Option<ImportOutcome>,
 }
 
@@ -81,6 +83,7 @@ impl ImportWindow {
                               workspace_selection: BTreeSet::new(),
                               library: LibraryState::default(),
                               library_dialog,
+                              tab: ImportTab::default(),
                               outcome: None };
         view.fetch_library_index(window, cx);
         view

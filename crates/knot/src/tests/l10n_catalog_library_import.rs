@@ -8,7 +8,10 @@
 /// Every key the Library section and its add/rename dialog ask for.
 #[test]
 fn import_library_labels_resolve() {
-    for key in ["import.library_title",
+    for key in ["import.tab_library",
+                "import.tab_personas",
+                "import.tab_skwad",
+                "import.library_title",
                 "import.library_personas_title",
                 "import.library_prompts_title",
                 "import.library_none",

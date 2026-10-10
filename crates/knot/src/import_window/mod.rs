@@ -9,6 +9,7 @@ mod library_dialog;
 mod library_pane;
 mod outcome;
 mod pane;
+mod tab;
 mod window;
 
 /// Public within the crate because `tests::import_window` asserts its row
