@@ -177,3 +177,33 @@ fn the_hints_move_no_compact_row(cx: &mut TestAppContext) {
     assert!(fixture.window.debug_bounds("key-hint").is_some());
     assert_eq!(bounds(&mut fixture), before);
 }
+
+/// The panel's timestamps read the same `shown().is_some()` the sidebar's
+/// own hints do (cmd-hold-timestamps), rather than a second hold tracker -
+/// so a panel-side reader sees exactly the sidebar's own hold lifecycle:
+/// armed-but-not-yet-shown, shown, and cleared.
+#[gpui_kit::test]
+fn a_panel_side_reader_sees_the_same_hold_as_the_sidebar(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(1, cx);
+    let panel_reads_held = |fixture: &mut Fixture| {
+        fixture.view
+               .read_with(&fixture.window, |view, _| view.key_hints.shown().is_some())
+    };
+
+    assert!(!panel_reads_held(&mut fixture),
+            "held before any hold started");
+
+    fixture.modifiers(command());
+    fixture.wait(KEY_HINT_DELAY / 2);
+    assert!(!panel_reads_held(&mut fixture),
+            "held before the delay elapsed");
+
+    fixture.wait(KEY_HINT_DELAY);
+    assert_eq!(panel_reads_held(&mut fixture), fixture.hints_shown());
+    assert!(panel_reads_held(&mut fixture),
+            "not held once the sidebar shows its hints");
+
+    fixture.modifiers(Modifiers::none());
+    assert!(!panel_reads_held(&mut fixture),
+            "still held after ⌘ was released");
+}

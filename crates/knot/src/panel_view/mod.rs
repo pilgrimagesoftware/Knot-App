@@ -35,6 +35,8 @@ pub(crate) use style::permission_risk_level;
 pub(crate) use style::risk_color;
 
 #[cfg(test)]
+mod message_tests;
+#[cfg(test)]
 mod shimmer_tests;
 #[cfg(test)]
 mod tests;
