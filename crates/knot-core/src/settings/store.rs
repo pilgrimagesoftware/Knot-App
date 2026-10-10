@@ -57,10 +57,13 @@ mod bench;
 mod binding;
 mod documents;
 mod legacy;
+mod library_locations;
 mod paths;
+mod personas;
 mod prompts;
 mod workspace_split;
 
+pub use library_locations::LibraryLocation;
 pub use paths::StorePaths;
 pub use prompts::PromptReferences;
 
@@ -147,9 +150,9 @@ pub struct Settings {
     /// makes a stray collection key in a hand-edited preferences document
     /// ignored on read and never written back.
     #[serde(skip)]
-    pub saved_agents:     Vec<SavedAgent>,
+    pub saved_agents:      Vec<SavedAgent>,
     #[serde(skip)]
-    pub saved_workspaces: Vec<Workspace>,
+    pub saved_workspaces:  Vec<Workspace>,
     /// How each workspace's window was last arranged, keyed by workspace id.
     ///
     /// Beside `saved_workspaces` rather than inside it: the two have
@@ -158,17 +161,19 @@ pub struct Settings {
     /// rewritten by a pointer drag. Written by
     /// [`Settings::persist_workspace_ui`] alone.
     #[serde(skip)]
-    pub workspace_ui:     BTreeMap<Uuid, WorkspaceUiState>,
+    pub workspace_ui:      BTreeMap<Uuid, WorkspaceUiState>,
     #[serde(skip)]
-    pub personas:         Vec<Persona>,
+    pub personas:          Vec<Persona>,
     #[serde(skip)]
-    pub bench_agents:     Vec<BenchAgent>,
+    pub bench_agents:      Vec<BenchAgent>,
     #[serde(skip)]
-    pub prompts:          Vec<Prompt>,
+    pub prompts:           Vec<Prompt>,
     #[serde(skip)]
-    pub recent_repos:     Vec<String>,
+    pub recent_repos:      Vec<String>,
     #[serde(skip)]
-    pub pull_requests:    Vec<SavedPullRequest>,
+    pub pull_requests:     Vec<SavedPullRequest>,
+    #[serde(skip)]
+    pub library_locations: Vec<LibraryLocation>,
 
     #[serde(skip)]
     paths: Option<StorePaths>,
@@ -218,6 +223,7 @@ impl Default for Settings {
                prompts:                        Vec::new(),
                recent_repos:                   Vec::new(),
                pull_requests:                  Vec::new(),
+               library_locations:              Vec::new(),
                paths:                          None, }
     }
 }
@@ -267,6 +273,7 @@ impl Settings {
         settings.prompts = documents::read_collection(&paths.prompts());
         settings.recent_repos = documents::read_collection(&paths.recent_repos());
         settings.pull_requests = documents::read_collection(&paths.pull_requests());
+        settings.library_locations = documents::read_collection(&paths.library_locations());
         settings.prune_workspace_ui();
         settings.paths = Some(paths);
         if workspaces.needs_write {
@@ -338,7 +345,8 @@ impl Settings {
         self.persist_bench()?;
         self.persist_prompts()?;
         self.persist_recent_repos()?;
-        self.persist_pull_requests()
+        self.persist_pull_requests()?;
+        self.persist_library_locations()
     }
 
     /// Write the preferences document: every scalar setting, and nothing

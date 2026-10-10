@@ -34,7 +34,10 @@ use knot_core::import::{SkwadSource, SubagentScan, SubagentTool};
 use parking_lot::Mutex;
 use uuid::Uuid;
 
+use super::library::LibraryState;
+use super::library_dialog::LibraryDialogState;
 use super::outcome::{ImportOutcome, summarise};
+use super::tab::ImportTab;
 use crate::app_support::observe_system_appearance;
 use crate::window_options::import_window_options;
 
@@ -62,17 +65,28 @@ pub(crate) struct ImportWindow {
     pub(super) sources:             ImportSources,
     pub(super) subagent_selection:  BTreeSet<String>,
     pub(super) workspace_selection: BTreeSet<Uuid>,
+    pub(super) library:             LibraryState,
+    pub(super) library_dialog:      LibraryDialogState,
+    pub(super) tab:                 ImportTab,
     pub(super) outcome:             Option<ImportOutcome>,
 }
 
 impl ImportWindow {
-    fn new(store: Arc<Mutex<knot_agents::AgentStore>>, cx: &mut Context<Self>) -> Self {
-        Self { focus: cx.focus_handle(),
-               store,
-               sources: Self::scan(),
-               subagent_selection: BTreeSet::new(),
-               workspace_selection: BTreeSet::new(),
-               outcome: None }
+    fn new(store: Arc<Mutex<knot_agents::AgentStore>>, window: &mut Window,
+           cx: &mut Context<Self>)
+           -> Self {
+        let library_dialog = LibraryDialogState::new(window, cx);
+        let mut view = Self { focus: cx.focus_handle(),
+                              store,
+                              sources: Self::scan(),
+                              subagent_selection: BTreeSet::new(),
+                              workspace_selection: BTreeSet::new(),
+                              library: LibraryState::default(),
+                              library_dialog,
+                              tab: ImportTab::default(),
+                              outcome: None };
+        view.fetch_library_index(window, cx);
+        view
     }
 
     /// Read every source. Called when the window opens and when the user
@@ -89,11 +103,12 @@ impl ImportWindow {
     /// Re-read every source, discarding the cache and any pending selection -
     /// a tick against a definition that is no longer there would import
     /// nothing and say nothing.
-    pub(super) fn refresh(&mut self) {
+    pub(super) fn refresh(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sources = Self::scan();
         self.subagent_selection.clear();
         self.workspace_selection.clear();
         self.outcome = None;
+        self.fetch_library_index(window, cx);
     }
 
     pub(super) fn import_selected_definitions(&mut self, cx: &mut Context<Self>) {
@@ -155,7 +170,7 @@ impl ImportWindow {
     /// which is why an imported workspace kept not appearing in an open
     /// workspace manager even once it was in the store. Reading live state
     /// does not cause a paint; being scheduled for one does.
-    fn redraw_every_window(&self, cx: &mut Context<Self>) {
+    pub(super) fn redraw_every_window(&self, cx: &mut Context<Self>) {
         cx.notify();
         cx.refresh_windows();
     }
@@ -221,7 +236,7 @@ pub(crate) fn open_import_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>,
                 // Every window tracks the OS appearance, so a light/dark flip
                 // re-resolves the system palette and repaints.
                 observe_system_appearance(window);
-                let view = cx.new(|cx| ImportWindow::new(store, cx));
+                let view = cx.new(|cx| ImportWindow::new(store, window, cx));
                 cx.new(|cx| Root::new(view, window, cx).bg(cx.theme().background))
             }) {
         Ok(window) => *handle.borrow_mut() = Some(window.into()),

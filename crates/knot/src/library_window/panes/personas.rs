@@ -256,6 +256,17 @@ impl LibraryWindow {
                                     });
                                 }
                             }),
+                        )
+                        .child(
+                            crate::controls::icon_button(
+                                "personas-import-from-library",
+                                "icons/download.svg",
+                                knot_core::l10n::t("settings.personas.import_from_library"),
+                                false,
+                            )
+                            .on_click(|_, window, app| {
+                                window.dispatch_action(Box::new(crate::app_bootstrap::OpenImport), app);
+                            }),
                         ),
                 )
                 .child(list),

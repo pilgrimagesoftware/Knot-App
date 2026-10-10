@@ -28,8 +28,10 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::scroll::ScrollableElement;
+use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::div;
 
+use super::tab::ImportTab;
 use super::window::ImportWindow;
 use crate::controls::{group, icon_button};
 
@@ -43,16 +45,41 @@ impl ImportWindow {
     /// Pinning it outside the scrolling region is what makes that
     /// structurally impossible rather than a matter of sizing.
     pub(super) fn render_import(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let body = match self.tab {
+            ImportTab::Library => self.render_library_section(cx).into_any_element(),
+            ImportTab::Personas => self.render_personas_section(cx).into_any_element(),
+            ImportTab::Skwad => self.render_skwad_section(cx).into_any_element(),
+        };
         v_flex().size_full()
                 .gap_3()
+                .child(h_flex().justify_between()
+                               .items_center()
+                               .child(self.render_import_tab_bar(cx))
+                               .child(self.render_refresh_row(cx)))
                 .child(v_flex().id("import-sections")
                                .flex_1()
                                .overflow_y_scrollbar()
                                .gap_3()
-                               .child(self.render_refresh_row(cx))
-                               .child(self.render_personas_section(cx))
-                               .child(self.render_skwad_section(cx)))
+                               .child(body))
                 .children(self.render_outcome(cx))
+    }
+
+    fn render_import_tab_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let import_window = cx.entity();
+        let selected = self.tab;
+        TabBar::new("import-tabs").underline()
+                                  .selected_index(selected.index())
+                                  .children(ImportTab::ALL.map(|tab| Tab::new().label(tab.label())))
+                                  .on_click(move |index, _, app| {
+                                      let Some(&tab) = ImportTab::ALL.get(*index)
+                                      else {
+                                          return;
+                                      };
+                                      import_window.update(app, |view, cx| {
+                                                       view.tab = tab;
+                                                       cx.notify();
+                                                   });
+                                  })
     }
 
     /// Re-scan every source. The window scans once when it opens, so a
@@ -63,9 +90,10 @@ impl ImportWindow {
         h_flex().justify_end().child(icon_button("import-refresh",
                                                  "icons/rotate-ccw.svg",
                                                  knot_core::l10n::t("import.refresh"),
-                                                 false).on_click(move |_, _, app| {
+                                                 false).on_click(move |_, window, app| {
                                                            import_window.update(app, |view, cx| {
-                                                                            view.refresh();
+                                                                            view.refresh(window,
+                                                                                         cx);
                                                                             cx.notify();
                                                                         });
                                                        }))

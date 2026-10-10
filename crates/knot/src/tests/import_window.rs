@@ -40,6 +40,7 @@ impl Render for Blank {
 fn app_with_one_window(cx: &mut TestAppContext) -> AnyWindowHandle {
     cx.update(|cx| {
           gpui_kit::init(cx);
+          crate::settings_global::install(knot_core::Settings::default(), cx);
           register_import_action(Arc::new(Mutex::new(knot_agents::AgentStore::new())), cx);
           let window = cx.open_window(WindowOptions::default(), |window, cx| {
                              let view = cx.new(|_| Blank);
