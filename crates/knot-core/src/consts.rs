@@ -46,6 +46,9 @@ pub const PROMPTS_FILE: &str = "prompts.json";
 /// The recent-repositories collection.
 pub const RECENT_REPOS_FILE: &str = "recent-repos.json";
 
+/// The saved-library-locations collection.
+pub const LIBRARY_LOCATIONS_FILE: &str = "library-locations.json";
+
 /// The recorded-pull-requests collection.
 ///
 /// Durable data rather than a preference even though the user did not type

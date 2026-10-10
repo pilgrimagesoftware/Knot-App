@@ -3849,6 +3849,7 @@ version = "1.27.0"
 dependencies = [
  "arc-swap",
  "directories",
+ "knot-library",
  "plist",
  "rust-i18n",
  "serde",

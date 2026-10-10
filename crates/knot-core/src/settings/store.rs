@@ -57,6 +57,7 @@ mod bench;
 mod binding;
 mod documents;
 mod legacy;
+mod library_locations;
 mod paths;
 mod prompts;
 mod workspace_split;
@@ -64,6 +65,7 @@ mod workspace_split;
 pub use paths::StorePaths;
 pub use prompts::PromptReferences;
 
+pub use library_locations::LibraryLocation;
 use super::prompts::Prompt;
 pub use super::records::{
     BenchAgent, Persona, PersonaState, PersonaType, SavedAgent, SavedPullRequest, Workspace,
@@ -169,6 +171,8 @@ pub struct Settings {
     pub recent_repos:     Vec<String>,
     #[serde(skip)]
     pub pull_requests:    Vec<SavedPullRequest>,
+    #[serde(skip)]
+    pub library_locations: Vec<LibraryLocation>,
 
     #[serde(skip)]
     paths: Option<StorePaths>,
@@ -218,6 +222,7 @@ impl Default for Settings {
                prompts:                        Vec::new(),
                recent_repos:                   Vec::new(),
                pull_requests:                  Vec::new(),
+               library_locations:              Vec::new(),
                paths:                          None, }
     }
 }
@@ -267,6 +272,7 @@ impl Settings {
         settings.prompts = documents::read_collection(&paths.prompts());
         settings.recent_repos = documents::read_collection(&paths.recent_repos());
         settings.pull_requests = documents::read_collection(&paths.pull_requests());
+        settings.library_locations = documents::read_collection(&paths.library_locations());
         settings.prune_workspace_ui();
         settings.paths = Some(paths);
         if workspaces.needs_write {
@@ -338,7 +344,8 @@ impl Settings {
         self.persist_bench()?;
         self.persist_prompts()?;
         self.persist_recent_repos()?;
-        self.persist_pull_requests()
+        self.persist_pull_requests()?;
+        self.persist_library_locations()
     }
 
     /// Write the preferences document: every scalar setting, and nothing
