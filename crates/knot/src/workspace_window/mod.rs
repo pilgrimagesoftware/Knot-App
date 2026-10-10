@@ -44,6 +44,7 @@ mod sessions;
 mod shortcuts;
 #[cfg(test)]
 mod shortcuts_tests;
+mod sidebar_drag;
 mod sidebar_layout;
 #[cfg(test)]
 mod status_dot_tests;
@@ -58,6 +59,14 @@ mod work_items;
 // `workspace_window::<name>`, as it did when they lived here.
 pub(crate) use chrome::*;
 pub(crate) use menus::*;
+pub(crate) use sidebar_drag::AgentRowDrag;
+#[cfg(test)]
+pub(crate) use sidebar_drag::drop_gap;
+#[cfg(test)]
+pub(crate) use sidebar_drag::drop_line_edge;
+// The gap arithmetic, for `tests/workspace_window_agent_drag.rs`.
+#[cfg(test)]
+pub(crate) use sidebar_drag::{AgentRowFlags, DropEdge};
 pub(crate) use sidebar_layout::sidebar_is_compact;
 pub(crate) use title::workspace_title;
 pub(crate) use view_mode::WorkspaceViewMode;

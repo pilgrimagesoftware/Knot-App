@@ -420,6 +420,9 @@ pub(crate) struct WorkspaceWindow {
     /// act on - a sidebar width that could not be saved, or a bench entry
     /// pruned because its folder is gone.
     pub(super) error:                            Option<String>,
+    /// Where a dragged agent row would land, and where each row was last
+    /// painted - see `sidebar_drag`.
+    pub(super) agent_drag:                       super::sidebar_drag::AgentRowDrag,
 }
 
 impl Drop for WorkspaceWindow {

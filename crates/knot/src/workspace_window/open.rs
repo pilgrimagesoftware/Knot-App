@@ -190,6 +190,7 @@ impl WorkspaceWindow {
                     view_mode: WorkspaceViewMode::Terminal,
                     dashboard_sort: dashboard::DashboardSort::default(),
                     error: None,
+                    agent_drag: crate::workspace_window::AgentRowDrag::default(),
                 };
                             // Matches the Swift reference: every agent in the
                             // workspace starts its session when the workspace

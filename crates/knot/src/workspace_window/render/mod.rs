@@ -11,6 +11,7 @@
 //! entity; keeping them in one function meant a change to any region had
 //! to be read against all of them.
 
+use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::App;
@@ -379,6 +380,7 @@ impl WorkspaceWindow {
         let SidebarRows { dashboard_row,
                           pull_requests_row,
                           agent_rows, } = rows;
+        let row_bounds = Rc::clone(&self.agent_drag.row_bounds);
         // The sidebar column owns the traffic lights (Swift's own
         // sidebar panel does the same - they sit within its width,
         // not the content pane's). The content header below is a
@@ -401,7 +403,17 @@ impl WorkspaceWindow {
                     .p_4()
                     .child(dashboard_row)
                     .children(pull_requests_row)
-                    .children(agent_rows)
+                    // Its own container, with no pinned row inside it: row
+                    // indices here match `agent_ids` indices exactly, which
+                    // is what every gap in `sidebar_drag` is counted
+                    // against, and it is what keeps the Dashboard and Pull
+                    // Requests rows from ever becoming drop places.
+                    .child(v_flex().on_children_prepainted(move |bounds, _window, _cx| {
+                                       *row_bounds.borrow_mut() = bounds;
+                                   })
+                                   .id("workspace-agent-rows")
+                                   .gap_1()
+                                   .children(agent_rows))
                     // The background menu hangs off a
                     // filler below the rows rather
                     // than off the scroll container:
@@ -419,6 +431,33 @@ impl WorkspaceWindow {
                 div().id("workspace-agent-list-background")
                      .flex_1()
                      .min_h(px(32.))
+                     // The one drop place no row's own bounds cover:
+                     // releasing below the last row moves the dragged
+                     // agent to the end of the list (`agent-list-ui`,
+                     // "Dragging an agent to the end").
+                     .on_drag_move(cx.listener(
+                         move |view, event: &gpui_kit::DragMoveEvent<super::sidebar_drag::AgentDrag>, _window, cx| {
+                             let end = view.agent_drag.rows.len();
+                             if !event.bounds.contains(&event.event.position) {
+                                 if view.agent_drag.target.is_some_and(|target| target.row == end) {
+                                     view.agent_drag.target = None;
+                                     cx.notify();
+                                 }
+                                 return;
+                             }
+                             let target = Some(super::sidebar_drag::DropTarget { row: end,
+                                                                                 gap: end });
+                             if view.agent_drag.target != target {
+                                 view.agent_drag.target = target;
+                                 cx.notify();
+                             }
+                         },
+                     ))
+                     .on_drop(cx.listener(
+                         move |view, drag: &super::sidebar_drag::AgentDrag, _window, cx| {
+                             view.agent_dropped_at_end(drag, cx);
+                         },
+                     ))
                      .context_menu(move |menu, window, cx| {
                          sidebar_background_context_menu(&background_targets, menu, window, cx)
                      }),
