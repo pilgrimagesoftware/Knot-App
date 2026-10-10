@@ -20,10 +20,7 @@ use gpui_kit::MenuItem;
 use uuid::Uuid;
 
 use crate::app_bootstrap::MinimizeWindow;
-use crate::app_bootstrap::OpenBench;
 use crate::app_bootstrap::OpenCommandCenter;
-use crate::app_bootstrap::OpenPersonas;
-use crate::app_bootstrap::OpenPrompts;
 use crate::app_bootstrap::OpenWorkspaces;
 use crate::app_bootstrap::ZoomWindow;
 use crate::consts::NUMBERED_SHORTCUTS;
@@ -93,10 +90,6 @@ pub(crate) fn window_menu(snapshot: &WindowMenuSnapshot) -> Menu {
         vec![MenuItem::action(knot_core::l10n::t("menu.window.command_center"),
                               OpenCommandCenter),
              MenuItem::action(knot_core::l10n::t("menu.window.workspaces"), OpenWorkspaces),
-             MenuItem::separator(),
-             MenuItem::action(knot_core::l10n::t("menu.window.personas"), OpenPersonas),
-             MenuItem::action(knot_core::l10n::t("menu.window.prompts"), OpenPrompts),
-             MenuItem::action(knot_core::l10n::t("menu.window.bench"), OpenBench),
              MenuItem::separator(),];
     if !snapshot.workspaces.is_empty() {
         items.extend(snapshot.workspaces
