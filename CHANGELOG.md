@@ -1,4 +1,12 @@
 
+## 1.27.0 - 2026-10-10
+
+### Added
+- Drag an agent row to reorder the workspace sidebar
+- Show panel message timestamps only while ⌘ is held
+
+
+
 ## 1.26.0 - 2026-10-10
 
 ### Added
