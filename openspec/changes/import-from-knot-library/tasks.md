@@ -2,16 +2,16 @@
 
 ## 1. Setup
 
-- [ ] 1.1 File the Knot-App issue for this change, rename the branch and worktree to `<issue>-knot-library-import`, and confirm `git branch --show-current` is not `develop` or `main`
+- [x] 1.1 File the Knot-App issue for this change, rename the branch and worktree to `<issue>-knot-library-import`, and confirm `git branch --show-current` is not `develop` or `main`
 
 ## 2. `knot-library` crate
 
-- [ ] 2.1 Add `ureq` (rustls, no default features beyond TLS) and `sha2` to `[workspace.dependencies]`, and create `crates/knot-library` with `thiserror`, `serde` and `serde_json`; verify `cargo build -p knot-library`
-- [ ] 2.2 Model `Index` and `IndexItem` (camelCase serde) and `ItemKind { Persona, Prompt, Other(String) }`, rejecting any `format` other than 1 with a typed error; test against a copy of Knot-Library's current `index.json` as a fixture
-- [ ] 2.3 Implement `verify(bytes, &IndexItem)` (size, then lowercase hex SHA-256) and `split_item(bytes)` (drop the `---` front matter, trim, refuse an empty body); test a match, a size mismatch, a hash mismatch, a missing closing delimiter and an empty body
-- [ ] 2.4 Model `Location { GitHub { repo, branch }, Web { base }, Folder { path } }` as a tagged serde enum with form checks (`owner/repo`, `https://` only, existing folder) and each kind's index and item addresses (GitHub items pinned to the index commit, `HEAD` when no branch); test each kind's addresses and every refused form
-- [ ] 2.5 Implement `resolve(path)` refusing absolute paths and `..` components; test `../../.ssh/config`, `/etc/passwd` and a normal `personas/x.md`
-- [ ] 2.6 Define the `LibraryFetcher` trait (`fetch_index`, `fetch_item(&Index, &IndexItem)`), `HttpsFetcher` (ureq, 10 s timeout, `Knot/<version>` user agent), `FolderFetcher`, `fetcher_for(&Location)` and a fixture fetcher for tests; put the built-in location's constants in `knot-core` `consts.rs` next to `KNOT_REPO`
+- [x] 2.1 Add `ureq` (rustls, no default features beyond TLS) and `sha2` to `[workspace.dependencies]`, and create `crates/knot-library` with `thiserror`, `serde` and `serde_json`; verify `cargo build -p knot-library`
+- [x] 2.2 Model `Index` and `IndexItem` (camelCase serde) and `ItemKind { Persona, Prompt, Other(String) }`, rejecting any `format` other than 1 with a typed error; test against a copy of Knot-Library's current `index.json` as a fixture
+- [x] 2.3 Implement `verify(bytes, &IndexItem)` (size, then lowercase hex SHA-256) and `split_item(bytes)` (drop the `---` front matter, trim, refuse an empty body); test a match, a size mismatch, a hash mismatch, a missing closing delimiter and an empty body
+- [x] 2.4 Model `Location { GitHub { repo, branch }, Web { base }, Folder { path } }` as a tagged serde enum with form checks (`owner/repo`, `https://` only, existing folder) and each kind's index and item addresses (GitHub items pinned to the index commit, `HEAD` when no branch); test each kind's addresses and every refused form
+- [x] 2.5 Implement `resolve(path)` refusing absolute paths and `..` components; test `../../.ssh/config`, `/etc/passwd` and a normal `personas/x.md`
+- [x] 2.6 Define the `LibraryFetcher` trait (`fetch_index`, `fetch_item(&Index, &IndexItem)`), `HttpsFetcher` (ureq, 10 s timeout, `Knot/<version>` user agent), `FolderFetcher`, `fetcher_for(&Location)` and a fixture fetcher for tests; put the built-in location's constants in `knot-core` `consts.rs` next to `KNOT_REPO`
 
 ## 3. `knot-core`
 
