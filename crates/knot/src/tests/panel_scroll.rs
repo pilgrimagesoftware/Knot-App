@@ -223,7 +223,8 @@ impl Render for PanelProbe {
                                                                              || {},
                                                                              |_| {},
                                                                              |_| {},
-                                                                             || {})))
+                                                                             || {}),
+                                             false))
     }
 }
 
