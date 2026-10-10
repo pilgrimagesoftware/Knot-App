@@ -1,6 +1,7 @@
 //! Turning Knot-Library index items into personas and prompts.
 //!
-//! Contract: `openspec/changes/import-from-knot-library/specs/data-import/spec.md`.
+//! Contract: `openspec/changes/import-from-knot-library/specs/data-import/spec.
+//! md`.
 //!
 //! This module knows nothing about fetching or verifying bytes -
 //! `knot-library` does that, off-thread, for only the items the user
@@ -37,16 +38,18 @@ pub fn classify(settings: &Settings, item: &IndexItem) -> Option<ItemStatus> {
     let id = Uuid::parse_str(&item.id).ok()?;
     match item.kind {
         ItemKind::Persona => Some(match settings.personas.iter().find(|p| p.id == id) {
-            Some(persona) if persona.state == PersonaState::Deleted => ItemStatus::DeletedBuiltin,
-            Some(_) => ItemStatus::AlreadyHeld,
-            None => ItemStatus::Importable,
-        }),
+                                      Some(persona) if persona.state == PersonaState::Deleted => {
+                                          ItemStatus::DeletedBuiltin
+                                      }
+                                      Some(_) => ItemStatus::AlreadyHeld,
+                                      None => ItemStatus::Importable,
+                                  }),
         ItemKind::Prompt => Some(if settings.prompts.iter().any(|p| p.id == id) {
-            ItemStatus::AlreadyHeld
-        }
-        else {
-            ItemStatus::Importable
-        }),
+                                     ItemStatus::AlreadyHeld
+                                 }
+                                 else {
+                                     ItemStatus::Importable
+                                 }),
         ItemKind::Other(_) => None,
     }
 }
@@ -64,48 +67,48 @@ pub fn classify(settings: &Settings, item: &IndexItem) -> Option<ItemStatus> {
 pub fn import_items(settings: &SharedSettings, items: &[(IndexItem, Result<String, String>)])
                     -> crate::Result<ImportResult> {
     settings.write_persisting(|settings| {
-        let mut result = ImportResult::default();
-        for (item, body) in items {
-            match classify(settings, item) {
-                Some(ItemStatus::Importable) => {}
-                _ => {
-                    result.skipped.push(item.title.clone());
-                    continue;
+                let mut result = ImportResult::default();
+                for (item, body) in items {
+                    match classify(settings, item) {
+                        Some(ItemStatus::Importable) => {}
+                        _ => {
+                            result.skipped.push(item.title.clone());
+                            continue;
+                        }
+                    }
+                    let Ok(body) = body
+                    else {
+                        result.unreadable.push(Unreadable::new(item.title.clone(),
+                                                               UnreadableReason::Unreadable));
+                        continue;
+                    };
+                    let Ok(id) = Uuid::parse_str(&item.id)
+                    else {
+                        result.unreadable.push(Unreadable::new(item.title.clone(),
+                                                               UnreadableReason::Unreadable));
+                        continue;
+                    };
+                    let inserted = match item.kind {
+                        ItemKind::Persona => {
+                            settings.insert_persona(Persona { id,
+                                                              name: item.title.clone(),
+                                                              instructions: body.clone(),
+                                                              persona_type: PersonaType::User,
+                                                              state: PersonaState::Enabled })
+                        }
+                        ItemKind::Prompt => settings.insert_prompt(Prompt { id,
+                                                                            name: item.title
+                                                                                      .clone(),
+                                                                            text: body.clone() }),
+                        ItemKind::Other(_) => continue,
+                    };
+                    match inserted {
+                        Ok(()) => result.added.push(item.title.clone()),
+                        Err(_) => result.unreadable
+                                        .push(Unreadable::new(item.title.clone(),
+                                                              UnreadableReason::Unreadable)),
+                    }
                 }
-            }
-            let Ok(body) = body
-            else {
-                result.unreadable
-                      .push(Unreadable::new(item.title.clone(), UnreadableReason::Unreadable));
-                continue;
-            };
-            let Ok(id) = Uuid::parse_str(&item.id)
-            else {
-                result.unreadable
-                      .push(Unreadable::new(item.title.clone(), UnreadableReason::Unreadable));
-                continue;
-            };
-            let inserted = match item.kind {
-                ItemKind::Persona => settings.insert_persona(Persona { id,
-                                                                       name: item.title.clone(),
-                                                                       instructions:
-                                                                           body.clone(),
-                                                                       persona_type:
-                                                                           PersonaType::User,
-                                                                       state:
-                                                                           PersonaState::Enabled }),
-                ItemKind::Prompt => settings.insert_prompt(Prompt { id,
-                                                                    name: item.title.clone(),
-                                                                    text: body.clone() }),
-                ItemKind::Other(_) => continue,
-            };
-            match inserted {
-                Ok(()) => result.added.push(item.title.clone()),
-                Err(_) => result.unreadable
-                                .push(Unreadable::new(item.title.clone(),
-                                                       UnreadableReason::Unreadable)),
-            }
-        }
-        Ok(result)
-    })
+                Ok(result)
+            })
 }

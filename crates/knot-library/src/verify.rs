@@ -8,17 +8,13 @@ use crate::index::IndexItem;
 pub fn verify(bytes: &[u8], item: &IndexItem) -> Result<()> {
     let actual_size = bytes.len() as u64;
     if actual_size != item.size {
-        return Err(LibraryError::SizeMismatch {
-            expected: item.size,
-            actual: actual_size,
-        });
+        return Err(LibraryError::SizeMismatch { expected: item.size,
+                                                actual:   actual_size, });
     }
     let actual_hash = hex_sha256(bytes);
     if !actual_hash.eq_ignore_ascii_case(&item.sha256) {
-        return Err(LibraryError::HashMismatch {
-            expected: item.sha256.clone(),
-            actual: actual_hash,
-        });
+        return Err(LibraryError::HashMismatch { expected: item.sha256.clone(),
+                                                actual:   actual_hash, });
     }
     Ok(())
 }
@@ -35,17 +31,14 @@ fn hex_sha256(bytes: &[u8]) -> String {
 pub fn split_item(bytes: &[u8]) -> Result<String> {
     let text = String::from_utf8_lossy(bytes);
     let text = text.trim_start();
-    let rest = text
-        .strip_prefix("---")
-        .ok_or(LibraryError::UnterminatedFrontMatter)?;
-    let close = rest
-        .find("\n---")
-        .ok_or(LibraryError::UnterminatedFrontMatter)?;
+    let rest = text.strip_prefix("---")
+                   .ok_or(LibraryError::UnterminatedFrontMatter)?;
+    let close = rest.find("\n---")
+                    .ok_or(LibraryError::UnterminatedFrontMatter)?;
     let after_front_matter = &rest[close + 4..];
-    let body = after_front_matter
-        .strip_prefix('\n')
-        .unwrap_or(after_front_matter)
-        .trim();
+    let body = after_front_matter.strip_prefix('\n')
+                                 .unwrap_or(after_front_matter)
+                                 .trim();
     if body.is_empty() {
         return Err(LibraryError::EmptyBody);
     }

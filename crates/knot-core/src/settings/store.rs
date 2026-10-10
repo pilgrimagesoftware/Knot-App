@@ -59,13 +59,14 @@ mod documents;
 mod legacy;
 mod library_locations;
 mod paths;
+mod personas;
 mod prompts;
 mod workspace_split;
 
+pub use library_locations::LibraryLocation;
 pub use paths::StorePaths;
 pub use prompts::PromptReferences;
 
-pub use library_locations::LibraryLocation;
 use super::prompts::Prompt;
 pub use super::records::{
     BenchAgent, Persona, PersonaState, PersonaType, SavedAgent, SavedPullRequest, Workspace,
@@ -79,7 +80,7 @@ use crate::consts::{
     TITLE_FONT_DEFAULT, TITLE_FONT_SIZE_DEFAULT, UI_FONT_DEFAULT, UI_FONT_SIZE_DEFAULT,
     VOICE_ENGINE_DEFAULT, VOICE_PUSH_TO_TALK_KEY_DEFAULT,
 };
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 /// The whole persisted configuration surface. Load with [`Settings::load`],
 /// mutate through the helpers (each persists), or set fields directly and call
@@ -149,9 +150,9 @@ pub struct Settings {
     /// makes a stray collection key in a hand-edited preferences document
     /// ignored on read and never written back.
     #[serde(skip)]
-    pub saved_agents:     Vec<SavedAgent>,
+    pub saved_agents:      Vec<SavedAgent>,
     #[serde(skip)]
-    pub saved_workspaces: Vec<Workspace>,
+    pub saved_workspaces:  Vec<Workspace>,
     /// How each workspace's window was last arranged, keyed by workspace id.
     ///
     /// Beside `saved_workspaces` rather than inside it: the two have
@@ -160,17 +161,17 @@ pub struct Settings {
     /// rewritten by a pointer drag. Written by
     /// [`Settings::persist_workspace_ui`] alone.
     #[serde(skip)]
-    pub workspace_ui:     BTreeMap<Uuid, WorkspaceUiState>,
+    pub workspace_ui:      BTreeMap<Uuid, WorkspaceUiState>,
     #[serde(skip)]
-    pub personas:         Vec<Persona>,
+    pub personas:          Vec<Persona>,
     #[serde(skip)]
-    pub bench_agents:     Vec<BenchAgent>,
+    pub bench_agents:      Vec<BenchAgent>,
     #[serde(skip)]
-    pub prompts:          Vec<Prompt>,
+    pub prompts:           Vec<Prompt>,
     #[serde(skip)]
-    pub recent_repos:     Vec<String>,
+    pub recent_repos:      Vec<String>,
     #[serde(skip)]
-    pub pull_requests:    Vec<SavedPullRequest>,
+    pub pull_requests:     Vec<SavedPullRequest>,
     #[serde(skip)]
     pub library_locations: Vec<LibraryLocation>,
 
@@ -497,22 +498,6 @@ impl Settings {
         Ok(self.personas.last().expect("just pushed"))
     }
 
-    /// Insert a persona carrying its own id - the library import's path,
-    /// where identity comes from the source rather than being minted here.
-    /// Refused, leaving the roster unchanged, when a persona with that id is
-    /// already present (`Uuid` compares parsed values, so case doesn't
-    /// matter) or its name or instructions are blank.
-    pub fn insert_persona(&mut self, persona: Persona) -> Result<()> {
-        if self.personas.iter().any(|p| p.id == persona.id) {
-            return Err(duplicate_persona_id(persona.id));
-        }
-        if persona.name.trim().is_empty() || persona.instructions.trim().is_empty() {
-            return Err(blank_persona());
-        }
-        self.personas.push(persona);
-        self.persist_personas()
-    }
-
     /// Rewrite name/instructions for an existing persona of any type. A no-op
     /// if `id` is not present.
     pub fn update_persona(&mut self, id: Uuid, name: impl Into<String>,
@@ -692,14 +677,6 @@ fn exchange_entries(object: &mut serde_json::Map<String, Value>, left: &str, rig
         }
         (None, None) => {}
     }
-}
-
-fn blank_persona() -> Error {
-    Error::Config("a persona needs a name and instructions".to_string())
-}
-
-fn duplicate_persona_id(id: Uuid) -> Error {
-    Error::Config(format!("a persona with id {id} already exists"))
 }
 
 #[cfg(test)]

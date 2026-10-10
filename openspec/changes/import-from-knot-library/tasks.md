@@ -22,16 +22,16 @@
 
 ## 4. Import window
 
-- [ ] 4.1 Add the Library section with the location picker (Knot-Library first, then saved locations by name), Personas and Prompts groups, title and description rows, and disabled rows for held items saying why
-- [ ] 4.2 Read the chosen location's index on open, on picking another location (clearing the selection) and on refresh through `background_executor`, with a loading state, and an error state with retry for unreachable and unsupported-format; route the result through `repaint_poll_tick` or an entity update, never the render path
-- [ ] 4.3 Add the add-location dialog (name, kind, the kind's field, the folder picker for folders, the trust note, form errors) and Rename and Remove (with confirmation), both disabled for Knot-Library; test adding a web address, refusing `acme` and `http://`, and removing a location keeping its imports
-- [ ] 4.4 On import, fetch and verify only the selected items off-thread, write them through `settings_global`, and show the outcome with unreadable items named
-- [ ] 4.5 Add catalog keys for every new string, and a test that they resolve
+- [x] 4.1 Add the Library section with the location picker (Knot-Library first, then saved locations by name), Personas and Prompts groups, title and description rows, and disabled rows for held items saying why
+- [x] 4.2 Read the chosen location's index on open, on picking another location (clearing the selection) and on refresh through `background_executor`, with a loading state, and an error state with retry for unreachable and unsupported-format; route the result through `repaint_poll_tick` or an entity update, never the render path
+- [x] 4.3 Add the add-location dialog (name, kind, the kind's field, the folder picker for folders, the trust note, form errors) and Rename and Remove (with confirmation), both disabled for Knot-Library; test adding a web address, refusing `acme` and `http://`, and removing a location keeping its imports
+- [x] 4.4 On import, fetch and verify only the selected items off-thread, write them through `settings_global`, and show the outcome with unreadable items named
+- [x] 4.5 Add catalog keys for every new string, and a test that they resolve
 
 ## 5. Library windows
 
-- [ ] 5.1 Add "Import from Library…" to the Personas and Prompts windows' header rows, opening or raising the Import window
-- [ ] 5.2 Test that the action opens the Import window, and that an imported persona appears in an open Personas window
+- [x] 5.1 Add "Import from Library…" to the Personas and Prompts windows' header rows, opening or raising the Import window
+- [x] 5.2 Test that the action opens the Import window, and that an imported persona appears in an open Personas window
 
 ## 6. Verification
 

@@ -1,7 +1,8 @@
 //! The saved-locations collection: its document and the helpers that edit
 //! it.
 //!
-//! Contract: `openspec/changes/import-from-knot-library/specs/settings-persistence/spec.md`.
+//! Contract: `openspec/changes/import-from-knot-library/specs/
+//! settings-persistence/spec.md`.
 //!
 //! Saved locations are objects the user creates and names - durable data,
 //! not a preference - so they get a document of their own,
@@ -41,14 +42,17 @@ impl Settings {
     /// Save a new location, named by the user. Refused, leaving the saved
     /// locations unchanged, when the name is blank or the location's own
     /// form check fails (`owner/repo`, `https://`, an existing folder).
-    pub fn add_library_location(&mut self, name: impl Into<String>, location: Location) -> Result<Uuid> {
+    pub fn add_library_location(&mut self, name: impl Into<String>, location: Location)
+                                -> Result<Uuid> {
         let name = name.into();
         if name.trim().is_empty() {
             return Err(blank_location_name());
         }
-        location.validate().map_err(|err| Error::Config(err.to_string()))?;
+        location.validate()
+                .map_err(|err| Error::Config(err.to_string()))?;
         let id = Uuid::new_v4();
-        self.library_locations.push(LibraryLocation { id, name, location });
+        self.library_locations
+            .push(LibraryLocation { id, name, location });
         self.persist_library_locations()?;
         Ok(id)
     }

@@ -21,11 +21,10 @@ fn rejects_an_unsupported_format() {
 
 #[test]
 fn round_trips_item_kind() {
-    for kind in [
-        ItemKind::Persona,
-        ItemKind::Prompt,
-        ItemKind::Other("bench".to_string()),
-    ] {
+    for kind in [ItemKind::Persona,
+                 ItemKind::Prompt,
+                 ItemKind::Other("bench".to_string())]
+    {
         let json = serde_json::to_string(&kind).unwrap();
         let back: ItemKind = serde_json::from_str(&json).unwrap();
         assert_eq!(kind, back);

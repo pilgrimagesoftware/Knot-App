@@ -51,7 +51,8 @@ impl ImportWindow {
                                .gap_3()
                                .child(self.render_refresh_row(cx))
                                .child(self.render_personas_section(cx))
-                               .child(self.render_skwad_section(cx)))
+                               .child(self.render_skwad_section(cx))
+                               .child(self.render_library_section(cx)))
                 .children(self.render_outcome(cx))
     }
 
@@ -63,9 +64,10 @@ impl ImportWindow {
         h_flex().justify_end().child(icon_button("import-refresh",
                                                  "icons/rotate-ccw.svg",
                                                  knot_core::l10n::t("import.refresh"),
-                                                 false).on_click(move |_, _, app| {
+                                                 false).on_click(move |_, window, app| {
                                                            import_window.update(app, |view, cx| {
-                                                                            view.refresh();
+                                                                            view.refresh(window,
+                                                                                         cx);
                                                                             cx.notify();
                                                                         });
                                                        }))

@@ -31,25 +31,21 @@ pub struct HttpsFetcher {
 
 impl HttpsFetcher {
     pub fn new() -> Self {
-        let config = ureq::Agent::config_builder()
-            .timeout_global(Some(TIMEOUT))
-            .user_agent(concat!("Knot/", env!("CARGO_PKG_VERSION")))
-            .build();
-        Self {
-            agent: config.into(),
-        }
+        let config =
+            ureq::Agent::config_builder().timeout_global(Some(TIMEOUT))
+                                         .user_agent(concat!("Knot/", env!("CARGO_PKG_VERSION")))
+                                         .build();
+        Self { agent: config.into(), }
     }
 
     fn get(&self, address: &str) -> Result<Vec<u8>> {
-        let mut response = self
-            .agent
-            .get(address)
-            .call()
-            .map_err(|err| LibraryError::Fetch(err.to_string()))?;
-        response
-            .body_mut()
-            .read_to_vec()
-            .map_err(|err| LibraryError::Fetch(err.to_string()))
+        let mut response = self.agent
+                               .get(address)
+                               .call()
+                               .map_err(|err| LibraryError::Fetch(err.to_string()))?;
+        response.body_mut()
+                .read_to_vec()
+                .map_err(|err| LibraryError::Fetch(err.to_string()))
     }
 }
 
@@ -76,8 +72,9 @@ pub struct FolderFetcher;
 
 impl LibraryFetcher for FolderFetcher {
     fn fetch_index(&self, location: &Location) -> Result<Index> {
-        let bytes = std::fs::read(location.index_address())
-            .map_err(|err| LibraryError::Io(err.to_string()))?;
+        let bytes = std::fs::read(location.index_address()).map_err(|err| {
+                                                               LibraryError::Io(err.to_string())
+                                                           })?;
         Index::parse(&bytes)
     }
 

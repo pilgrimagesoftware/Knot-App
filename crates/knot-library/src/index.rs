@@ -7,12 +7,12 @@ pub const SUPPORTED_FORMAT: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Index {
-    pub format: u32,
-    pub commit: String,
+    pub format:       u32,
+    pub commit:       String,
     #[serde(rename = "generatedAt")]
     pub generated_at: String,
-    pub kinds: Vec<String>,
-    pub items: Vec<IndexItem>,
+    pub kinds:        Vec<String>,
+    pub items:        Vec<IndexItem>,
 }
 
 impl Index {
@@ -28,18 +28,18 @@ impl Index {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexItem {
-    pub kind: ItemKind,
-    pub id: String,
-    pub slug: String,
-    pub title: String,
+    pub kind:        ItemKind,
+    pub id:          String,
+    pub slug:        String,
+    pub title:       String,
     pub description: String,
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub tags:        Vec<String>,
     #[serde(default)]
-    pub authors: Vec<String>,
-    pub path: String,
-    pub size: u64,
-    pub sha256: String,
+    pub authors:     Vec<String>,
+    pub path:        String,
+    pub size:        u64,
+    pub sha256:      String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

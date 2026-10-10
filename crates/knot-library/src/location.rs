@@ -14,7 +14,7 @@ use crate::resolve::resolve;
 pub enum Location {
     GitHub {
         /// `owner/repo`.
-        repo: String,
+        repo:   String,
         /// Defaults to the repository's default branch (`HEAD`) when absent.
         branch: Option<String>,
     },

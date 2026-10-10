@@ -1,8 +1,8 @@
 //! Reads a Knot-Library-format location: a GitHub repository, a web
 //! address, or a folder, each publishing an `index.json` and item files.
 //!
-//! Contract: `openspec/changes/import-from-knot-library/specs/data-import/spec.md`
-//! (`Knot-Library`'s own `content-index` and `content-format` specs are the
+//! Contract: `openspec/changes/import-from-knot-library/specs/data-import/spec.
+//! md` (`Knot-Library`'s own `content-index` and `content-format` specs are the
 //! upstream source of truth this crate implements as a client of).
 //!
 //! This crate knows nothing about Knot's `Settings` or records - it only

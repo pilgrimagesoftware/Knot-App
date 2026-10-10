@@ -2,18 +2,16 @@ use super::*;
 use crate::index::ItemKind;
 
 fn item(size: u64, sha256: &str) -> IndexItem {
-    IndexItem {
-        kind: ItemKind::Persona,
-        id: "id".to_string(),
-        slug: "slug".to_string(),
-        title: "title".to_string(),
-        description: "description".to_string(),
-        tags: vec![],
-        authors: vec![],
-        path: "personas/x.md".to_string(),
-        size,
-        sha256: sha256.to_string(),
-    }
+    IndexItem { kind: ItemKind::Persona,
+                id: "id".to_string(),
+                slug: "slug".to_string(),
+                title: "title".to_string(),
+                description: "description".to_string(),
+                tags: vec![],
+                authors: vec![],
+                path: "personas/x.md".to_string(),
+                size,
+                sha256: sha256.to_string() }
 }
 
 #[test]
