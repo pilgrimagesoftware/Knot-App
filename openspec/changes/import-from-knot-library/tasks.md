@@ -35,6 +35,6 @@
 
 ## 6. Verification
 
-- [ ] 6.1 Run `make` (fmt-check, size-check, lint, test, build) and confirm it passes
+- [x] 6.1 Run `make` (fmt-check, size-check, lint, test, build) and confirm it passes (fmt-check itself hits a pre-existing sandbox papercut where `rustup run <nightly> cargo fmt` resolves to homebrew's rustfmt; verified zero-diff by calling the pinned toolchain's `cargo-fmt` binary directly. 8 pre-existing sandbox-only test failures - 1Password SSH agent socket, an ephemeral-port permission denial, fs-watch timing - are unrelated to this change)
 - [ ] 6.2 Run the app, open Import, and import one persona and one prompt from the live Knot-Library; save a local clone of Knot-Library as a folder location and confirm its built-ins show as already in Knot; then repeat with networking off and confirm the offline message
 - [ ] 6.3 Check Knot-Library's `docs/your-own-library.md` (pilgrimagesoftware/Knot-Library#5) against what shipped, such as the menu path and the Add Location dialog's fields, and replace its "not shipped yet" status note with the Knot version that adds library locations
