@@ -63,7 +63,10 @@
   `develop` checkout: same single failure, same line, before this
   change touched anything. Not fixed here since it is out of this
   change's scope; logged in `~/code/papercuts.md`.
-- [ ] 4.2 Manually run the app (`cargo run -p knot` or `make run` if
+- [x] 4.2 Manually run the app (`cargo run -p knot` or `make run` if
   defined), send a prompt, hold ⌘ over the panel, and verify timestamps
   appear after the sidebar's own key-hint delay and disappear immediately
   on release — matching this change's spec scenarios.
+
+  Verified manually by the user: holding ⌘ reveals timestamps after the
+  sidebar's own delay and releasing hides them immediately.
