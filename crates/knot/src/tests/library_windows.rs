@@ -136,6 +136,35 @@ fn each_library_gets_its_own_window(cx: &mut TestAppContext) {
       });
 }
 
+/// The Personas and Prompts windows' "Import from Library…" button
+/// dispatches the same `OpenImport` action the File menu does - so clicking
+/// it opens the Import window exactly as the menu item would.
+#[gpui_kit::test]
+fn import_from_library_opens_the_import_window(cx: &mut TestAppContext) {
+    let window = cx.update(|cx| {
+                       gpui_kit::init(cx);
+                       WindowRegistry::install(cx);
+                       install_settings(cx);
+                       crate::import_window::register_import_action(store(), cx);
+                       open_library_window(Library::Personas, store(), cx);
+                       cx.windows()
+                         .last()
+                         .copied()
+                         .expect("the Personas window opened")
+                   });
+
+    cx.update(|cx| {
+          window.update(cx, |_, window, app| {
+                    window.dispatch_action(Box::new(crate::app_bootstrap::OpenImport), app);
+                })
+                .expect("the Personas window is open");
+      });
+
+    assert_eq!(cx.update(|cx| cx.windows().len()),
+               2,
+               "the Import window should have opened alongside the Personas window");
+}
+
 /// Every library's pane draws a frame without panicking, exercising the
 /// live-store reads `personas`, `prompts` and `bench` each make.
 #[gpui_kit::test]

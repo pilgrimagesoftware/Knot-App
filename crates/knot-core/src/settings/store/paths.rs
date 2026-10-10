@@ -16,9 +16,9 @@ use std::path::PathBuf;
 use directories::ProjectDirs;
 
 use crate::consts::{
-    AGENTS_FILE, APP_NAME, BENCH_FILE, LEGACY_SETTINGS_FILE, ORG_NAME, ORG_QUALIFIER,
-    PERSONAS_FILE, PREFERENCES_FILE, PROMPTS_FILE, PULL_REQUESTS_FILE, RECENT_REPOS_FILE,
-    WORKSPACE_UI_STATE_FILE, WORKSPACES_FILE,
+    AGENTS_FILE, APP_NAME, BENCH_FILE, LEGACY_SETTINGS_FILE, LIBRARY_LOCATIONS_FILE, ORG_NAME,
+    ORG_QUALIFIER, PERSONAS_FILE, PREFERENCES_FILE, PROMPTS_FILE, PULL_REQUESTS_FILE,
+    RECENT_REPOS_FILE, WORKSPACE_UI_STATE_FILE, WORKSPACES_FILE,
 };
 
 /// The resolved location of every document the store reads and writes.
@@ -97,6 +97,11 @@ impl StorePaths {
     /// The recorded-pull-requests document.
     pub fn pull_requests(&self) -> PathBuf {
         self.data_dir.join(PULL_REQUESTS_FILE)
+    }
+
+    /// The saved-library-locations document.
+    pub fn library_locations(&self) -> PathBuf {
+        self.data_dir.join(LIBRARY_LOCATIONS_FILE)
     }
 
     /// The single document the store used to be, read once and renamed by the

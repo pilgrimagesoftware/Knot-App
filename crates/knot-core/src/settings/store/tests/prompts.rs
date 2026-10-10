@@ -9,6 +9,7 @@ use tempfile::tempdir;
 use super::super::*;
 use super::agent_id;
 use crate::consts::{AGENTS_FILE, PROMPTS_FILE};
+use crate::error::Error;
 use crate::{Prompt, StartupPrompt};
 
 #[test]
@@ -161,4 +162,47 @@ fn bench_entries_are_removed_and_edited_by_id() {
     assert_eq!(back.bench_agents[0].folder, "/keep");
     assert_eq!(back.bench_agents[0].startup_prompt,
                StartupPrompt::custom("go"));
+}
+
+#[test]
+fn insert_prompt_keeps_the_caller_supplied_id() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+    let id = agent_id();
+    s.insert_prompt(Prompt { id,
+                             name: "From Library".to_string(),
+                             text: "do the thing".to_string() })
+     .unwrap();
+    assert_eq!(s.prompts.len(), 1);
+    assert_eq!(s.prompt(id).unwrap().name, "From Library");
+}
+
+#[test]
+fn insert_prompt_rejects_a_duplicate_id() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+    let id = agent_id();
+    s.insert_prompt(Prompt { id,
+                             name: "First".to_string(),
+                             text: "one".to_string() })
+     .unwrap();
+
+    let err = s.insert_prompt(Prompt { id,
+                                       name: "Second".to_string(),
+                                       text: "two".to_string() })
+               .unwrap_err();
+    assert!(matches!(err, Error::Config(_)));
+    assert_eq!(s.prompts.len(), 1);
+}
+
+#[test]
+fn insert_prompt_rejects_blank_fields() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+    let err = s.insert_prompt(Prompt { id:   agent_id(),
+                                       name: String::new(),
+                                       text: "one".to_string(), })
+               .unwrap_err();
+    assert!(matches!(err, Error::Config(_)));
+    assert!(s.prompts.is_empty());
 }

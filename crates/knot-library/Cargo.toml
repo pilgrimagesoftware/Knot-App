@@ -1,5 +1,5 @@
 [package]
-name = "knot-core"
+name = "knot-library"
 version = "1.27.0"
 edition.workspace = true
 license.workspace = true
@@ -7,15 +7,11 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-arc-swap.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-directories.workspace = true
-uuid.workspace = true
-rust-i18n.workspace = true
-plist.workspace = true
-knot-library = { path = "../knot-library" }
+sha2.workspace = true
+ureq.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
