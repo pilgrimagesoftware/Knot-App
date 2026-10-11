@@ -5,7 +5,7 @@ version: latest
 
 # Knot documentation
 
-<img class="landing-icon" src="{{ '/assets/icons/knot.svg' | relative_url }}" alt="Knot application icon">
+<img class="landing-icon" src="{{ '/assets/icons/knot-icon.png' | relative_url }}" alt="Knot application icon">
 
 Knot coordinates coding agents in a desktop workspace. This is the latest documentation.
 
