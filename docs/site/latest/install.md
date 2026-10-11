@@ -51,5 +51,3 @@ Use `make fmt`, `make lint`, `make test`, and `make build` when developing from 
 ## Agent shell notes
 
 Knot's shell agents load your normal shell configuration. Prompt themes that start a daemon for every shell can create unnecessary background processes in agent terminals. See [`docs/agent-shells.md`](https://github.com/pilgrimagesoftware/Knot-App/blob/develop/docs/agent-shells.md) for the shell configuration guidance.
-
-This page is available only in the latest documentation. Selecting an earlier release from this page takes you to that release's documentation landing page.
