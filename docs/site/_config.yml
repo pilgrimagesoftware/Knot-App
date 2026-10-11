@@ -1,0 +1,15 @@
+title: Knot Documentation
+description: Documentation for Knot, the multi-agent coding workspace.
+url: ""
+baseurl: ""
+markdown: kramdown
+permalink: pretty
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - AGENTS.md
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
