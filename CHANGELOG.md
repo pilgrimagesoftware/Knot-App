@@ -1,4 +1,23 @@
 
+## 1.28.0 - 2026-10-11
+
+### Added
+- Add the knot-library crate
+- Add insert_persona and insert_prompt
+- Add the saved-locations collection
+- Add import::library
+- Add the Library import source
+- Turn the Import window's sections into tabs
+
+
+### Fixed
+- Keep the panel timestamp row laid out while ⌘ is released
+- Drop a needless borrow flagged by clippy
+- Parse kinds as the real index.json object shape
+- Update menu expectations
+
+
+
 ## 1.27.0 - 2026-10-10
 
 ### Added

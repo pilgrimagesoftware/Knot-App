@@ -3758,7 +3758,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "knot"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "gpui-kit",
  "gpui-terminal",
@@ -3798,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "knot-acp"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "parking_lot",
  "serde",
@@ -3810,7 +3810,7 @@ dependencies = [
 
 [[package]]
 name = "knot-activity"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-agents",
  "knot-core",
@@ -3821,7 +3821,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agent-launch"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-acp",
  "knot-core",
@@ -3835,7 +3835,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agents"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3846,7 +3846,7 @@ dependencies = [
 
 [[package]]
 name = "knot-core"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "arc-swap",
  "directories",
@@ -3862,7 +3862,7 @@ dependencies = [
 
 [[package]]
 name = "knot-discovery"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
@@ -3873,7 +3873,7 @@ dependencies = [
 
 [[package]]
 name = "knot-forge"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3885,7 +3885,7 @@ dependencies = [
 
 [[package]]
 name = "knot-git"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "insta",
  "tempfile",
@@ -3894,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "knot-history"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "directories",
  "parking_lot",
@@ -3908,7 +3908,7 @@ dependencies = [
 
 [[package]]
 name = "knot-library"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3920,7 +3920,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3940,7 +3940,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-probe"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3951,7 +3951,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-tools"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "async-trait",
  "knot-activity",
@@ -3976,7 +3976,7 @@ dependencies = [
 
 [[package]]
 name = "knot-messaging"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-agents",
  "parking_lot",
@@ -3987,7 +3987,7 @@ dependencies = [
 
 [[package]]
 name = "knot-processes"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "parking_lot",
  "tempfile",
@@ -3996,7 +3996,7 @@ dependencies = [
 
 [[package]]
 name = "knot-subagents"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "serde_json",
  "thiserror 2.0.21",
@@ -4005,7 +4005,7 @@ dependencies = [
 
 [[package]]
 name = "knot-tasks"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -4016,7 +4016,7 @@ dependencies = [
 
 [[package]]
 name = "knot-terminal"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "gpui-terminal",
  "knot-acp",
@@ -4034,7 +4034,7 @@ dependencies = [
 
 [[package]]
 name = "knot-watch"
-version = "1.27.0"
+version = "1.28.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
