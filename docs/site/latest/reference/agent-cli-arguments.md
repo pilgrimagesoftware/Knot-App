@@ -1,10 +1,15 @@
-# Coding Agents - CLI Arguments
+---
+title: Agent CLI arguments
+version: latest
+permalink: /latest/reference/agent-cli-arguments/
+---
 
-This document tracks the CLI arguments across supported coding agents.
+# Agent CLI arguments
 
-> **Note**: This file is referenced by `Skwad/Services/TerminalCommandBuilder.swift` - keep it updated when adding new agents or discovering new CLI options.
-
-## Arguments Reference
+Knot launches each coding-agent CLI with the flags defined for its type under
+[Settings]({{ '/latest/settings/' | relative_url }}) - Coding - Agent Options,
+and sends it Knot's own registration prompt and any startup prompt. This page
+tracks the CLI arguments across the supported coding agents.
 
 | Intent | Claude Code | Codex | OpenCode | Gemini CLI | GitHub Copilot |
 |--------|-------------|-------|----------|------------|----------------|
@@ -21,10 +26,8 @@ This document tracks the CLI arguments across supported coding agents.
 | **Session ID Source** | `session_id` (hook payload) | `thread-id` (hook payload) | N/A | N/A | N/A |
 | **History Storage** | JSONL in `~/.claude/projects/` | SQLite `~/.codex/state_5.sqlite` | N/A | `~/.gemini/tmp/<name>/logs.json` + `chats/` | `~/.copilot/session-state/<id>/workspace.yaml` |
 
-## Usage in Knot
+Keep this table updated when adding new agents or discovering new CLI options.
 
-These arguments are used by `TerminalCommandBuilder.swift` to:
-1. Inject MCP server configuration
-2. Add inline registration prompts so agents auto-register with the knot
-3. Configure hook-based activity detection (Claude, Codex)
-4. Resume/fork previous conversations (Claude, Codex, Gemini, Copilot)
+## Source contracts
+
+- `openspec/specs/agent-launch-command/spec.md`

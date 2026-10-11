@@ -14,7 +14,8 @@ pub(crate) const USER_SHELL_ARGS: &[&str] = &["-i"];
 /// per agent - for a prompt segment no agent reads, while Knot tracks git
 /// itself. Knot cannot turn that off from outside: the config p10k generates
 /// begins by unsetting every `POWERLEVEL9K_*` variable it inherits. The user
-/// opts out after that line instead; `docs/agent-shells.md` has the snippet.
+/// opts out after that line instead; `docs/site/latest/reference/agent-shells.md` has the
+/// snippet.
 pub(crate) const KNOT_AGENT_ENV: &str = "KNOT_AGENT";
 
 /// [`KNOT_AGENT_ENV`]'s value: any non-empty one would do for `[[ -n ]]`.

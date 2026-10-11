@@ -25,7 +25,7 @@ const PTY_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Default)]
 struct Log {
-    written:    Vec<u8>,
+    written: Vec<u8>,
     terminated: bool,
 }
 
@@ -58,11 +58,13 @@ fn agent() -> Agent {
 fn config<'a>(settings: &'a Settings, agent: &'a Agent) -> SessionConfig<'a> {
     // `/bin/sh`, not the user's `$SHELL -i`: a test must not depend on - or
     // start - whatever the machine's dotfiles do.
-    SessionConfig { settings,
-                    agent,
-                    persona: None,
-                    plugin_root: None,
-                    shell: AgentShell::posix_sh() }
+    SessionConfig {
+        settings,
+        agent,
+        persona: None,
+        plugin_root: None,
+        shell: AgentShell::posix_sh(),
+    }
 }
 
 /// An agent whose folder is a fresh temp dir, kept alive by the guard.
@@ -80,16 +82,22 @@ async fn start_sends_the_initialization_command_and_its_return() {
     let config = config(&settings, &agent);
     let plan = SessionPlan::build(&config);
     let log = Arc::new(Mutex::new(Log::default()));
-    let mut session = TerminalSession::new(&config,
-                                           FakeTransport { log: Arc::clone(&log), },
-                                           EventSink::default());
+    let mut session = TerminalSession::new(
+        &config,
+        FakeTransport {
+            log: Arc::clone(&log),
+        },
+        EventSink::default(),
+    );
 
     session.start(&plan).unwrap();
 
     assert!(session.is_started());
     assert!(plan.initialization_command.contains("/tmp/project"));
-    assert_eq!(log.lock().written,
-               format!("{}\r", plan.initialization_command).into_bytes());
+    assert_eq!(
+        log.lock().written,
+        format!("{}\r", plan.initialization_command).into_bytes()
+    );
 
     // Explicit, not left to `Drop`: a test that ends with its shell still
     // running should say so, and a teardown that fails should fail the test.
@@ -109,12 +117,20 @@ async fn command_and_lifecycle_events_reach_transport_and_tracker() {
     let config = config(&settings, &agent);
     let statuses = Arc::new(Mutex::new(Vec::new()));
     let status_log = Arc::clone(&statuses);
-    let sink = EventSink { on_status: Some(Box::new(move |event| {
-                                               status_log.lock().push((event.status, event.source));
-                                           })),
-                           ..Default::default() };
+    let sink = EventSink {
+        on_status: Some(Box::new(move |event| {
+            status_log.lock().push((event.status, event.source));
+        })),
+        ..Default::default()
+    };
     let log = Arc::new(Mutex::new(Log::default()));
-    let mut session = TerminalSession::new(&config, FakeTransport { log: Arc::clone(&log), }, sink);
+    let mut session = TerminalSession::new(
+        &config,
+        FakeTransport {
+            log: Arc::clone(&log),
+        },
+        sink,
+    );
 
     session.send_command("printf ready").unwrap();
     session.on_terminal_output();
@@ -127,8 +143,8 @@ async fn command_and_lifecycle_events_reach_transport_and_tracker() {
     assert!(log.lock().terminated);
     let statuses = statuses.lock();
     assert!(statuses.iter().any(|(state, source)| {
-                               *state == AgentState::Running && *source == ActivitySource::Terminal
-                           }));
+        *state == AgentState::Running && *source == ActivitySource::Terminal
+    }));
 }
 
 #[tokio::test]
@@ -138,18 +154,24 @@ async fn pty_session_forwards_output_and_exit_to_the_caller() {
     let config = config(&settings, &agent);
     let (output_tx, output_rx) = mpsc::channel();
     let (exit_tx, exit_rx) = mpsc::channel();
-    let mut session = TerminalSession::spawn_pty(&config,
-                                                 EventSink::default(),
-                                                 move |bytes| {
-                                                     let _ = output_tx.send(bytes.to_vec());
-                                                 },
-                                                 move |report| {
-                                                     let _ = exit_tx.send(report.code);
-                                                 }).unwrap();
+    let mut session = TerminalSession::spawn_pty(
+        &config,
+        EventSink::default(),
+        move |bytes| {
+            let _ = output_tx.send(bytes.to_vec());
+        },
+        move |report| {
+            let _ = exit_tx.send(report.code);
+        },
+    )
+    .unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command: "printf ready; exit 0".to_string(), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: "printf ready; exit 0".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(exit_rx.recv_timeout(PTY_TIMEOUT), Ok(Some(0)));
     let output = output_rx.try_iter().flatten().collect::<Vec<_>>();
@@ -157,8 +179,9 @@ async fn pty_session_forwards_output_and_exit_to_the_caller() {
 
     // The shell has already exited, which is exactly the exit-driven removal
     // path: shutting it down must not fail on the dead child.
-    session.shutdown()
-           .expect("shutting down a session whose shell already exited");
+    session
+        .shutdown()
+        .expect("shutting down a session whose shell already exited");
 }
 
 #[tokio::test]
@@ -169,19 +192,22 @@ async fn pty_session_output_is_reflected_in_its_grid() {
     let mut session =
         TerminalSession::spawn_pty(&config, EventSink::default(), |_| {}, |_| {}).unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command: "printf ready".to_string(), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: "printf ready".to_string(),
+        })
+        .unwrap();
 
     let deadline = Instant::now() + PTY_TIMEOUT;
-    while !session.terminal().with_grid(|grid| {
-                                 (0..grid.size().rows).any(|row| {
-                                                          grid.row_text(row).contains("ready")
-                                                      })
-                             })
+    while !session
+        .terminal()
+        .with_grid(|grid| (0..grid.size().rows).any(|row| grid.row_text(row).contains("ready")))
     {
-        assert!(Instant::now() < deadline,
-                "grid never showed the expected output");
+        assert!(
+            Instant::now() < deadline,
+            "grid never showed the expected output"
+        );
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
 
@@ -200,17 +226,21 @@ async fn pty_session_output_is_scanned_for_pull_requests() {
     let mut session =
         TerminalSession::spawn_pty(&config, EventSink::default(), |_| {}, |_| {}).unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command:
-                                     "printf 'https://github.com/acme/widget/pull/42\\n'"
-                                         .to_string(), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: "printf 'https://github.com/acme/widget/pull/42\\n'"
+                .to_string(),
+        })
+        .unwrap();
 
     let deadline = Instant::now() + PTY_TIMEOUT;
     let mut urls = Vec::new();
     while urls.is_empty() {
-        assert!(Instant::now() < deadline,
-                "the pull request URL was never noted");
+        assert!(
+            Instant::now() < deadline,
+            "the pull request URL was never noted"
+        );
         tokio::time::sleep(Duration::from_millis(20)).await;
         urls = session.take_pull_request_urls();
     }
@@ -222,7 +252,7 @@ async fn pty_session_output_is_scanned_for_pull_requests() {
 }
 
 /// Dotfiles opt out of prompt daemons by testing `KNOT_AGENT`
-/// (`docs/agent-shells.md`), so it has to reach the agent's shell. The
+/// (`docs/site/latest/reference/agent-shells.md`), so it has to reach the agent's shell. The
 /// format string keeps the echoed command from matching: only the output
 /// can contain the value.
 #[tokio::test]
@@ -233,28 +263,34 @@ async fn the_agent_shell_is_marked_as_a_knot_agent() {
     let settings = Settings::default();
     let config = config(&settings, &agent);
     let (output_tx, output_rx) = mpsc::channel();
-    let mut session = TerminalSession::spawn_pty(&config,
-                                                 EventSink::default(),
-                                                 move |bytes| {
-                                                     let _ = output_tx.send(bytes.to_vec());
-                                                 },
-                                                 |_| {}).unwrap();
+    let mut session = TerminalSession::spawn_pty(
+        &config,
+        EventSink::default(),
+        move |bytes| {
+            let _ = output_tx.send(bytes.to_vec());
+        },
+        |_| {},
+    )
+    .unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command:
-                                     format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""),
+        })
+        .unwrap();
 
     let expected = format!("agent=[{KNOT_AGENT_VALUE}]");
     let deadline = Instant::now() + PTY_TIMEOUT;
     let mut output = Vec::new();
     while !String::from_utf8_lossy(&output).contains(&expected) {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        let chunk =
-            output_rx.recv_timeout(remaining).unwrap_or_else(|_| {
-                                                 panic!("{expected} never appeared in: {:?}",
-                                                        String::from_utf8_lossy(&output))
-                                             });
+        let chunk = output_rx.recv_timeout(remaining).unwrap_or_else(|_| {
+            panic!(
+                "{expected} never appeared in: {:?}",
+                String::from_utf8_lossy(&output)
+            )
+        });
         output.extend(chunk);
     }
 

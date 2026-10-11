@@ -92,7 +92,7 @@ xattr -d com.apple.quarantine "/Applications/Knot.app"
 codesign --force --deep --sign - "/Applications/Knot.app"
 ```
 
-Shell agents run your own shell with your dotfiles. If your prompt theme starts a daemon per shell (powerlevel10k's `gitstatusd` does), see [docs/agent-shells.md](docs/agent-shells.md) to turn it off in agent terminals.
+Shell agents run your own shell with your dotfiles. If your prompt theme starts a daemon per shell (powerlevel10k's `gitstatusd` does), see the [agent shells reference](docs/site/latest/reference/agent-shells.md) to turn it off in agent terminals.
 
 ## Architecture
 
