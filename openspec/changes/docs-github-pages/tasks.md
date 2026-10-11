@@ -17,12 +17,12 @@
 ## 3. GitHub Pages publication
 
 - [x] 3.1 Add the GitHub Actions workflow that builds `docs/site`, uploads the Pages artifact, and deploys it with least-privilege Pages permissions, then verify workflow syntax and the Jekyll build command pass locally or in CI.
-- [ ] 3.2 Configure workflow triggers for documentation source and workflow changes on the publishing branch, then verify a documentation change queues the build while a failed build cannot reach the deploy job.
-- [ ] 3.3 Document the repository GitHub Pages configuration and release verification steps, then verify a successful workflow deployment serves the root, latest, and historical-version URLs.
+- [x] 3.2 Configure workflow triggers for documentation source and workflow changes on the publishing branch, then verify a documentation change queues the build while a failed build cannot reach the deploy job.
+- [x] 3.3 Document the repository GitHub Pages configuration and release verification steps, then verify a successful workflow deployment serves the root, latest, and historical-version URLs.
 
 ## 4. Integration validation
 
-- [ ] 4.1 Run the pinned local Jekyll build and link checks for the latest and historical trees, then verify the generated site has no broken internal version-selector targets.
+- [x] 4.1 Run the pinned local Jekyll build and link checks for the latest and historical trees, then verify the generated site has no broken internal version-selector targets.
 - [x] 4.2 Review the published layout against the Rust application's documented visual tokens and icon assets, then verify navigation, the version selector, and primary layout match those sources.
 
 ## Workflow follow-up
