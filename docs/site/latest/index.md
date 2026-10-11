@@ -5,6 +5,8 @@ version: latest
 
 # Knot documentation
 
+<img class="landing-icon" src="{{ '/assets/icons/knot.svg' | relative_url }}" alt="Knot application icon">
+
 Knot coordinates coding agents in a desktop workspace. This is the latest documentation.
 
 ## Start here
@@ -12,3 +14,4 @@ Knot coordinates coding agents in a desktop workspace. This is the latest docume
 - Create a workspace and add agents.
 - Use the sidebar to inspect activity and messages.
 - Select a release from the version picker when working with an earlier build.
+- Read the [installation guide]({{ '/latest/install/' | relative_url }}).

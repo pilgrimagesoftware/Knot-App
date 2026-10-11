@@ -12,7 +12,7 @@
 - [x] 2.1 Add the supported-version manifest and the latest plus initial historical documentation source trees, then verify the manifest lists each published version in display order.
 - [x] 2.2 Implement the root-to-latest entry point and version-aware Jekyll layout, then verify opening the built root output displays the latest documentation.
 - [x] 2.3 Implement the visible version selector with static fallback links and corresponding-page routing where available, then verify a reader can select the historical version and reaches its documentation.
-- [ ] 2.4 Implement the fallback for pages absent in a selected version and accessible selected-version labeling, then verify switching from an unavailable page reaches the selected version landing page with its version identified.
+- [x] 2.4 Implement the fallback for pages absent in a selected version and accessible selected-version labeling, then verify switching from an unavailable page reaches the selected version landing page with its version identified.
 
 ## 3. GitHub Pages publication
 
@@ -23,7 +23,7 @@
 ## 4. Integration validation
 
 - [ ] 4.1 Run the pinned local Jekyll build and link checks for the latest and historical trees, then verify the generated site has no broken internal version-selector targets.
-- [ ] 4.2 Review the published layout against the Rust application's documented visual tokens and icon assets, then verify navigation, the version selector, and primary layout match those sources.
+- [x] 4.2 Review the published layout against the Rust application's documented visual tokens and icon assets, then verify navigation, the version selector, and primary layout match those sources.
 
 ## Workflow follow-up
 
