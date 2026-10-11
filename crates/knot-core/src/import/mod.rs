@@ -10,6 +10,7 @@
 //! What counts as "already held" is the record's id where the source carries
 //! one and its name where it does not.
 
+pub mod library;
 pub mod personas;
 pub mod result;
 pub mod skwad;
@@ -19,6 +20,7 @@ pub mod workspaces;
 #[cfg(test)]
 mod tests;
 
+pub use library::{ItemStatus, classify, import_items};
 pub use personas::import_definitions;
 pub use result::{ImportResult, Unreadable, UnreadableReason};
 pub use skwad::SkwadSource;

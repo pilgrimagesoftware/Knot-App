@@ -18,6 +18,7 @@ mod commit_window;
 mod import_window;
 mod keybindings;
 mod l10n_catalog;
+mod l10n_catalog_library_import;
 mod layout_model;
 mod library_windows;
 mod markdown_view;

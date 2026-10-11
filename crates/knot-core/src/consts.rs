@@ -46,6 +46,9 @@ pub const PROMPTS_FILE: &str = "prompts.json";
 /// The recent-repositories collection.
 pub const RECENT_REPOS_FILE: &str = "recent-repos.json";
 
+/// The saved-library-locations collection.
+pub const LIBRARY_LOCATIONS_FILE: &str = "library-locations.json";
+
 /// The recorded-pull-requests collection.
 ///
 /// Durable data rather than a preference even though the user did not type
@@ -247,3 +250,10 @@ mod tests;
 /// connection to that agent, so a call naming another agent is refused
 /// rather than acted on (#539).
 pub const MCP_AGENT_QUERY: &str = "agent";
+
+/// The built-in library location: a constant, not a saved record, so it
+/// can't be removed or edited and is there even when nothing has been
+/// saved. GitHub, branch `master` - Knot-Library's design settles its
+/// default branch, so this doesn't rely on `HEAD`.
+pub const KNOT_LIBRARY_REPO: &str = "pilgrimagesoftware/Knot-Library";
+pub const KNOT_LIBRARY_BRANCH: &str = "master";

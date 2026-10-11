@@ -53,6 +53,21 @@ impl Settings {
         Ok(id)
     }
 
+    /// Insert a prompt carrying its own id - the library import's path,
+    /// where identity comes from the source rather than being minted here.
+    /// Refused, leaving the library unchanged, when `prompt.id` is already
+    /// present or its name or text is blank.
+    pub fn insert_prompt(&mut self, prompt: Prompt) -> Result<()> {
+        if self.prompts.iter().any(|p| p.id == prompt.id) {
+            return Err(duplicate_prompt_id(prompt.id));
+        }
+        if Prompt::new(&prompt.name, &prompt.text).is_none() {
+            return Err(blank_prompt());
+        }
+        self.prompts.push(prompt);
+        self.persist_prompts()
+    }
+
     /// Rewrite a prompt's name and text, keeping its id and position. Refused
     /// when either is blank; an unknown id changes nothing.
     pub fn update_prompt(&mut self, id: Uuid, name: impl Into<String>, text: impl Into<String>)
@@ -99,4 +114,8 @@ impl Settings {
 
 fn blank_prompt() -> Error {
     Error::Config("a prompt needs a name and text".to_string())
+}
+
+fn duplicate_prompt_id(id: Uuid) -> Error {
+    Error::Config(format!("a prompt with id {id} already exists"))
 }

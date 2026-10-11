@@ -123,7 +123,8 @@ impl LibraryWindow {
         v_flex().gap_3().child(
             crate::controls::group(knot_core::l10n::t("settings.prompts.prompts"))
                 .child(
-                    h_flex().child(
+                    h_flex().gap_1()
+                            .child(
                         crate::controls::icon_button("prompts-add",
                                                      "icons/plus.svg",
                                                      knot_core::l10n::t("settings.prompts.add"),
@@ -131,6 +132,15 @@ impl LibraryWindow {
                             .on_click({
                                 let parent = library_window.downgrade();
                                 move |_, _, app| open_prompt_editor(parent.clone(), None, app)
+                            }),
+                    )
+                            .child(
+                        crate::controls::icon_button("prompts-import-from-library",
+                                                     "icons/download.svg",
+                                                     knot_core::l10n::t("settings.prompts.import_from_library"),
+                                                     false)
+                            .on_click(|_, window, app| {
+                                window.dispatch_action(Box::new(crate::app_bootstrap::OpenImport), app);
                             }),
                     ),
                 )

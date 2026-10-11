@@ -73,7 +73,7 @@ impl WorkspaceWindow {
         // matched it, so the filter sits outside every pass.
         let selectable = || options.iter().filter(|option| option.kind == "select");
 
-        selectable().find(|option| option.category.as_deref().is_some_and(&matches))
+        selectable().find(|option| option.category.as_deref().is_some_and(matches))
                     .or_else(|| selectable().find(|option| matches(&option.id)))
                     .or_else(|| selectable().find(|option| matches(&option.name)))
     }

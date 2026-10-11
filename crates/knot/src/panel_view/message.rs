@@ -24,6 +24,7 @@ use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::div;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::px;
 use gpui_kit::relative;
 use gpui_kit::rgb;
@@ -64,7 +65,13 @@ pub(super) struct Message<'a> {
 /// The small, subtitle-colored relative-time label for one message, with a
 /// tooltip giving the absolute moment - per issue #577. `kind` and `index`
 /// together give the row a stable id under the list's virtualization.
-fn render_timestamp(sent_at: SystemTime, kind: &'static str, index: usize) -> impl IntoElement {
+///
+/// Always laid out, with only its paint gated on `cmd_held` (issue #221):
+/// the row keeps its slot in the flex column either way, so holding or
+/// releasing ⌘ no longer reflows the surrounding conversation the way
+/// adding or removing the row outright did.
+fn render_timestamp(sent_at: SystemTime, kind: &'static str, index: usize, cmd_held: bool)
+                    -> impl IntoElement {
     let absolute = absolute_timestamp(sent_at);
     div().id((kind, index as u64))
          .debug_selector(|| "panel-message-timestamp".into())
@@ -72,6 +79,7 @@ fn render_timestamp(sent_at: SystemTime, kind: &'static str, index: usize) -> im
          // beside the message, not body text.
          .text_size(px(10.))
          .text_color(rgb(MUTED))
+         .when(!cmd_held, |style| style.invisible())
          .tooltip(move |window, cx| Tooltip::new(absolute.clone()).build(window, cx))
          .child(relative_timestamp(sent_at))
 }
@@ -98,10 +106,11 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .items_end()
                 .gap_0p5()
                 .children(
-                    cmd_held
-                        .then(|| state.sent_at.get(index).copied())
-                        .flatten()
-                        .map(|at| render_timestamp(at, "panel-prompt-time", index)),
+                    state
+                        .sent_at
+                        .get(index)
+                        .copied()
+                        .map(|at| render_timestamp(at, "panel-prompt-time", index, cmd_held)),
                 )
                 .child(
                     h_flex()
@@ -170,10 +179,11 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .min_w_0()
                 .gap_1()
                 .children(
-                    cmd_held
-                        .then(|| state.sent_at.get(index).copied())
-                        .flatten()
-                        .map(|at| render_timestamp(at, "panel-response-time", index)),
+                    state
+                        .sent_at
+                        .get(index)
+                        .copied()
+                        .map(|at| render_timestamp(at, "panel-response-time", index, cmd_held)),
                 )
                 // Plain `w_full().min_w_0()`, deliberately *not* a
                 // scroll container: a scroll parent hands its child an
