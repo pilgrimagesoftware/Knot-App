@@ -3,9 +3,9 @@ title: Knot documentation
 version: latest
 ---
 
-# Knot documentation
-
 <img class="landing-icon" src="{{ '/assets/icons/knot-icon.png' | relative_url }}" alt="Knot application icon">
+
+# Knot documentation
 
 Knot coordinates coding agents in a desktop workspace. This is the latest documentation.
 
