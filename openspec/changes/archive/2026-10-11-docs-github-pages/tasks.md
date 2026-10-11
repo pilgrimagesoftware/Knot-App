@@ -2,7 +2,7 @@
 
 ## 1. Site foundation and authoring rules
 
-- [ ] 1.1 Inventory the Rust application's authoritative colors, typography, spacing, and icon assets, record their source locations for the documentation theme, and verify the selected assets render in the application.
+- [x] 1.1 Inventory the Rust application's authoritative colors, typography, spacing, and icon assets, record their source locations for the documentation theme, and verify the selected assets render in the application.
 - [x] 1.2 Create the `docs/site` Jekyll configuration, dependency lockfiles, shared layouts, includes, and semantic stylesheet tokens, then verify `bundle exec jekyll build` completes locally.
 - [x] 1.3 Create `docs/site/AGENTS.md` with rules for directory structure, front matter, Markdown, Liquid, links, assets, local validation, release snapshots, and publishing, then verify a new page can be authored from its instructions without undocumented conventions.
 - [x] 1.4 Seed the latest documentation landing page and navigation using the shared layout and application-derived theme, then verify the local site renders navigation, styles, and approved icons.
