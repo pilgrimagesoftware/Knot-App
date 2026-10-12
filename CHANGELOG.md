@@ -1,4 +1,33 @@
 
+## 1.29.0 - 2026-10-12
+
+### Added
+- Add {{clipboard}} prompt variable
+- Describe {{clipboard}} and warn about it in startup prompts
+- Capture clipboard before expanding a library prompt into a target range
+- Store the Insert Prompt shortcut and its picker strings
+- Add the configurable Insert Prompt shortcut, default ⌥⌘I
+- Add the composer's Insert Prompt picker
+
+
+### Documentation
+- Place Knot logo in header and landing page
+- Expand installation guide
+- Record Pages verification
+- Backfill documentation site with guides and references
+- Archive GitHub Pages documentation change
+- Match documentation typography to Knot
+- Add light dark and system themes
+- Match Knot heading and code fonts
+- Document Insert Prompt, its shortcut and {{clipboard}}
+- List prompt variables and Insert Prompt in agents.md
+
+
+### Fixed
+- Restore dark mode select contrast
+
+
+
 ## 1.28.0 - 2026-10-11
 
 ### Added
