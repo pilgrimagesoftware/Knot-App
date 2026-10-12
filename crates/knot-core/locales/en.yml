@@ -124,6 +124,11 @@ panel:
     minutes_ago: "%{minutes}m ago"
     hours_ago: "%{hours}h ago"
     days_ago: "%{days}d ago"
+  # The composer's Insert Prompt button and the list it opens.
+  prompt_picker:
+    tooltip: "Insert Prompt (%{shortcut})"
+    search_placeholder: "Search prompts"
+    empty_library: "No saved prompts - Open Prompts…"
   # The input area's session-config dropdowns. One render path serves the
   # permission, model and effort axes, so the copy names no axis: only the
   # model list is long enough to need searching, but all three share it.
@@ -319,6 +324,7 @@ keymap:
     open_command_center: "Open Command Center"
     jump_to_bottom: "Jump to bottom"
     toggle_artifacts: "Show or hide artifacts"
+    insert_prompt: "Insert prompt"
   fixed:
     quit: "Quit Knot"
     settings: "Settings"
