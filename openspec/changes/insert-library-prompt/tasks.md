@@ -23,6 +23,6 @@
 
 ## 5. Integration
 
-- [ ] 5.0 Document the Insert Prompt control, its shortcut and `{{clipboard}}` (including that it is empty in startup prompts) in `docs/site/latest/agents.md` beside the existing prompt-variable docs; verify the page lists every variable in `PromptVariable::ALL`
-- [ ] 5.1 Update `CHANGELOG.md` only if the repo's release process expects it (check `cliff.toml`; skip if generated); run `make` (fmt-check, size-check, lint, test, build); verify it passes
+- [x] 5.0 Document the Insert Prompt control, its shortcut and `{{clipboard}}` (including that it is empty in startup prompts) in `docs/site/latest/agents.md` beside the existing prompt-variable docs; verify the page lists every variable in `PromptVariable::ALL`
+- [x] 5.1 Update `CHANGELOG.md` only if the repo's release process expects it (check `cliff.toml`; skip if generated); run `make` (fmt-check, size-check, lint, test, build); verify it passes
 - [ ] 5.2 Launch the app with a throwaway store, add a prompt using `{{clipboard}}`, copy text, insert the prompt with the button and with ⌥⌘I, and confirm the result; verify by recording it in the PR description
