@@ -127,10 +127,35 @@ and delivered when the turn ends; a stop control interrupts the active turn. You
 agent between the panel and the raw terminal without interrupting its turn or terminal process, and
 each agent remembers the mode you last chose.
 
-To start a message from a saved prompt, type `/` in the composer or use the Insert Prompt
-button (⌥⌘I). Both insert the prompt's text with its variables expanded, including
-`{% raw %}{{clipboard}}{% endraw %}` for whatever text you last copied - see
-[Prompts in the panel]({{ '/latest/personas-prompts/' | relative_url }}).
+### Inserting a saved prompt
+
+To start a message from a [library prompt]({{ '/latest/personas-prompts/' | relative_url }}),
+type `/` in the composer, or click the Insert Prompt button (the book icon in the control bar)
+or press ⌥⌘I while the composer has focus. The button opens a searchable list of your prompts;
+typing filters them by name or text, Up and Down move, Return inserts and Escape closes the list
+without changing anything. The prompt replaces any selected text, or goes in at the caret.
+Nothing is sent until you send it yourself. With an empty library, the list offers to open the
+Prompts window. ⌥⌘I can be changed on the settings window's Keyboard tab.
+
+Variables in the prompt are expanded for the agent whose composer it is:
+
+| Variable | Expands to |
+|---|---|
+| `agent.name` | The agent's name. |
+| `agent.id` | The agent's Knot agent ID. |
+| `agent.type` | The agent's type. |
+| `folder` | The folder's absolute path. |
+| `folder.name` | That path's last component. |
+| `workspace` | The workspace's name (empty if none). |
+| `branch` | The folder's current branch (empty outside a repository). |
+| `date` | Today's date as `YYYY-MM-DD`. |
+| `clipboard` | The text on the clipboard when you choose the prompt (empty if it holds no text). |
+
+For example, copy an error message, then insert a prompt reading
+`{% raw %}Explain this error: {{clipboard}}{% endraw %}`. The copied text lands in the composer,
+and copying something else while it expands does not change it. `{% raw %}{{clipboard}}{% endraw %}`
+is always empty in a startup prompt, which is sent without you choosing it, and the agent editor
+warns when a custom startup prompt uses it.
 
 ## Subagents and processes
 
