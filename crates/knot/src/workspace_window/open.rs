@@ -130,6 +130,7 @@ impl WorkspaceWindow {
                     changes_view: Default::default(),
                     work_items: Default::default(),
                     open_config_selector: None,
+                    prompt_picker: None,
                     bench_popover_open: false,
                     bench_popover_hovered: None,
                     store,

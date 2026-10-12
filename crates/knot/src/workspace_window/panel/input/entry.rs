@@ -71,6 +71,12 @@ impl WorkspaceWindow {
                         self.wire_panel_lookup_keys(div()
                             .flex_1()
                             .min_w_0(), id, input, cx)
+                            // Here, around the composer, so the shortcut
+                            // reaches it only while the composer has focus
+                            // (`keybindings`: "No composer focused").
+                            .on_action(cx.listener(move |view, _: &crate::keymap::InsertPrompt, window, cx| {
+                                view.open_prompt_picker(id, window, cx);
+                            }))
                             .capture_action::<Paste>({
                                 let entity = cx.entity();
                                 move |_, _, app| {

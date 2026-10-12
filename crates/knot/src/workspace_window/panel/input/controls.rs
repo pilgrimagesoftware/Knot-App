@@ -89,6 +89,7 @@ impl WorkspaceWindow {
                         h_flex()
                             .gap_1()
                             .items_center()
+                            .children(self.render_prompt_picker(id, cx))
                             .child(self.render_panel_config_selector(
                                 id,
                                 PERMISSION_SELECTOR_ID,

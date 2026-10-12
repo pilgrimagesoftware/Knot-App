@@ -73,6 +73,9 @@ pub(crate) struct WorkspaceWindow {
     /// selector's `on_open_change` wrote it and the permission selector
     /// read it, clicking Model or Effort opened the *permission* menu.
     pub(super) open_config_selector:             Option<&'static str>,
+    /// The composer's Insert Prompt picker, when one is open - at most one,
+    /// for the composer it was opened from.
+    pub(super) prompt_picker:                    Option<super::panel::input::PromptPicker>,
     /// Whether the New Agent button's bench popover is open.
     pub(super) bench_popover_open:               bool,
     /// The bench popover row under the pointer, which highlights and
