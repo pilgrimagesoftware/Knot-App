@@ -127,6 +127,11 @@ and delivered when the turn ends; a stop control interrupts the active turn. You
 agent between the panel and the raw terminal without interrupting its turn or terminal process, and
 each agent remembers the mode you last chose.
 
+To start a message from a saved prompt, type `/` in the composer or use the Insert Prompt
+button (⌥⌘I). Both insert the prompt's text with its variables expanded, including
+`{% raw %}{{clipboard}}{% endraw %}` for whatever text you last copied - see
+[Prompts in the panel]({{ '/latest/personas-prompts/' | relative_url }}).
+
 ## Subagents and processes
 
 A coding agent can delegate work to a subagent from within its turn. Knot records each subagent as

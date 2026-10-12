@@ -102,6 +102,14 @@ with optional whitespace inside the braces — so `{% raw %}{{agent.name}}{% end
 | `workspace` | The workspace's name (empty if none). |
 | `branch` | The folder's current branch (the short commit hash when HEAD is detached, empty outside a repository). |
 | `date` | Today's date in the local time zone as `YYYY-MM-DD`. |
+| `clipboard` | The clipboard's text when the prompt is inserted into a composer (empty if it holds no text, and always empty in a startup prompt). |
+
+`clipboard` is read once, when you choose the prompt, so copying something else while it
+expands does not change the result. Only text counts: an image on the clipboard expands to
+nothing. A startup prompt is sent without you choosing it, so it never reads the clipboard -
+`{% raw %}{{clipboard}}{% endraw %}` there is always empty, and the agent editor warns about it.
+For example, a library prompt `{% raw %}Explain this error: {{clipboard}}{% endraw %}` inserted
+after copying `panic at main.rs:12` gives `Explain this error: panic at main.rs:12`.
 
 These are the only names that expand, matched case-sensitively. Expansion happens when
 the text is used, never when stored, so one prompt serves every agent, and values are
@@ -124,6 +132,16 @@ Inserting a library prompt replaces the partially typed slash token with the pro
 full text, line breaks included, with variables expanded for the selected agent. The
 text is editable before sending and inserting sends nothing; if the token is edited or
 the lookup dismissed before the expansion resolves, nothing is inserted.
+
+The composer's control bar also has an Insert Prompt button (the book icon), and ⌥⌘I
+opens the same list while the composer has focus. It lists the library's prompts in
+library order, by name with a one-line preview; typing filters them to those whose name
+or text contains what you typed. Up and Down move, Return inserts, and Escape closes the
+list and leaves the composer as it was. The chosen prompt is inserted at the caret, or in
+place of the selection, with variables expanded the same way as from the `/` lookup.
+Nothing is sent, and focus returns to the composer with the caret after the inserted text.
+With an empty library, the list offers to open the Prompts window instead. Shell
+companions have no composer and no Insert Prompt button.
 
 ## Source contracts
 
