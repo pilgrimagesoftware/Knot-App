@@ -2,14 +2,14 @@
 
 ## 1. Clipboard variable
 
-- [ ] 1.1 Add `PromptVariable::Clipboard` (`clipboard`) to `crates/knot-agent-launch/src/variables.rs`: the `ALL` entry (8 → 9), the `name()` arm, a `clipboard: String` on `PromptContext`, and the `value()` arm; verify `cargo test -p knot-agent-launch` passes with new tests in `variables/tests.rs` for round-trip, expansion, and a clipboard value holding `{{branch}}` that stays literal
-- [ ] 1.2 Add `clipboard` to `ContextSource` in `crates/knot-agent-launch/src/startup.rs` and copy it in `read_context`; set it to `String::new()` for startup prompts in `crates/knot/src/workspace_window/panel/startup.rs`; verify a test that a startup prompt `Context: {{clipboard}}` expands to `Context: `
-- [ ] 1.3 Add the `description_key` arm in `crates/knot/src/prompt_text.rs` and the `prompt_variables.clipboard` l10n string; verify the insert-variable menus in the prompt editor and the agent editor list `clipboard` (`make test`)
-- [ ] 1.4 Add the startup-prompt warning for `{{clipboard}}` in `crates/knot/src/agent_editor/startup_prompt.rs`, which does not block save; verify with a test covering the "Startup prompt editor warns" scenario
+- [x] 1.1 Add `PromptVariable::Clipboard` (`clipboard`) to `crates/knot-agent-launch/src/variables.rs`: the `ALL` entry (8 → 9), the `name()` arm, a `clipboard: String` on `PromptContext`, and the `value()` arm; verify `cargo test -p knot-agent-launch` passes with new tests in `variables/tests.rs` for round-trip, expansion, and a clipboard value holding `{{branch}}` that stays literal
+- [x] 1.2 Add `clipboard` to `ContextSource` in `crates/knot-agent-launch/src/startup.rs` and copy it in `read_context`; set it to `String::new()` for startup prompts in `crates/knot/src/workspace_window/panel/startup.rs`; verify a test that a startup prompt `Context: {{clipboard}}` expands to `Context: `
+- [x] 1.3 Add the `description_key` arm in `crates/knot/src/prompt_text.rs` and the `prompt_variables.clipboard` l10n string; verify the insert-variable menus in the prompt editor and the agent editor list `clipboard` (`make test`)
+- [x] 1.4 Add the startup-prompt warning for `{{clipboard}}` in `crates/knot/src/agent_editor/startup_prompt.rs`, which does not block save; verify with a test covering the "Startup prompt editor warns" scenario
 
 ## 2. Shared expansion with clipboard capture
 
-- [ ] 2.1 Generalise `expand_library_prompt` in `panel/prompt_expansion.rs` to take a target range, and read `cx.read_from_clipboard()` text (empty for non-text) before `spawn_in`; update the `/` lookup caller; verify the existing `prompt_expansion/tests.rs` still pass and add tests for clipboard text, image-only clipboard, and a clipboard change after choosing the prompt
+- [x] 2.1 Generalise `expand_library_prompt` in `panel/prompt_expansion.rs` to take a target range, and read `cx.read_from_clipboard()` text (empty for non-text) before `spawn_in`; update the `/` lookup caller; verify the existing `prompt_expansion/tests.rs` still pass and add tests for clipboard text, image-only clipboard, and a clipboard change after choosing the prompt
 
 ## 3. Insert Prompt picker
 
