@@ -80,3 +80,14 @@ fn the_date_is_iso_formatted() {
     assert_eq!(parts.len(), 3, "{date}");
     assert_eq!((parts[0].len(), parts[1].len(), parts[2].len()), (4, 2, 2));
 }
+
+#[test]
+fn the_clipboard_is_carried_into_the_context() {
+    let ctx = read_context(ContextSource { clipboard: "copied".into(),
+                                           ..source(Path::new("/nonexistent")) });
+
+    assert_eq!(ctx.clipboard, "copied");
+    assert_eq!(crate::expand("Context: {{clipboard}}",
+                             &read_context(source(Path::new("/nonexistent")))),
+               "Context: ");
+}

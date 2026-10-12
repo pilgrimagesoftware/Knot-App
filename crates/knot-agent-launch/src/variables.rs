@@ -33,18 +33,20 @@ pub enum PromptVariable {
     Workspace,
     Branch,
     Date,
+    Clipboard,
 }
 
 impl PromptVariable {
     /// Every variable, in the order the editors list them.
-    pub const ALL: [PromptVariable; 8] = [PromptVariable::AgentName,
+    pub const ALL: [PromptVariable; 9] = [PromptVariable::AgentName,
                                           PromptVariable::AgentId,
                                           PromptVariable::AgentType,
                                           PromptVariable::Folder,
                                           PromptVariable::FolderName,
                                           PromptVariable::Workspace,
                                           PromptVariable::Branch,
-                                          PromptVariable::Date];
+                                          PromptVariable::Date,
+                                          PromptVariable::Clipboard];
 
     /// The name as written between the braces.
     pub fn name(self) -> &'static str {
@@ -57,6 +59,7 @@ impl PromptVariable {
             Self::Workspace => "workspace",
             Self::Branch => "branch",
             Self::Date => "date",
+            Self::Clipboard => "clipboard",
         }
     }
 
@@ -101,6 +104,9 @@ pub struct PromptContext {
     pub branch:     String,
     /// `YYYY-MM-DD`, local time.
     pub date:       String,
+    /// The clipboard's text when the prompt was chosen; empty when it held
+    /// none, and always empty for a startup prompt.
+    pub clipboard:  String,
 }
 
 impl PromptContext {
@@ -114,6 +120,7 @@ impl PromptContext {
             PromptVariable::Workspace => self.workspace.clone(),
             PromptVariable::Branch => self.branch.clone(),
             PromptVariable::Date => self.date.clone(),
+            PromptVariable::Clipboard => self.clipboard.clone(),
         }
     }
 }
@@ -141,6 +148,18 @@ pub fn unknown_variables(text: &str) -> Vec<String> {
         }
     });
     unknown
+}
+
+/// Whether `text` uses `variable`, escaped occurrences aside - what the
+/// startup-prompt editor checks to warn that `{{clipboard}}` is empty there.
+pub fn uses_variable(text: &str, variable: PromptVariable) -> bool {
+    let mut used = false;
+    scan(text, |piece| {
+        if matches!(piece, Piece::Variable(found) if found == variable) {
+            used = true;
+        }
+    });
+    used
 }
 
 enum Piece<'a> {

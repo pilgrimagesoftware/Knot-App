@@ -35,6 +35,10 @@ pub fn resolve_startup_prompt(startup: Option<&StartupPrompt>, library: &[Prompt
 
 /// What an agent contributes to its own [`PromptContext`]; the branch and
 /// the date are read by [`read_context`].
+///
+/// `clipboard` is captured by the caller on the UI thread, when the user
+/// chooses a prompt to insert. A startup prompt leaves it empty: it is sent
+/// unattended, and the clipboard may hold a secret.
 #[derive(Debug, Clone, Default)]
 pub struct ContextSource {
     pub agent_name: String,
@@ -42,6 +46,7 @@ pub struct ContextSource {
     pub agent_type: String,
     pub folder:     String,
     pub workspace:  Option<String>,
+    pub clipboard:  String,
 }
 
 /// The context for `source`, reading its folder's branch and today's date.
@@ -55,7 +60,8 @@ pub fn read_context(source: ContextSource) -> PromptContext {
                     folder: source.folder,
                     workspace: source.workspace.unwrap_or_default(),
                     branch,
-                    date: today() }
+                    date: today(),
+                    clipboard: source.clipboard }
 }
 
 /// The folder's current branch; the short commit id when HEAD is detached;
