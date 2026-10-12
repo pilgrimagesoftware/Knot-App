@@ -13,13 +13,13 @@
 
 ## 3. Insert Prompt picker
 
-- [ ] 3.1 Add `panel/input/prompt_picker.rs`, modeled on `config_select.rs`: the button in the control bar (hidden for shell companions), a popover with search, the filtered list, keyboard navigation, and the empty-library row that opens the Prompts window; verify `make size-check` and `make declared-check` pass
-- [ ] 3.2 On choosing a prompt, expand into the composer's current selection or caret through 2.1, then refocus the composer with the caret after the insertion; verify window tests for the "Insert at the caret", "Replace a selection", "Filtering", "Empty library" and "Dismissing changes nothing" scenarios
+- [x] 3.1 Add `panel/input/prompt_picker.rs`, modeled on `config_select.rs`: the button in the control bar (hidden for shell companions), a popover with search, the filtered list, keyboard navigation, and the empty-library row that opens the Prompts window; verify `make size-check` and `make declared-check` pass
+- [x] 3.2 On choosing a prompt, expand into the composer's current selection or caret through 2.1, then refocus the composer with the caret after the insertion; verify window tests for the "Insert at the caret", "Replace a selection", "Filtering", "Empty library" and "Dismissing changes nothing" scenarios
 
 ## 4. Shortcut
 
-- [ ] 4.1 Add `Shortcut::InsertPrompt` with default `alt-cmd-i` and an `InsertPrompt` action in `crates/knot/src/keymap/`, plus its Keyboard-tab row and l10n; first confirm with `grep -rn "alt-i\|alt-cmd-i\|cmd-alt-i" crates` that the chord is free; verify tests for the three `keybindings` scenarios, alongside `crates/knot/src/tests/settings_keyboard.rs`
-- [ ] 4.2 Handle `InsertPrompt` in the focused panel composer by opening its picker, and do nothing elsewhere; verify with a window test
+- [x] 4.1 Add `Shortcut::InsertPrompt` with default `alt-cmd-i` and an `InsertPrompt` action in `crates/knot/src/keymap/`, plus its Keyboard-tab row and l10n; first confirm with `grep -rn "alt-i\|alt-cmd-i\|cmd-alt-i" crates` that the chord is free; verify tests for the three `keybindings` scenarios, alongside `crates/knot/src/tests/settings_keyboard.rs`
+- [x] 4.2 Handle `InsertPrompt` in the focused panel composer by opening its picker, and do nothing elsewhere; verify with a window test
 
 ## 5. Integration
 
