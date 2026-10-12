@@ -35,4 +35,6 @@ pub use registration::{
     resume_registration_prompt,
 };
 pub use startup::{ContextSource, read_context, resolve_startup_prompt};
-pub use variables::{PromptContext, PromptVariable, UnknownVariable, expand, unknown_variables};
+pub use variables::{
+    PromptContext, PromptVariable, UnknownVariable, expand, unknown_variables, uses_variable,
+};

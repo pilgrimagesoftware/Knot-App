@@ -200,11 +200,13 @@ async fn pty_session_output_is_scanned_for_pull_requests() {
     let mut session =
         TerminalSession::spawn_pty(&config, EventSink::default(), |_| {}, |_| {}).unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command:
-                                     "printf 'https://github.com/acme/widget/pull/42\\n'"
-                                         .to_string(), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: "printf 'https://github.com/acme/widget/pull/42\\n'"
+                .to_string(),
+        })
+        .unwrap();
 
     let deadline = Instant::now() + PTY_TIMEOUT;
     let mut urls = Vec::new();
@@ -222,9 +224,9 @@ async fn pty_session_output_is_scanned_for_pull_requests() {
 }
 
 /// Dotfiles opt out of prompt daemons by testing `KNOT_AGENT`
-/// (`docs/agent-shells.md`), so it has to reach the agent's shell. The
-/// format string keeps the echoed command from matching: only the output
-/// can contain the value.
+/// (`docs/site/latest/reference/agent-shells.md`), so it has to reach the
+/// agent's shell. The format string keeps the echoed command from matching:
+/// only the output can contain the value.
 #[tokio::test]
 async fn the_agent_shell_is_marked_as_a_knot_agent() {
     use crate::consts::{KNOT_AGENT_ENV, KNOT_AGENT_VALUE};
@@ -240,10 +242,12 @@ async fn the_agent_shell_is_marked_as_a_knot_agent() {
                                                  },
                                                  |_| {}).unwrap();
 
-    session.start(&SessionPlan { agent_command:          String::new(),
-                                 initialization_command:
-                                     format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""), })
-           .unwrap();
+    session
+        .start(&SessionPlan {
+            agent_command: String::new(),
+            initialization_command: format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""),
+        })
+        .unwrap();
 
     let expected = format!("agent=[{KNOT_AGENT_VALUE}]");
     let deadline = Instant::now() + PTY_TIMEOUT;

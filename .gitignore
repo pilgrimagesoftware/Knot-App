@@ -30,5 +30,6 @@ Package.resolved
 
 # Build artifacts
 build/
+docs/site/_site/
 Vendor/libghostty/lib/libghostty.a
 Vendor/libghostty/VERSION

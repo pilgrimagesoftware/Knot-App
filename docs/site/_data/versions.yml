@@ -1,0 +1,48 @@
+latest: latest
+versions:
+  - id: latest
+    label: Latest
+    path: /latest/
+    pages:
+      - index
+      - install
+      - workspaces
+      - agents
+      - coordination
+      - git-worktrees
+      - settings
+      - personas-prompts
+      - reference/agent-cli-arguments
+      - reference/agent-shells
+      - reference/keybindings
+    nav:
+      - title: Overview
+        path: ""
+      - title: Installation
+        path: install/
+      - title: Workspaces
+        path: workspaces/
+      - title: Agents
+        path: agents/
+      - title: Coordination
+        path: coordination/
+      - title: Git and worktrees
+        path: git-worktrees/
+      - title: Settings
+        path: settings/
+      - title: Personas and prompts
+        path: personas-prompts/
+      - title: Agent CLI arguments
+        path: reference/agent-cli-arguments/
+      - title: Agent shells
+        path: reference/agent-shells/
+      - title: Keybindings
+        path: reference/keybindings/
+  - id: v0.1
+    label: v0.1
+    path: /v0.1/
+    pages:
+      - index
+    nav:
+      - title: Overview
+        path: ""

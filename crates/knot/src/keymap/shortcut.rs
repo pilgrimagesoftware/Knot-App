@@ -14,17 +14,19 @@ pub(crate) enum Shortcut {
     OpenCommandCenter,
     JumpToBottom,
     ToggleArtifacts,
+    InsertPrompt,
 }
 
 impl Shortcut {
     /// In the order the Keyboard settings pane lists them.
-    pub(crate) const ALL: [Shortcut; 8] = [Shortcut::SelectWorkspace,
+    pub(crate) const ALL: [Shortcut; 9] = [Shortcut::SelectWorkspace,
                                            Shortcut::SelectAgent,
                                            Shortcut::FocusAgentInput,
                                            Shortcut::ToggleDashboard,
                                            Shortcut::TogglePullRequests,
                                            Shortcut::JumpToBottom,
                                            Shortcut::ToggleArtifacts,
+                                           Shortcut::InsertPrompt,
                                            Shortcut::OpenCommandCenter];
 
     pub(crate) fn label_key(self) -> &'static str {
@@ -37,6 +39,7 @@ impl Shortcut {
             Shortcut::OpenCommandCenter => "keymap.shortcut.open_command_center",
             Shortcut::JumpToBottom => "keymap.shortcut.jump_to_bottom",
             Shortcut::ToggleArtifacts => "keymap.shortcut.toggle_artifacts",
+            Shortcut::InsertPrompt => "keymap.shortcut.insert_prompt",
         }
     }
 
@@ -75,6 +78,9 @@ impl Shortcut {
             // A for Artifacts, on the ⌥⌘ the other panel toggles use. Not
             // cmd-shift-a, which is the permission prompt's fixed Allow.
             Shortcut::ToggleArtifacts => "cmd-alt-a",
+            // I for Insert. Unbound anywhere else in the app, and the
+            // composer, which has focus when this applies, binds no ⌥⌘ chord.
+            Shortcut::InsertPrompt => "cmd-alt-i",
             Shortcut::SelectWorkspace | Shortcut::SelectAgent => return None,
         };
         Chord::parse(source)

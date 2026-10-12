@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
+    <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Adamina&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap">
+    <script>document.documentElement.dataset.theme = localStorage.getItem("knot-docs-theme") || "system";</script>
+    <style>body { font-family: Adamina, Georgia, serif; } h1, h2, h3, h4, h5, h6, .brand, .sidebar, .version-picker, .appearance-picker { font-family: Manrope, sans-serif; } code, pre { font-family: MesloLGS, "MesloLGS NF", Menlo, monospace; } .sidebar { display: flex; flex-direction: column; gap: .65rem; } .sidebar a { display: block; } .header-logo { height: 2rem; object-fit: contain; width: 2rem; } html[data-theme="dark"] { --surface: #111827; --sidebar: #1f2937; --text: #f8fafc; --muted: #cbd5e1; --border: #334155; } @media (prefers-color-scheme: dark) { html[data-theme="system"] { --surface: #111827; --sidebar: #1f2937; --text: #f8fafc; --muted: #cbd5e1; --border: #334155; } } .appearance-picker { color: var(--muted); font-size: .85rem; font-weight: 600; } select { background: var(--surface); color: var(--text); } option { background: var(--surface); color: var(--text); }</style>
+  </head>
+  <body>
+    {% assign selected_version = page.version | default: site.data.versions.latest %}
+    {% assign version_path = '/latest/' %}
+    {% assign version_nav = nil %}
+    {% for version in site.data.versions.versions %}
+      {% if version.id == selected_version %}
+        {% assign version_path = version.path %}
+        {% assign version_nav = version.nav %}
+      {% endif %}
+    {% endfor %}
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="{{ version_path | relative_url }}" aria-label="Knot documentation home"><img class="header-logo" src="{{ '/assets/icons/knot-icon.png' | relative_url }}" alt=""><span>Knot</span></a>
+      <div>{% include version-selector.html %}<label class="appearance-picker" for="appearance-select">Appearance <select id="appearance-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+    </header>
+    <div class="shell">
+      <nav class="sidebar" aria-label="Documentation">
+        {% for item in version_nav %}
+          {% assign item_url = version_path | append: item.path %}
+          <a href="{{ item_url | relative_url }}">{{ item.title }}</a>
+        {% endfor %}
+      </nav>
+      <main id="content">{{ content }}</main>
+    </div>
+  </body>
+  <script>const appearance = document.getElementById("appearance-select"); appearance.value = document.documentElement.dataset.theme; appearance.addEventListener("change", () => { document.documentElement.dataset.theme = appearance.value; localStorage.setItem("knot-docs-theme", appearance.value); });</script>
+</html>

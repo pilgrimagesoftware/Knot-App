@@ -26,6 +26,7 @@ fn description_key(variable: PromptVariable) -> &'static str {
         PromptVariable::Workspace => "prompt_variables.workspace",
         PromptVariable::Branch => "prompt_variables.branch",
         PromptVariable::Date => "prompt_variables.date",
+        PromptVariable::Clipboard => "prompt_variables.clipboard",
     }
 }
 
@@ -69,6 +70,14 @@ pub(crate) fn unknown_variables_warning(text: &str) -> Option<String> {
                          })
 }
 
+/// The warning to show under a custom startup prompt that uses
+/// `{{clipboard}}`, which is always empty there. A warning, never an error:
+/// the prompt still saves.
+pub(crate) fn startup_clipboard_warning(text: &str) -> Option<String> {
+    knot_agent_launch::uses_variable(text, PromptVariable::Clipboard)
+        .then(|| knot_core::l10n::t("prompt_variables.clipboard_in_startup"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,6 +89,18 @@ mod tests {
             assert_ne!(knot_core::l10n::t(key), key, "{key} must resolve");
             assert!(variable_label(variable).starts_with(&variable.placeholder()));
         }
+    }
+
+    /// The spec's "Startup prompt editor warns" scenario: `{{clipboard}}`
+    /// in a startup prompt draws a warning that resolves.
+    #[test]
+    fn a_startup_prompt_using_the_clipboard_is_warned() {
+        assert_eq!(startup_clipboard_warning("Context: {{branch}}"), None);
+        assert_eq!(startup_clipboard_warning(r"\{{clipboard}}"), None);
+        let key = "prompt_variables.clipboard_in_startup";
+        assert_eq!(startup_clipboard_warning("Context: {{clipboard}}").as_deref(),
+                   Some(knot_core::l10n::t(key).as_str()));
+        assert_ne!(knot_core::l10n::t(key), key, "{key} must resolve");
     }
 
     #[test]

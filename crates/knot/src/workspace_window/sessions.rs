@@ -267,6 +267,7 @@ impl WorkspaceWindow {
         // Both dropdowns and both of their subscriptions, keyed by agent -
         // see `forget_panel_selectors`.
         self.forget_panel_selectors(id);
+        self.forget_prompt_picker(id);
         // Whichever target it named: the agent is gone, so a later frame
         // must read the next selection as a transition rather than as the
         // same answer it already stored.

@@ -7,7 +7,8 @@ fn context() -> PromptContext {
                     folder:     "/src/knot".into(),
                     workspace:  "Main".into(),
                     branch:     "471-restart".into(),
-                    date:       "2026-09-25".into(), }
+                    date:       "2026-09-25".into(),
+                    clipboard:  "panic at main.rs:12".into(), }
 }
 
 #[test]
@@ -30,7 +31,8 @@ fn each_variable_expands_to_its_value() {
                  ("{{folder.name}}", "knot"),
                  ("{{workspace}}", "Main"),
                  ("{{branch}}", "471-restart"),
-                 ("{{date}}", "2026-09-25")];
+                 ("{{date}}", "2026-09-25"),
+                 ("{{clipboard}}", "panic at main.rs:12")];
     for (text, expected) in cases {
         assert_eq!(expand(text, &ctx), expected, "{text}");
     }
@@ -79,4 +81,19 @@ fn unknown_names_are_reported_once_in_order() {
     assert_eq!(unknown_variables("{{foldr}} {{ issue }} {{foldr}} {{branch}}"),
                ["foldr", "issue"]);
     assert!(unknown_variables(r"\{{foldr}} {{folder}} {{ unclosed").is_empty());
+}
+
+#[test]
+fn clipboard_braces_are_not_expanded() {
+    let ctx = PromptContext { clipboard: "{{branch}}".into(),
+                              ..context() };
+    assert_eq!(expand("Explain: {{clipboard}}", &ctx),
+               "Explain: {{branch}}");
+}
+
+#[test]
+fn uses_variable_skips_escaped_and_unknown_names() {
+    assert!(uses_variable("Context: {{ clipboard }}", PromptVariable::Clipboard));
+    assert!(!uses_variable(r"\{{clipboard}} {{clipboards}}", PromptVariable::Clipboard));
+    assert!(!uses_variable("{{branch}}", PromptVariable::Clipboard));
 }

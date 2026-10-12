@@ -147,6 +147,17 @@ app's xcodebuild targets as well - which is why the Rust ones were all prefixed
 `rust-` - but those were removed along with the Swift release workflow they
 fed. Build or test the Swift reference through `Skwad.xcodeproj` in Xcode.
 
+## Documentation 
+
+- Docs MUST be kept up to date; if a new feature is added, documentation MUST be 
+  written for it, with clear, concise examples. Avoid contrived tutorials.
+- Docs will be added to `docs/site/`.
+- Docs will be kept logically organized.
+- When documentation is published, it MUST be versioned, with the latest version
+  showing by default.
+- Documentation MUST include installation instructions, including gotchas, caveats,
+  and workarounds for platform issues, such as macOS quarantine.
+
 ## Releases
 
 `prepare-release.yml` / `tag-release.yml` / `release.yml` automate the
@@ -164,7 +175,7 @@ process: `docs/adr/README.md`. `/adr "<title>"` scaffolds a new record from
 
 ## Conventions
 
-- **No `.rs` file over 700 lines.** Enforced by `make size-check` in CI. Split
+- **No `.rs` file over 500 lines.** Enforced by `make size-check` in CI. Split
   by concern, not by line count; move colocated tests to a sibling `tests.rs`
   first. Do not raise the limit to make a change fit.
 - **`mod.rs` declares; it does not implement.** Module declarations,
