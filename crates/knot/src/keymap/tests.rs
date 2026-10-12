@@ -52,6 +52,7 @@ fn the_defaults_are_the_documented_chords() {
     assert_eq!(labels(Shortcut::OpenCommandCenter), ["⌥⌘0"]);
     assert_eq!(labels(Shortcut::JumpToBottom), ["⌃⌘↓"]);
     assert_eq!(labels(Shortcut::ToggleArtifacts), ["⌥⌘A"]);
+    assert_eq!(labels(Shortcut::InsertPrompt), ["⌥⌘I"]);
 }
 
 #[test]
