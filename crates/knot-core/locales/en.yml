@@ -999,3 +999,5 @@ prompt_variables:
   workspace: "the workspace's name"
   branch: "the folder's current branch"
   date: "today's date"
+  clipboard: "the clipboard's text"
+  clipboard_in_startup: "{{clipboard}} is always empty in a startup prompt, which is sent without you choosing it."

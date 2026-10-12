@@ -66,10 +66,13 @@ impl AgentEditor {
     }
 
     /// The custom text field, the variable list that inserts into it, and
-    /// the warning naming any variable it does not recognise.
+    /// the warnings naming any variable it does not recognise and flagging
+    /// `{{clipboard}}`, which is always empty in a startup prompt.
     fn custom_startup_prompt(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let text = self.startup_custom_input.read(cx).value().to_string();
-        let warning = crate::prompt_text::unknown_variables_warning(&text);
+        let warnings = [crate::prompt_text::unknown_variables_warning(&text),
+                        crate::prompt_text::startup_clipboard_warning(&text)];
+        let warning_color = cx.theme().warning;
         let target = self.startup_custom_input.clone();
         let insert = Button::new("agent-startup-prompt-variables")
             .label(knot_core::l10n::t("prompt_variables.insert"))
@@ -78,11 +81,11 @@ impl AgentEditor {
         v_flex().gap_1()
                 .child(Textarea::new(&self.startup_custom_input).h(gpui_kit::px(96.)))
                 .child(div().child(insert))
-                .children(warning.map(|warning| {
-                                     div().text_xs()
-                                          .text_color(cx.theme().warning)
-                                          .child(warning)
-                                 }))
+                .children(warnings.into_iter().flatten().map(move |warning| {
+                                                            div().text_xs()
+                                                                 .text_color(warning_color)
+                                                                 .child(warning)
+                                                        }))
     }
 }
 
