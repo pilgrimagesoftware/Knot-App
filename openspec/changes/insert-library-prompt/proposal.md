@@ -70,4 +70,5 @@ None.
   a new picker module beside `config_select.rs`.
 - `crates/knot/src/keymap/` and `knot-core` settings: the `InsertPrompt`
   shortcut, its default and its Keyboard-tab row.
+- `docs/site/latest/agents.md`: the new control, shortcut and variable.
 - No saved-format change. `prompts.json` stores variables as typed.
