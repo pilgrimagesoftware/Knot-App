@@ -37,6 +37,10 @@ impl WorkspaceWindow {
     /// What `agent` contributes to the context a prompt's variables expand
     /// with - everything but the branch and the date, which
     /// `knot_agent_launch::read_context` reads off this thread.
+    ///
+    /// The clipboard is left empty, which is what a startup prompt must get:
+    /// it is sent unattended, and the clipboard may hold a secret. Inserting
+    /// a prompt into a composer fills it in when the user chooses one.
     pub(in crate::workspace_window) fn prompt_context_source(
         &self, agent: &Agent)
         -> knot_agent_launch::ContextSource {
@@ -50,7 +54,8 @@ impl WorkspaceWindow {
                                            agent_id: agent.id.to_string(),
                                            agent_type: agent.agent_type.clone(),
                                            folder: agent.folder.clone(),
-                                           workspace }
+                                           workspace,
+                                           clipboard: String::new() }
     }
 
     /// Moves every `Ready` session's expanded startup prompt onto its agent's

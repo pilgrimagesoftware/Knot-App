@@ -8,12 +8,15 @@
 //! - [`controls`] draws the control bar and the session-config selectors.
 //! - [`config_select`] backs the two selectors that scroll and search, and
 //!   names which ones those are.
+//! - [`prompt_picker`] is the control bar's Insert Prompt button and the
+//!   searchable prompt list it opens.
 
 mod area;
 mod chips;
 mod config_select;
 mod controls;
 mod entry;
+mod prompt_picker;
 mod queued;
 
 pub(crate) use config_select::ConfigSelectorDelegate;
@@ -28,6 +31,9 @@ pub(in crate::workspace_window) use config_select::SelectorKey;
 pub(crate) use config_select::config_selector_items;
 #[cfg(test)]
 pub(crate) use config_select::new_config_select_state;
+#[cfg(test)]
+pub(in crate::workspace_window) use prompt_picker::PickerRows;
+pub(in crate::workspace_window) use prompt_picker::PromptPicker;
 
 /// The permission-mode selector's element id - the one selector with
 /// risk-tinted labels and a keyboard action of its own, so it needs naming

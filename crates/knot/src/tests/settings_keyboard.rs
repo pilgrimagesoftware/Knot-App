@@ -221,3 +221,25 @@ fn an_armed_recorder_takes_the_next_key_press(cx: &mut TestAppContext) {
           assert_eq!(fixture.view.read(cx).keyboard_state().recording, None);
       });
 }
+
+/// `keybindings`' "Customized key" for Insert Prompt: it is listed on the
+/// Keyboard tab like the others, and rebinding it moves the shortcut.
+#[gpui_kit::test]
+fn insert_prompt_can_be_rebound(cx: &mut TestAppContext) {
+    let fixture = settings_window(cx);
+    cx.update(|cx| assert!(top_action_is(cx, "cmd-alt-i", &InsertPrompt)));
+
+    record(&fixture, Shortcut::InsertPrompt, "ctrl-cmd-p", cx);
+
+    cx.update(|cx| {
+          assert_eq!(crate::settings_global::read(cx).keybindings
+                                                     .insert_prompt
+                                                     .as_deref(),
+                     Some("ctrl-cmd-p"));
+          assert!(top_action_is(cx, "ctrl-cmd-p", &InsertPrompt));
+          assert!(!top_action_is(cx, "cmd-alt-i", &InsertPrompt),
+                  "the default chord still fires");
+      });
+    assert!(persisted(&fixture.dir, "insertPrompt"),
+            "the change was not written");
+}

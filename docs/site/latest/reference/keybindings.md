@@ -31,12 +31,15 @@ Selecting an agent acts only on the focused workspace window, and does nothing i
 | --- | --- |
 | ⌘L | Focus the selected agent's input. |
 | ⌃⌘↓ | Jump to the bottom of the conversation and follow new output. |
+| ⌥⌘I | Insert a library prompt into the focused composer. |
 
 Focus agent input moves keyboard focus to the selected agent's input in the focused workspace window: the composer for a panel-mode agent, the terminal for a terminal-mode agent. It works from anywhere in the window, including a search field or the git panel, and leaves a Dashboard or Pull Requests panel first.
 
 Jump to bottom scrolls the selected agent's conversation to its latest output and resumes following new output, the same as the conversation's "Scroll to latest" control. It applies to a panel-mode agent; a terminal-mode pane always shows the bottom of its output, so the shortcut does nothing there, and it does nothing while a Dashboard or Pull Requests panel is showing.
 
-With no agent selected, or outside a workspace window, both shortcuts do nothing.
+Insert prompt opens the focused panel composer's Insert Prompt list ([Prompts in the panel]({{ '/latest/personas-prompts/' | relative_url }})). It acts only while a composer has focus; anywhere else, such as the agent list, it does nothing.
+
+With no agent selected, or outside a workspace window, these shortcuts do nothing.
 
 ## Panels
 

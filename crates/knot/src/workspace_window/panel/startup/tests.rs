@@ -196,3 +196,24 @@ fn a_startup_request_resolves_the_library_and_names_the_workspace(cx: &mut TestA
           assert!(view.startup_request(&none, cx).is_none());
       });
 }
+
+/// A startup prompt never reads the clipboard: whatever it holds, the agent
+/// is sent the variable as empty.
+#[gpui_kit::test]
+fn a_startup_prompt_expands_the_clipboard_to_nothing(cx: &mut TestAppContext) {
+    let fixture = open_window(cx, StartupPrompt::custom("Context: {{clipboard}}"));
+    let agent = fixture.agent;
+    cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string("secret".into()));
+
+    let request = cx.update(|cx| {
+                        let view = fixture.view.read(cx);
+                        let agent = view.store.lock().agent(agent).cloned().unwrap();
+                        view.startup_request(&agent, cx)
+                            .expect("a custom prompt resolves")
+                    });
+
+    assert_eq!(request.context.clipboard, "");
+    let context = knot_agent_launch::read_context(request.context);
+    assert_eq!(knot_agent_launch::expand(&request.text, &context),
+               "Context: ");
+}
