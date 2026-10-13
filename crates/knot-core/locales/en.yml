@@ -566,6 +566,14 @@ workspace_manager:
   error_missing: "Workspace no longer exists."
   error_last_workspace: "At least one workspace must remain."
 
+autopilot:
+  ask:
+    title_binary: "Confirmation — %{name}"
+    title_open: "Question — %{name}"
+    dismiss: "Dismiss"
+    switch: "Switch to Agent"
+    continue: "Yes, Continue"
+
 broadcast:
   window_title: "Broadcast to All Agents"
   placeholder: "Message every agent in this workspace…"

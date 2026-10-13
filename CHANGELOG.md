@@ -1,4 +1,17 @@
 
+## 1.30.0 - 2026-10-13
+
+### Added
+- Add classification, dispatch matrix, and LLM-call crate
+- Trigger autopilot classification on completed-turn hooks
+- Wire autopilot effects into the workspace window and settings pane
+
+
+### Documentation
+- Document the Autopilot decision loop
+
+
+
 ## 1.29.0 - 2026-10-12
 
 ### Added

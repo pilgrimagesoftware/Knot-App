@@ -1185,6 +1185,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "cookie"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
+dependencies = [
+ "percent-encoding",
+ "time",
+ "version_check",
+]
+
+[[package]]
+name = "cookie_store"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15b2c103cf610ec6cae3da84a766285b42fd16aad564758459e6ecf128c75206"
+dependencies = [
+ "cookie",
+ "document-features",
+ "idna",
+ "indexmap",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "time",
+ "url",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3758,7 +3787,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "knot"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "gpui-kit",
  "gpui-terminal",
@@ -3766,6 +3795,7 @@ dependencies = [
  "knot-activity",
  "knot-agent-launch",
  "knot-agents",
+ "knot-autopilot",
  "knot-core",
  "knot-discovery",
  "knot-forge",
@@ -3798,7 +3828,7 @@ dependencies = [
 
 [[package]]
 name = "knot-acp"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "parking_lot",
  "serde",
@@ -3810,7 +3840,7 @@ dependencies = [
 
 [[package]]
 name = "knot-activity"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-agents",
  "knot-core",
@@ -3821,7 +3851,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agent-launch"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-acp",
  "knot-core",
@@ -3835,7 +3865,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agents"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3845,8 +3875,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "knot-autopilot"
+version = "1.30.0"
+dependencies = [
+ "knot-core",
+ "serde",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
 name = "knot-core"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "arc-swap",
  "directories",
@@ -3862,7 +3902,7 @@ dependencies = [
 
 [[package]]
 name = "knot-discovery"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
@@ -3873,7 +3913,7 @@ dependencies = [
 
 [[package]]
 name = "knot-forge"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3885,7 +3925,7 @@ dependencies = [
 
 [[package]]
 name = "knot-git"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "insta",
  "tempfile",
@@ -3894,7 +3934,7 @@ dependencies = [
 
 [[package]]
 name = "knot-history"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "directories",
  "parking_lot",
@@ -3908,7 +3948,7 @@ dependencies = [
 
 [[package]]
 name = "knot-library"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3920,7 +3960,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3940,7 +3980,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-probe"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3951,12 +3991,13 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-tools"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "async-trait",
  "knot-activity",
  "knot-agent-launch",
  "knot-agents",
+ "knot-autopilot",
  "knot-core",
  "knot-discovery",
  "knot-git",
@@ -3976,7 +4017,7 @@ dependencies = [
 
 [[package]]
 name = "knot-messaging"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-agents",
  "parking_lot",
@@ -3987,7 +4028,7 @@ dependencies = [
 
 [[package]]
 name = "knot-processes"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "parking_lot",
  "tempfile",
@@ -3996,7 +4037,7 @@ dependencies = [
 
 [[package]]
 name = "knot-subagents"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "serde_json",
  "thiserror 2.0.21",
@@ -4005,7 +4046,7 @@ dependencies = [
 
 [[package]]
 name = "knot-tasks"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -4016,7 +4057,7 @@ dependencies = [
 
 [[package]]
 name = "knot-terminal"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "gpui-terminal",
  "knot-acp",
@@ -4034,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "knot-watch"
-version = "1.29.0"
+version = "1.30.0"
 dependencies = [
  "notify 8.2.0",
  "parking_lot",
@@ -8028,10 +8069,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a7ac20be9b7726e0bbdbf974c059676d9acb1cd414961f570a4e8231cacd7fc"
 dependencies = [
  "base64 0.23.1",
+ "cookie_store",
  "log",
  "percent-encoding",
  "rustls",
  "rustls-pki-types",
+ "serde",
+ "serde_json",
  "ureq-proto",
  "utf8-zero",
  "webpki-roots",

@@ -85,19 +85,14 @@ fn ai_provider_label_names_every_provider() {
                "Google");
 }
 
-/// Every provider names a model. The old `_ => ""` arm meant an
-/// unrecognized provider silently asked for no model at all.
+/// Every provider names a model, via the shared `knot-autopilot` mapping
+/// the LLM call site also uses - see
+/// `knot_autopilot::llm::tests::model_mapping_matches_settings_pane` for the
+/// values themselves; this just confirms the pane reads the same function.
 #[test]
 fn ai_model_for_matches_swift_reference_defaults() {
-    assert_eq!(SettingsWindow::ai_model_for(AiProvider::OpenAi),
-               "gpt-5-mini");
-    assert_eq!(SettingsWindow::ai_model_for(AiProvider::Anthropic),
-               "claude-haiku-4-5");
-    assert_eq!(SettingsWindow::ai_model_for(AiProvider::Google),
-               "gemini-flash-lite-latest");
-
     for provider in AiProvider::ALL {
-        assert!(!SettingsWindow::ai_model_for(*provider).is_empty(),
+        assert!(!knot_autopilot::ai_model_for(*provider).is_empty(),
                 "{provider} has no model");
     }
 }

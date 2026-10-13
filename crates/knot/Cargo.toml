@@ -1,6 +1,6 @@
 [package]
 name = "knot"
-version = "1.29.0"
+version = "1.30.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -14,6 +14,7 @@ knot-agent-launch = { path = "../knot-agent-launch" }
 knot-core = { path = "../knot-core" }
 knot-library = { path = "../knot-library" }
 knot-agents = { path = "../knot-agents" }
+knot-autopilot = { path = "../knot-autopilot" }
 knot-forge = { path = "../knot-forge" }
 knot-git = { path = "../knot-git" }
 knot-mcp-probe = { path = "../knot-mcp-probe" }

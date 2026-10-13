@@ -50,12 +50,14 @@ fn a_disabled_server_binds_nothing_and_supervises_nothing() {
     let port = settings.mcp_server_port;
 
     let store = Arc::new(Mutex::new(crate::app_state::build_agent_store(&settings)));
+    let queues = crate::app_support::McpQueues { awaiting_input: Arc::new(Mutex::new(Vec::new())),
+                                                 activation:     Arc::new(Mutex::new(Vec::new())),
+                                                 autopilot:      Arc::new(Mutex::new(Vec::new())), };
     let (_stop, status) = start_mcp_server(store,
                                            knot_core::SharedSettings::new(settings),
                                            Arc::new(knot_messaging::QueuedNotifier::new()),
                                            Arc::new(Mutex::new(knot_messaging::MessageStore::new())),
-                                           Arc::new(Mutex::new(Vec::new())),
-                                           Arc::new(Mutex::new(Vec::new())),
+                                           queues,
                                            Arc::default());
 
     // Long enough for a supervisor that was going to start to have bound.
