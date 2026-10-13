@@ -17,6 +17,7 @@ tokio.workspace = true
 async-trait.workspace = true
 knot-mcp = { path = "../knot-mcp" }
 knot-core = { path = "../knot-core" }
+knot-autopilot = { path = "../knot-autopilot" }
 knot-agents = { path = "../knot-agents" }
 knot-activity = { path = "../knot-activity" }
 knot-messaging = { path = "../knot-messaging" }
