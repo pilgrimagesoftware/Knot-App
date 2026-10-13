@@ -4,6 +4,7 @@
 
 mod agents;
 mod args;
+mod autopilot;
 mod catalog;
 mod consts;
 mod error;
@@ -36,6 +37,7 @@ use parking_lot::Mutex;
 use tokio::sync::watch;
 use uuid::Uuid;
 
+pub use crate::autopilot::{AutopilotEffect, AutopilotQueue};
 pub use crate::error::{Result, ToolError};
 use crate::lookup::state_string;
 pub use crate::tasks::{GraphStore, plan_mermaid, plan_tasks};
@@ -64,6 +66,7 @@ pub struct McpToolCatalog {
     trackers:       Mutex<HashMap<Uuid, Tracker>>,
     awaiting_input: Mutex<Option<AwaitingInputQueue>>,
     activation:     Mutex<Option<ActivationQueue>>,
+    autopilot:      Mutex<Option<crate::autopilot::AutopilotQueue>>,
     /// Committed task plans, one per owning agent. Runtime state, like the
     /// message queue: not persisted, gone with the process.
     graphs:         Mutex<tasks::GraphStore>,
@@ -94,6 +97,7 @@ impl McpToolCatalog {
                trackers: Mutex::new(HashMap::new()),
                awaiting_input: Mutex::new(None),
                activation: Mutex::new(None),
+               autopilot: Mutex::new(None),
                graphs: Mutex::new(tasks::GraphStore::new()),
                subagents: None }
     }
@@ -176,10 +180,8 @@ impl McpToolCatalog {
                                                })),
                                on_awaiting_input: awaiting_input.map(|queue| {
                                                                     Box::new(move |message| {
-                    {
-                        let mut queue = queue.lock();
-                        queue.push((id, message));
-                    }
+                    let mut queue = queue.lock();
+                    queue.push((id, message));
                 }) as Box<dyn FnMut(Option<String>) + Send>
                                                                 }),
                                ..Default::default() };
@@ -296,6 +298,16 @@ impl AgentHookHandler for McpToolCatalog {
            && let Some(subagents) = &self.subagents
         {
             subagents.lock().clear(id);
+        }
+        // After the state write above: classification runs off this
+        // thread and, if it lands on an effect, re-marks the agent
+        // `Input` itself - starting from `Idle` here is what that
+        // transition is relative to.
+        if matches!(state, AgentState::Idle) {
+            self.maybe_trigger_autopilot(id,
+                                         &request.agent,
+                                         request.hook.as_deref(),
+                                         &request.payload);
         }
         Ok(serde_json::json!({"success": true}))
     }
@@ -416,7 +428,9 @@ mod tests {
     #[tokio::test]
     async fn successful_agent_mutation_persists_durable_state() {
         let dir = tempdir().unwrap();
-        let cat = catalog().with_settings(knot_core::SharedSettings::new(knot_core::Settings::with_store_root(dir.path())));
+        let cat = catalog().with_settings(knot_core::SharedSettings::new(
+            knot_core::Settings::with_store_root(dir.path()),
+        ));
         let id = cat.agents
                     .lock()
                     .create("/tmp/persisted", knot_agents::CreateOptions::default());

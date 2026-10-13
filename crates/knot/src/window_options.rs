@@ -201,6 +201,17 @@ pub(crate) fn broadcast_window_options(cx: &App) -> WindowOptions {
                   cx)
 }
 
+/// The Autopilot decision sheet: same shape as the broadcast sheet, titled
+/// with the agent's name rather than fixed text since it is one of several
+/// that can be open at once.
+pub(crate) fn autopilot_decision_window_options(title: impl Into<SharedString>, cx: &App)
+                                                -> WindowOptions {
+    os_bar_window(Some(title.into()),
+                  size(px(480.), px(320.)),
+                  Some(size(px(360.), px(260.))),
+                  cx)
+}
+
 /// The commit window's size. Taller than the broadcast sheet: a commit
 /// message is a subject and a body, and a field too short to show both
 /// encourages the one-line messages the hint argues against.
@@ -235,13 +246,15 @@ pub(crate) fn about_window_options(cx: &App) -> WindowOptions {
 /// box, the window's body does not name itself, and an untitled window is
 /// also left out of the macOS Window menu.
 pub(crate) fn import_window_options(cx: &App) -> WindowOptions {
-    WindowOptions { titlebar: Some(gpui_kit::TitlebarOptions {
-                        title: Some(knot_core::l10n::t("import.title").into()),
-                        ..Default::default()
-                    }),
-                    window_bounds: Some(WindowBounds::centered(size(px(520.), px(600.)), cx)),
-                    window_min_size: Some(size(px(420.), px(360.))),
-                    ..WindowOptions::default() }
+    WindowOptions {
+        titlebar: Some(gpui_kit::TitlebarOptions {
+            title: Some(knot_core::l10n::t("import.title").into()),
+            ..Default::default()
+        }),
+        window_bounds: Some(WindowBounds::centered(size(px(520.), px(600.)), cx)),
+        window_min_size: Some(size(px(420.), px(360.))),
+        ..WindowOptions::default()
+    }
 }
 
 /// Fixed width for the settings window; only height varies per pane.

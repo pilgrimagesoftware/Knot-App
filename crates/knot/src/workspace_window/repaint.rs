@@ -61,6 +61,7 @@ impl WorkspaceWindow {
         // Messages arrive from the MCP server on another thread; this poll
         // is where an agent going idle is noticed.
         self.deliver_inbox_nudges(cx);
+        let autopilot_effects_applied = self.drain_autopilot_effects(cx);
         self.raise_awaiting_notifications(cx);
         self.raise_mcp_failure_notification(cx);
         // Before the repaint checks below, so an agent started here has its
@@ -179,6 +180,7 @@ impl WorkspaceWindow {
            || artifacts_moved
            || documents_landed
            || shell_runs_moved
+           || autopilot_effects_applied
         {
             cx.notify();
         }

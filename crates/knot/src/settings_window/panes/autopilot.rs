@@ -20,16 +20,6 @@ impl SettingsWindow {
         }
     }
 
-    /// Hardcoded model for each AI provider (cheapest/fastest options),
-    /// matching the Swift reference's `AppSettings.aiModel(for:)`.
-    pub(crate) fn ai_model_for(provider: AiProvider) -> &'static str {
-        match provider {
-            AiProvider::OpenAi => "gpt-5-mini",
-            AiProvider::Anthropic => "claude-haiku-4-5",
-            AiProvider::Google => "gemini-flash-lite-latest",
-        }
-    }
-
     pub(crate) fn autopilot_action_label(action: AutopilotAction) -> &'static str {
         match action {
             AutopilotAction::Mark => "Mark conversation",
@@ -90,7 +80,7 @@ impl SettingsWindow {
         let ai_provider = crate::settings_global::read(cx).ai_provider;
         let autopilot_action = crate::settings_global::read(cx).autopilot_action;
         let provider_label = Self::ai_provider_label(ai_provider);
-        let model_name = Self::ai_model_for(ai_provider);
+        let model_name = knot_autopilot::ai_model_for(ai_provider);
         let action_label = Self::autopilot_action_label(autopilot_action);
         let is_custom_action = autopilot_action == AutopilotAction::Custom;
 
@@ -127,17 +117,17 @@ impl SettingsWindow {
                         // Driven off `AiProvider::ALL`, so a new provider
                         // reaches the picker with its variant rather than a
                         // second list.
-                        Self::dropdown("autopilot-provider-picker",
-                                       provider_label,
-                                       AiProvider::ALL.iter()
-                                                      .copied()
-                                                      .map(|value| {
-                                                          (Self::ai_provider_label(value).into(),
-                                                           value)
-                                                      })
-                                                      .collect(),
-                                       settings_window.clone(),
-                                       |view, value, _, cx| view.select_ai_provider(*value, cx)),
+                        Self::dropdown(
+                            "autopilot-provider-picker",
+                            provider_label,
+                            AiProvider::ALL
+                                .iter()
+                                .copied()
+                                .map(|value| (Self::ai_provider_label(value).into(), value))
+                                .collect(),
+                            settings_window.clone(),
+                            |view, value, _, cx| view.select_ai_provider(*value, cx),
+                        ),
                     ))
                     .child(Self::row(
                         knot_core::l10n::t("settings.autopilot.api_key"),
@@ -154,20 +144,19 @@ impl SettingsWindow {
                 crate::controls::group(knot_core::l10n::t("settings.autopilot.action_group"))
                     .child(Self::row(
                         knot_core::l10n::t("settings.autopilot.on_input"),
-                        Self::dropdown("autopilot-action-picker",
-                                       action_label,
-                                       AutopilotAction::ALL.iter()
-                                                           .copied()
-                                                           .map(|value| {
-                                                               (Self::autopilot_action_label(value)
-                                                                    .into(),
-                                                                value)
-                                                           })
-                                                           .collect(),
-                                       settings_window.clone(),
-                                       |view, value, _, cx| {
-                                           view.select_autopilot_action(*value, cx);
-                                       }),
+                        Self::dropdown(
+                            "autopilot-action-picker",
+                            action_label,
+                            AutopilotAction::ALL
+                                .iter()
+                                .copied()
+                                .map(|value| (Self::autopilot_action_label(value).into(), value))
+                                .collect(),
+                            settings_window.clone(),
+                            |view, value, _, cx| {
+                                view.select_autopilot_action(*value, cx);
+                            },
+                        ),
                     ))
                     .children(is_custom_action.then(|| {
                         Self::row(
