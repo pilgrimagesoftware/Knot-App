@@ -19,7 +19,7 @@ when it opens. Switching tabs preserves in-progress text.
 |---|---|
 | General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
 | Coding | Source Folder (current folder, folder picker, clear with confirmation); Agent Options (agent-type picker, per-type options field) |
-| Autopilot | "Enable autopilot" (stores the preference only, runs no decision loop); AI Provider (provider picker, API key field, read-only model name); Action (picker, custom-prompt area shown only for Custom) |
+| Autopilot | "Enable autopilot"; AI Provider (provider picker, API key field, read-only model name); Action (picker - Mark conversation, Ask me, Auto-continue, Custom; custom-prompt area shown only for Custom) |
 | Voice | "Enable voice input"; engine picker (Apple SpeechAnalyzer only, disabled); read-only push-to-talk key, not changeable here; "Auto-insert transcription"; controls disabled while voice input is off |
 | MCP | "Enable MCP server"; port field (default 8766); read-only `/mcp` URL, updated with the port; installation-command generator with copy (offers Claude, Codex, OpenCode, Gemini and Copilot, not Shell) |
 | Appearance | Fonts: one row each for UI, Title and Terminal |
@@ -74,6 +74,50 @@ notification is raised only on the transition into Awaiting input, not on later
 reports, and not for an agent already awaiting input or one currently visible
 in the active workspace. Clicking a notification with a valid agent id brings
 the application to the front.
+
+## Autopilot
+
+Autopilot watches Claude Code and Codex agents for a completed turn and, when
+the agent's last message looks like it needs you, takes the action you've
+configured - so you don't have to babysit every agent waiting on a yes/no.
+It requires an AI provider and API key (OpenAI, Anthropic or Google, each
+called with a fixed, cheap model); with the toggle off, or no key configured,
+nothing is classified and agents behave exactly as they do without Autopilot.
+
+When a watched agent goes idle, its last message is classified into one of
+three kinds:
+
+- **Completed** - the agent finished and reported results. No action is
+  taken.
+- **Binary** - a yes/no confirmation to proceed.
+- **Open** - an open-ended question, a choice between options, or a request
+  for information.
+
+A completed classification never triggers anything, whatever action is
+configured. For the other two, the configured action decides what happens:
+
+| Action | What it does |
+|---|---|
+| Mark conversation | Sets the agent to Awaiting input and raises a notification - the same as if the agent itself had asked. |
+| Ask me | Does the same, and also opens a dialog with the agent's message, a Dismiss and a Switch to Agent button, and - for a binary question only - a default "Yes, Continue" button. |
+| Auto-continue | Sends "yes, continue" for a binary question. An open question can't be auto-answered, so this falls back to Mark conversation. |
+| Custom | Skips classification entirely - see below. |
+
+A classification request that fails (no network, a bad key, an unsupported
+provider) is treated as if the agent had nothing to ask, so a transient
+outage does not start interrupting you on every idle turn.
+
+### Custom action
+
+Custom replaces classification with your own prompt. The agent's last message
+is sent to the configured provider with your prompt appended to a fixed
+system framing that asks for one thing back: the exact text to send to the
+agent, or the word `EMPTY` if nothing should be sent. A blank, whitespace-only
+or `EMPTY` response takes no action; any other response is sent to the agent
+as if you had typed it. An empty custom prompt skips the request and does
+nothing. Unlike plain classification, a failed Custom request falls back to
+Mark conversation rather than staying silent - you've configured *something*
+to happen, so silence there would look broken rather than quiet.
 
 ## Import window
 
@@ -164,6 +208,7 @@ open; Enter Full Screen is the platform's own item.
 - openspec/specs/settings-persistence/spec.md
 - openspec/specs/appearance-mode/spec.md
 - openspec/specs/desktop-notifications/spec.md
+- openspec/specs/autopilot/spec.md
 - openspec/specs/data-import/spec.md
 - openspec/specs/import-ui/spec.md
 - openspec/specs/bug-reporting/spec.md
