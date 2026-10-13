@@ -15,6 +15,7 @@ mod app_log;
 mod app_state;
 mod app_support;
 mod appearance;
+mod autopilot_decision_sheet;
 mod broadcast_sheet;
 mod bug_report;
 mod capped_scroll;

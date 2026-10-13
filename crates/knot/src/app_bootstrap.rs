@@ -24,9 +24,7 @@ use crate::app_state::build_agent_store;
 use crate::app_state::notification_response_agent_id;
 use crate::app_support;
 use crate::app_support::Activation;
-use crate::app_support::ActivationQueue;
 use crate::app_support::AwaitingInput;
-use crate::app_support::AwaitingInputQueue;
 use crate::app_support::apply_visual_identity;
 use crate::app_support::observe_system_appearance;
 use crate::bug_report::register_report_issue_action;
@@ -69,7 +67,7 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
                                settings: knot_core::SharedSettings,
                                notifier: Arc<QueuedNotifier>,
                                messages: Arc<Mutex<knot_messaging::MessageStore>>,
-                               awaiting_input: AwaitingInputQueue, activation: ActivationQueue,
+                               queues: crate::app_support::McpQueues,
                                subagents: crate::app_support::SubagentRegistryHandle)
                                -> (tokio::sync::oneshot::Sender<()>, McpServerStatus) {
     let (stop, stop_rx) = tokio::sync::oneshot::channel();
@@ -106,8 +104,9 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
                 knot_mcp_tools::McpToolCatalog::new(agents, repos_rx, notifier)
                     .with_subagents(Arc::clone(&subagents))
                     .with_message_store(messages)
-                    .with_awaiting_input_queue(awaiting_input)
-                    .with_activation_queue(activation)
+                    .with_awaiting_input_queue(queues.awaiting_input)
+                    .with_activation_queue(queues.activation)
+                    .with_autopilot_queue(queues.autopilot)
                     .with_settings(settings),
             );
                    catalog.set_bench_agents(startup.bench_agents.clone());
@@ -441,12 +440,10 @@ fn register_window_actions(store: Arc<Mutex<knot_agents::AgentStore>>,
     }
     cx.on_action(move |_: &OpenWorkspaces, cx| {
           crate::window_registry::activate_or_open(
-              crate::window_registry::WindowKey::WorkspaceManager,
-              cx,
-              |cx| {
-                  open_manager_window(Arc::clone(&store), Arc::clone(&messages), cx)
-              },
-          );
+            crate::window_registry::WindowKey::WorkspaceManager,
+            cx,
+            |cx| open_manager_window(Arc::clone(&store), Arc::clone(&messages), cx),
+        );
       });
 }
 
@@ -477,7 +474,7 @@ fn open_manager_window(store: Arc<Mutex<knot_agents::AgentStore>>,
                 window.set_window_title(&knot_core::l10n::t("workspace.manager"));
                 let name_input = cx.new(|cx| {
                                        InputState::new(window, cx)
-                        .placeholder(knot_core::l10n::t("workspace.name_placeholder"))
+                .placeholder(knot_core::l10n::t("workspace.name_placeholder"))
                                    });
                 let view = cx.new(|cx| {
                                  let name_subscription =
@@ -525,6 +522,10 @@ pub(crate) fn run() {
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
     let awaiting_input = Arc::new(Mutex::new(Vec::new()));
     let activation = Arc::new(Mutex::new(Vec::new()));
+    let autopilot = Arc::new(Mutex::new(Vec::new()));
+    let queues = crate::app_support::McpQueues { awaiting_input: Arc::clone(&awaiting_input),
+                                                 activation:     Arc::clone(&activation),
+                                                 autopilot:      Arc::clone(&autopilot), };
     // One registry for the process, built before the MCP server because both
     // it and every workspace window write to the same one.
     let subagents: crate::app_support::SubagentRegistryHandle = Arc::default();
@@ -532,8 +533,7 @@ pub(crate) fn run() {
                                                   settings.clone(),
                                                   Arc::clone(&notifier),
                                                   Arc::clone(&messages),
-                                                  Arc::clone(&awaiting_input),
-                                                  Arc::clone(&activation),
+                                                  queues,
                                                   Arc::clone(&subagents));
 
     gpui_kit::application()
@@ -560,8 +560,8 @@ pub(crate) fn run() {
                                // Dark has to be in the first frame, not
                                // arrive as a repaint after one.
                                cx.set_global(crate::appearance::AppearancePreference(
-                                   settings.read().appearance_mode,
-                               ));
+                settings.read().appearance_mode,
+            ));
                                crate::appearance::apply(None, cx);
                                apply_visual_identity(&settings.read(), cx);
 
@@ -576,6 +576,7 @@ pub(crate) fn run() {
                                // window claims it once one is.
                                cx.set_global(AwaitingInput(Arc::clone(&awaiting_input)));
                                cx.set_global(Activation(Arc::clone(&activation)));
+                               cx.set_global(crate::app_support::Autopilot(Arc::clone(&autopilot)));
                                cx.set_global(crate::app_support::Subagents(Arc::clone(&subagents)));
                                // The MCP server's state, for the settings
                                // pane's row and the failure notification.
@@ -608,11 +609,13 @@ pub(crate) fn run() {
                                      cx.activate(true);
                                  });
 
-                               open_workspace_manager(WorkspaceManagerWindow { store:
-                                                                                   Arc::clone(&store),
-                                                                               messages:
-                                                                                   Arc::clone(&messages) },
-                                                      cx);
+                               open_workspace_manager(
+                WorkspaceManagerWindow {
+                    store: Arc::clone(&store),
+                    messages: Arc::clone(&messages),
+                },
+                cx,
+            );
                                // macOS launches a non-bundled binary without
                                // making it frontmost, so without this the
                                // window opens behind whatever was already on

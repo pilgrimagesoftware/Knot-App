@@ -9,6 +9,7 @@ mod agent_info;
 mod agent_row;
 mod agents;
 pub(crate) mod artifact_panel;
+mod autopilot;
 mod bench;
 mod bench_popover;
 mod changes_tab;

@@ -60,6 +60,30 @@ pub(crate) struct Activation(pub(crate) ActivationQueue);
 
 impl gpui_kit::Global for Activation {}
 
+/// The autopilot effect queue, reachable from any window.
+///
+/// The MCP tool catalog pushes `(agent id, effect)` whenever Autopilot
+/// classification lands on something to do - see
+/// `knot_mcp_tools::AutopilotEffect`. The workspace window that owns the
+/// agent drains it in `workspace_window::autopilot` and carries out the
+/// effect: marking + notifying, opening the decision dialog, or injecting
+/// text. A global for the same reason [`AwaitingInput`] is one: the tool
+/// layer runs off the main thread, with no window to call directly.
+#[derive(Clone)]
+pub(crate) struct Autopilot(pub(crate) knot_mcp_tools::AutopilotQueue);
+
+impl gpui_kit::Global for Autopilot {}
+
+/// The three cross-thread queues `start_mcp_server` hands the tool catalog,
+/// bundled into one value so that function stays within the repo's "keep
+/// functions to <= 5-6 args" convention (`CLAUDE.md`) as queues are added.
+#[derive(Clone)]
+pub(crate) struct McpQueues {
+    pub(crate) awaiting_input: AwaitingInputQueue,
+    pub(crate) activation:     ActivationQueue,
+    pub(crate) autopilot:      knot_mcp_tools::AutopilotQueue,
+}
+
 /// Which setting a font panel session is editing. Plain data, referenced
 /// from platform-independent UI code (button labels/handlers); only the
 /// panel-driving logic that reads/writes it is macOS-only, in
