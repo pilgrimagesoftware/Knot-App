@@ -120,6 +120,8 @@ For Claude, a `source` of `startup` is full registration and `source` of `resume
 
 Hooks also merge known non-empty fields into the agent's metadata: for Claude `transcript_path`, `cwd`, `model`, and `session_id`; for Codex `cwd`, `thread-id`, and `turn-id`. The status route additionally accepts subagent lifecycle events identified by their `hook` field. A dispatch records a running subagent with its task, and its kind when given; a completion marks it finished or failed with its reason. Reporting a subagent never moves the agent's own activity status. An event missing a required subagent identifier is rejected, while a completion for an identifier Knot never dispatched is accepted and ignored.
 
+A Claude `Stop` hook or a Codex turn-complete event also triggers Autopilot classification of the agent's last message, when Autopilot is enabled and an API key is configured - see [Settings]({{ '/latest/settings/' | relative_url }}#autopilot) for what Autopilot does with that classification.
+
 ## Source contracts
 
 - openspec/specs/mcp-server/spec.md
@@ -128,3 +130,4 @@ Hooks also merge known non-empty fields into the agent's metadata: for Claude `t
 - openspec/specs/agent-registry/spec.md
 - openspec/specs/task-graph/spec.md
 - openspec/specs/agent-hooks/spec.md
+- openspec/specs/autopilot/spec.md
