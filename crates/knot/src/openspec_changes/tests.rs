@@ -170,3 +170,123 @@ fn merge_keeps_changes_unique_to_either_worktree() {
                      .collect::<Vec<_>>(),
                vec!["add-export", "add-login"]);
 }
+
+/// The `(subfolder, name)` of each change `scan` finds, in its order.
+fn found(worktree: &Path) -> Vec<(Option<String>, String)> {
+    scan(worktree).into_iter()
+                  .map(|change| {
+                      (change.subfolder
+                             .map(|subfolder| subfolder.display().to_string()),
+                       change.name)
+                  })
+                  .collect()
+}
+
+#[test]
+fn finds_a_change_in_a_subfolder() {
+    let worktree = TempDir::new().expect("tempdir");
+    let api = worktree.path().join("services").join("api");
+    write_change(&api, "add-login", None);
+
+    let changes = scan(worktree.path());
+
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].name, "add-login");
+    assert_eq!(changes[0].subfolder,
+               Some(Path::new("services").join("api")));
+    assert_eq!(changes[0].dir,
+               api.join("openspec").join("changes").join("add-login"));
+}
+
+#[test]
+fn lists_the_root_first_then_each_subfolder() {
+    let worktree = TempDir::new().expect("tempdir");
+    write_change(worktree.path(), "zz-root", None);
+    write_change(&worktree.path().join("web"), "add-login", None);
+    write_change(&worktree.path().join("api"), "add-login", None);
+
+    assert_eq!(found(worktree.path()),
+               vec![(None, "zz-root".to_string()),
+                    (Some("api".to_string()), "add-login".to_string()),
+                    (Some("web".to_string()), "add-login".to_string()),]);
+}
+
+#[test]
+fn a_subfolder_archive_is_excluded() {
+    let worktree = TempDir::new().expect("tempdir");
+    let api = worktree.path().join("api");
+    write_change(&api, "add-login", None);
+    write_change(&api.join("openspec").join("changes").join("archive"),
+                 "2026-09-01-old-work",
+                 None);
+
+    assert_eq!(found(worktree.path()),
+               vec![(Some("api".to_string()), "add-login".to_string())]);
+}
+
+#[test]
+fn skips_dependency_hidden_and_nested_repository_folders() {
+    let worktree = TempDir::new().expect("tempdir");
+    write_change(&worktree.path().join("node_modules").join("some-pkg"),
+                 "vendored",
+                 None);
+    write_change(&worktree.path().join(".cache"), "hidden", None);
+    let nested = worktree.path().join("nested-repo");
+    write_change(&nested, "its-own", None);
+    fs::create_dir_all(nested.join(".git")).expect("create nested .git");
+
+    assert_eq!(found(worktree.path()), Vec::new());
+}
+
+#[test]
+fn stops_at_the_maximum_depth() {
+    let worktree = TempDir::new().expect("tempdir");
+    let mut deep = worktree.path().to_path_buf();
+    for level in 0..crate::consts::OPENSPEC_SCAN_MAX_DEPTH {
+        deep = deep.join(format!("level{level}"));
+    }
+    write_change(&deep, "deepest-found", None);
+    write_change(&deep.join("too-deep"), "not-found", None);
+
+    assert_eq!(found(worktree.path()).into_iter()
+                                     .map(|(_, name)| name)
+                                     .collect::<Vec<_>>(),
+               vec!["deepest-found"]);
+}
+
+#[test]
+fn merge_keeps_one_name_in_two_subfolders_as_two_changes() {
+    let first = TempDir::new().expect("tempdir");
+    let second = TempDir::new().expect("tempdir");
+    write_change(&first.path().join("api"), "add-login", None);
+    write_change(&second.path().join("api"), "add-login", None);
+    write_change(&second.path().join("web"), "add-login", None);
+
+    let merged = merge([scan(first.path()), scan(second.path())]);
+
+    assert_eq!(merged.len(), 2);
+    assert_eq!(merged[0].dir,
+               first.path()
+                    .join("api")
+                    .join("openspec")
+                    .join("changes")
+                    .join("add-login"));
+    assert_eq!(merged[1].subfolder, Some(Path::new("web").to_path_buf()));
+}
+
+#[test]
+fn prompt_ref_is_the_name_at_the_root_and_the_path_in_a_subfolder() {
+    let worktree = TempDir::new().expect("tempdir");
+    write_change(worktree.path(), "add-export", None);
+    write_change(&worktree.path().join("api"), "add-login", None);
+
+    let changes = scan(worktree.path());
+
+    assert_eq!(changes[0].prompt_ref(), "add-export");
+    assert_eq!(changes[1].prompt_ref(),
+               Path::new("api").join("openspec")
+                               .join("changes")
+                               .join("add-login")
+                               .display()
+                               .to_string());
+}

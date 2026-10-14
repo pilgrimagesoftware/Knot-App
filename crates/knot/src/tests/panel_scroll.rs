@@ -42,7 +42,7 @@ const ROW_HEIGHT: f32 = 100.;
 
 /// Tall enough to hold four rows, short enough that 40 of them do not fit -
 /// the shape the control exists for.
-const VIEWPORT_HEIGHT: f32 = 400.;
+pub(super) const VIEWPORT_HEIGHT: f32 = 400.;
 
 const ROW_COUNT: usize = 40;
 
@@ -88,7 +88,7 @@ fn probe(cx: &mut TestAppContext, rows: usize)
 }
 
 /// Redraws, so the list lays out from whatever scroll position was just set.
-fn redraw<P: Render>(probe_cx: &mut VisualTestContext, probe: &Entity<P>) {
+pub(super) fn redraw<P: Render>(probe_cx: &mut VisualTestContext, probe: &Entity<P>) {
     probe_cx.update(|_window, cx| probe.update(cx, |_, cx| cx.notify()));
     probe_cx.run_until_parked();
 }
@@ -190,9 +190,9 @@ fn an_empty_conversation_offers_no_jump(cx: &mut TestAppContext) {
 
 /// The panel as `workspace_window::panel::pane` builds it, minus the parts
 /// that need a session: real state, real rows, real reconciliation.
-struct PanelProbe {
+pub(super) struct PanelProbe {
     state: Arc<Mutex<PanelState>>,
-    list:  ListState,
+    panel: panel_view::PanelList,
     known: usize,
 }
 
@@ -200,7 +200,8 @@ impl Render for PanelProbe {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         {
             let state = self.state.lock();
-            self.known = panel_view::sync_row_count(&self.list, self.known, &state);
+            self.known = panel_view::sync_row_count(&self.panel.list, self.known, &state);
+            panel_view::sync_follow_mode(&self.panel.list, state.turn_active && state.tracking);
         }
         let theme = cx.theme();
         let style = panel_view::PanelStyle { permission_risk:    panel_view::RiskLevel::Neutral,
@@ -217,7 +218,7 @@ impl Render for PanelProbe {
                                              compact_tool_calls: false, };
         div().size_full()
              .child(panel_view::render_panel(Arc::clone(&self.state),
-                                             self.list.clone(),
+                                             self.panel.clone(),
                                              &style,
                                              panel_view::PanelCallbacks::new(|_| {},
                                                                              || {},
@@ -238,13 +239,23 @@ fn panel_probe(cx: &mut TestAppContext, messages: usize)
     // `push_user_message` opens a turn, which adds a trailing working row
     // and would make the row count disagree with `messages`.
     state.turn_active = false;
+    panel_probe_with(cx, state)
+}
+
+/// A drawn window holding `state`, laid out the way the pane lays it out.
+pub(super) fn panel_probe_with(
+    cx: &mut TestAppContext, state: PanelState)
+    -> (VisualTestContext, Entity<PanelProbe>, Arc<Mutex<PanelState>>, ListState) {
     let state = Arc::new(Mutex::new(state));
-    let list = ListState::new(0, ListAlignment::Top, px(panel_view::LIST_OVERDRAW));
+    let panel = panel_view::PanelList::new();
+    let list = panel.list.clone();
+    // The pane's handler: a wheel scroll stops following the response.
+    let scrolled = Arc::clone(&state);
+    list.set_scroll_handler(move |_event, _window, _cx| scrolled.lock().clear_tracking());
     let mut probe = None;
     let window = {
         let probe = &mut probe;
         let state = Arc::clone(&state);
-        let list = list.clone();
         cx.update(|cx| {
               gpui_kit::init(cx);
               let bounds = Bounds { origin: point(px(0.), px(0.)),
@@ -253,7 +264,7 @@ fn panel_probe(cx: &mut TestAppContext, messages: usize)
                                              ..WindowOptions::default() },
                              |window, cx| {
                                  let view = cx.new(|_| PanelProbe { state,
-                                                                    list,
+                                                                    panel,
                                                                     known: 0 });
                                  *probe = Some(view.clone());
                                  cx.new(|cx| Root::new(view, window, cx))

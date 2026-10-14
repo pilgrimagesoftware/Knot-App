@@ -116,6 +116,17 @@ pub(crate) fn new_panel_input(shift_to_send: bool, max_rows: usize, window: &mut
                                           // searched, and off also lets
                                           // Cmd-F bubble to the window.
                                           .searchable(false)
+                                          // `EditorState` counts as a code
+                                          // editor whatever its layout mode
+                                          // (`is_code_editor` reads the
+                                          // mode marker, not `auto_grow`),
+                                          // so it reserves three or more
+                                          // empty rows below the last line
+                                          // to scroll into. A composer that
+                                          // fits its text has nothing to
+                                          // scroll, and the wheel pushed the
+                                          // whole draft out of view (#41).
+                                          .scroll_beyond_last_line(Some(0))
                                           // Last, and load-bearing:
                                           // `EditorState::new` starts in
                                           // `LayoutMode::CodeEditor` and
@@ -523,6 +534,7 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn deliver_panel_prompt(&mut self, id: Uuid, text: String,
                                                             origin: PromptOrigin)
                                                             -> bool {
+        let follow = origin.follows(self.reader_at_tail(id));
         let Some(slot) = self.panel_sessions.get(&id)
         else {
             return false;
@@ -536,7 +548,7 @@ impl WorkspaceWindow {
                     let ready = state.pending_permission.is_none() && !state.turn_active;
                     drop(state);
                     ready.then(|| {
-                             handle.record_user_message(text.clone());
+                             handle.record_prompt(text.clone(), follow);
                              (handle.session(), handle.recorder())
                          })
                 }
@@ -604,6 +616,7 @@ impl WorkspaceWindow {
     /// `deliver_waiting_prompts`'s dirty check, since the queue losing a row
     /// changes the frame with nothing else marking it dirty.
     pub(in crate::workspace_window) fn drain_panel_prompt(&mut self, id: Uuid) -> bool {
+        let reader_at_tail = self.reader_at_tail(id);
         let Some(slot) = self.panel_sessions.get(&id)
         else {
             return false;
@@ -628,7 +641,7 @@ impl WorkspaceWindow {
             }
             let queue = self.panel_prompt_queues.get_mut(&id)?;
             let prompt = prompt_queue::take_next(queue)?;
-            handle.record_user_message(prompt.text.clone());
+            handle.record_prompt(prompt.text.clone(), prompt.origin.follows(reader_at_tail));
             let sent = (handle.session(), handle.recorder(), prompt.text.clone(), prompt.id);
             self.panel_prompts_in_flight.insert(id, prompt);
             Some(sent)

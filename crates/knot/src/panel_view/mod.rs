@@ -7,12 +7,15 @@
 //!
 //! `style` and `callbacks` are what a render is handed, `render` is the tree
 //! itself, and `message`, `rows`, `summary_row` and `tool_call` are the pieces
-//! it puts together.
+//! it puts together. `panel_list` is the list a pane keeps across frames, and
+//! `markdown_rows` the reply state that has to outlive a row scrolling away.
 //!
 //! Contract: `openspec/specs/acp-panel-ui/spec.md`.
 
 mod callbacks;
+mod markdown_rows;
 mod message;
+mod panel_list;
 mod render;
 mod rows;
 mod scroll;
@@ -25,10 +28,15 @@ mod tool_call;
 // `rows`, builds a `PanelStyle` and `PanelCallbacks` per frame, and calls
 // `render_panel` with them. Everything else here is internal to the module.
 pub(crate) use callbacks::PanelCallbacks;
+pub(crate) use panel_list::PanelList;
+// The panel's own list is built by `PanelList::new`; only the scroll tests'
+// fixed-row probe needs the overdraw on its own.
+#[cfg(test)]
 pub(crate) use render::LIST_OVERDRAW;
 pub(crate) use render::render_panel;
 pub(crate) use rows::*;
 pub(crate) use scroll::scrolled_away_from_tail;
+pub(crate) use scroll::sync_follow_mode;
 pub(crate) use style::PanelStyle;
 pub(crate) use style::RiskLevel;
 pub(crate) use style::permission_risk_level;

@@ -125,6 +125,16 @@ impl PanelSessionHandle {
         self.dirty.store(true, Ordering::SeqCst);
     }
 
+    /// [`Self::record_user_message`] for a prompt whose response follows
+    /// only when `follow` says so - see `PanelState::push_prompt`.
+    pub fn record_prompt(&self, text: String, follow: bool) {
+        {
+            let mut state = self.state.lock();
+            state.push_prompt(text, follow);
+        }
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
     /// A cheap clone of the underlying session, for a caller holding this
     /// handle behind a `Mutex` to `.await` on (e.g. `prompt`) without
     /// keeping the lock held across the await point.

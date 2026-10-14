@@ -33,6 +33,23 @@ pub(crate) enum AdapterUpdateState {
     Error(String),
 }
 
+impl AdapterUpdateState {
+    /// The state a check or install leaves behind, given how its task on
+    /// the settings window's runtime ended. The task itself failing - a
+    /// panic, or the window closing mid-run and cancelling it - reads as
+    /// an error like the check failing does, rather than leaving the row
+    /// stuck on "Checking…".
+    fn from_outcome(outcome: Result<knot_acp::Result<knot_terminal::AdapterUpdateStatus>,
+                           tokio::task::JoinError>)
+                    -> Self {
+        match outcome {
+            Ok(Ok(status)) => Self::Checked(status),
+            Ok(Err(error)) => Self::Error(error.to_string()),
+            Err(error) => Self::Error(error.to_string()),
+        }
+    }
+}
+
 impl SettingsWindow {
     /// The name to show for an agent type.
     ///
@@ -134,17 +151,13 @@ impl SettingsWindow {
             .insert(agent_type.clone(), AdapterUpdateState::Checking);
         cx.notify();
         let settings_window = cx.entity();
+        let check = self.runtime
+                        .spawn(knot_terminal::check_adapter_update(install));
         cx.spawn(async move |_this, cx| {
-              let result = knot_terminal::check_adapter_update(install).await;
+              let state = AdapterUpdateState::from_outcome(check.await);
               cx.update(|app| {
                     settings_window.update(app, |view, cx| {
-                                       view.adapter_update
-                                           .insert(agent_type, match result {
-                                               Ok(status) => AdapterUpdateState::Checked(status),
-                                               Err(error) => {
-                                                   AdapterUpdateState::Error(error.to_string())
-                                               }
-                                           });
+                                       view.adapter_update.insert(agent_type, state);
                                        cx.notify();
                                    });
                 });
@@ -166,21 +179,15 @@ impl SettingsWindow {
             .insert(agent_type.clone(), AdapterUpdateState::Updating);
         cx.notify();
         let settings_window = cx.entity();
+        let update = self.runtime.spawn(async move {
+                                     knot_terminal::update_adapter(install).await?;
+                                     knot_terminal::check_adapter_update(install).await
+                                 });
         cx.spawn(async move |_this, cx| {
-              let install_result = knot_terminal::update_adapter(install).await;
-              let status = match install_result {
-                  Ok(()) => knot_terminal::check_adapter_update(install).await,
-                  Err(error) => Err(error),
-              };
+              let state = AdapterUpdateState::from_outcome(update.await);
               cx.update(|app| {
                     settings_window.update(app, |view, cx| {
-                                       view.adapter_update
-                                           .insert(agent_type, match status {
-                                               Ok(status) => AdapterUpdateState::Checked(status),
-                                               Err(error) => {
-                                                   AdapterUpdateState::Error(error.to_string())
-                                               }
-                                           });
+                                       view.adapter_update.insert(agent_type, state);
                                        cx.notify();
                                    });
                 });

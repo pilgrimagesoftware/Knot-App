@@ -287,7 +287,7 @@ fn the_browser_path_names_and_shows_the_screenshots() {
     assert!(compose_body(&report_with_screenshots()).contains("`crash.png`"));
 }
 
-/// A browser that never opened leaves the report in the dialog to retry, so
+/// A browser that never opened leaves the report in the window to retry, so
 /// nothing is shown in Finder for a page that is not there.
 #[test]
 fn a_failed_browser_shows_nothing() {

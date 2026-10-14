@@ -1,6 +1,6 @@
 [package]
 name = "knot"
-version = "1.30.0"
+version = "1.31.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -60,6 +60,8 @@ objc2-app-kit = { version = "0.3", features = [
     "NSFontManager",
     "NSFontPanel",
     "NSApplication",
+    # Locating Zed's bundle by id, to run the CLI inside it (`open_in`).
+    "NSWorkspace",
     "objc2-core-foundation",
 ] }
 # The embedded faces are registered with GPUI's text system, which AppKit
@@ -75,6 +77,10 @@ objc2-core-foundation = { version = "0.3", features = ["CFArray", "CFData"] }
 # still builds against the default features.
 gpui-kit = { version = "=0.7.0", features = ["test-support"] }
 tempfile.workspace = true
+# `process` for the window runtime's test that runs a child through
+# `tokio::process` (issue #252); the binary itself gets it through
+# `knot-terminal`.
+tokio = { workspace = true, features = ["process"] }
 
 # Packaging config for cargo-packager, which assembles Knot.app and the DMG.
 # Paths are relative to this manifest. Mirrors the layout the other

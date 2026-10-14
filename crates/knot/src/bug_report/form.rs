@@ -1,9 +1,9 @@
-//! When Report is available, and what the dialog says about the last
+//! When Report is available, and what the window says about the last
 //! attempt. Pure, so the rules are tested without a window.
 
 use super::screenshots::Handoff;
 
-/// Where the dialog stands. Everything but [`Phase::Submitting`] leaves the
+/// Where the window stands. Everything but [`Phase::Submitting`] leaves the
 /// report editable: a failure or a browser hand-off keeps what was typed, so
 /// the user can retry or copy it.
 #[derive(Debug, Clone, PartialEq, Eq)]

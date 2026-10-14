@@ -61,7 +61,8 @@ impl Render for MessageProbe {
                                              is_last:  false,
                                              style:    &style,
                                              list:     &self.list,
-                                             cmd_held: self.cmd_held, },
+                                             cmd_held: self.cmd_held,
+                                             reply:    None, },
                                    &message,
                                    &PanelCallbacks::new(|_| {}, || {}, |_| {}, |_| {}, || {})))
     }

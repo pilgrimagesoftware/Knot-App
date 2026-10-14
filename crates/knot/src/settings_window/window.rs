@@ -121,7 +121,10 @@ pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>
                                                       autopilot_custom_prompt_subscription,
                                                   _mcp_port_subscription: mcp_port_subscription,
                                                   keyboard: Default::default(),
-                                                  adapter_update: Default::default() }
+                                                  adapter_update: Default::default(),
+                                                  runtime:
+                                                      crate::window_runtime::WindowRuntime::new()
+                                                          .expect("failed to start settings window runtime") }
                              });
                 #[cfg(target_os = "macos")]
                 {
@@ -243,6 +246,10 @@ pub(crate) struct SettingsWindow {
     /// in-flight or completed check.
     pub(super) adapter_update:
         std::collections::BTreeMap<String, super::panes::coding::AdapterUpdateState>,
+    /// Runs the Coding tab's adapter check and install. Both spawn `npm`
+    /// through `tokio::process`, which needs a tokio reactor - GPUI's
+    /// executor has none, and polling them there panics (issue #252).
+    pub(super) runtime:                               crate::window_runtime::WindowRuntime,
 }
 
 impl SettingsWindow {
