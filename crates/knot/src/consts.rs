@@ -197,6 +197,18 @@ pub(crate) const ISSUES_MAX_AGE: Duration = Duration::from_secs(5 * 60);
 /// now covers the change the user just made.
 pub(crate) const OPENSPEC_CHANGES_MAX_AGE: Duration = Duration::from_secs(30);
 
+/// How many folders below a working tree's root the OpenSpec scan looks for
+/// another `openspec/changes/` (#203): enough for `services/api/` or
+/// `packages/web/app/` in a monorepo, shallow enough that the walk stays a
+/// handful of directory reads every `OPENSPEC_CHANGES_MAX_AGE`.
+pub(crate) const OPENSPEC_SCAN_MAX_DEPTH: usize = 3;
+
+/// Folders the OpenSpec scan never descends into: dependency and build
+/// output trees, which are large and never hold a project's own changes.
+/// Folders starting with `.` are skipped as well, without being listed.
+pub(crate) const OPENSPEC_SCAN_SKIPPED_DIRS: &[&str] =
+    &["node_modules", "target", "vendor", "build", "dist"];
+
 /// How often the settings window drains the native font panel's selections.
 ///
 /// The panel is an AppKit window with no callback into GPUI, so its choice is

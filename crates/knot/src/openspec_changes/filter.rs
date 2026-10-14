@@ -13,13 +13,16 @@ use super::ChangeEntry;
 
 /// Whether `entry`, grouped under `heading`, matches `search`.
 ///
-/// Case-insensitive and trimmed on both sides; a row matches when its name or
-/// its repository heading contains the search text. An empty search matches
-/// every row.
+/// Case-insensitive and trimmed on both sides; a row matches when its name,
+/// its subfolder or its repository heading contains the search text. An
+/// empty search matches every row.
 pub(crate) fn matches(search: &str, heading: &str, entry: &ChangeEntry) -> bool {
     let needle = search.trim().to_lowercase();
     needle.is_empty()
     || entry.name.to_lowercase().contains(&needle)
+    || entry.subfolder
+            .as_ref()
+            .is_some_and(|subfolder| subfolder.to_string_lossy().to_lowercase().contains(&needle))
     || heading.to_lowercase().contains(&needle)
 }
 
@@ -40,9 +43,18 @@ mod tests {
     use super::*;
 
     fn entry(name: &str) -> ChangeEntry {
-        ChangeEntry { name: name.to_string(),
-                      dir:  PathBuf::from(name),
-                      why:  None, }
+        ChangeEntry { name:      name.to_string(),
+                      dir:       PathBuf::from(name),
+                      subfolder: None,
+                      why:       None, }
+    }
+
+    #[test]
+    fn search_matches_subfolder() {
+        let entry = ChangeEntry { subfolder: Some(PathBuf::from("services/api")),
+                                  ..entry("add-login") };
+        assert!(matches("API", "acme/widget", &entry));
+        assert!(!matches("web", "acme/widget", &entry));
     }
 
     /// Spec scenario: "Searching by name" - `LOGIN` shows only `add-login`
