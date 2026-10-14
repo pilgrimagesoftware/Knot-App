@@ -9,6 +9,7 @@
 //! back `None` or approximate. Asking instead where the last row sits needs
 //! only the rows the list has already laid out.
 
+use gpui_kit::FollowMode;
 use gpui_kit::ListState;
 use gpui_kit::px;
 
@@ -51,5 +52,23 @@ pub(crate) fn scrolled_away_from_tail(list: &ListState, row_count: usize) -> boo
         // from the agent while the user reads further up.
         None => true,
         Some(bounds) => bounds.bottom() > viewport.bottom() + px(TAIL_EPSILON),
+    }
+}
+
+/// Mirrors the conversation's tracking onto the list: `Tail` while the
+/// in-flight response is followed, `Normal` otherwise, so a response the
+/// user stopped following stays put *even at the tail*.
+///
+/// Switching to `Tail` jumps the list to its end, which is why only a turn
+/// that should follow may get here with `follow` set - a prompt Knot sent
+/// while the user reads back must not (#246).
+pub(crate) fn sync_follow_mode(list: &ListState, follow: bool) {
+    if follow {
+        if !list.is_following_tail() {
+            list.set_follow_mode(FollowMode::Tail);
+        }
+    }
+    else {
+        list.set_follow_mode(FollowMode::Normal);
     }
 }

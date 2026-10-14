@@ -1,5 +1,6 @@
 //! "Send prompt to" delivers to the chosen agent alone, queues behind a
-//! session that cannot take it yet, and leaves the Changes view where it is
+//! session that cannot take it yet, activates a chosen agent that is not
+//! running (#208), and leaves the Changes view where it is
 //! (`work-item-prompts`, #504).
 //!
 //! The chosen agent's panel session is still connecting, which is the case
@@ -24,7 +25,7 @@ fn the_chosen_agent_alone_queues_the_prompt_and_the_view_stays(cx: &mut TestAppC
     let (chosen, other) = (fixture.agents[0], fixture.agents[1]);
     let url = "https://github.com/acme/widget/issues/42";
 
-    fixture.view.update(&mut fixture.window, |view, _| {
+    fixture.view.update(&mut fixture.window, |view, cx| {
                     view.view_mode = WorkspaceViewMode::Changes;
                     view.changes_view.tab = ChangesTab::Issues;
                     let (connecting, _progress) = PanelSessionSlot::connecting();
@@ -32,7 +33,7 @@ fn the_chosen_agent_alone_queues_the_prompt_and_the_view_stays(cx: &mut TestAppC
                         .insert(chosen, Arc::new(Mutex::new(connecting)));
 
                     assert!(view.can_receive_prompt(chosen));
-                    assert!(view.send_work_item(chosen, &WorkItemRef::Issue(url.to_owned())));
+                    assert!(view.send_work_item(chosen, &WorkItemRef::Issue(url.to_owned()), cx));
 
                     let queue = &view.panel_prompt_queues[&chosen];
                     assert_eq!(queue.len(), 1);
@@ -50,21 +51,36 @@ fn the_chosen_agent_alone_queues_the_prompt_and_the_view_stays(cx: &mut TestAppC
                 });
 }
 
-/// An agent that has not started has no session to take a prompt, and the
-/// menu lists it disabled rather than leaving it out. The fixture's agents
-/// are never activated, so neither has a session; the test only reads that,
-/// since dropping a live terminal session inside an update blocks on it.
+/// An agent that has not started has no session to take a prompt; the
+/// menu still lists it, and choosing it activates it (#208). The fixture's
+/// agent type launches nothing, so activation is read off the store rather
+/// than off a session - which also keeps a live process out of the test.
 #[gpui_kit::test]
-fn an_agent_without_a_session_is_listed_disabled(cx: &mut TestAppContext) {
-    let mut fixture = window_with_agents(1, cx);
-    let agent = fixture.agents[0];
+fn choosing_an_inactive_agent_activates_it(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let (chosen, other) = (fixture.agents[0], fixture.agents[1]);
+    let activated = |view: &super::WorkspaceWindow, id| {
+        view.store
+            .lock()
+            .agent(id)
+            .is_some_and(|agent| agent.activated)
+    };
 
-    fixture.view.update(&mut fixture.window, |view, _| {
-                    assert!(!view.panel_sessions.contains_key(&agent)
-                            && !view.sessions.contains_key(&agent),
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.view_mode = WorkspaceViewMode::Changes;
+                    assert!(!view.can_receive_prompt(chosen),
                             "the fixture's agent has started a session, so this proves nothing");
+                    assert!(!activated(view, chosen));
                     let targets = view.prompt_targets();
-                    assert_eq!(targets.len(), 1);
-                    assert!(!targets[0].enabled);
+                    assert_eq!(targets.len(), 2);
+                    assert!(targets.iter().all(|target| !target.running));
+
+                    view.send_work_item(chosen, &WorkItemRef::Change("add-login".to_owned()), cx);
+
+                    assert!(activated(view, chosen), "the chosen agent is activated");
+                    assert!(!activated(view, other), "no other agent is");
+                    assert_eq!(view.view_mode,
+                               WorkspaceViewMode::Changes,
+                               "activating does not leave the Changes view");
                 });
 }

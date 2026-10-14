@@ -28,6 +28,8 @@ pub(in crate::workspace_window) use config_select::MODEL_SELECTOR_ID;
 pub(in crate::workspace_window) use config_select::SEARCHABLE_SELECTORS;
 pub(in crate::workspace_window) use config_select::SelectorKey;
 #[cfg(test)]
+pub(crate) use config_select::config_select;
+#[cfg(test)]
 pub(crate) use config_select::config_selector_items;
 #[cfg(test)]
 pub(crate) use config_select::new_config_select_state;

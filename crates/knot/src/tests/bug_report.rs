@@ -1,5 +1,5 @@
-//! Help > Report an Issue opens one dialog on the active window, and the dialog
-//! keeps or files the report as `bug-reporting`'s spec says.
+//! Help > Report an Issue opens one report window of its own (#39), and the
+//! window keeps or files the report as `bug-reporting`'s spec says.
 //!
 //! The menu path is driven through `TestAppContext::dispatch_action`, which
 //! runs the handler inside the window's update as macOS does - the reason
@@ -9,7 +9,6 @@
 use std::sync::Arc;
 
 use gpui_kit::component::Root;
-use gpui_kit::component::WindowExt;
 use gpui_kit::{
     AnyWindowHandle, AppContext, Context, Entity, IntoElement, Render, Styled, TestAppContext,
     VisualTestContext, Window, WindowOptions, div,
@@ -20,12 +19,11 @@ use parking_lot::Mutex;
 use crate::app_bootstrap::ReportIssue;
 use crate::bug_report::{
     Attachment, BugReport, Diagnostics, IssueKind, LogKind, Outcome, Report, ReportServices,
-    open_report, register_report_issue_action_with,
+    open_report, open_report_window_handle, register_report_issue_action_with,
 };
 
-/// A root view with no content but the overlay layers, which every Knot root
-/// view renders - without them a dialog is pushed onto the `Root` and never
-/// drawn.
+/// A root view with no content, standing in for the window that was active
+/// when the report was opened.
 struct Blank;
 
 impl Render for Blank {
@@ -79,17 +77,29 @@ fn app_with_one_window(cx: &mut TestAppContext, stub: &Stub) -> AnyWindowHandle 
       })
 }
 
+/// Opens the report from the menu over one ordinary window, and returns a
+/// context on the report window itself.
 fn open_dialog(cx: &mut TestAppContext, stub: &Stub) -> (VisualTestContext, Entity<BugReport>) {
     let handle = app_with_one_window(cx, stub);
     cx.dispatch_action(handle, ReportIssue);
     cx.run_until_parked();
     let report = cx.update(|cx| open_report(cx))
-                   .expect("Report an Issue opened no dialog");
-    (VisualTestContext::from_window(handle, cx), report)
+                   .expect("Report an Issue opened no window");
+    let report_window = cx.update(|cx| open_report_window_handle(cx))
+                          .expect("the report has no window");
+    assert_ne!(report_window, handle,
+               "the report opened on the active window");
+    (VisualTestContext::from_window(report_window, cx), report)
 }
 
+/// Whether the report window is still open.
+///
+/// Asked of the app rather than the window: once the window has closed, a
+/// window-scoped update has nothing to run against.
 fn dialog_is_open(cx: &mut VisualTestContext) -> bool {
-    cx.update(|window, cx| window.has_active_dialog(cx))
+    cx.cx.update(|cx| {
+             open_report_window_handle(cx).is_some_and(|handle| cx.windows().contains(&handle))
+         })
 }
 
 fn fill(cx: &mut VisualTestContext, report: &Entity<BugReport>, subject: &str, description: &str) {
@@ -110,31 +120,36 @@ fn submit(cx: &mut VisualTestContext, report: &Entity<BugReport>) {
 }
 
 #[gpui_kit::test]
-fn the_menu_opens_the_dialog_on_the_active_window(cx: &mut TestAppContext) {
+fn the_menu_opens_a_window_of_its_own(cx: &mut TestAppContext) {
     let (mut cx, _report) = open_dialog(cx, &Stub::answering(Outcome::BrowserReady));
 
-    assert!(dialog_is_open(&mut cx),
-            "Report an Issue put nothing on the window");
-    assert!(cx.debug_bounds("dialog-layer").is_some(),
-            "the dialog layer never reached the screen");
+    assert!(dialog_is_open(&mut cx), "Report an Issue opened no window");
+    assert_eq!(cx.update(|_, cx| cx.windows().len()),
+               2,
+               "the report is a second window beside the first");
+    assert!(cx.debug_bounds("bug-report-form").is_some(),
+            "the form never reached the screen");
 }
 
 #[gpui_kit::test]
-fn choosing_the_item_again_keeps_the_one_dialog(cx: &mut TestAppContext) {
+fn choosing_the_item_again_keeps_the_one_window(cx: &mut TestAppContext) {
     let stub = Stub::answering(Outcome::BrowserReady);
     let handle = app_with_one_window(cx, &stub);
     cx.dispatch_action(handle, ReportIssue);
     cx.run_until_parked();
-    let first = cx.update(|cx| open_report(cx)).expect("no dialog opened");
+    let first = cx.update(|cx| open_report(cx)).expect("no window opened");
 
     cx.dispatch_action(handle, ReportIssue);
     cx.run_until_parked();
 
     let second = cx.update(|cx| open_report(cx))
-                   .expect("the dialog went away");
+                   .expect("the window went away");
     assert_eq!(first.entity_id(),
                second.entity_id(),
-               "a second dialog opened");
+               "a second report opened");
+    assert_eq!(cx.update(|cx| cx.windows().len()),
+               2,
+               "a second report window opened");
 }
 
 #[gpui_kit::test]
@@ -156,10 +171,10 @@ fn escape_cancels_and_files_nothing(cx: &mut TestAppContext) {
     cx.simulate_keystrokes("escape");
     cx.run_until_parked();
 
-    assert!(!dialog_is_open(&mut cx), "escape left the dialog open");
+    assert!(!dialog_is_open(&mut cx), "escape left the window open");
     assert!(stub.submitted.lock().is_empty(), "escape filed a report");
-    assert!(cx.update(|_, cx| open_report(cx)).is_none(),
-            "the closed dialog's report outlived it");
+    assert!(cx.cx.update(|cx| open_report(cx)).is_none(),
+            "the closed window's report outlived it");
 }
 
 #[gpui_kit::test]
@@ -174,7 +189,7 @@ fn report_needs_both_fields(cx: &mut TestAppContext) {
 }
 
 #[gpui_kit::test]
-fn a_filed_issue_closes_the_dialog(cx: &mut TestAppContext) {
+fn a_filed_issue_closes_the_window(cx: &mut TestAppContext) {
     let url = "https://github.com/pilgrimagesoftware/Knot-App/issues/7".to_owned();
     let stub = Stub::answering(Outcome::Filed(url));
     let (mut cx, report) = open_dialog(cx, &stub);
@@ -183,7 +198,7 @@ fn a_filed_issue_closes_the_dialog(cx: &mut TestAppContext) {
     submit(&mut cx, &report);
 
     assert!(!dialog_is_open(&mut cx),
-            "a filed report left the dialog open");
+            "a filed report left the window open");
     let submitted = stub.submitted.lock();
     assert_eq!(submitted.len(), 1);
     assert_eq!(submitted[0].subject, "Crash");
@@ -200,7 +215,7 @@ fn a_failure_keeps_the_report_and_allows_a_retry(cx: &mut TestAppContext) {
     submit(&mut cx, &report);
 
     assert!(dialog_is_open(&mut cx),
-            "a failed submission closed the dialog");
+            "a failed submission closed the window");
     let (subject, description, retry) = cx.update(|_, cx| {
                                               let report = report.read(cx);
                                               (report.subject.read(cx).value().to_string(),
@@ -217,30 +232,31 @@ fn a_failure_keeps_the_report_and_allows_a_retry(cx: &mut TestAppContext) {
                "the retry was not submitted");
 }
 
-fn assert_hand_off_keeps_the_dialog(cx: &mut TestAppContext, outcome: Outcome) {
+fn assert_hand_off_keeps_the_window(cx: &mut TestAppContext, outcome: Outcome) {
     let stub = Stub::answering(outcome.clone());
     let (mut cx, report) = open_dialog(cx, &stub);
     fill(&mut cx, &report, "Crash", "It crashed.");
 
     submit(&mut cx, &report);
 
-    assert!(dialog_is_open(&mut cx), "{outcome:?} closed the dialog");
+    assert!(dialog_is_open(&mut cx), "{outcome:?} closed the window");
     let subject = cx.update(|_, cx| report.read(cx).subject.read(cx).value().to_string());
     assert_eq!(subject, "Crash", "{outcome:?} lost the subject");
 }
 
 #[gpui_kit::test]
-fn a_browser_hand_off_keeps_the_dialog_open(cx: &mut TestAppContext) {
-    assert_hand_off_keeps_the_dialog(cx, Outcome::BrowserReady);
+fn a_browser_hand_off_keeps_the_window_open(cx: &mut TestAppContext) {
+    assert_hand_off_keeps_the_window(cx, Outcome::BrowserReady);
 }
 
 #[gpui_kit::test]
-fn a_browser_that_will_not_open_keeps_the_dialog_open(cx: &mut TestAppContext) {
-    assert_hand_off_keeps_the_dialog(cx, Outcome::BrowserFailed);
+fn a_browser_that_will_not_open_keeps_the_window_open(cx: &mut TestAppContext) {
+    assert_hand_off_keeps_the_window(cx, Outcome::BrowserFailed);
 }
 
+/// A window of its own needs nothing to attach to (#39).
 #[gpui_kit::test]
-fn with_no_window_the_item_does_nothing(cx: &mut TestAppContext) {
+fn with_no_window_the_item_still_opens_the_report(cx: &mut TestAppContext) {
     let stub = Stub::answering(Outcome::BrowserReady);
     cx.update(|cx| {
           gpui_kit::init(cx);
@@ -249,7 +265,25 @@ fn with_no_window_the_item_does_nothing(cx: &mut TestAppContext) {
       });
     cx.run_until_parked();
 
-    assert!(cx.update(|cx| open_report(cx)).is_none());
+    assert!(cx.update(|cx| open_report(cx)).is_some());
+    assert_eq!(cx.update(|cx| cx.windows().len()), 1);
+}
+
+/// Cancel closes the window and files nothing, as Escape does.
+#[gpui_kit::test]
+fn cancel_closes_the_window_and_files_nothing(cx: &mut TestAppContext) {
+    let stub = Stub::answering(Outcome::BrowserReady);
+    let (mut cx, report) = open_dialog(cx, &stub);
+    fill(&mut cx, &report, "Crash", "It crashed.");
+    drop(report);
+
+    let cancel = cx.debug_bounds("cancel-bug-report")
+                   .expect("no Cancel button on screen");
+    cx.simulate_click(cancel.center(), gpui_kit::Modifiers::none());
+    cx.run_until_parked();
+
+    assert!(!dialog_is_open(&mut cx), "Cancel left the window open");
+    assert!(stub.submitted.lock().is_empty(), "Cancel filed a report");
 }
 
 /// A log is the user's to share: none rides along unless it is chosen.
@@ -352,7 +386,7 @@ fn chosen_screenshots_ride_along_and_a_removed_one_does_not(cx: &mut TestAppCont
           });
     let skipped = report.read_with(&cx, |report, _| report.skipped);
     assert_eq!(skipped, 1,
-               "the text file is skipped, and the dialog says so");
+               "the text file is skipped, and the window says so");
 
     report.update(&mut cx, |report, cx| {
               report.remove_screenshot(&shot("mock.jpg"), cx)
