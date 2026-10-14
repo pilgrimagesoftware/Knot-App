@@ -12,7 +12,9 @@ browser page otherwise.
 ### Requirement: The bug report window is opened from the Help menu
 
 The Help menu SHALL carry a "Report an Issue…" item that opens the bug report
-window as a dialog attached to the active window.
+window as a window of its own, titled for its purpose, not as a dialog attached
+to another window. It SHALL open whether or not any other window is open, and
+SHALL scroll its form when made shorter than the form.
 
 Choosing the item while the window is already open SHALL bring the existing
 window forward rather than opening a second one. After it has been closed,
@@ -21,7 +23,14 @@ choosing the item SHALL open it again.
 #### Scenario: Opening the window
 
 - **WHEN** the user chooses Help > Report an Issue…
-- **THEN** the bug report window opens attached to the active window
+- **THEN** the bug report window opens as a separate window, and the window
+  that was active stays usable beside it
+
+#### Scenario: Opening with no other window
+
+- **WHEN** every other window is closed and the user chooses Help > Report an
+  Issue…
+- **THEN** the bug report window opens
 
 #### Scenario: One window at a time
 
@@ -180,7 +189,8 @@ While the issue is being filed, the window SHALL indicate that the submission
 is in progress and SHALL prevent a second Report from being submitted at the
 same time.
 
-On success, the window SHALL confirm that the issue was filed and SHALL close.
+On success, the window SHALL close, and the window that was active when the
+report was opened SHALL confirm that the issue was filed, if it is still open.
 
 #### Scenario: The issue is filed
 
@@ -188,7 +198,8 @@ On success, the window SHALL confirm that the issue was filed and SHALL close.
   Report
 - **THEN** an issue titled with the subject is created on the app's repository,
   its body carrying the description and the diagnostics
-- **AND** the window says the issue was filed and closes
+- **AND** the report window closes and the window it was opened from says the
+  issue was filed
 
 #### Scenario: No credentials are asked for
 

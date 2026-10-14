@@ -87,6 +87,7 @@ fn render_change(change: ChangeEntry, targets: &[SendTarget], entity: &Entity<Wo
     let (name, dir) = change_actions(&change);
     let menu = ChangeMenu { name,
                             dir,
+                            prompt_ref: change.prompt_ref(),
                             targets: targets.to_vec(),
                             entity: entity.clone() };
     let context = menu.clone();
@@ -101,6 +102,19 @@ fn render_change(change: ChangeEntry, targets: &[SendTarget], entity: &Entity<Wo
             .border_color(cx.theme().border)
             .child(v_flex().flex_1()
                            .min_w_0()
+                           .children(change.subfolder.as_ref().map(|subfolder| {
+                                                                  div().text_xs()
+                                                                   .text_color(cx.theme()
+                                                                                 .muted_foreground)
+                                                                   .font_family(cx.theme()
+                                                                                  .mono_font_family
+                                                                                  .clone())
+                                                                   .overflow_hidden()
+                                                                   .whitespace_nowrap()
+                                                                   .text_ellipsis()
+                                                                   .child(subfolder.display()
+                                                                                   .to_string())
+                                                              }))
                            .child(div().overflow_hidden()
                                        .whitespace_nowrap()
                                        .text_ellipsis()
@@ -132,11 +146,13 @@ fn change_actions(change: &ChangeEntry) -> (String, PathBuf) {
 /// A change row's menu, the same in its context menu and its actions menu.
 #[derive(Clone)]
 struct ChangeMenu {
-    name:    String,
+    name:       String,
     /// The change's directory in the first working tree it was found in.
-    dir:     PathBuf,
-    targets: Vec<SendTarget>,
-    entity:  Entity<WorkspaceWindow>,
+    dir:        PathBuf,
+    /// How Send to agent names it, per `ChangeEntry::prompt_ref`.
+    prompt_ref: String,
+    targets:    Vec<SendTarget>,
+    entity:     Entity<WorkspaceWindow>,
 }
 
 impl ChangeMenu {
@@ -157,7 +173,7 @@ impl ChangeMenu {
                                      WorkspaceWindow::copy_to_clipboard(name.clone(), app);
                                  }));
         with_send_prompt(menu,
-                         WorkItemRef::Change(self.name.clone()),
+                         WorkItemRef::Change(self.prompt_ref.clone()),
                          self.targets.clone(),
                          self.entity.clone(),
                          window,

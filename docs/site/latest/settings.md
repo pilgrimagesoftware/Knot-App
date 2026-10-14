@@ -142,8 +142,9 @@ bench templates they reference.
 
 ## Bug report window
 
-Choose Report an Issue… from the Help menu. It opens attached to the active
-window and is a single instance. It collects a one-line subject, a multi-line
+Choose Report an Issue… from the Help menu. It opens as a window of its own,
+beside the window you were using, even when no other window is open, and is a
+single instance: choosing it again brings the open one forward. It collects a one-line subject, a multi-line
 description, and a kind of bug (the default) or feature request. The kind files
 the issue under the `bug` or `enhancement` label, changes the field hints, and
 controls whether logs are offered - logs appear for a bug only.
@@ -161,8 +162,10 @@ name with a remove control. Knot does not upload screenshots; it names them in
 the issue and shows them to drag onto it.
 
 Report is disabled while the subject or description is empty or whitespace,
-and Escape cancels. With the forge tool ready and authenticated, Report files
-the issue using credentials it already holds - never a stored token. Otherwise
+and Cancel or Escape closes the window without filing. With the forge tool
+ready and authenticated, Report files the issue using credentials it already
+holds - never a stored token - then closes the window and confirms the filed
+issue in the window you opened it from. Otherwise
 it falls back to a pre-filled GitHub compose page, naming any chosen log file.
 A failed submission keeps what was typed for a retry.
 

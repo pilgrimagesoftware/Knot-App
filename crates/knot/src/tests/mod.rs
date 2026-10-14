@@ -15,6 +15,7 @@ mod agent_signals;
 mod agents_menu;
 mod bug_report;
 mod commit_window;
+mod composer_overscroll;
 mod import_window;
 mod keybindings;
 mod l10n_catalog;
