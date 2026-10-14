@@ -1,4 +1,26 @@
 
+## 1.31.0 - 2026-10-14
+
+### Added
+- Detect OpenSpec changes in subfolders
+
+
+### Documentation
+- Document behaviour changed by the open release PRs
+
+
+### Fixed
+- Keep a reply's parsed height when it scrolls away
+- Keep a reader's place when Knot sends a prompt
+- Keep the model picker wide and out of text selection
+- Open Report an Issue in its own window
+- Run adapter version check on a tokio runtime
+- Stop the composer scrolling past its last line
+- Open Zed through its CLI so the folder actually opens
+- Let Send prompt to reach inactive agents
+
+
+
 ## 1.30.0 - 2026-10-13
 
 ### Added
