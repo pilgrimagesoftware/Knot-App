@@ -6,7 +6,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-/// The kinds of issue the dialog can file.
+/// The kinds of issue the window can file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum IssueKind {
     #[default]
@@ -15,7 +15,7 @@ pub(crate) enum IssueKind {
 }
 
 impl IssueKind {
-    /// In the order the dialog offers them.
+    /// In the order the window offers them.
     pub(crate) const ALL: [Self; 2] = [Self::Bug, Self::FeatureRequest];
 
     /// The repository label the issue is filed under. Both are GitHub's
@@ -27,7 +27,7 @@ impl IssueKind {
         }
     }
 
-    /// The choice's name in the dialog.
+    /// The choice's name in the window.
     pub(crate) fn label(self) -> String {
         knot_core::l10n::t(match self {
                                Self::Bug => "bug_report.kind.bug",
