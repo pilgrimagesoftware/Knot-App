@@ -116,6 +116,17 @@ pub(crate) fn new_panel_input(shift_to_send: bool, max_rows: usize, window: &mut
                                           // searched, and off also lets
                                           // Cmd-F bubble to the window.
                                           .searchable(false)
+                                          // `EditorState` counts as a code
+                                          // editor whatever its layout mode
+                                          // (`is_code_editor` reads the
+                                          // mode marker, not `auto_grow`),
+                                          // so it reserves three or more
+                                          // empty rows below the last line
+                                          // to scroll into. A composer that
+                                          // fits its text has nothing to
+                                          // scroll, and the wheel pushed the
+                                          // whole draft out of view (#41).
+                                          .scroll_beyond_last_line(Some(0))
                                           // Last, and load-bearing:
                                           // `EditorState::new` starts in
                                           // `LayoutMode::CodeEditor` and
