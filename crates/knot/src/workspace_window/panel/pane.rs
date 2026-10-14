@@ -13,11 +13,8 @@ use gpui_kit::App;
 use gpui_kit::ClickEvent;
 use gpui_kit::Context;
 use gpui_kit::Focusable;
-use gpui_kit::FollowMode;
 use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
-use gpui_kit::ListAlignment;
-use gpui_kit::ListState;
 use gpui_kit::ParentElement;
 use gpui_kit::Styled;
 use gpui_kit::Window;
@@ -344,7 +341,8 @@ impl WorkspaceWindow {
                 // toggled-off response stays put *even at the tail* - the
                 // whole reason for hand-rolling on `ListState` rather than
                 // using a scroller whose follow mode re-engages itself.
-                let list = self.panel_list(id, list_slot);
+                let panel = self.panel_list(id, list_slot);
+                let list = panel.list.clone();
                 let known = self.panel_list_row_counts.get(&id).copied().unwrap_or(0);
                 let row_count = {
                     let state = state_arc.lock();
@@ -352,14 +350,7 @@ impl WorkspaceWindow {
                     self.panel_list_row_counts.insert(id, count);
                     count
                 };
-                if should_follow {
-                    if !list.is_following_tail() {
-                        list.set_follow_mode(FollowMode::Tail);
-                    }
-                }
-                else {
-                    list.set_follow_mode(FollowMode::Normal);
-                }
+                panel_view::sync_follow_mode(&list, should_follow);
                 let pending_context = self.panel_pending_context
                                           .get(&id)
                                           .cloned()
@@ -387,7 +378,7 @@ impl WorkspaceWindow {
                             .min_h_0()
                             .child(panel_view::render_panel(
                                 Arc::clone(&state_arc),
-                                list.clone(),
+                                panel,
                                 &panel_style,
                                 panel_view::PanelCallbacks::new(
                                     on_decision,
@@ -434,6 +425,18 @@ impl WorkspaceWindow {
         }
     }
 
+    /// Whether `id`'s conversation is showing its newest message, so a
+    /// prompt Knot sends of its own accord may follow its answer without
+    /// taking the reader anywhere (#246). True with no list yet: a pane
+    /// nobody has opened has no place to lose.
+    pub(in crate::workspace_window) fn reader_at_tail(&self, id: Uuid) -> bool {
+        self.panel_lists
+            .get(&id)
+            .is_none_or(|panel| {
+                !panel_view::scrolled_away_from_tail(&panel.list, panel.list.item_count())
+            })
+    }
+
     /// Gets or creates the conversation's virtualized list for `id`'s panel.
     ///
     /// `slot` is the panel session slot the list's scroll handler clears
@@ -445,18 +448,18 @@ impl WorkspaceWindow {
     /// each frame (see `panel_view::sync_row_count`).
     pub(in crate::workspace_window) fn panel_list(&mut self, id: Uuid,
                                                   slot: Arc<Mutex<panel_session::PanelSessionSlot>>)
-                                                  -> ListState {
-        if let Some(list) = self.panel_lists.get(&id) {
-            return list.clone();
+                                                  -> panel_view::PanelList {
+        if let Some(panel) = self.panel_lists.get(&id) {
+            return panel.clone();
         }
-        let list = ListState::new(0, ListAlignment::Top, px(panel_view::LIST_OVERDRAW));
-        list.set_scroll_handler(move |_event, _window, _cx| {
-                if let panel_session::PanelSessionSlot::Ready(handle) = &*slot.lock() {
-                    handle.clear_tracking();
-                }
-            });
-        self.panel_lists.insert(id, list.clone());
+        let panel = panel_view::PanelList::new();
+        panel.list.set_scroll_handler(move |_event, _window, _cx| {
+                      if let panel_session::PanelSessionSlot::Ready(handle) = &*slot.lock() {
+                          handle.clear_tracking();
+                      }
+                  });
+        self.panel_lists.insert(id, panel.clone());
         self.panel_list_row_counts.insert(id, 0);
-        list
+        panel
     }
 }

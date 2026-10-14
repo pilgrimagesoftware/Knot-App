@@ -212,7 +212,8 @@ fn scrolled_up_list(fixture: &mut Fixture, id: Uuid) -> gpui_kit::ListState {
     let list = gpui_kit::ListState::new(20, gpui_kit::ListAlignment::Top, gpui_kit::px(0.));
     list.scroll_to(gpui_kit::ListOffset { item_ix:        0,
                                           offset_in_item: gpui_kit::px(0.), });
-    let installed = list.clone();
+    let installed = crate::panel_view::PanelList { list:     list.clone(),
+                                                   markdown: Default::default(), };
     // Notified, the way the render that creates a real list is: the
     // shortcut's handler is registered from the frame that sees the list.
     fixture.view.update(&mut fixture.window, |view, cx| {

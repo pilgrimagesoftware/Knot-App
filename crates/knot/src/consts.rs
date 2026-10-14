@@ -374,3 +374,14 @@ pub(crate) const NEW_AGENT_CHORD: &str = "cmd-t";
 /// How long ⌘ has to be held before the sidebar shows its keys - long enough
 /// that an ordinary ⌘C or ⌘Tab does not flash them (`agent-list-ui`).
 pub(crate) const KEY_HINT_DELAY: Duration = Duration::from_millis(500);
+
+// ---------------------------------------------------------------------------
+// Agent panel
+// ---------------------------------------------------------------------------
+
+/// How many assistant replies keep their parsed Markdown at once, the ones
+/// nearest the reader's position (#246). Far more than a viewport and its
+/// overdraw can hold - a reply is at least a line tall - so a reply on
+/// screen is never the one dropped; small enough that a session thousands
+/// of replies long does not keep every parsed document alive.
+pub(crate) const PANEL_MARKDOWN_ROWS_KEPT: usize = 256;

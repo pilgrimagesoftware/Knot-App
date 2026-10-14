@@ -7,6 +7,7 @@ use std::time::SystemTime;
 
 use gpui_kit::ClickEvent;
 use gpui_kit::ClipboardItem;
+use gpui_kit::Entity;
 use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ListOffset;
@@ -22,6 +23,7 @@ use gpui_kit::component::WindowExt;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::notification::Notification;
+use gpui_kit::component::text::TextViewState;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::div;
 use gpui_kit::prelude::FluentBuilder;
@@ -60,6 +62,10 @@ pub(super) struct Message<'a> {
     /// `WorkspaceWindow::key_hints` - the same signal that drives the
     /// sidebar's own key hints (cmd-hold-timestamps).
     pub(super) cmd_held: bool,
+    /// The reply's Markdown state, owned by the pane's `PanelList` so it
+    /// outlives the row scrolling away (#246). `None` for anything that is
+    /// not an assistant reply.
+    pub(super) reply:    Option<Entity<TextViewState>>,
 }
 
 /// The small, subtitle-colored relative-time label for one message, with a
@@ -92,7 +98,8 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                   is_last,
                   style,
                   list,
-                  cmd_held, } = ctx;
+                  cmd_held,
+                  reply, } = ctx;
     match message {
         // Right-aligned, tinted background - visually distinct from the
         // assistant's plain left-aligned text, per acp-panel-ui's
@@ -196,13 +203,21 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                     div()
                         .w_full()
                         .min_w_0()
-                        .child(crate::markdown_view::markdown_view(
-                            ("panel-message-markdown", index as u64),
-                            text.clone(),
-                            style.ui_font_family.clone(),
-                            style.title_font_family.clone(),
-                            style.markdown_font_size,
-                        )),
+                        .child(match &reply {
+                            Some(reply) => crate::markdown_view::markdown_view_for(
+                                reply,
+                                style.ui_font_family.clone(),
+                                style.title_font_family.clone(),
+                                style.markdown_font_size,
+                            ),
+                            None => crate::markdown_view::markdown_view(
+                                ("panel-message-markdown", index as u64),
+                                text.clone(),
+                                style.ui_font_family.clone(),
+                                style.title_font_family.clone(),
+                                style.markdown_font_size,
+                            ),
+                        }),
                 )
                 .children((is_last && state.turn_active).then(|| {
                     render_track_toggle(state.tracking, callbacks.on_toggle_track.clone())

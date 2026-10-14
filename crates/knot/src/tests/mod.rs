@@ -34,6 +34,7 @@ mod panel_lookup;
 mod panel_model_picker;
 mod panel_model_picker_selection;
 mod panel_scroll;
+mod panel_scrollback;
 mod permission_keybindings;
 mod plan_diagram;
 mod pull_request_records;

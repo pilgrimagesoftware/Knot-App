@@ -31,6 +31,7 @@ use crate::composer_style::ComposerStyling;
 use crate::dashboard;
 use crate::panel_session;
 use crate::panel_state;
+use crate::panel_view::PanelList;
 
 /// A delivery result on its way back from the runtime: the agent whose
 /// queue it belongs to, the queue entry it answers, and how the prompt
@@ -244,8 +245,9 @@ pub(crate) struct WorkspaceWindow {
     /// been viewed, created lazily - the `ListState` backing
     /// `render_panel`'s virtualization, and the target of the response
     /// action bar's scroll-to-user/scroll-to-top controls and the track
-    /// toggle's auto-scroll.
-    pub(super) panel_lists:                      BTreeMap<Uuid, ListState>,
+    /// toggle's auto-scroll - with the Markdown state of its replies, which
+    /// lives exactly as long as the list (#246).
+    pub(super) panel_lists:                      BTreeMap<Uuid, PanelList>,
     /// The item count each `panel_lists` entry was last reconciled to, so
     /// `render_panel_pane` can `splice` only the rows that actually
     /// changed and leave off-screen rows' measured heights alone.
