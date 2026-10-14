@@ -32,7 +32,7 @@ impl Diagnostics {
                forge: knot_forge::probe(), }
     }
 
-    /// The block as the dialog shows it and the issue body carries it: one
+    /// The block as the window shows it and the issue body carries it: one
     /// labelled fact per line. Labels are localized; values are not.
     pub(crate) fn text(&self) -> String {
         [("bug_report.diagnostics.app", self.app.clone()),

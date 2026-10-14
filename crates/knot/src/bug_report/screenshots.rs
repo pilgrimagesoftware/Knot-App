@@ -41,7 +41,7 @@ fn is_image(path: &Path) -> bool {
         })
 }
 
-/// What the dialog and the body show for `path`: its file name. Not the full
+/// What the window and the body show for `path`: its file name. Not the full
 /// path, which names the user's home directory and says nothing a reader of
 /// the issue needs.
 pub(super) fn file_name(path: &Path) -> String {
@@ -64,7 +64,7 @@ pub(super) fn body_section(screenshots: &[PathBuf]) -> String {
 }
 
 /// How a report's screenshots reach the issue, which decides what the
-/// dialog tells the user to do with them.
+/// window tells the user to do with them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Handoff {
     /// The report has no screenshots.

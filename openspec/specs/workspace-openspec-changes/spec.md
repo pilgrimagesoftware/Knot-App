@@ -11,14 +11,25 @@ change to an agent.
 
 Knot SHALL look for OpenSpec changes in the working tree of each workspace
 repository and each of its worktrees that an agent of the workspace works in,
-the repositories being those `workspace-issues` describes. A change SHALL be a
-directory directly under `<working tree>/openspec/changes/` other than
-`archive`, and its name SHALL be the directory's name. Directories whose names
-start with `.` SHALL be ignored. Anything under `openspec/changes/archive/`
-SHALL NOT be listed.
+the repositories being those `workspace-issues` describes. Knot SHALL look in
+the working tree's own `openspec/changes/` and in that of any subfolder up to
+three levels below it, so a monorepo's `services/api/openspec/changes/` is
+found. It SHALL NOT look inside folders whose names start with `.`, dependency
+and build output folders (`node_modules`, `target`, `vendor`, `build`,
+`dist`), an `openspec` folder, symbolic links, or a subfolder that is itself a
+git repository.
 
-A change with the same name in several working trees of one repository SHALL be
-listed once for that repository. A working tree with no `openspec/changes/`
+A change SHALL be a directory directly under one of those `openspec/changes/`
+directories other than `archive`, and its name SHALL be the directory's name.
+Directories whose names start with `.` SHALL be ignored. Anything under an
+`openspec/changes/archive/` SHALL NOT be listed. A change found in a subfolder
+SHALL show that subfolder's path beside its name, the search SHALL match it,
+and Send to agent SHALL name the change by its path from the working tree.
+The working tree's own changes SHALL be listed first, then each subfolder's.
+
+A change with the same name in the same folder of several working trees of one
+repository SHALL be listed once for that repository; the same name in two
+different subfolders SHALL be two changes. A working tree with no `openspec/changes/`
 directory SHALL contribute nothing and SHALL NOT be reported as an error.
 
 Unlike issues, changes SHALL be found for every git repository, whatever its
@@ -50,9 +61,22 @@ The Swift reference has no such notion.
   `openspec/changes/add-login/`, and an agent works in that worktree
 - **THEN** `add-login` is listed under that repository
 
+#### Scenario: A change in a subfolder
+
+- **WHEN** an agent's repository has `services/api/openspec/changes/add-login/`
+  and no `openspec/` at its root
+- **THEN** the OpenSpec tab lists `add-login`, marked `services/api`
+
+#### Scenario: The same name in two subfolders
+
+- **WHEN** a repository has `api/openspec/changes/add-login/` and
+  `web/openspec/changes/add-login/`
+- **THEN** `add-login` is listed twice, once marked `api` and once `web`
+
 #### Scenario: A repository with no OpenSpec directory
 
-- **WHEN** an agent's repository has no `openspec/changes/` directory
+- **WHEN** an agent's repository has no `openspec/changes/` directory at its
+  root or in any subfolder
 - **THEN** it contributes no rows and the tab shows no error
 
 #### Scenario: A newly proposed change appears

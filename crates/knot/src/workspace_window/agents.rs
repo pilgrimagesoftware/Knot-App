@@ -118,10 +118,26 @@ impl WorkspaceWindow {
             // A duplicate id (two messages to the same stopped agent before
             // this window polled) costs nothing: both are no-ops once the
             // session exists.
-            self.ensure_session(id, cx);
-            self.ensure_panel_session(id, cx);
+            self.start_sessions(id, cx);
         }
         true
+    }
+
+    /// Activates `id` and starts its session, leaving the selection alone -
+    /// [`Self::activate_messaged_agents`] for one agent the user chose,
+    /// e.g. as the target of "Send prompt to" (#208). A no-op for an agent
+    /// that is already running.
+    pub(in crate::workspace_window) fn activate_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
+        self.store.lock().set_activated(id, true);
+        self.start_sessions(id, cx);
+    }
+
+    /// Starts whichever session `id`'s type runs. Both calls are needed:
+    /// each is a no-op for the kind of agent the other one serves, and both
+    /// are no-ops until `activated` is set.
+    fn start_sessions(&mut self, id: Uuid, cx: &mut Context<Self>) {
+        self.ensure_session(id, cx);
+        self.ensure_panel_session(id, cx);
     }
 
     /// Stops `id`'s session without removing the agent, per
