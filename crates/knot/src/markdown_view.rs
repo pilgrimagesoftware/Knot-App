@@ -35,11 +35,13 @@ use gpui_kit::assets::IconName;
 use gpui_kit::base::text::CodeBlock;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::notification::Notification;
-use gpui_kit::component::text::{MarkdownNode, MarkdownParseContext, TextView, markdown_ast};
+use gpui_kit::component::text::{
+    MarkdownNode, MarkdownParseContext, TextView, TextViewState, markdown_ast,
+};
 use gpui_kit::component::{Sizable, WindowExt};
 use gpui_kit::{
-    App, ClickEvent, ClipboardItem, ElementId, FontWeight, ParentElement, Pixels, SharedString,
-    Styled, Window, div, rems,
+    App, ClickEvent, ClipboardItem, ElementId, Entity, FontWeight, ParentElement, Pixels,
+    SharedString, Styled, Window, div, rems,
 };
 
 /// The name the heading block parser claims and the block renderer answers to.
@@ -220,19 +222,36 @@ pub(crate) fn markdown_view(id: impl Into<ElementId>, source: impl Into<SharedSt
                             ui_font_family: SharedString, title_font_family: SharedString,
                             body_size: Pixels)
                             -> TextView {
-    TextView::markdown(id, source).font_family(ui_font_family)
-                                  .markdown_block_parser(parse_heading)
-                                  .markdown_block_renderer(HEADING_NODE_NAME,
-                                                           move |node: &MarkdownNode,
-                                                                 _window: &mut Window,
-                                                                 _cx: &mut App| {
-                                                               render_heading(node,
-                                                                        title_font_family.clone(),
-                                                                        body_size)
-                                                           })
-                                  .code_block_actions(|block: &CodeBlock,
-                                                       _window: &mut Window,
-                                                       _cx: &mut App| {
-                                      code_block_copy_button(block)
-                                  })
+    configured(TextView::markdown(id, source),
+               ui_font_family,
+               title_font_family,
+               body_size)
+}
+
+/// [`markdown_view`] over a state the caller owns, for a view whose parsed
+/// document has to outlive the element - a conversation row the list stops
+/// laying out when it scrolls away (#246). The caller keeps the state's text
+/// current; see `panel_view::markdown_rows`.
+pub(crate) fn markdown_view_for(state: &Entity<TextViewState>, ui_font_family: SharedString,
+                                title_font_family: SharedString, body_size: Pixels)
+                                -> TextView {
+    configured(TextView::new(state),
+               ui_font_family,
+               title_font_family,
+               body_size)
+}
+
+/// Everything both constructors share, so the two cannot drift apart.
+fn configured(view: TextView, ui_font_family: SharedString, title_font_family: SharedString,
+              body_size: Pixels)
+              -> TextView {
+    view.font_family(ui_font_family)
+        .markdown_block_parser(parse_heading)
+        .markdown_block_renderer(HEADING_NODE_NAME,
+                                 move |node: &MarkdownNode, _window: &mut Window, _cx: &mut App| {
+                                     render_heading(node, title_font_family.clone(), body_size)
+                                 })
+        .code_block_actions(|block: &CodeBlock, _window: &mut Window, _cx: &mut App| {
+            code_block_copy_button(block)
+        })
 }

@@ -10,8 +10,10 @@ use gpui_kit::component::Sizable;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::kbd::Kbd;
+use gpui_kit::component::text::TextViewState;
 use gpui_kit::{
-    ClickEvent, IntoElement, ListState, ParentElement, SharedString, Styled, Window, div, rgb,
+    App, ClickEvent, Entity, IntoElement, ListState, ParentElement, SharedString, Styled, Window,
+    div, rgb,
 };
 use knot_acp::PermissionDecision;
 use knot_acp::PermissionOptionKind;
@@ -20,6 +22,7 @@ use parking_lot::Mutex;
 
 use super::callbacks::PanelCallbacks;
 use super::message::*;
+use super::panel_list::PanelList;
 use super::rows::*;
 use super::style::ERROR_COLOR;
 use super::style::PanelStyle;
@@ -29,6 +32,7 @@ use super::summary_row::*;
 use crate::app_bootstrap::PanelPermissionAllow;
 use crate::app_bootstrap::PanelPermissionAllowAlways;
 use crate::app_bootstrap::PanelPermissionDeny;
+use crate::panel_state::PanelMessage;
 use crate::panel_state::PanelState;
 
 /// How much extra space above and below the viewport the list lays out and
@@ -48,15 +52,25 @@ pub(crate) const LIST_OVERDRAW: f32 = 400.;
 /// the in-flight response, opening or closing a tool-call card by its id, and
 /// a manual jump from a message's action bar - the last so the caller can
 /// drop auto-scroll without the reconciler pulling the view back to the tail.
-pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, list: ListState, style: &PanelStyle,
+pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, panel: PanelList, style: &PanelStyle,
                            callbacks: PanelCallbacks, cmd_held: bool)
                            -> impl IntoElement {
+    panel.markdown.retain(state.lock().messages.len(),
+                          panel.list.logical_scroll_top().item_ix);
     let row_state = Arc::clone(&state);
-    let row_list = list.clone();
+    let row_panel = panel.clone();
     let row_style = style.clone();
-    gpui_kit::list(list.clone(), move |index, window, _cx| {
+    gpui_kit::list(panel.list, move |index, window, cx| {
         let state = row_state.lock();
-        render_row(index, &state, &row_style, &row_list, &callbacks, window, cmd_held)
+        let frame = RowFrame { window,
+                               cmd_held,
+                               reply: reply_markdown(index, &state, &row_panel, window, cx) };
+        render_row(index,
+                   &state,
+                   &row_style,
+                   &row_panel.list,
+                   &callbacks,
+                   frame)
     }).size_full()
       // `min_w_0` so a wide child (a markdown table, a long command line)
       // clips instead of stretching the pane and pushing the input row's
@@ -78,6 +92,33 @@ pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, list: ListState, style
       .text_size(style.markdown_font_size)
 }
 
+/// What one row is drawn with beyond the panel state: the frame's window,
+/// the ⌘-hold signal, and an assistant reply's Markdown state.
+struct RowFrame<'a> {
+    window:   &'a Window,
+    cmd_held: bool,
+    /// Set only for an assistant reply - see [`reply_markdown`].
+    reply:    Option<Entity<TextViewState>>,
+}
+
+/// The Markdown state for the row at `index`, when it is an assistant
+/// reply: owned by `panel` rather than by the element, so a reply that
+/// scrolls out of the laid-out band keeps its parsed height (#246).
+fn reply_markdown(index: usize, state: &PanelState, panel: &PanelList, window: &Window,
+                  cx: &mut App)
+                  -> Option<Entity<TextViewState>> {
+    let Some(PanelRow::Message(message_index)) = row_at(state, index)
+    else {
+        return None;
+    };
+    let PanelMessage::Assistant(text) = state.messages.get(message_index)?
+    else {
+        return None;
+    };
+    Some(panel.markdown
+              .state(message_index, text, &panel.list, window, cx))
+}
+
 /// Renders a single list row by resolving it against the current panel
 /// state. An index past the end draws nothing rather than panicking, so a
 /// frame racing a `sync_row_count` splice cannot crash the window.
@@ -87,14 +128,17 @@ pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, list: ListState, style
 /// where the content gets its breathing room from the pane edges and from
 /// neighbouring rows.
 ///
-/// `window` is the frame's, carried only so the permission row can ask the
-/// live keymap what its decision buttons are bound to. `cmd_held` is
+/// `frame.window` is the frame's, carried only so the permission row can ask
+/// the live keymap what its decision buttons are bound to. `frame.cmd_held` is
 /// `WorkspaceWindow::key_hints.shown().is_some()` - the sidebar's own ⌘-hold
 /// signal, reused so every message's timestamp shows and hides with it
 /// (cmd-hold-timestamps).
 fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListState,
-              callbacks: &PanelCallbacks, window: &Window, cmd_held: bool)
+              callbacks: &PanelCallbacks, frame: RowFrame<'_>)
               -> gpui_kit::AnyElement {
+    let RowFrame { window,
+                   cmd_held,
+                   reply, } = frame;
     let row = match row_at(state, index) {
         Some(PanelRow::Message(message_index)) => {
             match compact_row(message_index, state, style.compact_tool_calls) {
@@ -119,7 +163,8 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
                                              is_last: Some(message_index) == last_index,
                                              style,
                                              list,
-                                             cmd_held },
+                                             cmd_held,
+                                             reply },
                                    message,
                                    callbacks)
                 }
