@@ -27,6 +27,7 @@ use gpui_kit::VisualTestContext;
 use gpui_kit::Window;
 use gpui_kit::WindowOptions;
 use gpui_kit::component::Root;
+use gpui_kit::component::input::Position;
 use gpui_kit::div;
 use gpui_kit::point;
 use gpui_kit::px;
@@ -82,6 +83,17 @@ fn scroll_top(cx: &mut VisualTestContext, input: &Entity<PanelInputState>) -> f3
     cx.update(|_, cx| f32::from(input.read(cx).scroll_offset().y))
 }
 
+/// Puts the caret at `position`, which scrolls it into view the way typing
+/// there would. Through the editor rather than a keystroke: the
+/// go-to-end chord is `cmd-down` on macOS and `ctrl-end` elsewhere, and a
+/// macOS chord on Linux CI moves nothing.
+fn move_caret(cx: &mut VisualTestContext, input: &Entity<PanelInputState>, position: Position) {
+    input.update_in(cx, |state, window, cx| {
+             state.set_cursor_position(position, window, cx)
+         });
+    cx.run_until_parked();
+}
+
 /// Turns the wheel over the composer, content-upwards, by `distance`.
 fn wheel_down(cx: &mut VisualTestContext, distance: f32) {
     cx.simulate_event(ScrollWheelEvent { position: INSIDE,
@@ -126,14 +138,12 @@ fn a_long_draft_scrolls_no_further_than_its_last_line(cx: &mut TestAppContext) {
                       .collect::<Vec<_>>()
                       .join("\n");
     let (mut cx, input) = composer(cx, &text);
-    cx.simulate_keystrokes("cmd-down");
-    cx.run_until_parked();
+    move_caret(&mut cx, &input, Position::new(11, 7));
     let at_end = scroll_top(&mut cx, &input);
     assert!(at_end < 0.,
             "twelve lines overflow the collapsed composer, so the end is scrolled");
 
-    cx.simulate_keystrokes("cmd-up");
-    cx.run_until_parked();
+    move_caret(&mut cx, &input, Position::new(0, 0));
     wheel_down(&mut cx, 2_000.);
     assert_eq!(scroll_top(&mut cx, &input),
                at_end,
