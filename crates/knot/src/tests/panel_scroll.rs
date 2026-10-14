@@ -201,6 +201,7 @@ impl Render for PanelProbe {
         {
             let state = self.state.lock();
             self.known = panel_view::sync_row_count(&self.panel.list, self.known, &state);
+            panel_view::sync_follow_mode(&self.panel.list, state.turn_active && state.tracking);
         }
         let theme = cx.theme();
         let style = panel_view::PanelStyle { permission_risk:    panel_view::RiskLevel::Neutral,
@@ -248,6 +249,9 @@ pub(super) fn panel_probe_with(
     let state = Arc::new(Mutex::new(state));
     let panel = panel_view::PanelList::new();
     let list = panel.list.clone();
+    // The pane's handler: a wheel scroll stops following the response.
+    let scrolled = Arc::clone(&state);
+    list.set_scroll_handler(move |_event, _window, _cx| scrolled.lock().clear_tracking());
     let mut probe = None;
     let window = {
         let probe = &mut probe;

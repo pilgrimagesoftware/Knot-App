@@ -36,6 +36,7 @@ pub(crate) use render::LIST_OVERDRAW;
 pub(crate) use render::render_panel;
 pub(crate) use rows::*;
 pub(crate) use scroll::scrolled_away_from_tail;
+pub(crate) use scroll::sync_follow_mode;
 pub(crate) use style::PanelStyle;
 pub(crate) use style::RiskLevel;
 pub(crate) use style::permission_risk_level;

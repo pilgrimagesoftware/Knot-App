@@ -24,7 +24,10 @@ use knot_acp::SessionUpdate;
 use super::panel_scroll::VIEWPORT_HEIGHT;
 use super::panel_scroll::panel_probe_with;
 use super::panel_scroll::redraw;
+use crate::app_support::CHECK_INBOX_PROMPT;
 use crate::panel_state::PanelState;
+use crate::panel_view;
+use crate::workspace_window::prompt_queue::PromptOrigin;
 
 /// How many question-and-reply turns the conversation holds: enough that
 /// most of it starts outside the viewport and its overdraw.
@@ -142,4 +145,65 @@ fn a_streaming_reply_leaves_a_reader_further_up_where_they_are(cx: &mut TestAppC
     assert!((f32::from(after.top()) - before).abs() <= TOLERANCE,
             "row {ix} moved from {before} to {} while the reader was further up",
             f32::from(after.top()));
+}
+
+/// Records a prompt the way `deliver_panel_prompt` does: whether its answer
+/// is followed depends on where it came from and where the reader is.
+fn deliver(state: &parking_lot::Mutex<PanelState>, list: &ListState, text: &str,
+           origin: PromptOrigin) {
+    let reader_at_tail = !panel_view::scrolled_away_from_tail(list, list.item_count());
+    state.lock()
+         .push_prompt(text.to_string(), origin.follows(reader_at_tail));
+}
+
+/// The inbox nudge another agent's message triggers is Knot's prompt, not
+/// the reader's: it starts a turn, but leaves someone reading back through
+/// the history exactly where they were (#246).
+#[gpui_kit::test]
+fn an_inbox_nudge_leaves_a_reader_further_up_where_they_are(cx: &mut TestAppContext) {
+    let (mut probe_cx, probe, state, list) = panel_probe_with(cx, conversation());
+    redraw(&mut probe_cx, &probe);
+    for _ in 0..30 {
+        scroll_up_one_notch(&mut probe_cx, &list);
+    }
+    redraw(&mut probe_cx, &probe);
+    let (ix, before) = reference_row(&list).expect("some row is on screen");
+
+    deliver(&state, &list, CHECK_INBOX_PROMPT, PromptOrigin::InboxNudge);
+    redraw(&mut probe_cx, &probe);
+    state.lock().apply(SessionEvent::Update(SessionUpdate::TextDelta {
+        text: "Checking my inbox now.".to_string(),
+    }));
+    redraw(&mut probe_cx, &probe);
+
+    let after = list.bounds_for_item(ix)
+                    .expect("the nudge should not have scrolled the reference row away");
+    assert!((f32::from(after.top()) - before).abs() <= TOLERANCE,
+            "row {ix} moved from {before} to {} when the inbox nudge arrived",
+            f32::from(after.top()));
+    assert!(panel_view::scrolled_away_from_tail(&list, list.item_count()),
+            "the reader is still further up, so the jump to the latest stays offered");
+}
+
+/// The other half: a prompt the user typed takes them to its answer, even
+/// from further up.
+#[gpui_kit::test]
+fn the_users_own_prompt_brings_them_to_its_answer(cx: &mut TestAppContext) {
+    let (mut probe_cx, probe, state, list) = panel_probe_with(cx, conversation());
+    redraw(&mut probe_cx, &probe);
+    for _ in 0..30 {
+        scroll_up_one_notch(&mut probe_cx, &list);
+    }
+    redraw(&mut probe_cx, &probe);
+    assert!(panel_view::scrolled_away_from_tail(&list, list.item_count()));
+
+    deliver(&state,
+            &list,
+            "A question the user typed",
+            PromptOrigin::User);
+    redraw(&mut probe_cx, &probe);
+    redraw(&mut probe_cx, &probe);
+
+    assert!(!panel_view::scrolled_away_from_tail(&list, list.item_count()),
+            "the user's own prompt should bring the conversation to its newest row");
 }

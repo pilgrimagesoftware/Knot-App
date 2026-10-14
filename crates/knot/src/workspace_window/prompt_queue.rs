@@ -34,6 +34,23 @@ pub(crate) enum PromptOrigin {
     Startup,
 }
 
+impl PromptOrigin {
+    /// Whether delivering a prompt of this origin brings the conversation to
+    /// its newest message and follows the answer (#246).
+    ///
+    /// A prompt the user sent does: they asked for that answer. A prompt
+    /// Knot sends of its own accord - an inbox nudge, a startup or
+    /// registration prompt - follows only a reader who is already at the
+    /// tail. Someone reading back through the history keeps their place,
+    /// exactly as they would for streamed output.
+    pub(crate) fn follows(self, reader_at_tail: bool) -> bool {
+        match self {
+            PromptOrigin::User => true,
+            PromptOrigin::InboxNudge | PromptOrigin::Startup => reader_at_tail,
+        }
+    }
+}
+
 /// One prompt waiting to be delivered to an agent.
 ///
 /// An entry leaves the queue the moment the pump hands it to the agent -
@@ -170,6 +187,18 @@ mod tests {
 
     fn texts(queue: &[QueuedPanelPrompt]) -> Vec<&str> {
         queue.iter().map(|prompt| prompt.text.as_str()).collect()
+    }
+
+    /// The user's own prompt always brings the conversation to its answer;
+    /// one Knot sent never pulls a reader away from where they are (#246).
+    #[test]
+    fn only_the_users_own_prompt_pulls_a_reader_to_the_tail() {
+        assert!(PromptOrigin::User.follows(false));
+        assert!(!PromptOrigin::InboxNudge.follows(false));
+        assert!(!PromptOrigin::Startup.follows(false));
+        // At the tail already, following costs the reader nothing.
+        assert!(PromptOrigin::InboxNudge.follows(true));
+        assert!(PromptOrigin::Startup.follows(true));
     }
 
     /// A nudge that arrives mid-turn goes behind the work already waiting

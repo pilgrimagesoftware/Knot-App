@@ -13,7 +13,6 @@ use gpui_kit::App;
 use gpui_kit::ClickEvent;
 use gpui_kit::Context;
 use gpui_kit::Focusable;
-use gpui_kit::FollowMode;
 use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
@@ -351,14 +350,7 @@ impl WorkspaceWindow {
                     self.panel_list_row_counts.insert(id, count);
                     count
                 };
-                if should_follow {
-                    if !list.is_following_tail() {
-                        list.set_follow_mode(FollowMode::Tail);
-                    }
-                }
-                else {
-                    list.set_follow_mode(FollowMode::Normal);
-                }
+                panel_view::sync_follow_mode(&list, should_follow);
                 let pending_context = self.panel_pending_context
                                           .get(&id)
                                           .cloned()
@@ -431,6 +423,18 @@ impl WorkspaceWindow {
                     .into_any_element()
             }
         }
+    }
+
+    /// Whether `id`'s conversation is showing its newest message, so a
+    /// prompt Knot sends of its own accord may follow its answer without
+    /// taking the reader anywhere (#246). True with no list yet: a pane
+    /// nobody has opened has no place to lose.
+    pub(in crate::workspace_window) fn reader_at_tail(&self, id: Uuid) -> bool {
+        self.panel_lists
+            .get(&id)
+            .is_none_or(|panel| {
+                !panel_view::scrolled_away_from_tail(&panel.list, panel.list.item_count())
+            })
     }
 
     /// Gets or creates the conversation's virtualized list for `id`'s panel.
