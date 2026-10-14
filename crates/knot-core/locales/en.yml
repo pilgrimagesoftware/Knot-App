@@ -666,6 +666,8 @@ changes_view:
   # "Send prompt to" on an issue or change row (#504): the submenu title and
   # the one prompt each item sends.
   send_prompt_to: "Send prompt to"
+  # A stopped agent in the Send prompt to submenu; choosing it starts it.
+  send_target_inactive: "%{name} (inactive)"
   prompt:
     issue: "Work on this issue: %{url}"
     change: "Work on this OpenSpec change: %{name}"
