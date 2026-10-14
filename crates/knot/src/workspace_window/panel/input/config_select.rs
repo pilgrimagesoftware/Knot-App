@@ -15,7 +15,9 @@ use gpui_kit::App;
 use gpui_kit::AppContext;
 use gpui_kit::Context;
 use gpui_kit::Entity;
+use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
+use gpui_kit::MouseButton;
 use gpui_kit::ParentElement;
 use gpui_kit::SharedString;
 use gpui_kit::Styled;
@@ -37,6 +39,12 @@ use crate::workspace_window::WorkspaceWindow;
 /// default is the same 20rem; naming it here is what the "more models than
 /// fit" scenario measures against.
 pub(crate) const MENU_MAX_HEIGHT_REMS: f32 = 20.;
+
+/// How wide the open dropdown is, in rems. Fixed, because the kit's default
+/// sizes the menu to its trigger - and the trigger is as wide as the
+/// selected model's name, so a short name made a menu too narrow for the
+/// longer ones in it (#243).
+const MENU_WIDTH_REMS: f32 = 16.;
 
 pub(in crate::workspace_window) const MODEL_SELECTOR_ID: &str = "panel-model-selector";
 
@@ -123,6 +131,36 @@ pub(crate) fn new_config_select_state(option: &knot_acp::ConfigOption, window: &
     cx.new(|cx| SelectState::new(delegate, selected, window, cx).searchable(true))
 }
 
+/// The dropdown element for `state`, as the panel draws it.
+///
+/// The one builder: the panel draws its dropdowns through this and so do
+/// the tests.
+///
+/// The wrapper claims the trigger's press from the window-level text
+/// selection, as the kit's `Button` does for its own. `Select` opens on the
+/// click - the mouse-up - and stops that event there, so a selection the
+/// press had begun never saw it end and went on extending across the
+/// conversation with every pointer move (#243).
+pub(crate) fn config_select<Id>(state: &Entity<SelectState<ConfigSelectorDelegate>>,
+                                element_id: Id)
+                                -> impl IntoElement + use<Id>
+    where Id: Into<gpui_kit::ElementId> {
+    let select = Select::new(state).id(element_id)
+                      .small()
+                      .appearance(false)
+                      .menu_width(gpui_kit::rems(MENU_WIDTH_REMS))
+                      .menu_max_h(gpui_kit::rems(MENU_MAX_HEIGHT_REMS))
+                      .search_placeholder(knot_core::l10n::t("panel.selector.search_placeholder"))
+                      .empty(|_window, _app| {
+                          div().p_1()
+                               .child(knot_core::l10n::t("panel.selector.no_matches"))
+                      });
+    div().on_mouse_down(MouseButton::Left, |_, _, cx| {
+             gpui_kit::base::GlobalState::suppress_text_selection(cx);
+         })
+         .child(select)
+}
+
 impl WorkspaceWindow {
     /// Makes sure `id`'s model and effort selectors have their `SelectState`,
     /// and that what it lists is what the agent currently declares.
@@ -207,15 +245,7 @@ impl WorkspaceWindow {
         &self, id: Uuid, element_id: &'static str)
         -> Option<impl IntoElement + use<>> {
         let state = self.panel_selectors.get(&(id, element_id))?;
-        Some(Select::new(state).id(gpui_kit::ElementId::from(format!("{element_id}-{id}")))
-                               .small()
-                               .appearance(false)
-                               .menu_max_h(gpui_kit::rems(MENU_MAX_HEIGHT_REMS))
-                               .search_placeholder(knot_core::l10n::t("panel.selector.search_placeholder"))
-                               .empty(|_window, _app| {
-                                   div().p_1()
-                                        .child(knot_core::l10n::t("panel.selector.no_matches"))
-                               }))
+        Some(config_select(state, format!("{element_id}-{id}")))
     }
 
     /// Drops every selector `id` owns. Called from the session teardown that
