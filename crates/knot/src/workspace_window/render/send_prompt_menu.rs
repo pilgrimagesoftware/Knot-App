@@ -17,7 +17,8 @@ use crate::workspace_window::WorkspaceWindow;
 pub(in crate::workspace_window) enum WorkItemRef {
     /// An issue, by its URL.
     Issue(String),
-    /// An OpenSpec change, by its name.
+    /// An OpenSpec change, by its name - or, for one in a subfolder, its
+    /// path from the working tree (`ChangeEntry::prompt_ref`).
     Change(String),
 }
 
