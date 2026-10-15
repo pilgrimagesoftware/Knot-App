@@ -175,6 +175,12 @@ fn restore_conversation_toggle_enabled_only_with_layout_restore() {
 }
 
 #[test]
+fn reopen_workspaces_toggle_enabled_only_with_layout_restore() {
+    assert!(SettingsWindow::reopen_workspaces_toggle_enabled(true));
+    assert!(!SettingsWindow::reopen_workspaces_toggle_enabled(false));
+}
+
+#[test]
 fn turning_off_layout_restore_does_not_touch_conversation_restore() {
     let mut settings = knot_core::Settings::default();
     settings.restore_conversation_on_launch = true;

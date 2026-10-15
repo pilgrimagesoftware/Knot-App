@@ -17,7 +17,7 @@ when it opens. Switching tabs preserves in-progress text.
 
 | Tab | Sections and controls |
 |---|---|
-| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
+| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Re-open workspaces on launch" - on by default, enabled only while agent restore is on, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
 | Coding | Source Folder (current folder, folder picker, clear with confirmation); Agent Options (agent-type picker, per-type options field) |
 | Autopilot | Enable autopilot, AI Provider picker, API key, Action picker, and custom prompt configuration (see [Autopilot]({{ '/latest/autopilot/' | relative_url }})) |
 | Voice | "Enable voice input"; engine picker (Apple SpeechAnalyzer only, disabled); read-only push-to-talk key, not changeable here; "Auto-insert transcription"; controls disabled while voice input is off |
@@ -54,6 +54,20 @@ from the older single settings file is migrated once and that file is renamed
 so it is never read again. A preference write applies to every open window
 without a relaunch. On first launch, Knot picks the first existing of `~/src`,
 `~/source` and `~/sources`.
+
+## Re-opening workspaces
+
+When Knot quits, it records which workspace windows are open in the UI-state
+document. With "Re-open workspaces on launch" on, the next launch opens those
+windows again, at the positions they were left in, after the workspace
+manager. A window you closed before quitting is not recorded, so it stays
+closed. A workspace that no longer exists is skipped.
+
+The workspaces themselves come back only through "Restore agents on launch".
+While that setting is off there is nothing to reopen, so this toggle is
+disabled. Stopping Knot with Ctrl-C in the terminal that launched it is a kill
+rather than a quit, so nothing is recorded and the next launch opens whatever
+was recorded at the previous quit.
 
 ## Appearance mode
 
