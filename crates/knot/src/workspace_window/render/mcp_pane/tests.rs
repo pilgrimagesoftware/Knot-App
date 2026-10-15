@@ -12,10 +12,10 @@ fn the_section_is_panel_mode_only() {
     assert!(!section_is_shown(ViewMode::Terminal, false, false));
 }
 
-/// A takeover or a document pane is not the agent's session, so the section
-/// does not belong under either.
+/// A takeover, or an expanded artifact panel holding the content area, is not
+/// the agent's session, so the section does not belong under either.
 #[test]
-fn the_section_is_absent_over_a_takeover_or_a_document() {
+fn the_section_is_absent_over_a_takeover_or_an_expanded_artifact_panel() {
     assert!(!section_is_shown(ViewMode::Panel, true, false));
     assert!(!section_is_shown(ViewMode::Panel, false, true));
     assert!(!section_is_shown(ViewMode::Panel, true, true));
@@ -54,4 +54,22 @@ fn the_age_carries_its_number() {
             "five minutes");
     assert!(taken_ago_text(Duration::from_secs(10_800)).contains('3'),
             "three hours");
+}
+
+/// #40: every string the tools list can show resolves, and the failure line
+/// keeps the error it was given.
+#[test]
+fn every_tools_string_resolves_from_the_catalog() {
+    for key in ["mcp.tools_show",
+                "mcp.tools_hide",
+                "mcp.tools_listing",
+                "mcp.tools_none",
+                "mcp.tools_not_connected",
+                "mcp.tools_no_launch"]
+    {
+        assert_ne!(knot_core::l10n::t(key), key, "unresolved catalog key");
+    }
+    let failed = knot_core::l10n::t_with("mcp.tools_failed", &[("error", "HTTP 401")]);
+    assert!(failed.contains("HTTP 401"), "{failed}");
+    assert!(!failed.contains("%{"), "{failed}");
 }

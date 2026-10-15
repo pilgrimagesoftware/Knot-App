@@ -66,6 +66,7 @@ mod window_runtime;
 mod working_indicator;
 mod workspace_manager;
 mod workspace_repos;
+mod workspace_restore;
 mod workspace_window;
 
 fn main() {

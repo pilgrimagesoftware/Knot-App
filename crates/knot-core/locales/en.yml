@@ -193,6 +193,7 @@ settings:
     startup: "Startup"
     restore_agents: "Restore agents on launch"
     restore_conversation: "Restore last conversation"
+    reopen_workspaces: "Re-open workspaces on launch"
     notifications: "Notifications"
     keep_in_menu_bar: "Keep running in menu bar when closed"
     desktop_notifications: "Desktop notifications"
@@ -842,6 +843,15 @@ mcp:
   # pick the server in its own UI, so the tooltip says what to type.
   action_manage_hint: "Fix in %{agent} — then type %{send}"
   action_copy_target: "Copy address"
+  # A row's tools (#40): the disclosure control, and what the list says
+  # while it is being fetched or when it cannot be.
+  tools_show: "Show tools"
+  tools_hide: "Hide tools"
+  tools_listing: "Listing tools…"
+  tools_none: "This server provides no tools."
+  tools_failed: "Couldn't list tools: %{error}"
+  tools_not_connected: "Tools are listed only for a server the agent is connected to."
+  tools_no_launch: "The agent's listing doesn't give this server's exact command, so Knot can't start it to list its tools."
   # The shell companion opened for the handover, named so it is obvious in
   # the sidebar what it is and that closing it is fine.
   terminal_name: "MCP"

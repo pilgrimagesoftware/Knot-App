@@ -333,10 +333,17 @@ fn permission_agent(options: &str) -> Command {
               echo "{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{\"sessionUpdate\":\"turn_end\",\"stopReason\":\"end_turn\"}}"
               echo "{\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"session/request_permission\",\"params\":{\"toolCall\":{\"toolCallId\":\"tc1\"},\"options\":__OPTIONS__}}"
               ;;
+            session/cancel)
+              echo "{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{\"sessionUpdate\":\"text_delta\",\"text\":\"cancel-received\"}}"
+              ;;
             "")
               pid=$(echo "$line" | sed -E 's/.*"id":([0-9]+).*/\1/')
               if [ "$pid" = "100" ]; then
-                opt=$(echo "$line" | sed -E 's/.*"optionId":"([^"]+)".*/\1/')
+                if echo "$line" | grep -q '"outcome":"cancelled"'; then
+                  opt=cancelled
+                else
+                  opt=$(echo "$line" | sed -E 's/.*"optionId":"([^"]+)".*/\1/')
+                fi
                 echo "{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{\"sessionUpdate\":\"text_delta\",\"text\":\"decision:$opt\"}}"
               fi
               ;;
@@ -398,6 +405,38 @@ async fn permission_deny_decision_is_delivered_to_the_agent() {
 
     let confirmation = events.recv().await.expect("decision echoed back");
     assert!(matches!(confirmation, SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == "decision:deny"));
+}
+
+/// Cancelling a turn answers the permission request the agent is blocked
+/// on with the `cancelled` outcome, after sending `session/cancel` - the
+/// client's half of cancellation per
+/// <https://agentclientprotocol.com/protocol/prompt-turn>, "Cancellation".
+/// Without it the agent waited on the request and Stop did nothing (#267).
+#[tokio::test]
+async fn cancelling_answers_a_pending_permission_request_as_cancelled() {
+    let (client, mut events) = AcpClient::connect(permission_flow_agent()).await
+                                                                          .expect("connect");
+    client.session_new("/tmp/project", None)
+          .await
+          .expect("session id");
+    let _text = events.recv().await.expect("text delta");
+    let _turn_end = events.recv().await.expect("turn end");
+    assert!(matches!(events.recv().await.expect("permission request"),
+                     SessionEvent::PermissionRequest(_)));
+
+    client.session_cancel("sess-1").await.expect("cancel sent");
+
+    for expected in ["cancel-received", "decision:cancelled"] {
+        // Bounded, so a client that never answers fails here instead of
+        // hanging the suite - which is the defect itself.
+        let echoed = tokio::time::timeout(std::time::Duration::from_secs(5), events.recv())
+            .await
+            .unwrap_or_else(|_| panic!("the agent never saw {expected}"))
+            .expect("the agent's acknowledgement");
+        assert!(matches!(&echoed,
+                         SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == expected),
+                "expected {expected}, got {echoed:?}");
+    }
 }
 
 /// Fake agent declaring one `select` Session Config Option ("mode") on

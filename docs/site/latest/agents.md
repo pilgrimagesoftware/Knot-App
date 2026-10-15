@@ -25,8 +25,10 @@ Choosing a folder while the name field is empty fills the name with the folder's
 replaced.
 
 Activation mode is `passive` by default or `active`. A `passive` agent starts the first time you
-select it and then keeps running; an `active` agent starts with its workspace. Changing the mode
-never restarts, starts, or stops the agent.
+select it and then keeps running; an `active` agent starts with its workspace. A new agent is
+selected when you create it, but creating a `passive` agent doesn't start it: it stays stopped
+until you click it or another agent messages it. Changing the mode never restarts, starts, or
+stops the agent.
 
 For every type except `shell`, the Startup Prompt control offers None (the default), a [prompt library]({{ '/latest/personas-prompts/' | relative_url }}) prompt by name, or Custom text. It is sent as its own turn after the agent registers,
 on a fresh conversation and never on a resumed one, and changing it does not restart the agent.
@@ -88,6 +90,12 @@ Restart with New Conversation, Remove Agent), showing the items that apply. A co
 Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
 without it, and Register Agent re-sends the registration prompt by hand.
+
+Move to Workspace moves the agent's session along with it. The agent leaves its current window
+and its session there stops. It restarts in the destination workspace in the same conversation,
+the way Restart Agent does when the conversation is kept. If the destination's window is open, the
+agent appears there immediately; if not, it starts the next time that workspace is opened. A turn
+in progress when the agent moves is interrupted.
 
 Open In… opens the agent's folder in VS Code, Zed, Xcode, Finder or Terminal; an application that is
 not installed fails quietly. Zed is opened through the command-line tool inside `Zed.app`, so the
@@ -180,8 +188,17 @@ operating-system process is attached to one. A finished subagent's record stays 
 turn ends, when records are discarded. An agent whose type cannot report subagents shows the list as
 unavailable rather than empty.
 
+A panel agent's pane also has an MCP servers section listing the servers the agent has, with each
+one's state. The chevron at the start of a row lists the tools that server provides, by name and
+description, fetched when you open it. Knot's own tools are listed directly. Another server is
+asked with `tools/list`, without credentials: a server needing sign-in says so, and a disabled or
+unconnected one is not contacted. A stdio server is started for the listing only when the agent's
+listing gives its exact command and arguments - Codex does, Claude Code and Gemini give only a
+line of text - and is stopped as soon as the list arrives.
+
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
-by default. Expanded, it lists subagents first, then the processes running underneath the agent's
+by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that
+panel is expanded over the content area. Expanded, it lists subagents first, then the processes running underneath the agent's
 session - the shell for a shell agent, the adapter for a panel agent - however deep. Each process
 row shows its command line, elapsed runtime, process identifier, and background or foreground
 classification; each subagent row shows its kind, task, elapsed time, and state, and no process

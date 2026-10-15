@@ -80,3 +80,32 @@ fn foreign_output_is_not_a_listing() {
     assert!(parse("Usage: codex mcp list [OPTIONS]\n").is_none());
     assert!(parse("").is_none());
 }
+
+/// #40: Codex lists a stdio server in separate words, so the row carries
+/// exactly how to start it - the program, each argument, and its directory.
+#[test]
+fn a_stdio_transport_carries_its_launch() {
+    let launch = row("codex_app").launch.expect("a stdio row has a launch");
+
+    assert!(launch.program.ends_with("launch_codex_app_tools_mcp"));
+    assert_eq!(launch.args, ["./server.mjs"]);
+    assert_eq!(launch.env, []);
+    assert_eq!(launch.cwd.as_deref(),
+               Some(std::path::Path::new("/Users/example/.codex/plugins/cache/openai-bundled/codex-app-tools/0.1.5")));
+}
+
+#[test]
+fn an_http_transport_has_no_launch() {
+    assert_eq!(row("akeyless").launch, None);
+}
+
+#[test]
+fn a_stdio_servers_environment_is_carried() {
+    let listing = r#"[{ "name": "with-env", "enabled": true, "disabled_reason": null,
+                       "transport": { "type": "stdio", "command": "node", "args": ["a.js"],
+                                      "env": { "TOKEN_FILE": "/tmp/t" } } }]"#;
+    let rows = parse(listing).expect("a listing");
+
+    let launch = rows[0].launch.as_ref().expect("a launch");
+    assert_eq!(launch.env, [("TOKEN_FILE".to_owned(), "/tmp/t".to_owned())]);
+}
