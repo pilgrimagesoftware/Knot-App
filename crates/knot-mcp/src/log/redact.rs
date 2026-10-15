@@ -1,18 +1,21 @@
-//! What a tool call looks like in the log file, as opposed to on standard
-//! error.
+//! What a request looks like in the logs: the shape of a tool call and who
+//! made it, never the call's content or the connection's credentials.
 //!
-//! Standard error prints a call's arguments in full and always has. The file
-//! does not: tool-call arguments carry prompt text, message bodies and file
-//! paths, and a file in the user's Logs directory outlives the stream by
-//! months. So the file records the *shape* of a call - which tool, which
-//! argument names, how much payload - and never its content.
+//! Tool-call arguments carry prompt text, message bodies and file paths, and
+//! the logs - the file in the user's Logs directory and standard error alike -
+//! end up pasted into public bug reports. So a call is recorded by its
+//! *shape*: which tool, which argument names, how much payload. Standard error
+//! used to print the arguments in full; it now gets the same description the
+//! file does.
 //!
-//! Building both messages at the one call site is deliberate. A filter
-//! applied somewhere downstream would be something a later caller could
-//! bypass by logging through a different path; here the difference between
-//! the two destinations is visible in the code that creates it.
+//! The caller is named by the agent the connection is bound to, never by its
+//! MCP session id: the id is what a client sends back as `Mcp-Session-Id` to
+//! act as that connection, so it is a credential, and a log is no place for
+//! one (CodeQL `rust/cleartext-logging`).
 
 use serde_json::Value;
+
+use crate::tools::Caller;
 
 /// The log file's description of a `tools/call`: the tool's name, the names
 /// of its top-level arguments, and the size of the argument payload.
@@ -28,6 +31,16 @@ pub fn describe_call(name: &str, arguments: &Value) -> String {
             format!("tools/call {name} keys=[{}] bytes={bytes}", keys.join(", "))
         }
         None => format!("tools/call {name} keys=<not an object> bytes={bytes}"),
+    }
+}
+
+/// Who made a request, for a log line: the agent the connection is bound
+/// to, or `unbound` before it is bound to one. The MCP session id is
+/// deliberately left out - see the module documentation.
+pub fn describe_caller(caller: &Caller) -> String {
+    match caller.agent {
+        Some(agent) => format!("agent {agent}"),
+        None => "unbound".to_string(),
     }
 }
 
