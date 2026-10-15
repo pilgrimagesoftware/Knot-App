@@ -199,3 +199,79 @@ fn autopilot_notices_resolve() {
         assert_ne!(knot_core::l10n::t(key), key, "{key} must resolve");
     }
 }
+
+/// A window over one agent, with the awaiting-input queue installed as the
+/// app does, and nothing selected so no notification is suppressed for
+/// being on screen.
+fn notifying_window(
+    cx: &mut TestAppContext)
+    -> (Entity<WorkspaceWindow>, Arc<Mutex<knot_agents::AgentStore>>, Uuid, TempDir) {
+    let mut store = knot_agents::AgentStore::new();
+    let space = crate::tests::workspace("Only");
+    let workspace_id = space.id;
+    store.add_workspace(space);
+    let agent = store.create("/tmp/agent",
+                             knot_agents::CreateOptions { workspace_id: Some(workspace_id),
+                                                          ..Default::default() });
+    let store = Arc::new(Mutex::new(store));
+    let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
+    let dir = TempDir::new().expect("a temporary settings root");
+    let view = cx.update(|cx| {
+                     gpui_kit::init(cx);
+                     WindowRegistry::install(cx);
+                     settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
+                     cx.set_global(crate::app_support::AwaitingInput(Arc::default()));
+                     // The test platform records a notification only for an
+                     // app that has an identity, as the real one has.
+                     cx.set_app_identity("com.example.knot-tests", "Knot");
+                     WorkspaceWindow::open(Arc::clone(&store), messages, workspace_id, cx);
+                     WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
+                         .expect("opening a workspace registers its view")
+                 });
+    cx.update(|cx| view.update(cx, |view, _| view.selected_agent = None));
+    (view, store, agent, dir)
+}
+
+/// One poll tick's worth of notification handling.
+fn tick(view: &Entity<WorkspaceWindow>, cx: &mut TestAppContext) {
+    cx.update(|cx| view.update(cx, |view, cx| view.raise_awaiting_notifications(cx)));
+}
+
+/// Lands an Autopilot mark for `agent` the way a classification does.
+fn mark(store: &Arc<Mutex<knot_agents::AgentStore>>, agent: Uuid, cx: &mut TestAppContext) {
+    let awaiting = cx.update(|cx| cx.global::<crate::app_support::AwaitingInput>().0.clone());
+    let sinks = knot_mcp_tools::AutopilotSinks { agents:         Arc::clone(store),
+                                                 queue:          Arc::default(),
+                                                 awaiting_input: Some(awaiting), };
+    knot_mcp_tools::land(agent, knot_autopilot::Effect::Mark, &sinks);
+}
+
+/// Every Autopilot mark carries the same default body. One that follows the
+/// agent working again is a new prompt and is posted; one that repeats while
+/// the agent is still waiting is not (#273).
+#[gpui_kit::test]
+fn a_later_autopilot_mark_notifies_again_once_the_agent_has_worked(cx: &mut TestAppContext) {
+    let (view, store, agent, _dir) = notifying_window(cx);
+
+    mark(&store, agent, cx);
+    tick(&view, cx);
+    assert_eq!(cx.shown_system_notifications().len(), 1);
+
+    // The same prompt reported again while still waiting: a repeat.
+    mark(&store, agent, cx);
+    tick(&view, cx);
+    assert_eq!(cx.shown_system_notifications().len(),
+               1,
+               "a repeat while the agent still waits is not news");
+
+    // The user answers; the agent works through a turn, across poll ticks.
+    store.lock()
+         .set_state(agent, knot_agents::AgentState::Running);
+    tick(&view, cx);
+
+    mark(&store, agent, cx);
+    tick(&view, cx);
+    assert_eq!(cx.shown_system_notifications().len(),
+               2,
+               "the next mark after working again was dropped as a repeat");
+}
