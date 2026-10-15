@@ -17,6 +17,7 @@ knot-agents = { path = "../knot-agents" }
 knot-autopilot = { path = "../knot-autopilot" }
 knot-forge = { path = "../knot-forge" }
 knot-git = { path = "../knot-git" }
+knot-mcp-client = { path = "../knot-mcp-client" }
 knot-mcp-probe = { path = "../knot-mcp-probe" }
 knot-activity = { path = "../knot-activity" }
 knot-discovery = { path = "../knot-discovery" }

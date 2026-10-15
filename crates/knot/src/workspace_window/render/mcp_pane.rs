@@ -35,6 +35,7 @@ use crate::workspace_window::mcp_panel::summary::{SectionStatus, state_label, su
 
 #[cfg(test)]
 mod tests;
+mod tools;
 
 /// Width of the state column, wide enough for the longest state label at the
 /// section's text size.
@@ -315,6 +316,8 @@ impl WorkspaceWindow {
         let copy_tooltip = knot_core::l10n::t("mcp.action_copy_target");
         let address = row.short_label();
         let action = self.mcp_row_action(row, cx);
+        let tools_toggle = self.mcp_tools_toggle(index, row, cx);
+        let tools = self.mcp_tools_block(index, row, cx);
 
         v_flex()
             .w_full()
@@ -325,6 +328,7 @@ impl WorkspaceWindow {
                 .w_full()
                 .items_center()
                 .gap_2()
+                .child(tools_toggle)
                 .child(div().min_w_0().text_sm().whitespace_nowrap().text_ellipsis().child(single_line(&label)))
                 .child(div().text_xs()
                             .text_color(cx.theme().muted_foreground)
@@ -380,6 +384,7 @@ impl WorkspaceWindow {
                                .text_color(cx.theme().muted_foreground)
                                .child(single_line(&text))
                       }))
+            .children(tools)
             .into_any_element()
     }
 }

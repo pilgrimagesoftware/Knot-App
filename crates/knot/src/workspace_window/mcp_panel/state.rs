@@ -7,12 +7,14 @@
 //! of the window. `agent_processes::SamplingClaim` learned that the hard way
 //! (issue #376) and this is the same discipline applied per agent.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use knot_mcp_probe::{Inventory, ProbeError};
 use parking_lot::Mutex;
 use uuid::Uuid;
+
+use super::tools::{ToolsKey, ToolsState};
 
 /// Agents with a probe in flight.
 pub(crate) type InFlight = Arc<Mutex<BTreeSet<Uuid>>>;
@@ -80,6 +82,11 @@ pub(crate) struct McpSection {
     inventory:           Option<Inventory>,
     /// The most recent failure, shown beside whatever rows survived it.
     failure:             Option<String>,
+    /// Each row's tools, once asked for (#40). Cleared with a new inventory:
+    /// a listing is only as current as the rows it was opened from.
+    tools:               BTreeMap<ToolsKey, ToolsState>,
+    /// Rows whose tools are open.
+    open_tools:          BTreeSet<ToolsKey>,
 }
 
 impl McpSection {
@@ -143,6 +150,8 @@ impl McpSection {
             Ok(inventory) => {
                 self.inventory = Some(inventory);
                 self.failure = None;
+                self.tools.clear();
+                self.open_tools.clear();
             }
             Err(error) => self.failure = Some(error.to_string()),
         }
@@ -154,6 +163,27 @@ impl McpSection {
 
     pub(crate) fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
+    }
+
+    /// Opens or shuts `key`'s tools, answering whether they are now open.
+    pub(crate) fn toggle_tools(&mut self, key: &ToolsKey) -> bool {
+        if self.open_tools.remove(key) {
+            return false;
+        }
+        self.open_tools.insert(key.clone());
+        true
+    }
+
+    pub(crate) fn tools_open(&self, key: &ToolsKey) -> bool {
+        self.open_tools.contains(key)
+    }
+
+    pub(crate) fn tools(&self, key: &ToolsKey) -> Option<&ToolsState> {
+        self.tools.get(key)
+    }
+
+    pub(crate) fn set_tools(&mut self, key: ToolsKey, state: ToolsState) {
+        self.tools.insert(key, state);
     }
 }
 
