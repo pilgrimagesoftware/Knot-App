@@ -182,12 +182,14 @@ impl WorkspaceWindow {
                                         store.saved_agents(settings.restore_conversation_on_launch);
                                         })
                             };
-                            if let Err(error) = installed.persist_roster() {
-                                // By category, not by text: the failure came out of
-                                // writing a roster that now holds this session's
-                                // id, and the log must not be a way out for it.
-                                eprintln!("failed to persist agent {id}'s session: {}",
-                                          error.category());
+                            // Reported without the error: it came out of
+                            // writing a roster that now holds this session's
+                            // id, and CodeQL (`rust/cleartext-logging`)
+                            // treats anything read from it - even which
+                            // variant it is - as carrying that id. The next
+                            // roster write reports its own failure in full.
+                            if installed.persist_roster().is_err() {
+                                eprintln!("failed to persist agent {id}'s session");
                             }
                         }).await;
                     });
