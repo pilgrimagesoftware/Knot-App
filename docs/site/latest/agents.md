@@ -89,6 +89,12 @@ Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent 
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
 without it, and Register Agent re-sends the registration prompt by hand.
 
+Move to Workspace moves the agent's session along with it. The agent leaves its current window
+and its session there stops. It restarts in the destination workspace in the same conversation,
+the way Restart Agent does when the conversation is kept. If the destination's window is open, the
+agent appears there immediately; if not, it starts the next time that workspace is opened. A turn
+in progress when the agent moves is interrupted.
+
 Open In… opens the agent's folder in VS Code, Zed, Xcode, Finder or Terminal; an application that is
 not installed fails quietly. Zed is opened through the command-line tool inside `Zed.app`, so the
 folder opens in a new Zed window whether or not Zed is running, and without the `zed` shell command
