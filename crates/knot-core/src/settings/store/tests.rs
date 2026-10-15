@@ -40,7 +40,16 @@ fn default_scalars() {
     assert_eq!(s.terminal_font_name, "JetBrains Mono");
     assert!(s.restore_layout_on_launch);
     assert!(!s.restore_conversation_on_launch);
+    assert!(s.reopen_workspaces_on_launch);
     assert!(s.mcp_server_enabled);
+}
+
+/// A preferences document written before the setting existed must read as
+/// on, so an upgrade starts reopening workspaces rather than silently not.
+#[test]
+fn legacy_settings_blob_defaults_reopen_workspaces_on() {
+    let (_dir, s) = load_document(r#"{"restoreLayoutOnLaunch":true}"#);
+    assert!(s.reopen_workspaces_on_launch);
 }
 
 #[test]

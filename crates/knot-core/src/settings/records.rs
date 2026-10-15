@@ -284,6 +284,10 @@ pub struct WorkspaceUiState {
     /// it back rather than re-centring. `None` until the window has been
     /// opened once.
     pub window_bounds:         Option<SavedWindowBounds>,
+    /// Whether this workspace's window was open when the app last quit, so
+    /// launch can reopen it (`reopen_workspaces_on_launch`). Written once,
+    /// at quit, for every entry; `false` for a record that predates it.
+    pub open_at_quit:          bool,
 }
 
 /// A window's position and size in logical pixels, as plain numbers -
@@ -309,7 +313,8 @@ impl Default for WorkspaceUiState {
                split_ratio_secondary: None,
                show_dashboard:        None,
                is_detached:           None,
-               window_bounds:         None, }
+               window_bounds:         None,
+               open_at_quit:          false, }
     }
 }
 
@@ -536,7 +541,8 @@ mod tests {
                                     window_bounds:         Some(SavedWindowBounds { x:      12.,
                                                                                     y:      34.,
                                                                                     width:  960.,
-                                                                                    height: 640., }), };
+                                                                                    height: 640., }),
+                                    open_at_quit:          true, };
         let json = serde_json::to_string(&ui).unwrap();
         let back: WorkspaceUiState = serde_json::from_str(&json).unwrap();
         assert_eq!(ui, back);
@@ -555,7 +561,8 @@ mod tests {
                     "splitRatioSecondary",
                     "showDashboard",
                     "isDetached",
-                    "windowBounds"]
+                    "windowBounds",
+                    "openAtQuit"]
         {
             assert!(object.contains_key(key), "UI state missing key {key}");
         }

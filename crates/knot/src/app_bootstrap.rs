@@ -616,6 +616,13 @@ pub(crate) fn run() {
                 },
                 cx,
             );
+                               // After the manager, so the workspaces it
+                               // lists open in front of it (#245).
+                               crate::workspace_restore::reopen_workspaces(&store, &messages, cx);
+                               crate::workspace_restore::record_open_workspaces_at_quit(
+                Arc::clone(&store),
+                cx,
+            );
                                // macOS launches a non-bundled binary without
                                // making it frontmost, so without this the
                                // window opens behind whatever was already on

@@ -183,6 +183,7 @@ fn settings_window_labels_resolve() {
                 "settings.general.desktop_notifications",
                 "settings.general.keep_in_menu_bar",
                 "settings.general.notifications",
+                "settings.general.reopen_workspaces",
                 "settings.general.restore_agents",
                 "settings.general.restore_conversation",
                 "settings.general.shift_enter_hint",
