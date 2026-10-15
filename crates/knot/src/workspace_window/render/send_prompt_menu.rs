@@ -17,7 +17,8 @@ use crate::workspace_window::WorkspaceWindow;
 pub(in crate::workspace_window) enum WorkItemRef {
     /// An issue, by its URL.
     Issue(String),
-    /// An OpenSpec change, by its name.
+    /// An OpenSpec change, by its name - or, for one in a subfolder, its
+    /// path from the working tree (`ChangeEntry::prompt_ref`).
     Change(String),
 }
 
@@ -41,9 +42,23 @@ impl WorkItemRef {
 pub(in crate::workspace_window) struct SendTarget {
     pub(in crate::workspace_window) id:      Uuid,
     pub(in crate::workspace_window) name:    String,
-    /// Whether it can take a prompt now. A stopped agent is listed but
-    /// disabled, so the list keeps its shape as agents start and stop.
-    pub(in crate::workspace_window) enabled: bool,
+    /// Whether it can take a prompt now. A stopped agent is still listed
+    /// and can still be chosen - choosing it activates it first (#208) -
+    /// but its label says it is inactive.
+    pub(in crate::workspace_window) running: bool,
+}
+
+impl SendTarget {
+    /// The submenu item's text: the agent's name, marked when choosing it
+    /// will activate it first.
+    pub(in crate::workspace_window) fn label(&self) -> String {
+        if self.running {
+            self.name.clone()
+        }
+        else {
+            knot_core::l10n::t_with("changes_view.send_target_inactive", &[("name", &self.name)])
+        }
+    }
 }
 
 /// `agents` in alphabetical order by name, ignoring case - the submenu's
@@ -67,16 +82,25 @@ impl WorkspaceWindow {
                .collect::<Vec<_>>()
         };
         send_targets(agents.into_iter()
-                           .map(|(id, name)| SendTarget { enabled: self.can_receive_prompt(id),
+                           .map(|(id, name)| SendTarget { running: self.can_receive_prompt(id),
                                                           id,
                                                           name })
                            .collect())
     }
 
-    /// Sends `item`'s prompt to agent `id` and nothing else. The view stays
-    /// where it is: the user is triaging a list, not leaving it.
-    pub(in crate::workspace_window) fn send_work_item(&mut self, id: Uuid, item: &WorkItemRef)
+    /// Sends `item`'s prompt to agent `id` and nothing else, activating it
+    /// first when it is not running (#208). The view stays where it is: the
+    /// user is triaging a list, not leaving it, and activating an agent
+    /// does not select it.
+    ///
+    /// A just-started panel session is still connecting, so the prompt
+    /// queues behind the connection the way it would behind a busy turn.
+    pub(in crate::workspace_window) fn send_work_item(&mut self, id: Uuid, item: &WorkItemRef,
+                                                      cx: &mut Context<Self>)
                                                       -> bool {
+        if !self.can_receive_prompt(id) {
+            self.activate_agent(id, cx);
+        }
         self.deliver_prompt(id, &item.prompt_text())
     }
 }
@@ -98,11 +122,10 @@ pub(in crate::workspace_window) fn with_send_prompt(menu: PopupMenu, item: WorkI
                 let item = item.clone();
                 let view = view.clone();
                 let id = target.id;
-                submenu = submenu.item(PopupMenuItem::new(target.name.clone())
-                                           .disabled(!target.enabled)
+                submenu = submenu.item(PopupMenuItem::new(target.label())
                                            .on_click(move |_, _, app: &mut App| {
                                                view.update(app, |view, cx| {
-                                                       view.send_work_item(id, &item);
+                                                       view.send_work_item(id, &item, cx);
                                                        cx.notify();
                                                    });
                                            }));

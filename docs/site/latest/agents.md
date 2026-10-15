@@ -89,6 +89,11 @@ Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent 
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
 without it, and Register Agent re-sends the registration prompt by hand.
 
+Open In… opens the agent's folder in VS Code, Zed, Xcode, Finder or Terminal; an application that is
+not installed fails quietly. Zed is opened through the command-line tool inside `Zed.app`, so the
+folder opens in a new Zed window whether or not Zed is running, and without the `zed` shell command
+installed. If that tool is missing, Knot asks macOS to open the folder in Zed instead.
+
 Right-clicking the empty space in the sidebar opens a workspace menu: New Agent, New from Bench,
 Restart All, Close All, Deactivate All, and Broadcast to All Agents…. Every item is shown, with the
 ones that do not apply disabled; New from Bench deploys a saved template.
@@ -126,6 +131,15 @@ blocks further prompts until you answer. A message sent while a response is in p
 and delivered when the turn ends; a stop control interrupts the active turn. You can switch one
 agent between the panel and the raw terminal without interrupting its turn or terminal process, and
 each agent remembers the mode you last chose.
+
+Scrolled back to read earlier messages, you stay where you are: replies streaming in and long
+replies finishing their layout do not move the conversation. Only a prompt you send yourself
+scrolls to the bottom to show its answer. One Knot sends for you - an inbox check or a startup
+prompt - leaves your place alone unless you were already at the bottom.
+
+The composer grows with your draft and does not scroll past its last line, so a draft cannot be
+scrolled out of view. The control bar's model and effort pickers open at a fixed width, so long
+model names fit whichever one is selected.
 
 ### Inserting a saved prompt
 

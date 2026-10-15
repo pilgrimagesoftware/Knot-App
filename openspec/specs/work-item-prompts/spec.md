@@ -10,10 +10,10 @@ agents from the Changes view, by sending that agent a prompt naming it.
 
 The context menu and the actions menu of every issue row and every change row
 SHALL hold a "Send prompt to" item opening a submenu that lists the
-workspace's agents in alphabetical order by name. An agent that cannot receive
-a prompt - one that is not running - SHALL be listed disabled rather than
-left out, so the list does not change shape as agents start and stop. A
-workspace with no agents SHALL show the item disabled.
+workspace's agents in alphabetical order by name. Every agent SHALL be
+choosable. An agent that is not running SHALL be listed, marked inactive,
+rather than left out or disabled, so the list does not change shape as agents
+start and stop. A workspace with no agents SHALL show the item disabled.
 
 The Swift reference has no such menu.
 
@@ -23,10 +23,10 @@ The Swift reference has no such menu.
   opens an issue row's context menu and hovers "Send prompt to"
 - **THEN** the submenu lists Ada, then Bo
 
-#### Scenario: A stopped agent is disabled
+#### Scenario: A stopped agent is marked inactive
 
 - **WHEN** agent Ada is not running
-- **THEN** Ada is listed in the submenu and cannot be chosen
+- **THEN** Ada is listed in the submenu, marked inactive, and can be chosen
 
 #### Scenario: The actions menu holds the same submenu
 
@@ -46,6 +46,11 @@ is delivered: an idle agent SHALL start working on it, and an agent in the
 middle of a turn SHALL queue it, shown in its queue like any other queued
 prompt. The prompt text SHALL be a localized string with the URL or name
 substituted.
+
+Choosing an agent that is not running SHALL activate it first, as a message
+addressed to it over MCP does, without selecting it, and the prompt SHALL be
+delivered once its session can take it: queued while the session connects,
+like a prompt behind a running turn.
 
 Sending SHALL NOT change the window's view: the Changes view stays shown. The
 target agent's sidebar row SHALL reflect that it is working, as any prompt
@@ -68,6 +73,14 @@ makes it do.
 
 - **WHEN** Ada is in the middle of a turn and the user sends Ada an issue
 - **THEN** the prompt appears in Ada's queue and is delivered when the turn ends
+
+#### Scenario: Sending to a stopped agent
+
+- **WHEN** Ada is not running and the user chooses Ada under "Send prompt to"
+  on the `add-login` row
+- **THEN** Ada is activated, and receives the prompt once its session has
+  connected
+- **AND** the window's selection and view do not change
 
 #### Scenario: The view stays put
 

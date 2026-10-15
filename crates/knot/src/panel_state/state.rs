@@ -138,9 +138,18 @@ impl PanelState {
     /// new turn: the next response tracks by default until the user
     /// scrolls away or the turn ends.
     pub fn push_user_message(&mut self, text: String) {
+        self.push_prompt(text, true);
+    }
+
+    /// Records a prompt and starts its turn, like
+    /// [`Self::push_user_message`], with `follow` deciding whether the
+    /// response tracks. A prompt Knot sent of its own accord passes whether
+    /// the reader was at the tail, so it does not pull someone reading back
+    /// through the history to the bottom (#246).
+    pub fn push_prompt(&mut self, text: String, follow: bool) {
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
-        self.tracking = true;
+        self.tracking = follow;
     }
 
     /// Records a failure the agent reported instead of a turn - a prompt

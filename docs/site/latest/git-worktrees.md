@@ -141,6 +141,38 @@ ignoring case; status toggles cover open, merged, closed, not found and pending
 with a count each; and the sort picker offers newest first, oldest first, needs
 attention and repository.
 
+### The Issues tab
+
+The Issues tab lists the open GitHub issues of the repositories the workspace's
+agents work in, grouped by `<owner>/<repo>`, fetched through `gh` (at most 100
+per repository, most recently updated first). It fetches while the tab is shown,
+again after five minutes, and on Refresh now. Without `gh`, or signed out, the
+tab says which and how to fix it. Search matches title, `#<number>`, repository,
+URL or label; the toolbar also has a repository picker, a sort picker and Copy
+URLs. Clicking a row opens the issue in your browser.
+
+### The OpenSpec tab
+
+The OpenSpec tab lists the un-archived OpenSpec changes in the workspace's
+repositories and their agents' worktrees, from any git repository, GitHub or
+not. Each row shows the change's name and the first line of its proposal's
+`## Why`. Knot reads the repository root's `openspec/changes/` and that of any
+subfolder up to three levels down, so a monorepo's
+`services/api/openspec/changes/` is listed too. It does not look inside
+dot-folders, `node_modules`, `target`, `vendor`, `build` or `dist`, nested
+repositories, or symbolic links. A change from a subfolder shows that
+subfolder's path above its name, and search matches it; the same name in two
+subfolders is two changes. A row offers Reveal in Finder and Copy name.
+
+### Sending an item to an agent
+
+Issue and change rows have a Send prompt to submenu listing the workspace's
+agents. Choosing one sends it a prompt naming the issue URL, or the change -
+by name, or by its path for a change in a subfolder. Every agent can be
+chosen: one that is not running is marked `(inactive)`, and choosing it
+activates it without selecting it, its prompt waiting until its session has
+connected. The view stays where it is.
+
 ## Source contracts
 
 - openspec/specs/repo-discovery/spec.md
@@ -148,3 +180,6 @@ attention and repository.
 - openspec/specs/git-operations/spec.md
 - openspec/specs/git-panel-ui/spec.md
 - openspec/specs/pull-request-tracking/spec.md
+- openspec/specs/workspace-issues/spec.md
+- openspec/specs/workspace-openspec-changes/spec.md
+- openspec/specs/work-item-prompts/spec.md

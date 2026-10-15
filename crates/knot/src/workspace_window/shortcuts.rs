@@ -154,11 +154,11 @@ impl WorkspaceWindow {
         else {
             return;
         };
-        let Some(list) = self.panel_lists.get(&id)
+        let Some(panel) = self.panel_lists.get(&id)
         else {
             return;
         };
-        list.scroll_to_end();
+        panel.list.scroll_to_end();
         if let Some(slot) = self.panel_sessions.get(&id)
            && let crate::panel_session::PanelSessionSlot::Ready(handle) = &*slot.lock()
         {
