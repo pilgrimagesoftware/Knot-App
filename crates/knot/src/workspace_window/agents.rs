@@ -74,6 +74,23 @@ impl WorkspaceWindow {
         cx.notify();
     }
 
+    /// Shows an agent that has just been created: selected, in the terminal
+    /// view, and started only if its activation mode starts it.
+    ///
+    /// Not [`Self::reveal_agent`]: that is the user choosing an agent, which
+    /// starts it whatever its mode. Creating one is not choosing to run it -
+    /// a `passive` agent waits until it is selected or messaged
+    /// (`agent-lifecycle`, "Activation mode"; #269). An `active` agent is
+    /// activated from birth, so the `ensure_*` calls start it as before; for a
+    /// `passive` one they return early on the clear flag.
+    pub(crate) fn show_created_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
+        self.selected_agent = Some(id);
+        self.view_mode = WorkspaceViewMode::Terminal;
+        self.ensure_session(id, cx);
+        self.ensure_panel_session(id, cx);
+        cx.notify();
+    }
+
     /// Starts every agent a direct message activated, per `mcp-messaging`'s
     /// "Direct send activates a deactivated recipient".
     ///

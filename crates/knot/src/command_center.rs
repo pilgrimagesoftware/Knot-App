@@ -30,6 +30,8 @@ use crate::consts;
 use crate::dashboard;
 use crate::diff_stats::DiffStatsCache;
 use crate::window_options::command_center_window_options;
+use crate::window_registry::WindowKey;
+use crate::window_registry::WindowRegistry;
 use crate::workspace_window::WorkspaceWindow;
 
 pub(crate) struct CommandCenterWindow {
@@ -183,12 +185,20 @@ impl CommandCenterWindow {
                 let (folder, insert_after) = view.add_agent_prefill(workspace_id);
                 let store = Arc::clone(&view.store);
                 let messages = Arc::clone(&view.messages);
+                // Opened (or raised) without a requested agent, then shown
+                // the new one: a requested agent counts as the user's
+                // selection and starts whatever its mode, and creating a
+                // `passive` agent must not start it (#269).
                 let on_created = move |id: Uuid, _window: &mut Window, cx: &mut App| {
-                    WorkspaceWindow::open_with_selection(Arc::clone(&store),
-                                                         Arc::clone(&messages),
-                                                         workspace_id,
-                                                         Some(id),
-                                                         cx);
+                    WorkspaceWindow::open(Arc::clone(&store),
+                                          Arc::clone(&messages),
+                                          workspace_id,
+                                          cx);
+                    if let Some(view) =
+                        WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
+                    {
+                        view.update(cx, |view, cx| view.show_created_agent(id, cx));
+                    }
                 };
                 open_agent_editor(Arc::clone(&view.store),
                                   AgentEditorRequest { workspace_id,

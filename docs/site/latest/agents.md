@@ -25,8 +25,10 @@ Choosing a folder while the name field is empty fills the name with the folder's
 replaced.
 
 Activation mode is `passive` by default or `active`. A `passive` agent starts the first time you
-select it and then keeps running; an `active` agent starts with its workspace. Changing the mode
-never restarts, starts, or stops the agent.
+select it and then keeps running; an `active` agent starts with its workspace. A new agent is
+selected when you create it, but creating a `passive` agent doesn't start it: it stays stopped
+until you click it or another agent messages it. Changing the mode never restarts, starts, or
+stops the agent.
 
 For every type except `shell`, the Startup Prompt control offers None (the default), a [prompt library]({{ '/latest/personas-prompts/' | relative_url }}) prompt by name, or Custom text. It is sent as its own turn after the agent registers,
 on a fresh conversation and never on a resumed one, and changing it does not restart the agent.

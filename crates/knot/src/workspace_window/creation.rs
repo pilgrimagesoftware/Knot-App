@@ -90,15 +90,17 @@ impl WorkspaceWindow {
 
     /// An `on_created` callback for [`open_agent_editor`] that selects the
     /// new agent (and switches out of the dashboard, if it was open) so it
-    /// becomes the visible agent in the sidebar and content pane, matching
-    /// how tapping an existing agent already behaves.
+    /// becomes the visible agent in the sidebar and content pane.
+    ///
+    /// Through [`Self::show_created_agent`], not the row click's
+    /// `reveal_agent`: a `passive` agent is shown but not started (#269).
     pub(super) fn select_and_focus_created_agent(
         cx: &mut Context<Self>)
         -> impl Fn(Uuid, &mut Window, &mut App) + 'static {
         let weak = cx.entity().downgrade();
         move |id, _window, app| {
             if let Some(entity) = weak.upgrade() {
-                entity.update(app, |view, cx| view.reveal_agent(id, cx));
+                entity.update(app, |view, cx| view.show_created_agent(id, cx));
             }
         }
     }
