@@ -6,7 +6,7 @@
 use knot_acp::PermissionRequest;
 use knot_agents::AgentState;
 
-use super::acp_status;
+use super::{acp_status, turn_ended};
 use crate::panel_state::PanelState;
 
 fn permission(title: Option<&str>) -> PermissionRequest {
@@ -157,4 +157,16 @@ fn an_agent_never_reported_before_is_reported() {
 
     assert_eq!(transitions(vec![awaiting(id)], |id| none.get(&id).copied()),
                vec![awaiting(id)]);
+}
+
+/// Autopilot reads a Panel-mode reply only when a turn actually finished.
+#[test]
+fn only_a_turn_that_stops_on_its_own_has_ended() {
+    assert!(turn_ended(Some(AgentState::Running), AgentState::Idle));
+    // A permission request is the agent asking, not the turn ending.
+    assert!(!turn_ended(Some(AgentState::Running), AgentState::Input));
+    // A session's first status has no turn behind it.
+    assert!(!turn_ended(None, AgentState::Idle));
+    assert!(!turn_ended(Some(AgentState::Input), AgentState::Idle));
+    assert!(!turn_ended(Some(AgentState::Idle), AgentState::Running));
 }

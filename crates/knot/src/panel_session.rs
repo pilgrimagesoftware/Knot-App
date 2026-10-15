@@ -135,6 +135,12 @@ impl PanelSessionHandle {
         self.dirty.store(true, Ordering::SeqCst);
     }
 
+    /// Adds a notice to the conversation - see `PanelState::push_notice`.
+    pub fn record_notice(&self, text: String) {
+        self.state.lock().push_notice(text);
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
     /// A cheap clone of the underlying session, for a caller holding this
     /// handle behind a `Mutex` to `.await` on (e.g. `prompt`) without
     /// keeping the lock held across the await point.

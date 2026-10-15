@@ -6,13 +6,18 @@ permalink: /latest/autopilot/
 
 # Autopilot
 
-Autopilot watches Claude Code and Codex agents for a completed turn. When an agent goes idle and its last message might need your input, Autopilot classifies that message and decides what to do — so you don't have to babysit every agent waiting on a yes/no answer.
+Autopilot watches your agents for a completed turn. When an agent goes idle and its last message might need your input, Autopilot classifies that message and decides what to do — so you don't have to babysit every agent waiting on a yes/no answer.
 
 ## How Autopilot works
 
-Autopilot runs only on completed turns for Claude Code and Codex agents. It requires an AI provider and API key (OpenAI, Anthropic, or Google, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
+Autopilot runs on completed turns. It requires an AI provider and API key (OpenAI, Anthropic, or Google, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
 
-When a watched agent goes idle, Autopilot receives its last message and begins the decision loop.
+How Knot sees a turn end depends on how the agent runs:
+
+- **Panel-mode agents** (any coding agent in the agent panel): when a turn finishes on its own, Autopilot reads the agent's final reply from the conversation. A turn that only ran tools, ended in an error, or stopped to ask for a permission is not classified.
+- **Terminal-mode agents**: Claude Code on its `Stop` hook and Codex on its turn-complete hook. Other agent types aren't watched.
+
+When a watched agent's turn ends, Autopilot receives its last message and begins the decision loop.
 
 ### Classification
 
@@ -36,6 +41,20 @@ Once classified (if not Custom), the configured action decides what happens:
 | Custom | Skips classification; see below. |
 
 A `completed` classification never triggers anything, no matter what action is configured.
+
+A reply Autopilot sends goes in as a prompt: in the agent panel it's queued behind a running turn like any other, and in a terminal it's typed and submitted. Sending a reply doesn't mark the agent as Awaiting input, because the reply starts its next turn.
+
+### In the conversation
+
+In the agent panel, Autopilot adds a line to the conversation each time it acts, so you can tell its doing from the agent's:
+
+| Line | When |
+|---|---|
+| Autopilot: this reply needs your input | Mark conversation, and Auto-continue on an open question. |
+| Autopilot: asking you how to continue | Ask me, as its dialog opens. |
+| Autopilot replied for you | Auto-continue, Custom, or the dialog's "Yes, continue". The reply follows it as a prompt. |
+
+While a reply waits behind a running turn, its row in the prompt queue reads "Queued Autopilot reply". These lines exist only in the open window; they're not part of the agent's own history, so a resumed conversation doesn't show them.
 
 ## Custom action
 

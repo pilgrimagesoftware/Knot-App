@@ -37,12 +37,17 @@ use parking_lot::Mutex;
 use tokio::sync::watch;
 use uuid::Uuid;
 
-pub use crate::autopilot::{AutopilotEffect, AutopilotQueue};
+pub use crate::autopilot::{
+    AutopilotEffect, AutopilotQueue, AutopilotSinks, land, spawn_autopilot,
+};
 pub use crate::error::{Result, ToolError};
 use crate::lookup::state_string;
 pub use crate::tasks::{GraphStore, plan_mermaid, plan_tasks};
 
-type AwaitingInputQueue = Arc<Mutex<Vec<(Uuid, Option<String>)>>>;
+/// Agents waiting on the user, each with the message to notify with (`None`
+/// for the generic awaiting-input copy). Drained by the owning workspace
+/// window, which raises the desktop notification.
+pub type AwaitingInputQueue = Arc<Mutex<Vec<(Uuid, Option<String>)>>>;
 
 /// Recipients a direct `send-message` delivered to while they were not
 /// activated, for the app to start. Held as an `Option` because the catalog
