@@ -223,14 +223,9 @@ async fn pty_session_output_is_scanned_for_pull_requests() {
     session.shutdown().unwrap();
 }
 
-/// Dotfiles opt out of prompt daemons by testing `KNOT_AGENT`
-/// (`docs/site/latest/reference/agent-shells.md`), so it has to reach the
-/// agent's shell. The format string keeps the echoed command from matching:
-/// only the output can contain the value.
-#[tokio::test]
-async fn the_agent_shell_is_marked_as_a_knot_agent() {
-    use crate::consts::{KNOT_AGENT_ENV, KNOT_AGENT_VALUE};
-
+/// Runs `initialization_command` in an agent's shell and waits for
+/// `expected` in its output, failing after [`PTY_TIMEOUT`].
+fn assert_agent_shell_prints(initialization_command: String, expected: &str) {
     let (agent, _folder) = agent_in_temp_dir();
     let settings = Settings::default();
     let config = config(&settings, &agent);
@@ -242,17 +237,13 @@ async fn the_agent_shell_is_marked_as_a_knot_agent() {
                                                  },
                                                  |_| {}).unwrap();
 
-    session
-        .start(&SessionPlan {
-            agent_command: String::new(),
-            initialization_command: format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""),
-        })
-        .unwrap();
+    session.start(&SessionPlan { agent_command: String::new(),
+                                 initialization_command })
+           .unwrap();
 
-    let expected = format!("agent=[{KNOT_AGENT_VALUE}]");
     let deadline = Instant::now() + PTY_TIMEOUT;
     let mut output = Vec::new();
-    while !String::from_utf8_lossy(&output).contains(&expected) {
+    while !String::from_utf8_lossy(&output).contains(expected) {
         let remaining = deadline.saturating_duration_since(Instant::now());
         let chunk =
             output_rx.recv_timeout(remaining).unwrap_or_else(|_| {
@@ -263,4 +254,26 @@ async fn the_agent_shell_is_marked_as_a_knot_agent() {
     }
 
     session.shutdown().unwrap();
+}
+
+/// Dotfiles opt out of prompt daemons by testing `KNOT_AGENT`
+/// (`docs/site/latest/reference/agent-shells.md`), so it has to reach the
+/// agent's shell. The format string keeps the echoed command from matching:
+/// only the output can contain the value.
+#[tokio::test]
+async fn the_agent_shell_is_marked_as_a_knot_agent() {
+    use crate::consts::{KNOT_AGENT_ENV, KNOT_AGENT_VALUE};
+
+    assert_agent_shell_prints(format!("printf 'agent=[%s]\\n' \"${KNOT_AGENT_ENV}\""),
+                              &format!("agent=[{KNOT_AGENT_VALUE}]"));
+}
+
+/// The shell sees the terminal it is attached to, whatever `TERM` the test
+/// runner - or, in the app, Finder - handed down (#271).
+#[tokio::test]
+async fn the_agent_shell_declares_its_terminal_type() {
+    use crate::consts::{AGENT_COLORTERM, AGENT_TERM};
+
+    assert_agent_shell_prints("printf 'term=[%s/%s]\\n' \"$TERM\" \"$COLORTERM\"".to_string(),
+                              &format!("term=[{AGENT_TERM}/{AGENT_COLORTERM}]"));
 }

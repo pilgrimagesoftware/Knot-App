@@ -19,6 +19,19 @@ use crate::transport::{Transport, TransportEvent};
 mod events;
 pub use events::{NewSession, SessionEvent};
 
+/// How a pending `session/request_permission` gets answered: with the
+/// user's decision, or - once the turn is cancelled - with the `cancelled`
+/// outcome the spec requires.
+enum PermissionAnswer {
+    Decided(PermissionDecision),
+    Cancelled,
+}
+
+/// Permission requests the agent is waiting on, by JSON-RPC id, each with
+/// the channel its answer goes back through.
+type PendingPermissions =
+    Arc<Mutex<std::collections::HashMap<String, oneshot::Sender<PermissionAnswer>>>>;
+
 /// Cheap to clone - `transport` and `permission_pending` are both `Arc`,
 /// so every clone dispatches through the same underlying connection. Lets
 /// a caller holding one behind a `Mutex` extract an owned handle to
@@ -35,8 +48,7 @@ pub struct AcpClient {
     /// new session's config options before `session/new`'s own (possibly
     /// richer, per-session) list arrives.
     init_config_options: Vec<ConfigOption>,
-    permission_pending:
-        Arc<Mutex<std::collections::HashMap<String, oneshot::Sender<PermissionDecision>>>>,
+    permission_pending:  PendingPermissions,
     /// The same channel the transport loop feeds. `session_prompt` needs
     /// it because ACP ends a turn by *responding* to `session/prompt`
     /// with a stop reason rather than sending a `session/update`, so the
@@ -72,9 +84,8 @@ impl AcpClient {
                                                               agent:  init_result.protocol_version, });
         }
 
-        let permission_pending: Arc<
-            Mutex<std::collections::HashMap<String, oneshot::Sender<PermissionDecision>>>,
-        > = Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let permission_pending: PendingPermissions =
+            Arc::new(Mutex::new(std::collections::HashMap::new()));
         let (events_tx, events_rx) = mpsc::unbounded_channel();
         let events_for_client = events_tx.clone();
 
@@ -138,8 +149,9 @@ impl AcpClient {
                         let transport = Arc::clone(&transport_for_loop);
                         let options_for_answer = options;
                         tokio::spawn(async move {
-                            let decision = decision_rx.await.unwrap_or(PermissionDecision::Deny);
-                            let outcome = permission_result(decision, &options_for_answer);
+                            let answer = decision_rx.await
+                                                    .unwrap_or(PermissionAnswer::Decided(PermissionDecision::Deny));
+                            let outcome = permission_result(answer, &options_for_answer);
                             let _ = transport.respond(id, outcome).await;
                         });
                     }
@@ -163,7 +175,8 @@ impl AcpClient {
                         // decisions resolve to Deny rather than hanging.
                         let pending: Vec<_> = pending_for_loop.lock().drain().collect();
                         for (_, sender) in pending {
-                            let _ = sender.send(PermissionDecision::Deny);
+                            let _ =
+                                sender.send(PermissionAnswer::Decided(PermissionDecision::Deny));
                         }
                         let _ = events_tx.send(SessionEvent::Ended(cause));
                         break;
@@ -311,10 +324,25 @@ impl AcpClient {
         result.map(|_| ())
     }
 
+    /// Cancels the turn in flight.
+    ///
+    /// Sends `session/cancel`, then answers every permission request still
+    /// pending with the `cancelled` outcome. The spec makes the second half
+    /// the client's job: "The Client MUST respond to all pending
+    /// `session/request_permission` requests with the `cancelled` outcome"
+    /// (<https://agentclientprotocol.com/protocol/prompt-turn>,
+    /// "Cancellation"). An agent blocked on one cannot finish aborting, so
+    /// without it the turn's `session/prompt` never answered and Stop did
+    /// nothing (#267).
     pub async fn session_cancel(&self, session_id: &str) -> Result<()> {
-        self.transport
-            .notify("session/cancel", Some(json!({ "sessionId": session_id })))
-            .await
+        let sent = self.transport
+                       .notify("session/cancel", Some(json!({ "sessionId": session_id })))
+                       .await;
+        let pending: Vec<_> = self.permission_pending.lock().drain().collect();
+        for (_, sender) in pending {
+            let _ = sender.send(PermissionAnswer::Cancelled);
+        }
+        sent
     }
 
     /// Answers a pending `session/request_permission` request surfaced via
@@ -322,7 +350,7 @@ impl AcpClient {
     pub fn answer_permission(&self, request: &PermissionRequest, decision: PermissionDecision) {
         let key = request.rpc_id.to_string();
         if let Some(sender) = self.permission_pending.lock().remove(&key) {
-            let _ = sender.send(decision);
+            let _ = sender.send(PermissionAnswer::Decided(decision));
         }
     }
 
@@ -359,8 +387,16 @@ fn config_options_from(raw: &Value, init_config_options: &[ConfigOption]) -> Vec
 /// cannot reach here from the UI, which offers only what the request does;
 /// one that does anyway - or a dropped channel - is answered as a refusal,
 /// never left unanswered.
-fn permission_result(decision: PermissionDecision, options: &[PermissionOption])
+/// The `session/request_permission` response for `answer`: the chosen
+/// option, or the `cancelled` outcome for a cancelled turn
+/// (<https://agentclientprotocol.com/protocol/tool-calls>, "Requesting
+/// Permission").
+fn permission_result(answer: PermissionAnswer, options: &[PermissionOption])
                      -> std::result::Result<Value, JsonRpcErrorPayload> {
+    let decision = match answer {
+        PermissionAnswer::Decided(decision) => decision,
+        PermissionAnswer::Cancelled => return Ok(json!({ "outcome": { "outcome": "cancelled" } })),
+    };
     let outcome = decision.option_id(options)
                           .or_else(|| PermissionDecision::Deny.option_id(options))
                           .unwrap_or_else(|| "deny".to_owned());

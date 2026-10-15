@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::consts;
 use crate::hooks::{AgentHookHandler, HookRequest};
-use crate::log::{Logger, Subject, Vitals, spawn_heartbeat};
+use crate::log::{Logger, Subject, Vitals, describe_caller, spawn_heartbeat};
 use crate::rpc::{self, JsonRpcId, JsonRpcRequest, JsonRpcResponse};
 use crate::session::McpSessionManager;
 use crate::status::{self, AgentStatusEntry};
@@ -393,10 +393,13 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
         return StatusCode::ACCEPTED.into_response();
     }
 
-    eprintln!("knot-mcp: [{response_session_id}] -> {}", request.method);
+    // Named by the caller's agent, not by `response_session_id`: the id is
+    // the credential a client sends back as `Mcp-Session-Id`, and the logs
+    // end up in public bug reports (see `log::redact`).
+    let who = describe_caller(&caller);
+    eprintln!("knot-mcp: [{who}] -> {}", request.method);
     if let Some(log) = state.log.as_ref() {
-        log.info(Subject::Request,
-                 format!("[{response_session_id}] {}", request.method));
+        log.info(Subject::Request, format!("[{who}] {}", request.method));
     }
     let response = rpc::dispatch(&request,
                                  state.catalog.as_ref(),
@@ -408,11 +411,10 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
     else {
         "ok"
     };
-    eprintln!("knot-mcp: [{response_session_id}] <- {} {outcome}",
-              request.method);
+    eprintln!("knot-mcp: [{who}] <- {} {outcome}", request.method);
     if let Some(log) = state.log.as_ref() {
         log.info(Subject::Response,
-                 format!("[{response_session_id}] {} {outcome}", request.method));
+                 format!("[{who}] {} {outcome}", request.method));
     }
 
     if accepts_sse {

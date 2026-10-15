@@ -12,6 +12,7 @@
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
+use super::scrub;
 use crate::consts::{BUG_REPORT_LOG_TAIL_BYTES, BUG_REPORT_LOG_TAIL_LINES};
 
 /// A log a report can carry.
@@ -56,12 +57,17 @@ pub(crate) struct Attachment {
     pub(crate) tail: Option<String>,
 }
 
-/// Reads the tail of `kind`'s log. Blocks.
+/// Reads the tail of `kind`'s log, scrubbed for publishing. Blocks.
+///
+/// Scrubbed here, where the text enters the report, so nothing downstream -
+/// the issue body, the browser fallback - can carry it unscrubbed (#284).
 pub(crate) fn read(kind: LogKind) -> Attachment {
     let path = kind.path();
-    let tail = path.as_deref()
-                   .and_then(|path| read_tail(path).ok())
-                   .map(|bytes| tail(&bytes, BUG_REPORT_LOG_TAIL_LINES));
+    let home = scrub::home_dir();
+    let tail =
+        path.as_deref()
+            .and_then(|path| read_tail(path).ok())
+            .map(|bytes| scrub::scrub(&tail(&bytes, BUG_REPORT_LOG_TAIL_LINES), home.as_deref()));
     Attachment { kind, path, tail }
 }
 
@@ -133,10 +139,18 @@ pub(super) fn attachments_by_path(attachments: &[Attachment]) -> String {
                .join("\n")
 }
 
+/// Where the log lives, with the home directory written as `~`: the path
+/// goes into a public issue too.
 fn display_path(attachment: &Attachment) -> String {
     attachment.path
               .as_deref()
-              .map(|path| path.display().to_string())
+              .map(|path| {
+                  let path = path.display().to_string();
+                  match scrub::home_dir() {
+                      Some(home) => scrub::home_relative(&path, &home),
+                      None => path,
+                  }
+              })
               .unwrap_or_else(|| knot_core::l10n::t("bug_report.logs.no_directory"))
 }
 
