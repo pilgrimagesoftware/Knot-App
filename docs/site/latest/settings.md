@@ -77,7 +77,8 @@ the application to the front.
 
 ## Autopilot
 
-Autopilot watches Claude Code and Codex agents for completed turns and decides
+Autopilot watches agents in the agent panel, and Claude Code and Codex agents in a
+terminal, for completed turns and decides
 what to do when an agent goes idle and might need your input. When enabled, it
 requires an AI provider and API key (OpenAI, Anthropic, or Google, each called
 with a fixed, cheap model). Full details, including the decision loop, custom
