@@ -97,27 +97,24 @@ fn ai_model_for_matches_swift_reference_defaults() {
     }
 }
 
+/// Every action's label and description come from the catalog: each key
+/// resolves, and no two actions read the same. Driven off `ALL`, so a new
+/// action cannot ship with a missing or borrowed entry.
 #[test]
-fn autopilot_action_label_names_every_action() {
-    assert_eq!(SettingsWindow::autopilot_action_label(AutopilotAction::Mark),
-               "Mark conversation");
-    assert_eq!(SettingsWindow::autopilot_action_label(AutopilotAction::Ask),
-               "Ask me");
-    assert_eq!(SettingsWindow::autopilot_action_label(AutopilotAction::Continue),
-               "Auto-continue");
-    assert_eq!(SettingsWindow::autopilot_action_label(AutopilotAction::Custom),
-               "Custom");
-}
-
-/// Driven off `ALL` rather than a hand-written list, so a new action cannot
-/// be added without a description to go with it.
-#[test]
-fn autopilot_action_description_is_distinct_per_action() {
-    let descriptions: BTreeSet<&str> =
-        AutopilotAction::ALL.iter()
-                            .map(|action| SettingsWindow::autopilot_action_description(*action))
-                            .collect();
-
+fn autopilot_action_labels_and_descriptions_resolve_and_differ() {
+    let mut labels = BTreeSet::new();
+    let mut descriptions = BTreeSet::new();
+    for action in AutopilotAction::ALL {
+        let (label_key, description_key) = SettingsWindow::autopilot_action_keys(*action);
+        let label = SettingsWindow::autopilot_action_label(*action);
+        let description = SettingsWindow::autopilot_action_description(*action);
+        assert_ne!(label, label_key, "{label_key} must resolve");
+        assert_ne!(description, description_key,
+                   "{description_key} must resolve");
+        labels.insert(label);
+        descriptions.insert(description);
+    }
+    assert_eq!(labels.len(), AutopilotAction::ALL.len());
     assert_eq!(descriptions.len(), AutopilotAction::ALL.len());
 }
 
