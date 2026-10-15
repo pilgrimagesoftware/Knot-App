@@ -39,6 +39,12 @@ impl gpui_kit::Global for OpenReport {}
 /// Registers the `ReportIssue` handler over the live services.
 pub(crate) fn register_report_issue_action(cx: &mut App) {
     register_report_issue_action_with(ReportServices::live(), cx);
+    // The last session's browser-fallback log copies: scrubbed, but nobody
+    // needs them once the app has restarted. Off the main thread, since it
+    // touches the disk.
+    cx.background_executor()
+      .spawn(async { super::log_copies::clear(&super::log_copies::root()) })
+      .detach();
 }
 
 /// [`register_report_issue_action`], over supplied services.
