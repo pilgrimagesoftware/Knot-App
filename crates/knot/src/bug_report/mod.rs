@@ -8,7 +8,8 @@
 //! `form` decides when Report is available and what the status line says,
 //! `diagnostics` gathers and lays out what accompanies every report, `logs`
 //! reads the logs a user chooses to attach and `scrub` removes what must not
-//! be published from them,
+//! be published from them, `log_copies` writes the scrubbed copies the
+//! browser fallback names,
 //! `submit` turns a report into a filed issue or a pre-filled browser page,
 //! `report` holds what was typed and runs the blocking work, `pane` draws
 //! the form, and `window` opens the window and hosts the two.
@@ -16,6 +17,7 @@
 mod diagnostics;
 mod form;
 mod kind;
+mod log_copies;
 mod logs;
 mod pane;
 mod report;

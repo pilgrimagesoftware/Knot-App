@@ -131,8 +131,11 @@ redacts session ids, credentials (authorization headers, bearer tokens, API
 keys, GitHub tokens, passwords in URLs) and email addresses. Your home
 directory is written as `~`. The scrub covers every line of the log, including
 lines that agent adapters and MCP servers wrote, and it errs towards removing
-too much. A log you attach by hand through the browser fallback is not
-scrubbed, so check it before you drop it in. Knot does not upload screenshots; it names them in
+too much. When Knot cannot file the issue and opens the GitHub page in your
+browser instead, the page cannot carry the logs. Knot writes scrubbed copies to a
+temporary folder, names those copies on the page, and shows them in Finder for
+you to drag in. It never names the logs themselves. The copies stay until
+your next report or the next time Knot starts. Knot does not upload screenshots; it names them in
 the issue and shows them to drag onto it.
 
 Report is disabled while the subject or description is empty or whitespace,
