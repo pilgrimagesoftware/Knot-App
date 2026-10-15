@@ -1,4 +1,36 @@
 
+## 1.32.0 - 2026-10-15
+
+### Added
+- Run Autopilot for panel agents and show it in the conversation
+- Localize the Autopilot action labels and descriptions
+- Re-open workspaces that were open at quit
+- List an MCP server's tools over stdio or HTTP
+- Show each MCP server's tools in the MCP servers section
+- Scrub logs before a bug report publishes them
+- Name scrubbed log copies in the browser fallback
+
+
+### Documentation
+- Add autopilot documentation page
+
+
+### Fixed
+- Notify again when an agent re-enters Awaiting input
+- Set TERM and COLORTERM in agent terminals
+- Do not start a passive agent when it is created
+- Show a moved agent in its open destination workspace
+- Keep agent sections beside the artifact panel, drop read nudges
+- Answer pending permission requests when a turn is cancelled
+- Queue concurrent permission requests instead of replacing them
+- Keep session ids and tool arguments out of the logs
+- Report a failed roster write by error category only
+- Log a failed roster write without the error
+- Log the failed roster write with a fixed message
+- Rebuild when a locale file changes
+
+
+
 ## 1.31.0 - 2026-10-14
 
 ### Added
