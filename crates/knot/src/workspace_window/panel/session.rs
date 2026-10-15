@@ -182,8 +182,15 @@ impl WorkspaceWindow {
                                         store.saved_agents(settings.restore_conversation_on_launch);
                                         })
                             };
-                            if let Err(error) = installed.persist_roster() {
-                                eprintln!("failed to persist agent {id}'s session: {error}");
+                            // A fixed message, with nothing interpolated:
+                            // this callback receives the session id, and
+                            // CodeQL (`rust/cleartext-logging`) treats every
+                            // value inside it - the error, which variant it
+                            // is, even the captured agent id - as carrying
+                            // that id. The next roster write reports its own
+                            // failure in full.
+                            if installed.persist_roster().is_err() {
+                                eprintln!("failed to persist a panel agent's new session");
                             }
                         }).await;
                     });
