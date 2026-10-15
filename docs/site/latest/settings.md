@@ -17,7 +17,7 @@ when it opens. Switching tabs preserves in-progress text.
 
 | Tab | Sections and controls |
 |---|---|
-| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
+| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Re-open workspaces on launch" - on by default, enabled only while agent restore is on, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
 | Coding | Source Folder (current folder, folder picker, clear with confirmation); Agent Options (agent-type picker, per-type options field) |
 | Autopilot | Enable autopilot, AI Provider picker, API key, Action picker, and custom prompt configuration (see [Autopilot]({{ '/latest/autopilot/' | relative_url }})) |
 | Voice | "Enable voice input"; engine picker (Apple SpeechAnalyzer only, disabled); read-only push-to-talk key, not changeable here; "Auto-insert transcription"; controls disabled while voice input is off |
@@ -54,6 +54,20 @@ from the older single settings file is migrated once and that file is renamed
 so it is never read again. A preference write applies to every open window
 without a relaunch. On first launch, Knot picks the first existing of `~/src`,
 `~/source` and `~/sources`.
+
+## Re-opening workspaces
+
+When Knot quits, it records which workspace windows are open in the UI-state
+document. With "Re-open workspaces on launch" on, the next launch opens those
+windows again, at the positions they were left in, after the workspace
+manager. A window you closed before quitting is not recorded, so it stays
+closed. A workspace that no longer exists is skipped.
+
+The workspaces themselves come back only through "Restore agents on launch".
+While that setting is off there is nothing to reopen, so this toggle is
+disabled. Stopping Knot with Ctrl-C in the terminal that launched it is a kill
+rather than a quit, so nothing is recorded and the next launch opens whatever
+was recorded at the previous quit.
 
 ## Appearance mode
 
@@ -124,7 +138,19 @@ authenticated, or ready. The diagnostics are selectable text for copying.
 The window can attach the application log and the MCP server log, each chosen
 separately and neither by default; a chosen log is attached as its recent
 lines, and screenshots (PNG, JPEG or GIF, up to a fixed number) are listed by
-name with a remove control. Knot does not upload screenshots; it names them in
+name with a remove control.
+
+An issue is public, so an attached log is scrubbed before it goes in. Knot
+replaces tool-call arguments with the tool's name, argument names and size, and
+redacts session ids, credentials (authorization headers, bearer tokens, API
+keys, GitHub tokens, passwords in URLs) and email addresses. Your home
+directory is written as `~`. The scrub covers every line of the log, including
+lines that agent adapters and MCP servers wrote, and it errs towards removing
+too much. When Knot cannot file the issue and opens the GitHub page in your
+browser instead, the page cannot carry the logs. Knot writes scrubbed copies to a
+temporary folder, names those copies on the page, and shows them in Finder for
+you to drag in. It never names the logs themselves. The copies stay until
+your next report or the next time Knot starts. Knot does not upload screenshots; it names them in
 the issue and shows them to drag onto it.
 
 Report is disabled while the subject or description is empty or whitespace,

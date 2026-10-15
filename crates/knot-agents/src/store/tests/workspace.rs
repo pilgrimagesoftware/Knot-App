@@ -206,3 +206,36 @@ fn setting_the_same_bounds_twice_reports_no_change() {
     assert!(!store.set_workspace_window_bounds(id, bounds),
             "second write did not");
 }
+
+#[test]
+fn the_workspaces_open_at_quit_are_the_ones_recorded() {
+    let (mut store, [first, second, third]) = three();
+    assert!(store.record_open_workspaces(&[third, first]));
+    // Sidebar order, not the order the windows were listed in.
+    assert_eq!(store.workspaces_open_at_quit(), vec![first, third]);
+    assert!(!store.workspace_ui(second).open_at_quit);
+}
+
+#[test]
+fn a_workspace_closed_before_the_next_quit_is_cleared() {
+    let (mut store, [first, second, _]) = three();
+    store.record_open_workspaces(&[first, second]);
+    assert!(store.record_open_workspaces(&[second]));
+    assert_eq!(store.workspaces_open_at_quit(), vec![second]);
+}
+
+#[test]
+fn recording_the_same_open_set_again_changes_nothing() {
+    let (mut store, [first, ..]) = three();
+    store.record_open_workspaces(&[first]);
+    assert!(!store.record_open_workspaces(&[first]));
+}
+
+#[test]
+fn a_removed_workspace_is_not_reopened() {
+    let (mut store, [first, second, _]) = three();
+    store.record_open_workspaces(&[first, second]);
+    // A UI entry with no workspace behind it, as a stale document can hold.
+    store.workspaces.retain(|workspace| workspace.id != first);
+    assert_eq!(store.workspaces_open_at_quit(), vec![second]);
+}

@@ -27,5 +27,6 @@ mod status;
 pub use buffer::OutputBuffer;
 pub use invocation::{ShellInvocation, ShellRequest};
 pub use run::{ShellRun, spawn};
+pub use signal::{Signal, signal_group};
 pub use state::{ShellRunState, ShellStream};
 pub use status::ShellStatus;

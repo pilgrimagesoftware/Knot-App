@@ -40,6 +40,7 @@ use uuid::Uuid;
 pub use crate::autopilot::{
     AutopilotEffect, AutopilotQueue, AutopilotSinks, land, spawn_autopilot,
 };
+pub use crate::catalog::tool_catalog;
 pub use crate::error::{Result, ToolError};
 use crate::lookup::state_string;
 pub use crate::tasks::{GraphStore, plan_mermaid, plan_tasks};

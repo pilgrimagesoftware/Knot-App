@@ -17,6 +17,7 @@ use knot_forge::ForgeAvailability;
 use super::diagnostics::Diagnostics;
 use super::form::{Phase, can_report, filed_message};
 use super::kind::IssueKind;
+use super::log_copies;
 use super::logs::{self, Attachment, LogKind};
 use super::screenshots::{self, Handoff};
 use super::submit::{self, Outcome, Report};
@@ -41,11 +42,17 @@ impl ReportServices {
     pub(super) fn live() -> Self {
         Self { collect:  Arc::new(Diagnostics::collect),
                submit:   Arc::new(|report, forge| {
-                   submit::submit(report,
-                                  forge,
-                                  &knot_forge::GhRunner::new(),
-                                  crate::open_in::open_url,
-                                  crate::open_in::reveal_path)
+                   log_copies::deliver(report,
+                                       forge,
+                                       &log_copies::root(),
+                                       |report| {
+                                           submit::submit(report,
+                                                          forge,
+                                                          &knot_forge::GhRunner::new(),
+                                                          crate::open_in::open_url,
+                                                          crate::open_in::reveal_path)
+                                       },
+                                       crate::open_in::reveal_path)
                }),
                read_log: Arc::new(logs::read), }
     }

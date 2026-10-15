@@ -113,6 +113,41 @@ impl AgentStore {
         self.workspace_ui_mut(id).is_detached = Some(detached);
     }
 
+    /// Record that exactly the workspaces in `open` have a window open, as
+    /// the app quits, so the next launch can reopen them.
+    ///
+    /// Every other entry is cleared rather than left alone: a workspace whose
+    /// window was closed before the quit must not come back. Returns whether
+    /// anything changed, so the caller writes the document only then.
+    pub fn record_open_workspaces(&mut self, open: &[Uuid]) -> bool {
+        let mut changed = false;
+        for &id in open {
+            let ui = self.workspace_ui_mut(id);
+            changed |= !ui.open_at_quit;
+            ui.open_at_quit = true;
+        }
+        for (id, ui) in &mut self.workspace_ui {
+            if ui.open_at_quit && !open.contains(id) {
+                ui.open_at_quit = false;
+                changed = true;
+            }
+        }
+        changed
+    }
+
+    /// The workspaces whose window was open when the app last quit, in
+    /// sidebar order.
+    ///
+    /// Read against the roster, so an entry left behind by a workspace that
+    /// no longer exists names nothing to reopen.
+    pub fn workspaces_open_at_quit(&self) -> Vec<Uuid> {
+        self.workspaces
+            .iter()
+            .map(|workspace| workspace.id)
+            .filter(|id| self.workspace_ui.get(id).is_some_and(|ui| ui.open_at_quit))
+            .collect()
+    }
+
     pub fn rename_workspace(&mut self, id: Uuid, name: impl Into<String>) -> bool {
         let Some(workspace) = self.workspace_mut(id)
         else {
@@ -193,10 +228,13 @@ impl AgentStore {
             .map(|workspace| workspace.id)
     }
 
-    pub fn move_to_workspace(&mut self, agent_id: Uuid, target_workspace_id: Uuid) {
+    /// Moves `agent_id` into `target_workspace_id`, reporting whether it
+    /// moved - `false` when it is already there, so a caller does not tear
+    /// down and restart a session for a move that did nothing.
+    pub fn move_to_workspace(&mut self, agent_id: Uuid, target_workspace_id: Uuid) -> bool {
         if let Some(source) = self.workspace_of(agent_id) {
             if source == target_workspace_id {
-                return;
+                return false;
             }
             if let Some(workspace) = self.workspace_mut(source) {
                 workspace.agent_ids.retain(|id| *id != agent_id);
@@ -216,5 +254,6 @@ impl AgentStore {
                 ui.active_agent_ids = vec![agent_id];
             }
         }
+        true
     }
 }

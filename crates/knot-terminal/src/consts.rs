@@ -20,3 +20,18 @@ pub(crate) const KNOT_AGENT_ENV: &str = "KNOT_AGENT";
 
 /// [`KNOT_AGENT_ENV`]'s value: any non-empty one would do for `[[ -n ]]`.
 pub(crate) const KNOT_AGENT_VALUE: &str = "1";
+
+/// The terminal type every agent terminal declares, set whatever `TERM` Knot
+/// itself inherited (issue #271).
+///
+/// Launched from Finder, Knot has no `TERM` at all, and shells, `clear`,
+/// pagers and full-screen tools then refuse or degrade ("TERM environment
+/// variable not set."). Launched from a terminal, it inherits *that*
+/// terminal's type - `tmux-256color`, say - which describes an emulator the
+/// agent is not attached to. The emulator here is gpui-terminal's alacritty
+/// grid, which implements xterm's sequences and 256-colour palette.
+pub(crate) const AGENT_TERM: &str = "xterm-256color";
+
+/// The `COLORTERM` every agent terminal declares: gpui-terminal draws 24-bit
+/// colour (`Color::Spec`), and tools only use it when this says so.
+pub(crate) const AGENT_COLORTERM: &str = "truecolor";

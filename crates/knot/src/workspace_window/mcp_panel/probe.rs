@@ -45,11 +45,14 @@ impl WorkspaceWindow {
     /// Answers whether anything landed, so the poll repaints for a result
     /// and not for the ticks that find nothing.
     pub(in crate::workspace_window) fn mcp_probe_tick(&mut self, cx: &gpui_kit::App) -> bool {
+        // Both drains run every tick: locals, not an `||`, so one landing
+        // cannot skip the other.
         let landed = self.drain_mcp_probes();
+        let tools_landed = self.drain_mcp_tools();
         self.request_first_mcp_probe();
         self.claim_mcp_probe(cx);
 
-        landed
+        landed || tools_landed
     }
 
     /// This agent's section, or `None` if it has never been shown.

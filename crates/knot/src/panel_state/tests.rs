@@ -1,5 +1,6 @@
 //! Unit tests for [`super`].
 
+mod permissions;
 mod pull_requests;
 mod replay;
 mod shell;

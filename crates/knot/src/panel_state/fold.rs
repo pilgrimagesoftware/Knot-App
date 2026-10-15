@@ -17,7 +17,7 @@ impl PanelState {
     pub fn apply(&mut self, event: SessionEvent) {
         match event {
             SessionEvent::Update(update) => self.apply_update(update),
-            SessionEvent::PermissionRequest(request) => self.pending_permission = Some(request),
+            SessionEvent::PermissionRequest(request) => self.request_permission(request),
             SessionEvent::Ended(cause) => self.ended = Some(cause),
         }
     }
@@ -125,7 +125,10 @@ impl PanelState {
             // list already reflects the turn's last known state and needs
             // no change beyond ending the turn (which flips the last
             // response from "track toggle" to "response action bar").
-            SessionUpdate::TurnEnd { .. } => self.turn_active = false,
+            SessionUpdate::TurnEnd { .. } => {
+                self.turn_active = false;
+                self.clear_permissions();
+            }
             SessionUpdate::ConfigOptionUpdate { config_options } => {
                 self.config_options = config_options;
             }

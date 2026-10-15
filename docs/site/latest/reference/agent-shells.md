@@ -26,6 +26,18 @@ if [[ -n $KNOT_AGENT ]]; then
 fi
 ```
 
+## `TERM` and `COLORTERM`
+
+Every agent terminal starts with `TERM=xterm-256color` and
+`COLORTERM=truecolor`, describing the terminal Knot draws: xterm sequences,
+the 256-colour palette and 24-bit colour. Knot sets them even if it inherited
+other values. When Knot is opened from Finder it has no `TERM`, so the shell
+would print `TERM environment variable not set.` and tools like `clear` would
+fail. When Knot is started from a terminal, it inherits that terminal's type,
+such as `tmux-256color`, which doesn't describe the terminal the agent runs in.
+
+If your dotfiles set `TERM` themselves, they override this for that shell.
+
 ## powerlevel10k
 
 powerlevel10k starts a `gitstatusd` daemon, plus two helper `zsh` processes, for
