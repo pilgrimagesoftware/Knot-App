@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::consts;
-use crate::log::{Logger, Subject, describe_call};
+use crate::log::{Logger, Subject, describe_call, describe_caller};
 use crate::tools::{Caller, ToolCatalog};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -105,12 +105,15 @@ pub async fn dispatch(request: &JsonRpcRequest, catalog: &dyn ToolCatalog, log: 
                                    .and_then(|p| p.get("arguments"))
                                    .cloned()
                                    .unwrap_or_else(|| serde_json::json!({}));
-            // The two destinations part company here, and only here.
-            // Standard error keeps printing the arguments, as it always
-            // has; the file gets the call's shape and none of its content.
-            eprintln!("knot-mcp: tools/call {name} {arguments}");
+            // Both destinations get the call's shape and none of its
+            // content: the arguments are message bodies and prompts, and
+            // either log can end up in a public bug report.
+            let described = format!("{} from {}",
+                                    describe_call(name, &arguments),
+                                    describe_caller(caller));
+            eprintln!("knot-mcp: {described}");
             if let Some(log) = log {
-                log.info(Subject::Tool, describe_call(name, &arguments));
+                log.info(Subject::Tool, described);
             }
             let result = catalog.call_as(name, arguments, caller).await;
             JsonRpcResponse::success(request.id.clone(), result)
