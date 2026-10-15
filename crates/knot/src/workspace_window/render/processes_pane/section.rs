@@ -30,19 +30,21 @@ use crate::workspace_window::WorkspaceWindow;
 /// a Panel agent get the same answer under the same conditions. That is the
 /// spec's "the section appears in both views", and passing the mode in is
 /// what lets a test hold it.
-pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool, has_document_pane: bool)
+pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool,
+                               artifact_takes_content_area: bool)
                                -> bool {
     let _ = view_mode;
 
-    !is_takeover && !has_document_pane
+    !is_takeover && !artifact_takes_content_area
 }
 
 impl WorkspaceWindow {
     /// The processes section for the shown agent, or `None` when no agent's
     /// session pane is on screen.
     ///
-    /// Absent over the markdown and mermaid panes too: those are a document
-    /// the agent put in front of the user, not its session.
+    /// Absent while an expanded artifact panel holds the content area: the
+    /// session pane is not on screen then. An unexpanded panel beside it
+    /// leaves the section in place (#24).
     pub(in crate::workspace_window::render) fn processes_section(
         &mut self, layout: super::super::agent_sections::SectionLayout, cx: &mut Context<Self>)
         -> Option<gpui_kit::AnyElement> {
@@ -53,7 +55,7 @@ impl WorkspaceWindow {
                             .map(|agent| agent.view_mode)?;
         if !section_is_shown(view_mode,
                              self.view_mode.is_takeover(),
-                             self.agent_has_document_pane(agent_id))
+                             self.artifact_takes_content_area(agent_id))
         {
             return None;
         }
@@ -89,7 +91,7 @@ impl WorkspaceWindow {
         let alone =
             !super::super::mcp_pane::section_is_shown(view_mode,
                                                       self.view_mode.is_takeover(),
-                                                      self.agent_has_document_pane(agent_id));
+                                                      self.artifact_takes_content_area(agent_id));
         let stacked = layout.is_stacked();
 
         Some(v_flex().map(|section| {
@@ -265,17 +267,17 @@ impl WorkspaceWindow {
         knot_core::agent_type::reports_subagents(&agent.agent_type, agent.view_mode)
     }
 
-    /// Whether a document the agent opened has taken the content area, in
-    /// which case its session pane - and this section with it - is not shown.
-    pub(in crate::workspace_window::render) fn agent_has_document_pane(&self, agent_id: Uuid)
-                                                                       -> bool {
-        let store = self.store.lock();
-        let Some(agent) = store.agent(agent_id)
-        else {
-            return false;
-        };
-
-        agent.markdown_file.is_some() || agent.mermaid_source.is_some()
+    /// Whether `id`'s artifact panel has taken the content area - open and
+    /// expanded - in which case its session pane, and these sections with
+    /// it, are not on screen (#24).
+    ///
+    /// An open but unexpanded panel sits beside the session pane, which
+    /// keeps its sections: a markdown file or diagram being open is not a
+    /// reason to hide the agent's MCP servers and processes. The same test
+    /// `with_side_panels` makes before giving the panel the content area.
+    pub(in crate::workspace_window::render) fn artifact_takes_content_area(&self, agent_id: Uuid)
+                                                                           -> bool {
+        self.artifact_panel_open(agent_id) && self.artifact_panel_expanded(agent_id)
     }
 }
 

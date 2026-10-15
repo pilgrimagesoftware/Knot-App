@@ -95,6 +95,9 @@ SHALL be classified background rather than reported as unknown.
 The selected agent's pane SHALL contain a processes section, present for both
 the terminal view and the panel view. The section SHALL be collapsible and
 SHALL start collapsed.
+An artifact panel open beside the agent's pane SHALL NOT hide the section; the
+section SHALL be absent only while that panel is expanded to hold the content
+area, when the agent's pane itself is not on screen.
 
 Expanded, the section SHALL present two labelled groups in a fixed order:
 the agent's subagents first, then its descendant processes. The groups SHALL
@@ -139,6 +142,13 @@ first. Each such row SHALL show the subagent's kind; the task it was given, on
 a single line, truncating with an ellipsis rather than wrapping; its elapsed
 time; and its state. A subagent row SHALL NOT show a process identifier,
 because a subagent has none.
+
+#### Scenario: An artifact panel beside the pane
+
+- **WHEN** the selected agent has a diagram open in its artifact panel, not
+  expanded
+- **THEN** its pane still includes the processes section, and expanding the
+  panel removes it until the panel is collapsed again
 
 #### Scenario: Collapsed section names what is running
 
