@@ -123,7 +123,16 @@ authenticated, or ready. The diagnostics are selectable text for copying.
 The window can attach the application log and the MCP server log, each chosen
 separately and neither by default; a chosen log is attached as its recent
 lines, and screenshots (PNG, JPEG or GIF, up to a fixed number) are listed by
-name with a remove control. Knot does not upload screenshots; it names them in
+name with a remove control.
+
+An issue is public, so an attached log is scrubbed before it goes in. Knot
+replaces tool-call arguments with the tool's name, argument names and size, and
+redacts session ids, credentials (authorization headers, bearer tokens, API
+keys, GitHub tokens, passwords in URLs) and email addresses. Your home
+directory is written as `~`. The scrub covers every line of the log, including
+lines that agent adapters and MCP servers wrote, and it errs towards removing
+too much. A log you attach by hand through the browser fallback is not
+scrubbed, so check it before you drop it in. Knot does not upload screenshots; it names them in
 the issue and shows them to drag onto it.
 
 Report is disabled while the subject or description is empty or whitespace,
