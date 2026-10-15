@@ -20,29 +20,32 @@ impl SettingsWindow {
         }
     }
 
-    pub(crate) fn autopilot_action_label(action: AutopilotAction) -> &'static str {
+    /// The catalog keys for `action`'s picker label and its description.
+    ///
+    /// Exhaustive: a new [`AutopilotAction`] fails to compile here until it
+    /// has both, and `settings_labels` checks every one resolves.
+    pub(crate) fn autopilot_action_keys(action: AutopilotAction) -> (&'static str, &'static str) {
         match action {
-            AutopilotAction::Mark => "Mark conversation",
-            AutopilotAction::Ask => "Ask me",
-            AutopilotAction::Continue => "Auto-continue",
-            AutopilotAction::Custom => "Custom",
+            AutopilotAction::Mark => {
+                ("settings.autopilot.action.mark", "settings.autopilot.action.mark_description")
+            }
+            AutopilotAction::Ask => {
+                ("settings.autopilot.action.ask", "settings.autopilot.action.ask_description")
+            }
+            AutopilotAction::Continue => ("settings.autopilot.action.continue",
+                                          "settings.autopilot.action.continue_description"),
+            AutopilotAction::Custom => {
+                ("settings.autopilot.action.custom", "settings.autopilot.action.custom_description")
+            }
         }
     }
 
-    pub(crate) fn autopilot_action_description(action: AutopilotAction) -> &'static str {
-        match action {
-            AutopilotAction::Mark => {
-                "Set the agent status to indicate input is needed and send a notification."
-            }
-            AutopilotAction::Ask => {
-                "Show a dialog letting you switch to the agent, dismiss, or auto-continue."
-            }
-            AutopilotAction::Continue => "Automatically send \"yes, continue\" to the agent.",
-            AutopilotAction::Custom => {
-                "Use your own prompt to decide what to reply. The LLM response is injected \
-                 directly into the agent."
-            }
-        }
+    pub(crate) fn autopilot_action_label(action: AutopilotAction) -> String {
+        knot_core::l10n::t(Self::autopilot_action_keys(action).0)
+    }
+
+    pub(crate) fn autopilot_action_description(action: AutopilotAction) -> String {
+        knot_core::l10n::t(Self::autopilot_action_keys(action).1)
     }
 
     fn select_ai_provider(&mut self, provider: AiProvider, cx: &mut Context<Self>) {

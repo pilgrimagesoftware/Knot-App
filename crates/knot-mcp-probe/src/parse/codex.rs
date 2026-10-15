@@ -20,6 +20,10 @@
 //! ]
 //! ```
 
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use knot_mcp_client::StdioServer;
 use serde::Deserialize;
 
 use crate::server::{ServerRow, Target};
@@ -43,6 +47,10 @@ struct TransportJson {
     #[serde(default)]
     args:    Vec<String>,
     url:     Option<String>,
+    /// Variables set for the server. `null` when there are none.
+    #[serde(default)]
+    env:     Option<BTreeMap<String, String>>,
+    cwd:     Option<PathBuf>,
 }
 
 /// Reads a listing, or `None` when it is not JSON this shape recognizes.
@@ -65,7 +73,12 @@ fn row_from(entry: Entry) -> ServerRow {
         ServerState::Disabled
     };
 
+    let launch = launch_of(&entry.transport);
     let row = ServerRow::new(entry.name, target, state);
+    let row = match launch {
+        Some(launch) => row.with_launch(launch),
+        None => row,
+    };
 
     match entry.disabled_reason {
         Some(reason) => row.with_detail(reason),
@@ -90,6 +103,26 @@ fn target_of(transport: &TransportJson) -> Target {
     };
 
     Target::Stdio { command: full }
+}
+
+/// How a stdio server is started, from the separate words Codex lists it
+/// in. Codex is the one listing that gives them, which is why it is the one
+/// whose stdio servers' tools can be listed (#40).
+fn launch_of(transport: &TransportJson) -> Option<StdioServer> {
+    if transport.url.is_some() {
+        return None;
+    }
+    let program = transport.command
+                           .clone()
+                           .filter(|command| !command.is_empty())?;
+    Some(StdioServer { program,
+                       args: transport.args.clone(),
+                       env: transport.env
+                                     .clone()
+                                     .unwrap_or_default()
+                                     .into_iter()
+                                     .collect(),
+                       cwd: transport.cwd.clone() })
 }
 
 #[cfg(test)]

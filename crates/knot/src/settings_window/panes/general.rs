@@ -27,6 +27,12 @@ impl SettingsWindow {
         restore_layout_on_launch
     }
 
+    /// "Re-open workspaces on launch" has nothing to reopen unless agent
+    /// restore brought the workspaces back; gated the same way.
+    pub(crate) fn reopen_workspaces_toggle_enabled(restore_layout_on_launch: bool) -> bool {
+        restore_layout_on_launch
+    }
+
     /// How the window looks.
     fn appearance_group(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let settings_window = cx.entity();
@@ -78,6 +84,8 @@ impl SettingsWindow {
         let restore_layout_on_launch = crate::settings_global::read(cx).restore_layout_on_launch;
         let restore_conversation_on_launch =
             crate::settings_global::read(cx).restore_conversation_on_launch;
+        let reopen_workspaces_on_launch =
+            crate::settings_global::read(cx).reopen_workspaces_on_launch;
         let keep_in_menu_bar = crate::settings_global::read(cx).keep_in_menu_bar;
         crate::controls::group(knot_core::l10n::t("settings.general.startup"))
                     .child(Self::row(
@@ -111,6 +119,26 @@ impl SettingsWindow {
                                     settings_window.update(app, |view, cx| {
                                         crate::settings_global::write(cx, |settings| {
                                             settings.restore_conversation_on_launch = checked;
+                                        });
+                                        view.persist(cx);
+                                    })
+                                }
+                            }),
+                    ))
+                    .child(Self::row(
+                        knot_core::l10n::t("settings.general.reopen_workspaces"),
+                        Switch::new("reopen-workspaces-on-launch")
+                            .checked(reopen_workspaces_on_launch)
+                            .disabled(!Self::reopen_workspaces_toggle_enabled(
+                                restore_layout_on_launch,
+                            ))
+                            .on_click({
+                                let settings_window = settings_window.clone();
+                                move |checked, _, app| {
+                                    let checked = *checked;
+                                    settings_window.update(app, |view, cx| {
+                                        crate::settings_global::write(cx, |settings| {
+                                            settings.reopen_workspaces_on_launch = checked;
                                         });
                                         view.persist(cx);
                                     })

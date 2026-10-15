@@ -61,6 +61,9 @@ impl WorkspaceWindow {
         // Messages arrive from the MCP server on another thread; this poll
         // is where an agent going idle is noticed.
         self.deliver_inbox_nudges(cx);
+        // A local, not a term in the `||` chain below: dropping a nudge
+        // changes the queue, so it has to run every tick (#24).
+        let nudges_dropped = self.drop_read_nudges();
         let autopilot_effects_applied = self.drain_autopilot_effects(cx);
         self.raise_awaiting_notifications(cx);
         self.raise_mcp_failure_notification(cx);
@@ -166,6 +169,7 @@ impl WorkspaceWindow {
            || mcp_probed
            || prompts_completed
            || prompts_sent
+           || nudges_dropped
            || pull_requests_recorded
            || forge_probed
            || pull_request_states_changed
@@ -323,7 +327,12 @@ impl WorkspaceWindow {
             // After either branch, and before the next tick can read it: the
             // gate's whole job is to remember what was handed over, whether
             // or not a tracker took it.
-            self.panel_reported_states.insert(id, state);
+            let previous = self.panel_reported_states.insert(id, state);
+            // No hook reports a Panel-mode agent's turn ending, so this is
+            // where Autopilot reads its reply (#273).
+            if panel_activity::turn_ended(previous, state) {
+                self.trigger_panel_autopilot(id, cx);
+            }
         }
         true
     }

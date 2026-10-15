@@ -13,13 +13,13 @@
 
 use std::sync::Arc;
 
-use knot_agents::AgentState;
+use knot_agents::{AgentState, AgentStore};
 use knot_autopilot::{Classification, Effect};
 use parking_lot::Mutex;
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::McpToolCatalog;
+use crate::{AwaitingInputQueue, McpToolCatalog};
 
 /// What a landed classification asks a workspace window to do - the
 /// agent-id-paired mirror of [`Effect`], minus `None`, which is never
@@ -78,60 +78,94 @@ impl McpToolCatalog {
         else {
             return;
         };
-        if last_message.is_empty() {
-            return;
-        }
-        // Classification is a blocking HTTP call; with no tokio runtime to
-        // spawn it on (the tool catalog is built and exercised without one
-        // in tests and benches), there is nowhere to run it.
-        if tokio::runtime::Handle::try_current().is_err() {
-            return;
-        }
-        let Some(queue) = self.autopilot.lock().clone()
+        let (Some(queue), Some(settings)) =
+            (self.autopilot.lock().clone(), self.settings.lock().clone())
         else {
             return;
         };
-        let Some(settings) = self.settings.lock().clone()
-        else {
-            return;
-        };
-        let snapshot = settings.read();
-        if !snapshot.autopilot_enabled || snapshot.ai_api_key.trim().is_empty() {
-            return;
-        }
-        let provider = snapshot.ai_provider;
-        let api_key = snapshot.ai_api_key.clone();
-        let action = snapshot.autopilot_action;
-        let custom_prompt = snapshot.autopilot_custom_prompt.clone();
-        let agents = Arc::clone(&self.agents);
         // Mark and Ask both notify through the same path an explicit
         // `status: "input"` hook uses - see `AgentHookHandler::status`'s
         // `hook_input_message` branch - so a landed classification needs no
         // notification text of its own. Captured now, not read again inside
         // the task: a notifier set after this hook fired must not apply to it.
-        let awaiting_input = self.awaiting_input.lock().clone();
-        tokio::spawn(async move {
-            let effect = tokio::task::spawn_blocking(move || {
-                             knot_autopilot::analyze(&last_message,
-                                                     provider,
-                                                     &api_key,
-                                                     action,
-                                                     &custom_prompt)
-                         }).await
-                           .unwrap_or(Effect::None);
-            let Some(effect) = AutopilotEffect::from_effect(effect)
-            else {
-                return;
-            };
-            agents.lock().set_state(id, AgentState::Input);
-            if matches!(effect, AutopilotEffect::Mark | AutopilotEffect::Ask { .. })
-               && let Some(awaiting_input) = awaiting_input
-            {
+        let sinks = AutopilotSinks { agents: Arc::clone(&self.agents),
+                                     queue,
+                                     awaiting_input: self.awaiting_input.lock().clone() };
+        spawn_autopilot(id, last_message, &settings.read(), sinks);
+    }
+}
+
+/// Where a landed classification is written: the agent store, the queue the
+/// owning workspace window drains, and the awaiting-input queue that raises
+/// the desktop notification.
+#[derive(Clone)]
+pub struct AutopilotSinks {
+    pub agents:         Arc<Mutex<AgentStore>>,
+    pub queue:          AutopilotQueue,
+    pub awaiting_input: Option<AwaitingInputQueue>,
+}
+
+/// Classifies `last_message` for agent `id` when `settings` enable Autopilot,
+/// off the current tokio runtime, and [`land`]s the result. Returns whether a
+/// classification was started.
+///
+/// Shared by both triggers: the agent-hook route for Terminal-mode agents
+/// (`AgentHookHandler::status`) and a Panel-mode agent's turn ending in its
+/// workspace window. Settings are passed in as they stand at the trigger, so
+/// a change made while a classification is in flight applies to the next
+/// one, not to this.
+pub fn spawn_autopilot(id: Uuid, last_message: String, settings: &knot_core::Settings,
+                       sinks: AutopilotSinks)
+                       -> bool {
+    if last_message.trim().is_empty()
+       || !settings.autopilot_enabled
+       || settings.ai_api_key.trim().is_empty()
+    {
+        return false;
+    }
+    // Classification is a blocking HTTP call; with no tokio runtime to spawn
+    // it on (the tool catalog is built and exercised without one in tests and
+    // benches), there is nowhere to run it.
+    if tokio::runtime::Handle::try_current().is_err() {
+        return false;
+    }
+    let provider = settings.ai_provider;
+    let api_key = settings.ai_api_key.clone();
+    let action = settings.autopilot_action;
+    let custom_prompt = settings.autopilot_custom_prompt.clone();
+    tokio::spawn(async move {
+        let effect =
+            tokio::task::spawn_blocking(move || {
+                knot_autopilot::analyze(&last_message, provider, &api_key, action, &custom_prompt)
+            }).await
+              .unwrap_or(Effect::None);
+        land(id, effect, &sinks);
+    });
+    true
+}
+
+/// Writes a landed [`Effect`] for agent `id` into `sinks`.
+///
+/// Mark and Ask leave the agent awaiting input and raise the notification.
+/// An injected reply does neither: it is about to start the agent's next
+/// turn, and marking the agent as waiting on the user would leave it showing
+/// "Awaiting input" while it works - or for good, when nothing reports the
+/// turn starting.
+pub fn land(id: Uuid, effect: Effect, sinks: &AutopilotSinks) {
+    let Some(effect) = AutopilotEffect::from_effect(effect)
+    else {
+        return;
+    };
+    match &effect {
+        AutopilotEffect::Mark | AutopilotEffect::Ask { .. } => {
+            sinks.agents.lock().set_state(id, AgentState::Input);
+            if let Some(awaiting_input) = &sinks.awaiting_input {
                 awaiting_input.lock().push((id, None));
             }
-            queue.lock().push((id, effect));
-        });
+        }
+        AutopilotEffect::InjectText(_) => {}
     }
+    sinks.queue.lock().push((id, effect));
 }
 
 /// The last assistant message to classify, per
@@ -210,5 +244,100 @@ mod tests {
         let catalog = catalog();
         assert_eq!(last_message_for_trigger(&catalog, Uuid::new_v4(), "codex", None, &json!({})),
                    None);
+    }
+
+    /// A store with one agent, and sinks writing into fresh queues.
+    fn sinks() -> (AutopilotSinks, Uuid) {
+        let mut store = AgentStore::new();
+        let id = store.create("~/agent", knot_agents::CreateOptions::default());
+        (AutopilotSinks { agents:         Arc::new(Mutex::new(store)),
+                          queue:          Arc::default(),
+                          awaiting_input: Some(Arc::default()), },
+         id)
+    }
+
+    fn state(sinks: &AutopilotSinks, id: Uuid) -> AgentState {
+        sinks.agents
+             .lock()
+             .agent(id)
+             .expect("the agent exists")
+             .state
+    }
+
+    fn awaiting(sinks: &AutopilotSinks) -> usize {
+        sinks.awaiting_input
+             .as_ref()
+             .map_or(0, |queue| queue.lock().len())
+    }
+
+    #[test]
+    fn a_mark_waits_on_the_user_and_notifies() {
+        let (sinks, id) = sinks();
+        land(id, Effect::Mark, &sinks);
+        assert_eq!(state(&sinks, id), AgentState::Input);
+        assert_eq!(awaiting(&sinks), 1);
+        assert_eq!(*sinks.queue.lock(), vec![(id, AutopilotEffect::Mark)]);
+    }
+
+    #[test]
+    fn an_ask_waits_on_the_user_and_carries_the_message() {
+        let (sinks, id) = sinks();
+        land(id,
+             Effect::Ask { last_message:   "Shall I?".into(),
+                           classification: Classification::Binary, },
+             &sinks);
+        assert_eq!(state(&sinks, id), AgentState::Input);
+        assert_eq!(awaiting(&sinks), 1);
+        assert!(matches!(&sinks.queue.lock()[0],
+                         (queued, AutopilotEffect::Ask { last_message, .. })
+                             if *queued == id && last_message == "Shall I?"));
+    }
+
+    /// The reply starts the agent's next turn, so it is not waiting on the
+    /// user and there is nothing to notify about.
+    #[test]
+    fn an_injected_reply_is_queued_without_waiting_on_the_user() {
+        let (sinks, id) = sinks();
+        let before = state(&sinks, id);
+        land(id, Effect::InjectText("yes, continue".into()), &sinks);
+        assert_eq!(state(&sinks, id), before);
+        assert_eq!(awaiting(&sinks), 0);
+        assert_eq!(*sinks.queue.lock(),
+                   vec![(id, AutopilotEffect::InjectText("yes, continue".into()))]);
+    }
+
+    #[test]
+    fn nothing_to_do_lands_nothing() {
+        let (sinks, id) = sinks();
+        land(id, Effect::None, &sinks);
+        assert!(sinks.queue.lock().is_empty());
+        assert_eq!(awaiting(&sinks), 0);
+    }
+
+    fn enabled() -> knot_core::Settings {
+        let mut settings = knot_core::Settings::default();
+        settings.autopilot_enabled = true;
+        settings.ai_api_key = "key".into();
+        settings
+    }
+
+    /// Every gate refuses before any runtime or network is touched, so these
+    /// run without one.
+    #[test]
+    fn autopilot_does_not_start_when_it_is_off_unconfigured_or_has_nothing_to_read() {
+        let (sinks, id) = sinks();
+        let mut off = enabled();
+        off.autopilot_enabled = false;
+        let mut keyless = enabled();
+        keyless.ai_api_key = "  ".into();
+        assert!(!spawn_autopilot(id, "Done.".into(), &off, sinks.clone()));
+        assert!(!spawn_autopilot(id, "Done.".into(), &keyless, sinks.clone()));
+        assert!(!spawn_autopilot(id, "  ".into(), &enabled(), sinks.clone()));
+    }
+
+    #[test]
+    fn autopilot_needs_a_runtime_to_run_on() {
+        let (sinks, id) = sinks();
+        assert!(!spawn_autopilot(id, "Done.".into(), &enabled(), sinks));
     }
 }

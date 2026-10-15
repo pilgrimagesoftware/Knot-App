@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::time::SystemTime;
 
 use knot_acp::ConfigOption;
@@ -34,6 +35,12 @@ pub struct PanelState {
     /// prompts SHALL be blocked while this is set (enforced by the caller
     /// that owns the `AcpSession`, not this pure state).
     pub pending_permission:         Option<PermissionRequest>,
+    /// Permission requests that arrived while [`Self::pending_permission`]
+    /// was still awaiting a decision, oldest first. An agent running tool
+    /// calls in parallel asks for several at once, and each one is waiting
+    /// on its own answer: keeping only the latest left the earlier ones
+    /// unanswered, and the agent blocked on them for good (#267).
+    pub queued_permissions:         VecDeque<PermissionRequest>,
     /// Set once the session ends (normally or on error); `None` while live.
     pub ended:                      Option<SessionEndCause>,
     /// True from the user's prompt until the matching `TurnEnd`, per the
@@ -110,8 +117,29 @@ impl PanelState {
     /// decision back through the ACP client, per the "User denies a
     /// permission request" scenario: the prompt is replaced with its
     /// resolved state, not left pending.
+    ///
+    /// The next queued request, if any, takes its place.
     pub fn resolve_permission(&mut self) {
+        self.pending_permission = self.queued_permissions.pop_front();
+    }
+
+    /// Records a permission request the agent is waiting on: shown at once
+    /// when nothing else is, queued behind the one on screen otherwise.
+    pub(super) fn request_permission(&mut self, request: PermissionRequest) {
+        if self.pending_permission.is_some() {
+            self.queued_permissions.push_back(request);
+        }
+        else {
+            self.pending_permission = Some(request);
+        }
+    }
+
+    /// Forgets every permission request: a finished turn has none left
+    /// outstanding, since the agent only ends one after each of its
+    /// requests is answered - by the user, or as `cancelled` by Stop.
+    pub(super) fn clear_permissions(&mut self) {
         self.pending_permission = None;
+        self.queued_permissions.clear();
     }
 
     /// Resolves the most useful human-readable name for a permission request.
@@ -150,6 +178,37 @@ impl PanelState {
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
         self.tracking = follow;
+    }
+
+    /// Records a line Knot adds to the conversation about it rather than
+    /// in it - what Autopilot did with a turn, say. Not a turn: it leaves
+    /// `turn_active` and `tracking` alone.
+    pub fn push_notice(&mut self, text: String) {
+        self.push_message(PanelMessage::Notice(text));
+    }
+
+    /// The agent's reply to the latest prompt: the last assistant message
+    /// after it. `None` when the turn left no text to read - only tool
+    /// calls - or ended in an error, which is the session failing rather
+    /// than the agent answering.
+    pub fn last_reply(&self) -> Option<&str> {
+        let turn = self.messages
+                       .iter()
+                       .rev()
+                       .take_while(|message| !matches!(message, PanelMessage::User(_)));
+        let mut reply = None;
+        for message in turn {
+            match message {
+                PanelMessage::Error(_) => return None,
+                PanelMessage::Assistant(text) if reply.is_none() => reply = Some(text.as_str()),
+                PanelMessage::User(_)
+                | PanelMessage::Assistant(_)
+                | PanelMessage::ToolCall(_)
+                | PanelMessage::Shell(_)
+                | PanelMessage::Notice(_) => {}
+            }
+        }
+        reply
     }
 
     /// Records a failure the agent reported instead of a turn - a prompt

@@ -23,4 +23,4 @@ mod writer;
 pub use entry::{Entry, Level, Subject};
 pub(crate) use heartbeat::{Vitals, spawn as spawn_heartbeat};
 pub use logger::Logger;
-pub use redact::describe_call;
+pub use redact::{describe_call, describe_caller};

@@ -17,6 +17,7 @@
 //! needs `make package` and `Knot.app`.
 
 use gpui_kit::{Context, SystemNotification};
+use knot_agents::AgentState;
 use uuid::Uuid;
 
 use crate::app_state::{notification_body, should_notify, should_show_awaiting_notice};
@@ -65,6 +66,7 @@ impl WorkspaceWindow {
         if !cx.has_global::<AwaitingInput>() {
             return;
         }
+        self.forget_answered_notifications();
         let mine = self.workspace_agent_ids();
         let claimed = {
             let queue = cx.global::<AwaitingInput>().0.clone();
@@ -114,6 +116,30 @@ impl WorkspaceWindow {
                   actions: Vec::new(),
               });
         }
+    }
+
+    /// Forgets what every agent that is no longer awaiting input was last
+    /// notified about.
+    ///
+    /// A repeat is the same prompt announced twice while the agent is still
+    /// waiting on it - a hook re-reporting it, say - and stays suppressed.
+    /// Once the agent has left Awaiting input, the next prompt is news even
+    /// with the same text. Autopilot's marks always carry the default body, so
+    /// without this every one after an agent's first was taken for a repeat
+    /// and never posted (#273).
+    ///
+    /// Safe to read off the store: both trackers write an agent's status
+    /// before they queue its awaiting-input entry, and Autopilot's `land`
+    /// does the same, so an entry is never drained ahead of the state that
+    /// keeps it. Runs per poll tick, so an agent that left and re-entered
+    /// Awaiting input entirely between two ticks still reads as a repeat - a
+    /// turn is far longer than a tick.
+    fn forget_answered_notifications(&mut self) {
+        let store = self.store.lock();
+        self.notified_awaiting.retain(|id, _| {
+                                  store.agent(*id)
+                                       .is_some_and(|agent| agent.state == AgentState::Input)
+                              });
     }
 
     /// Forgets what `id` was last notified about, so a restarted agent is

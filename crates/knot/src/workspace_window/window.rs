@@ -335,6 +335,11 @@ pub(crate) struct WorkspaceWindow {
     /// Where a finished probe reports and the poll drains - the same
     /// off-main-thread hand-off `process_failures` uses.
     pub(super) mcp_results: crate::workspace_window::mcp_panel::state::ProbeResults,
+    /// Rows with a tool listing in flight (#40), released by the claim's
+    /// drop like `mcp_in_flight`.
+    pub(super) mcp_tools_in_flight: crate::workspace_window::mcp_panel::tools::ToolsInFlight,
+    /// Where a finished tool listing reports and the poll drains.
+    pub(super) mcp_tool_results: crate::workspace_window::mcp_panel::tools::ToolsResults,
     /// Shell companions opened to hand the user an agent's own MCP flow,
     /// mapped to the agent whose section opened them. An entry's exit is what
     /// makes that section re-probe, so it catches up with whatever the user

@@ -103,6 +103,7 @@ panel:
   copied_code: "Copied code to clipboard"
   queued: "Queued"
   queued_inbox_nudge: "Queued inbox check"
+  queued_autopilot: "Queued Autopilot reply"
   queued_startup_prompt: "Queued startup prompt"
   failed: "Failed"
   retry: "Retry"
@@ -193,6 +194,7 @@ settings:
     startup: "Startup"
     restore_agents: "Restore agents on launch"
     restore_conversation: "Restore last conversation"
+    reopen_workspaces: "Re-open workspaces on launch"
     notifications: "Notifications"
     keep_in_menu_bar: "Keep running in menu bar when closed"
     desktop_notifications: "Desktop notifications"
@@ -218,7 +220,16 @@ settings:
     restore_defaults: "Restore Defaults"
     import_from_library: "Import from Library…"
   autopilot:
-    blurb: "Automatically detect when agents need input and take action — no need to babysit your agents. Only available with Claude Code."
+    blurb: "Automatically detect when agents need input and take action — no need to babysit your agents. Watches agents in the agent panel, and Claude Code and Codex in a terminal."
+    action:
+      mark: "Mark conversation"
+      mark_description: "Set the agent status to indicate input is needed and send a notification."
+      ask: "Ask me"
+      ask_description: "Show a dialog letting you switch to the agent, dismiss, or auto-continue."
+      continue: "Auto-continue"
+      continue_description: "Automatically send \"yes, continue\" to the agent."
+      custom: "Custom"
+      custom_description: "Use your own prompt to decide what to reply. The LLM response is injected directly into the agent."
     enable_group: "Enable"
     enable: "Enable autopilot"
     provider_group: "AI Provider"
@@ -573,6 +584,10 @@ autopilot:
     dismiss: "Dismiss"
     switch: "Switch to Agent"
     continue: "Yes, Continue"
+  notice:
+    replied: "Autopilot replied for you"
+    mark: "Autopilot: this reply needs your input"
+    ask: "Autopilot: asking you how to continue"
 
 broadcast:
   window_title: "Broadcast to All Agents"
@@ -842,6 +857,15 @@ mcp:
   # pick the server in its own UI, so the tooltip says what to type.
   action_manage_hint: "Fix in %{agent} — then type %{send}"
   action_copy_target: "Copy address"
+  # A row's tools (#40): the disclosure control, and what the list says
+  # while it is being fetched or when it cannot be.
+  tools_show: "Show tools"
+  tools_hide: "Hide tools"
+  tools_listing: "Listing tools…"
+  tools_none: "This server provides no tools."
+  tools_failed: "Couldn't list tools: %{error}"
+  tools_not_connected: "Tools are listed only for a server the agent is connected to."
+  tools_no_launch: "The agent's listing doesn't give this server's exact command, so Knot can't start it to list its tools."
   # The shell companion opened for the handover, named so it is obvious in
   # the sidebar what it is and that closing it is fine.
   terminal_name: "MCP"

@@ -10,12 +10,18 @@ mod agent_row;
 mod agents;
 pub(crate) mod artifact_panel;
 mod autopilot;
+#[cfg(test)]
+mod autopilot_tests;
 mod bench;
 mod bench_popover;
 mod changes_tab;
 mod chrome;
 mod creation;
+#[cfg(test)]
+mod creation_tests;
 mod git_panel;
+#[cfg(test)]
+mod inbox_nudge_tests;
 mod issue_filter;
 mod issues_view;
 mod key_hints;

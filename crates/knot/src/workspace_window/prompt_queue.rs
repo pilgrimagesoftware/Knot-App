@@ -32,6 +32,9 @@ pub(crate) enum PromptOrigin {
     /// The agent's startup prompt, queued behind its registration turn on a
     /// fresh session. See `openspec/specs/agent-launch-command/spec.md`.
     Startup,
+    /// A reply Autopilot wrote for the user after classifying the agent's
+    /// last turn. See `openspec/specs/autopilot/spec.md`.
+    Autopilot,
 }
 
 impl PromptOrigin {
@@ -46,7 +49,9 @@ impl PromptOrigin {
     pub(crate) fn follows(self, reader_at_tail: bool) -> bool {
         match self {
             PromptOrigin::User => true,
-            PromptOrigin::InboxNudge | PromptOrigin::Startup => reader_at_tail,
+            PromptOrigin::InboxNudge | PromptOrigin::Startup | PromptOrigin::Autopilot => {
+                reader_at_tail
+            }
         }
     }
 }
@@ -141,6 +146,20 @@ pub(crate) fn return_failed(queue: &mut Vec<QueuedPanelPrompt>, mut prompt: Queu
     queue.insert(0, prompt);
 }
 
+/// Drops every inbox nudge still waiting in `queue`, reporting whether any
+/// went (#24).
+///
+/// For an agent whose inbox has been read since the nudge was queued: the
+/// nudge asks it to read messages it has already picked up, and the row it
+/// leaves above the composer says the opposite of what has happened. The
+/// rest of the queue keeps its order. A later unread message is nudged
+/// afresh by the poll, so nothing is lost.
+pub(crate) fn drop_nudges(queue: &mut Vec<QueuedPanelPrompt>) -> bool {
+    let before = queue.len();
+    queue.retain(|prompt| prompt.origin != PromptOrigin::InboxNudge);
+    queue.len() != before
+}
+
 fn position(queue: &[QueuedPanelPrompt], id: Uuid) -> Option<usize> {
     queue.iter().position(|prompt| prompt.id == id)
 }
@@ -171,6 +190,7 @@ pub(crate) fn queued_status_label(failed: bool, origin: PromptOrigin) -> String 
                            (true, _) => "panel.failed",
                            (false, PromptOrigin::InboxNudge) => "panel.queued_inbox_nudge",
                            (false, PromptOrigin::Startup) => "panel.queued_startup_prompt",
+                           (false, PromptOrigin::Autopilot) => "panel.queued_autopilot",
                            (false, PromptOrigin::User) => "panel.queued",
                        })
 }
@@ -196,9 +216,11 @@ mod tests {
         assert!(PromptOrigin::User.follows(false));
         assert!(!PromptOrigin::InboxNudge.follows(false));
         assert!(!PromptOrigin::Startup.follows(false));
+        assert!(!PromptOrigin::Autopilot.follows(false));
         // At the tail already, following costs the reader nothing.
         assert!(PromptOrigin::InboxNudge.follows(true));
         assert!(PromptOrigin::Startup.follows(true));
+        assert!(PromptOrigin::Autopilot.follows(true));
     }
 
     /// A nudge that arrives mid-turn goes behind the work already waiting
@@ -229,6 +251,19 @@ mod tests {
 
         assert_eq!(texts(&queue), ["nudge"]);
         assert_eq!(queue[0].origin, PromptOrigin::InboxNudge);
+    }
+
+    /// #24: once the agent has read its inbox, a nudge still waiting would
+    /// only show as queued for messages already picked up.
+    #[test]
+    fn dropping_nudges_keeps_the_users_prompts_in_order() {
+        let mut queue = queue(&["first"]);
+        queue.push(QueuedPanelPrompt::new("nudge".to_string(), PromptOrigin::InboxNudge));
+        queue.push(QueuedPanelPrompt::new("second".to_string(), PromptOrigin::User));
+
+        assert!(drop_nudges(&mut queue));
+        assert_eq!(texts(&queue), ["first", "second"]);
+        assert!(!drop_nudges(&mut queue), "nothing left to drop");
     }
 
     #[test]
