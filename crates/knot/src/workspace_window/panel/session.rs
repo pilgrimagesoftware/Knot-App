@@ -265,6 +265,37 @@ impl WorkspaceWindow {
         }
     }
 
+    /// Drops the queued inbox nudges of every agent that has no unread
+    /// message left, and says whether any went - for the repaint poll's
+    /// dirty check, since a row leaving the queue changes the frame (#24).
+    ///
+    /// A nudge queued behind a busy or connecting session waits for that
+    /// turn to end, and an agent often reads its inbox itself before then.
+    /// Left in place, the nudge sits above the composer as a queued
+    /// "check your inbox" for messages already picked up, and is then sent
+    /// for nothing.
+    pub(in crate::workspace_window) fn drop_read_nudges(&mut self) -> bool {
+        let read = {
+            let messages = self.messages.lock();
+            self.panel_prompt_queues
+                .iter()
+                .filter(|(_, queue)| {
+                    queue.iter()
+                         .any(|prompt| prompt.origin == PromptOrigin::InboxNudge)
+                })
+                .filter(|(id, _)| messages.latest_unread_id(**id).is_none())
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>()
+        };
+        let mut dropped = false;
+        for id in read {
+            if let Some(queue) = self.panel_prompt_queues.get_mut(&id) {
+                dropped |= crate::workspace_window::prompt_queue::drop_nudges(queue);
+            }
+        }
+        dropped
+    }
+
     /// Sends the inbox prompt into `id`'s panel session, recording it in the
     /// conversation the way any other prompt is.
     ///
