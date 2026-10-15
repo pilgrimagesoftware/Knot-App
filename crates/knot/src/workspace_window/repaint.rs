@@ -61,6 +61,9 @@ impl WorkspaceWindow {
         // Messages arrive from the MCP server on another thread; this poll
         // is where an agent going idle is noticed.
         self.deliver_inbox_nudges(cx);
+        // A local, not a term in the `||` chain below: dropping a nudge
+        // changes the queue, so it has to run every tick (#24).
+        let nudges_dropped = self.drop_read_nudges();
         let autopilot_effects_applied = self.drain_autopilot_effects(cx);
         self.raise_awaiting_notifications(cx);
         self.raise_mcp_failure_notification(cx);
@@ -166,6 +169,7 @@ impl WorkspaceWindow {
            || mcp_probed
            || prompts_completed
            || prompts_sent
+           || nudges_dropped
            || pull_requests_recorded
            || forge_probed
            || pull_request_states_changed

@@ -20,3 +20,4 @@ pub(crate) mod probe;
 pub(crate) mod rows;
 pub(crate) mod state;
 pub(crate) mod summary;
+pub(crate) mod tools;

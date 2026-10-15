@@ -182,8 +182,15 @@ impl WorkspaceWindow {
                                         store.saved_agents(settings.restore_conversation_on_launch);
                                         })
                             };
-                            if let Err(error) = installed.persist_roster() {
-                                eprintln!("failed to persist agent {id}'s session: {error}");
+                            // A fixed message, with nothing interpolated:
+                            // this callback receives the session id, and
+                            // CodeQL (`rust/cleartext-logging`) treats every
+                            // value inside it - the error, which variant it
+                            // is, even the captured agent id - as carrying
+                            // that id. The next roster write reports its own
+                            // failure in full.
+                            if installed.persist_roster().is_err() {
+                                eprintln!("failed to persist a panel agent's new session");
                             }
                         }).await;
                     });
@@ -256,6 +263,37 @@ impl WorkspaceWindow {
                 self.nudged_messages.insert(id, message_id);
             }
         }
+    }
+
+    /// Drops the queued inbox nudges of every agent that has no unread
+    /// message left, and says whether any went - for the repaint poll's
+    /// dirty check, since a row leaving the queue changes the frame (#24).
+    ///
+    /// A nudge queued behind a busy or connecting session waits for that
+    /// turn to end, and an agent often reads its inbox itself before then.
+    /// Left in place, the nudge sits above the composer as a queued
+    /// "check your inbox" for messages already picked up, and is then sent
+    /// for nothing.
+    pub(in crate::workspace_window) fn drop_read_nudges(&mut self) -> bool {
+        let read = {
+            let messages = self.messages.lock();
+            self.panel_prompt_queues
+                .iter()
+                .filter(|(_, queue)| {
+                    queue.iter()
+                         .any(|prompt| prompt.origin == PromptOrigin::InboxNudge)
+                })
+                .filter(|(id, _)| messages.latest_unread_id(**id).is_none())
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>()
+        };
+        let mut dropped = false;
+        for id in read {
+            if let Some(queue) = self.panel_prompt_queues.get_mut(&id) {
+                dropped |= crate::workspace_window::prompt_queue::drop_nudges(queue);
+            }
+        }
+        dropped
     }
 
     /// Sends the inbox prompt into `id`'s panel session, recording it in the

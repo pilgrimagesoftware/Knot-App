@@ -35,6 +35,7 @@ use crate::workspace_window::mcp_panel::summary::{SectionStatus, state_label, su
 
 #[cfg(test)]
 mod tests;
+mod tools;
 
 /// Width of the state column, wide enough for the longest state label at the
 /// section's text size.
@@ -46,10 +47,13 @@ const BODY_MAX_HEIGHT: f32 = 220.;
 /// Whether the section belongs under the content area right now.
 ///
 /// Panel mode only, and the one place that decides it. A Terminal agent's own
-/// `/mcp` works; a takeover or a document pane is not the agent's session.
-pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool, has_document_pane: bool)
+/// `/mcp` works; a takeover, or an expanded artifact panel holding the content
+/// area, is not the agent's session. An unexpanded artifact panel beside the
+/// session leaves the section in place (#24).
+pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool,
+                               artifact_takes_content_area: bool)
                                -> bool {
-    view_mode == ViewMode::Panel && !is_takeover && !has_document_pane
+    view_mode == ViewMode::Panel && !is_takeover && !artifact_takes_content_area
 }
 
 /// How long ago a probe ran, in words.
@@ -107,7 +111,7 @@ impl WorkspaceWindow {
 
         if !section_is_shown(view_mode,
                              self.view_mode.is_takeover(),
-                             self.agent_has_document_pane(agent_id))
+                             self.artifact_takes_content_area(agent_id))
         {
             return None;
         }
@@ -312,6 +316,8 @@ impl WorkspaceWindow {
         let copy_tooltip = knot_core::l10n::t("mcp.action_copy_target");
         let address = row.short_label();
         let action = self.mcp_row_action(row, cx);
+        let tools_toggle = self.mcp_tools_toggle(index, row, cx);
+        let tools = self.mcp_tools_block(index, row, cx);
 
         v_flex()
             .w_full()
@@ -322,6 +328,7 @@ impl WorkspaceWindow {
                 .w_full()
                 .items_center()
                 .gap_2()
+                .child(tools_toggle)
                 .child(div().min_w_0().text_sm().whitespace_nowrap().text_ellipsis().child(single_line(&label)))
                 .child(div().text_xs()
                             .text_color(cx.theme().muted_foreground)
@@ -377,6 +384,7 @@ impl WorkspaceWindow {
                                .text_color(cx.theme().muted_foreground)
                                .child(single_line(&text))
                       }))
+            .children(tools)
             .into_any_element()
     }
 }

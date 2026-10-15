@@ -228,10 +228,13 @@ impl AgentStore {
             .map(|workspace| workspace.id)
     }
 
-    pub fn move_to_workspace(&mut self, agent_id: Uuid, target_workspace_id: Uuid) {
+    /// Moves `agent_id` into `target_workspace_id`, reporting whether it
+    /// moved - `false` when it is already there, so a caller does not tear
+    /// down and restart a session for a move that did nothing.
+    pub fn move_to_workspace(&mut self, agent_id: Uuid, target_workspace_id: Uuid) -> bool {
         if let Some(source) = self.workspace_of(agent_id) {
             if source == target_workspace_id {
-                return;
+                return false;
             }
             if let Some(workspace) = self.workspace_mut(source) {
                 workspace.agent_ids.retain(|id| *id != agent_id);
@@ -251,5 +254,6 @@ impl AgentStore {
                 ui.active_agent_ids = vec![agent_id];
             }
         }
+        true
     }
 }
