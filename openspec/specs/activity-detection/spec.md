@@ -138,7 +138,9 @@ The system SHALL accept hook-reported statuses of Working, Idle, and Awaiting
 input and apply them directly. Any hook status SHALL cancel the input-
 protection guard. A Stop hook, when autopilot is enabled and an API key is
 configured, MAY additionally trigger classification of the last assistant
-message; classification failure SHALL NOT block the status update.
+message; classification failure SHALL NOT block the status update. (Hooks are
+Terminal-mode only; a Panel-mode agent's Autopilot trigger is its turn ending,
+per `autopilot`.)
 
 #### Scenario: Hook Idle overrides local Working
 

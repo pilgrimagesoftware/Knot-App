@@ -180,6 +180,37 @@ impl PanelState {
         self.tracking = follow;
     }
 
+    /// Records a line Knot adds to the conversation about it rather than
+    /// in it - what Autopilot did with a turn, say. Not a turn: it leaves
+    /// `turn_active` and `tracking` alone.
+    pub fn push_notice(&mut self, text: String) {
+        self.push_message(PanelMessage::Notice(text));
+    }
+
+    /// The agent's reply to the latest prompt: the last assistant message
+    /// after it. `None` when the turn left no text to read - only tool
+    /// calls - or ended in an error, which is the session failing rather
+    /// than the agent answering.
+    pub fn last_reply(&self) -> Option<&str> {
+        let turn = self.messages
+                       .iter()
+                       .rev()
+                       .take_while(|message| !matches!(message, PanelMessage::User(_)));
+        let mut reply = None;
+        for message in turn {
+            match message {
+                PanelMessage::Error(_) => return None,
+                PanelMessage::Assistant(text) if reply.is_none() => reply = Some(text.as_str()),
+                PanelMessage::User(_)
+                | PanelMessage::Assistant(_)
+                | PanelMessage::ToolCall(_)
+                | PanelMessage::Shell(_)
+                | PanelMessage::Notice(_) => {}
+            }
+        }
+        reply
+    }
+
     /// Records a failure the agent reported instead of a turn - a prompt
     /// the adapter answered with a JSON-RPC error, say. Ends the turn:
     /// the error response *is* the turn's outcome, no `TurnEnd` follows

@@ -10,6 +10,8 @@ mod agent_row;
 mod agents;
 pub(crate) mod artifact_panel;
 mod autopilot;
+#[cfg(test)]
+mod autopilot_tests;
 mod bench;
 mod bench_popover;
 mod changes_tab;

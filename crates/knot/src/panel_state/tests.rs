@@ -539,3 +539,46 @@ fn display_name_prefers_request_title_then_card_title_kind_then_id() {
     assert_eq!(state.display_name(&permission("tc2", None)), "execute");
     assert_eq!(state.display_name(&permission("missing", None)), "missing");
 }
+
+fn conversation(messages: Vec<PanelMessage>) -> PanelState {
+    let mut state = PanelState::default();
+    for message in messages {
+        state.push_message(message);
+    }
+    state
+}
+
+/// What Autopilot classifies for a Panel-mode agent: the turn's last text,
+/// past any tool calls and notices.
+#[test]
+fn the_last_reply_is_the_final_text_of_the_latest_turn() {
+    let state = conversation(vec![PanelMessage::User("first".into()),
+                                  PanelMessage::Assistant("old answer".into()),
+                                  PanelMessage::User("second".into()),
+                                  PanelMessage::Assistant("looking".into()),
+                                  PanelMessage::Assistant("Shall I commit?".into()),
+                                  PanelMessage::Notice("note".into())]);
+    assert_eq!(state.last_reply(), Some("Shall I commit?"));
+}
+
+#[test]
+fn a_turn_with_no_text_or_an_error_has_no_reply() {
+    let silent = conversation(vec![PanelMessage::User("first".into()),
+                                   PanelMessage::Assistant("old answer".into()),
+                                   PanelMessage::User("second".into())]);
+    assert_eq!(silent.last_reply(),
+               None,
+               "an earlier turn's answer is not this one's");
+    let failed = conversation(vec![PanelMessage::User("go".into()),
+                                   PanelMessage::Assistant("partial".into()),
+                                   PanelMessage::Error("quota exhausted".into())]);
+    assert_eq!(failed.last_reply(), None);
+}
+
+#[test]
+fn a_notice_is_not_a_turn() {
+    let mut state = PanelState::default();
+    state.push_notice("Autopilot replied for you".into());
+    assert!(!state.turn_active);
+    assert_eq!(state.messages.len(), state.sent_at.len());
+}

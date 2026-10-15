@@ -49,6 +49,16 @@ pub(super) fn acp_status(state: &PanelState) -> (AgentState, Option<String>) {
     (AgentState::Idle, None)
 }
 
+/// Whether a reported transition from `previous` to `now` is a turn
+/// finishing: the agent was answering and has stopped without asking for
+/// anything. What Autopilot reads a Panel-mode agent's reply on.
+///
+/// Not a permission request (`Input`), and not the first status a session
+/// reports, which has no turn behind it.
+pub(super) fn turn_ended(previous: Option<AgentState>, now: AgentState) -> bool {
+    previous == Some(AgentState::Running) && now == AgentState::Idle
+}
+
 /// One agent's reported ACP status and the attention message that goes with
 /// it.
 pub(super) type AcpStatus = (Uuid, (AgentState, Option<String>));

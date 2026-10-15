@@ -327,7 +327,12 @@ impl WorkspaceWindow {
             // After either branch, and before the next tick can read it: the
             // gate's whole job is to remember what was handed over, whether
             // or not a tracker took it.
-            self.panel_reported_states.insert(id, state);
+            let previous = self.panel_reported_states.insert(id, state);
+            // No hook reports a Panel-mode agent's turn ending, so this is
+            // where Autopilot reads its reply (#273).
+            if panel_activity::turn_ended(previous, state) {
+                self.trigger_panel_autopilot(id, cx);
+            }
         }
         true
     }

@@ -83,6 +83,13 @@ status SHALL raise one.
   status reports later
 - **THEN** no additional notification is raised for it
 
+#### Scenario: The same text after working again is a new prompt
+
+- **WHEN** an agent left Awaiting input, worked, and then enters Awaiting
+  input again with the same message as before - every Autopilot mark carries
+  the default body
+- **THEN** a notification is raised, as for any entry into Awaiting input
+
 #### Scenario: Visible agent is suppressed
 
 - **WHEN** the agent entering Awaiting input is the currently selected agent

@@ -139,6 +139,12 @@ the status response. Classification behavior itself is out of scope here.
 - **WHEN** a Stop hook arrives with autopilot disabled
 - **THEN** the status update still applies and no classification is started
 
+#### Scenario: Panel-mode agents are triggered by their window
+
+- **WHEN** a Panel-mode agent's turn ends, with no hook posted
+- **THEN** classification is triggered per `autopilot`'s "Panel-mode turn-end
+  trigger", through the same classify-and-land path as a hook
+
 ### Requirement: Subagent lifecycle hook events
 
 The status route SHALL accept hook events reporting a subagent's dispatch and
