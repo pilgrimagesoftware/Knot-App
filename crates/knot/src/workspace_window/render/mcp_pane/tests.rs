@@ -55,3 +55,21 @@ fn the_age_carries_its_number() {
     assert!(taken_ago_text(Duration::from_secs(10_800)).contains('3'),
             "three hours");
 }
+
+/// #40: every string the tools list can show resolves, and the failure line
+/// keeps the error it was given.
+#[test]
+fn every_tools_string_resolves_from_the_catalog() {
+    for key in ["mcp.tools_show",
+                "mcp.tools_hide",
+                "mcp.tools_listing",
+                "mcp.tools_none",
+                "mcp.tools_not_connected",
+                "mcp.tools_no_launch"]
+    {
+        assert_ne!(knot_core::l10n::t(key), key, "unresolved catalog key");
+    }
+    let failed = knot_core::l10n::t_with("mcp.tools_failed", &[("error", "HTTP 401")]);
+    assert!(failed.contains("HTTP 401"), "{failed}");
+    assert!(!failed.contains("%{"), "{failed}");
+}

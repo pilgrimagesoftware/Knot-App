@@ -8,6 +8,8 @@
 //! position of everything below it. So [`ServerRow::short_label`] is what a
 //! row draws and [`Target::full`] is what a copy action hands over.
 
+use knot_mcp_client::StdioServer;
+
 use crate::consts::MAX_LABEL_CHARS;
 use crate::state::ServerState;
 
@@ -63,6 +65,11 @@ pub struct ServerRow {
     /// Why, when the tooling said. Carried beside the state rather than
     /// inside it so the vocabulary stays closed.
     pub detail: Option<String>,
+    /// Exactly how a stdio server is started, when the listing says so in
+    /// separate words (#40). `None` when it only gives the command line as
+    /// text, which cannot be split back into a program and its arguments
+    /// with any confidence - so its tools cannot be listed.
+    pub launch: Option<StdioServer>,
 }
 
 impl ServerRow {
@@ -72,7 +79,15 @@ impl ServerRow {
         Self { name: name.into(),
                target,
                state,
-               detail: None }
+               detail: None,
+               launch: None }
+    }
+
+    /// The same row, carrying how its stdio server is started.
+    #[must_use]
+    pub fn with_launch(mut self, launch: StdioServer) -> Self {
+        self.launch = Some(launch);
+        self
     }
 
     /// The same row, carrying the reason the tooling gave.
