@@ -15,6 +15,8 @@ mod bench_popover;
 mod changes_tab;
 mod chrome;
 mod creation;
+#[cfg(test)]
+mod creation_tests;
 mod git_panel;
 mod issue_filter;
 mod issues_view;
