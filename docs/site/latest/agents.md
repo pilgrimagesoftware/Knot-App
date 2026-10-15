@@ -189,7 +189,8 @@ listing gives its exact command and arguments - Codex does, Claude Code and Gemi
 line of text - and is stopped as soon as the list arrives.
 
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
-by default. Expanded, it lists subagents first, then the processes running underneath the agent's
+by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that
+panel is expanded over the content area. Expanded, it lists subagents first, then the processes running underneath the agent's
 session - the shell for a shell agent, the adapter for a panel agent - however deep. Each process
 row shows its command line, elapsed runtime, process identifier, and background or foreground
 classification; each subagent row shows its kind, task, elapsed time, and state, and no process

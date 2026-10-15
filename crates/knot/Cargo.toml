@@ -34,6 +34,7 @@ knot-history = { path = "../knot-history" }
 tokio.workspace = true
 uuid.workspace = true
 serde_json.workspace = true
+regex.workspace = true
 # Exact pin: Fernrohr pins the same release, and a terminal view shared with it
 # only works if both apps resolve the same `gpui`. Bump the two together, and
 # rebase the `gpui-base` fork in the root `[patch.crates-io]` with them.

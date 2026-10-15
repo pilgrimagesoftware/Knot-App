@@ -12,10 +12,10 @@ fn the_section_is_panel_mode_only() {
     assert!(!section_is_shown(ViewMode::Terminal, false, false));
 }
 
-/// A takeover or a document pane is not the agent's session, so the section
-/// does not belong under either.
+/// A takeover, or an expanded artifact panel holding the content area, is not
+/// the agent's session, so the section does not belong under either.
 #[test]
-fn the_section_is_absent_over_a_takeover_or_a_document() {
+fn the_section_is_absent_over_a_takeover_or_an_expanded_artifact_panel() {
     assert!(!section_is_shown(ViewMode::Panel, true, false));
     assert!(!section_is_shown(ViewMode::Panel, false, true));
     assert!(!section_is_shown(ViewMode::Panel, true, true));

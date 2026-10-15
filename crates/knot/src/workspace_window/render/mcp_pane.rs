@@ -47,10 +47,13 @@ const BODY_MAX_HEIGHT: f32 = 220.;
 /// Whether the section belongs under the content area right now.
 ///
 /// Panel mode only, and the one place that decides it. A Terminal agent's own
-/// `/mcp` works; a takeover or a document pane is not the agent's session.
-pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool, has_document_pane: bool)
+/// `/mcp` works; a takeover, or an expanded artifact panel holding the content
+/// area, is not the agent's session. An unexpanded artifact panel beside the
+/// session leaves the section in place (#24).
+pub(super) fn section_is_shown(view_mode: ViewMode, is_takeover: bool,
+                               artifact_takes_content_area: bool)
                                -> bool {
-    view_mode == ViewMode::Panel && !is_takeover && !has_document_pane
+    view_mode == ViewMode::Panel && !is_takeover && !artifact_takes_content_area
 }
 
 /// How long ago a probe ran, in words.
@@ -108,7 +111,7 @@ impl WorkspaceWindow {
 
         if !section_is_shown(view_mode,
                              self.view_mode.is_takeover(),
-                             self.agent_has_document_pane(agent_id))
+                             self.artifact_takes_content_area(agent_id))
         {
             return None;
         }

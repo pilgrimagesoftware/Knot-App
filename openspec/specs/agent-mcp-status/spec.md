@@ -17,6 +17,9 @@ pane, collapsible, independent of the processes section and of any other
 disclosure state. An agent shown in Terminal mode SHALL NOT expose the
 section: the agent's own MCP command is reachable by typing it into that
 agent's terminal.
+An artifact panel open beside the agent's pane SHALL NOT hide the section; the
+section SHALL be absent only while that panel is expanded to hold the content
+area, when the agent's pane itself is not on screen.
 
 #### Scenario: Panel-mode agent has the section
 
@@ -27,6 +30,13 @@ agent's terminal.
 
 - **WHEN** an agent whose view mode is Terminal is shown
 - **THEN** its pane includes no MCP servers section
+
+#### Scenario: An artifact panel beside the pane
+
+- **WHEN** a Panel-mode agent has a markdown file open in its artifact panel,
+  not expanded
+- **THEN** its pane still includes the MCP servers section, and expanding the
+  panel removes it until the panel is collapsed again
 
 #### Scenario: Switching view mode
 

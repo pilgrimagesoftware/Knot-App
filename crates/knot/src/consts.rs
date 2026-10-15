@@ -309,6 +309,11 @@ pub(crate) const BUG_REPORT_LOG_TAIL_LINES: usize = 200;
 /// 65,536 characters, and two logs have to fit beside the description.
 pub(crate) const BUG_REPORT_LOG_TAIL_BYTES: usize = 24 * 1024;
 
+/// The folder under the system temporary directory that holds the scrubbed
+/// log copies a browser-fallback report names for the user to drag in
+/// (#284). Cleared at launch and before each new set is written.
+pub(crate) const BUG_REPORT_LOG_COPIES_DIR: &str = "knot-report-logs";
+
 /// How many screenshots a report can name (#566). The ask is "a couple"; the
 /// cap keeps an accidental select-all in a screenshots folder from revealing
 /// dozens of files in Finder.

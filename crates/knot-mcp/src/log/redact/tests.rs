@@ -62,3 +62,27 @@ fn a_payload_that_is_not_an_object_is_reported_by_size_alone() {
     assert!(!described.contains("first") && !described.contains("second"),
             "an array's elements are still values: {described}");
 }
+
+#[test]
+fn a_caller_is_named_by_its_agent_and_never_by_its_session() {
+    let agent = uuid::Uuid::new_v4();
+    let session = "mcp-session-0123456789abcdef";
+    let caller = crate::tools::Caller { agent:      Some(agent),
+                                        session_id: Some(session.to_string()),
+                                        sessions:   crate::session::McpSessionManager::new(), };
+
+    let described = super::describe_caller(&caller);
+
+    assert!(described.contains(&agent.to_string()));
+    assert!(!described.contains(session),
+            "the session id is the connection's credential: {described}");
+}
+
+#[test]
+fn an_unbound_caller_says_so() {
+    let caller = crate::tools::Caller { agent:      None,
+                                        session_id: Some("mcp-session-0123".to_string()),
+                                        sessions:   crate::session::McpSessionManager::new(), };
+
+    assert_eq!(super::describe_caller(&caller), "unbound");
+}

@@ -43,6 +43,10 @@ rust-i18n = "4.2.2"
 # alternative: a lossy text format that has to be re-parsed, macOS-only in a
 # way a library is not, and a subprocess whose output shape is a UI convention.
 plist = "1.10.1"
+# Scrubbing logs before a bug report publishes them (#284): a dozen
+# patterns - tokens, emails, session ids - that hand-written scanners would
+# each get subtly wrong. Already in the lock file through other crates.
+regex = "1.13"
 # The terminal grid, `Transport` trait and GPUI `TerminalView`, shared with
 # Fernrohr. Its own repository because it is MIT, not AGPL, and its CI proves
 # the standalone build against crates.io with no `[patch]`. It pins
