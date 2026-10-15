@@ -21,7 +21,8 @@ MCP server. This is the latest documentation.
 
 - [Coordination]({{ '/latest/coordination/' | relative_url }}) - how agents register, message one another, plan tasks, and use the MCP tool catalog.
 - [Git and worktrees]({{ '/latest/git-worktrees/' | relative_url }}) - review and commit an agent's changes, create worktrees, and track pull requests.
-- [Settings]({{ '/latest/settings/' | relative_url }}) - the settings window, appearance, notifications, Autopilot, import, and the app's other windows.
+- [Settings]({{ '/latest/settings/' | relative_url }}) - the settings window, appearance, notifications, import, and the app's other windows.
+- [Autopilot]({{ '/latest/autopilot/' | relative_url }}) - classify idle agents and decide when to ask, mark, auto-continue, or use a custom prompt.
 - [Personas and prompts]({{ '/latest/personas-prompts/' | relative_url }}) - persona and prompt libraries, startup prompts, and prompt variables.
 
 ## Reference
