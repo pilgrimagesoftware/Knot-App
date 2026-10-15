@@ -27,6 +27,8 @@ use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::AgentMenuFacts;
 use crate::agent_menu_entries::agent_context_menu_entries;
 use crate::open_in;
+use crate::window_registry::WindowKey;
+use crate::window_registry::WindowRegistry;
 use crate::workspace_window::WorkspaceWindow;
 use crate::workspace_window::menus::confirm_then;
 
@@ -204,22 +206,49 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
 /// Shared by the row's context menu and the menu bar's Agents menu, which
 /// is the point: `app-menu` requires an item to do the same thing from
 /// either surface, and the way to guarantee that is one body.
+///
+/// Sessions belong to a window, not to an agent, so the move hands the agent
+/// over rather than its process: this window tears its session down and the
+/// destination starts one, back into the same conversation. Left running
+/// here, the session was a process no window showed, and the destination
+/// started a second one for the same agent once it noticed the agent at all
+/// - which, with nothing notifying it, was only on reopening (#247).
 pub(super) fn move_agent_to_workspace(targets: &AgentMenuTargets, workspace_id: Uuid,
                                       app: &mut App) {
+    let id = targets.id;
     {
         let mut store = targets.store.lock();
-        store.move_to_workspace(targets.id, workspace_id);
+        if !store.move_to_workspace(id, workspace_id) {
+            return;
+        }
+        // What Restart does with "Restore last conversation" on: the
+        // destination's launch resumes the session this one is about to
+        // stop, rather than starting the agent over.
+        if let Err(error) = store.restart_keeping_conversation(id) {
+            eprintln!("failed to keep agent {id}'s conversation across the move: {error}");
+        }
     }
     targets.window_entity.update(app, |view, cx| {
+                             view.teardown_session(id);
                              // The moved agent may have been this window's
-                             // selection, and
-                             // it no longer belongs here.
-                             if view.selected_agent == Some(targets.id) {
+                             // selection, and it no longer belongs here.
+                             if view.selected_agent == Some(id) {
                                  view.selected_agent = None;
                              }
                              view.persist_agents(cx);
                              cx.notify();
                          });
+    // A destination with no window starts the agent when it opens, as it
+    // starts every member; an open one has to be told.
+    if let Some(destination) =
+        WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), app)
+    {
+        destination.update(app, |view, cx| {
+                       view.ensure_session(id, cx);
+                       view.ensure_panel_session(id, cx);
+                       cx.notify();
+                   });
+    }
 }
 
 /// Shows `file` in `targets`' agent's markdown pane. Shared by both menus,
