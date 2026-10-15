@@ -17,6 +17,9 @@ pane, collapsible, independent of the processes section and of any other
 disclosure state. An agent shown in Terminal mode SHALL NOT expose the
 section: the agent's own MCP command is reachable by typing it into that
 agent's terminal.
+An artifact panel open beside the agent's pane SHALL NOT hide the section; the
+section SHALL be absent only while that panel is expanded to hold the content
+area, when the agent's pane itself is not on screen.
 
 #### Scenario: Panel-mode agent has the section
 
@@ -27,6 +30,13 @@ agent's terminal.
 
 - **WHEN** an agent whose view mode is Terminal is shown
 - **THEN** its pane includes no MCP servers section
+
+#### Scenario: An artifact panel beside the pane
+
+- **WHEN** a Panel-mode agent has a markdown file open in its artifact panel,
+  not expanded
+- **THEN** its pane still includes the MCP servers section, and expanding the
+  panel removes it until the panel is collapsed again
 
 #### Scenario: Switching view mode
 
@@ -333,3 +343,64 @@ delegated flow, under the user's own hands.
 
 - **WHEN** a probe runs for an agent
 - **THEN** that agent's MCP configuration is unchanged
+
+### Requirement: A server's tools can be listed on demand
+
+Each row SHALL carry a control that opens and shuts a list of the tools that
+server provides, each by name with its description, in the order the server
+lists them. Nothing SHALL be fetched until the user opens a row, and a list
+SHALL be cut at a fixed number of tools. A new probe SHALL clear every list
+and shut every open row, since a list is only as current as the rows it was
+opened from. Opening a row whose listing failed SHALL list it again.
+
+Knot's own row SHALL list Knot's tools from its catalog, without a request,
+while Knot's server is running. Another server SHALL be asked with the MCP
+`initialize` and `tools/list` requests, and nothing else - no tool SHALL be
+called - and only when the probe reported it connected or could not tell:
+
+- An HTTP server SHALL be asked without any credential. One answering that it
+  wants sign-in SHALL be reported as such; the sign-in belongs to the agent.
+- A stdio server SHALL be started only when the agent's listing gave its
+  program, arguments and environment as separate values, in the directory the
+  listing names or else the agent's folder, and SHALL be stopped - with every
+  process it started - as soon as the listing ends. A command given only as
+  one line of text SHALL NOT be split into a guess; the row SHALL say its
+  tools cannot be listed instead.
+- A server that is disabled, awaiting approval, needing sign-in or failed
+  SHALL NOT be contacted, and the row SHALL say why.
+
+A listing SHALL run off the render path, SHALL be bounded by a timeout, and
+at most one per row SHALL be in flight. While it runs the row SHALL say so,
+and a failure SHALL be shown in words rather than as an empty list.
+
+#### Scenario: Knot's own tools
+
+- **WHEN** the user opens Knot's row while Knot's server is running
+- **THEN** the row lists Knot's tools, each with its description, without
+  contacting any server
+
+#### Scenario: An HTTP server's tools
+
+- **WHEN** the user opens the row of a connected HTTP server that needs no
+  sign-in
+- **THEN** the row says it is listing, then lists that server's tools
+
+#### Scenario: A server that wants sign-in
+
+- **WHEN** the user opens the row of a connected HTTP server that answers
+  HTTP 401
+- **THEN** the row says the tools could not be listed because the server
+  needs sign-in, and no credential is sent or stored
+
+#### Scenario: A stdio server listed only as text
+
+- **WHEN** the user opens the row of a stdio server whose listing gave its
+  command only as one line
+- **THEN** no process is started, and the row says why its tools cannot be
+  listed
+
+#### Scenario: A disabled server
+
+- **WHEN** the user opens the row of a disabled server
+- **THEN** the server is not contacted, and the row says tools are listed only
+  for a server the agent is connected to

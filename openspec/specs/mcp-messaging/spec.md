@@ -223,12 +223,24 @@ there is nothing to do, continue its previous work. After the nudge is
 acknowledged or handled, the agent session SHALL continue the pending task
 from its prior state.
 
+A queued nudge SHALL be withdrawn once its agent has no unread message left -
+the agent read its inbox itself while the nudge waited - so the queue above the
+composer does not show a "check your inbox" for messages already picked up. A
+later unread message SHALL be nudged afresh.
+
 #### Scenario: Nudge arrives while a task is paused
 
 - **WHEN** an agent has pending work and receives an automatic "check your
   inbox" nudge
 - **THEN** the nudge waits behind the pending work, and its text tells the
   agent to continue the previous work if there is nothing to do
+
+#### Scenario: The inbox is read while the nudge waits
+
+- **WHEN** a nudge is queued behind an agent's turn and the agent reads its
+  inbox during that turn
+- **THEN** the nudge leaves the queue without being sent, and any prompts
+  queued around it keep their order
 
 #### Scenario: Nudge interrupts delivery of a task update
 

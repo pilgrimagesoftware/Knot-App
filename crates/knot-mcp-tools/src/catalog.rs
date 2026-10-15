@@ -48,7 +48,13 @@ fn tool(name: &str, description: &str, properties: &[(&str, &str, &str)], requir
                      input_schema: schema(properties, required), }
 }
 
-fn tool_catalog() -> Vec<ToolDefinition> {
+/// Every tool Knot's server provides, as `tools/list` answers it.
+///
+/// Public so the MCP servers section can list Knot's own tools without a
+/// round trip to a server in the same process (#40). The catalog has no
+/// state, which is what makes reading it outside a session honest.
+#[must_use]
+pub fn tool_catalog() -> Vec<ToolDefinition> {
     vec![tool(consts::REGISTER_AGENT,
               "Register this agent with Knot crew. Call this first before using other tools.",
               &[("agentId", "string", "The agent ID provided by Knot"),
