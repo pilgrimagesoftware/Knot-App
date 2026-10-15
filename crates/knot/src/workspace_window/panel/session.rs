@@ -183,7 +183,11 @@ impl WorkspaceWindow {
                                         })
                             };
                             if let Err(error) = installed.persist_roster() {
-                                eprintln!("failed to persist agent {id}'s session: {error}");
+                                // By kind, not by text: the failure came out of
+                                // writing a roster that now holds this session's
+                                // id, and the log must not be a way out for it.
+                                eprintln!("failed to persist agent {id}'s session: {}",
+                                          error.summary());
                             }
                         }).await;
                     });
