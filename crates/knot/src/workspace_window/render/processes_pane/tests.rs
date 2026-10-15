@@ -212,14 +212,15 @@ fn the_section_is_present_in_both_the_terminal_and_the_panel_view() {
     }
 }
 
-/// A takeover view has replaced the agent's pane, and a document the agent
-/// opened has taken the content area: in neither case is there a session
+/// A takeover view has replaced the agent's pane, and an expanded artifact
+/// panel has taken the content area: in neither case is there a session
 /// pane for the section to sit under.
 #[test]
 fn the_section_is_absent_where_there_is_no_session_pane() {
     for view_mode in [ViewMode::Terminal, ViewMode::Panel] {
         assert!(!section_is_shown(view_mode, true, false), "a takeover view");
-        assert!(!section_is_shown(view_mode, false, true), "a document pane");
+        assert!(!section_is_shown(view_mode, false, true),
+                "an expanded artifact panel");
     }
 }
 
@@ -280,4 +281,31 @@ fn every_empty_state_resolves_to_something_readable() {
         assert!(!text.starts_with("processes."),
                 "{state:?} did not resolve: {text}");
     }
+}
+
+/// #24: an artifact panel beside the session pane leaves the MCP and
+/// process sections where they are; only expanding it over the content area
+/// takes them away, and collapsing it brings them back.
+#[gpui_kit::test]
+fn only_an_expanded_artifact_panel_hides_the_sections(cx: &mut gpui_kit::TestAppContext) {
+    let mut fixture = crate::workspace_window::shortcuts_tests::window_with_agents(1, cx);
+    let id = fixture.agents[0];
+    fixture.view.update(&mut fixture.window, |view, _| {
+                    assert!(!view.artifact_takes_content_area(id), "no artifact at all");
+
+                    view.store
+                        .lock()
+                        .set_markdown_panel(id, std::path::PathBuf::from("/tmp/plan.md"), false)
+                        .expect("the agent exists");
+                    assert!(view.artifact_panel_open(id));
+                    assert!(!view.artifact_takes_content_area(id),
+                            "an open panel beside the pane keeps the sections");
+
+                    view.toggle_artifact_expanded(id);
+                    assert!(view.artifact_takes_content_area(id),
+                            "an expanded panel holds the content area");
+
+                    view.toggle_artifact_expanded(id);
+                    assert!(!view.artifact_takes_content_area(id), "collapsed again");
+                });
 }

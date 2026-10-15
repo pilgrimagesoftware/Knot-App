@@ -8,6 +8,8 @@
 
 mod agent_row;
 mod menu_bar;
+#[cfg(test)]
+mod move_tests;
 mod sidebar;
 
 pub(crate) use agent_row::*;

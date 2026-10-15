@@ -23,7 +23,7 @@ pub use hooks::{
     AgentHookHandler, HookError, HookRequest, HookStatus, claude_status, codex_turn_complete,
     extract_metadata, last_assistant_message_from_transcript,
 };
-pub use log::{Entry, Level, Logger, Subject};
+pub use log::{Entry, Level, Logger, Subject, describe_call};
 pub use probe::{ProbeFailures, probe_health};
 pub use rpc::{JsonRpcError, JsonRpcId, JsonRpcRequest, JsonRpcResponse, dispatch};
 pub use server::{AgentsSnapshotFn, McpServer};
