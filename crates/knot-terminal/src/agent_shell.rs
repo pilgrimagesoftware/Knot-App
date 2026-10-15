@@ -5,7 +5,9 @@ use std::path::Path;
 
 use gpui_terminal::PtyCommand;
 
-use crate::consts::{KNOT_AGENT_ENV, KNOT_AGENT_VALUE, USER_SHELL_ARGS};
+use crate::consts::{
+    AGENT_COLORTERM, AGENT_TERM, KNOT_AGENT_ENV, KNOT_AGENT_VALUE, USER_SHELL_ARGS,
+};
 
 /// The program an agent terminal starts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -35,7 +37,8 @@ impl AgentShell {
     }
 
     /// The command to start in `folder`, marked as an agent's terminal with
-    /// [`KNOT_AGENT_ENV`] whichever program it runs.
+    /// [`KNOT_AGENT_ENV`] whichever program it runs, and declaring the
+    /// terminal it is attached to with [`AGENT_TERM`] and [`AGENT_COLORTERM`].
     pub(crate) fn command(&self, folder: impl AsRef<Path>) -> PtyCommand {
         let command = match self {
             Self::User => {
@@ -49,5 +52,7 @@ impl AgentShell {
         };
         command.cwd(folder.as_ref())
                .env(KNOT_AGENT_ENV, KNOT_AGENT_VALUE)
+               .env("TERM", AGENT_TERM)
+               .env("COLORTERM", AGENT_COLORTERM)
     }
 }
