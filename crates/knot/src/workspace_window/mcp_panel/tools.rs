@@ -48,8 +48,9 @@ pub(crate) enum Unlisted {
     /// The server is disabled, awaiting approval, needs sign-in or failed:
     /// the agent is not connected to it, so neither is Knot.
     NotConnected,
-    /// A stdio server whose listing gave its command only as text, which
-    /// cannot be split back into a program and its arguments safely.
+    /// A stdio server whose exact launch could not be confirmed: the listing
+    /// gave its command only as text, and no configuration entry matched it
+    /// unambiguously (`knot_mcp_probe::launch`).
     NoLaunch,
 }
 

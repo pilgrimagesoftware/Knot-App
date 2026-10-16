@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use crate::error::Result;
 use crate::inventory::Inventory;
+use crate::launch::{ConfigRoots, recover_launches};
 use crate::parse::ListFormat;
 use crate::runner::{McpRunner, ProbeCommand};
 
@@ -23,6 +24,9 @@ pub enum ProbePlan {
     Run {
         command: ProbeCommand,
         format:  ListFormat,
+        /// Where to recover stdio launches from, for a listing that prints
+        /// them only as text (#280). `None` recovers nothing.
+        roots:   Option<ConfigRoots>,
     },
 }
 
@@ -50,11 +54,16 @@ pub fn plan_for(agent_type: &str, cwd: impl Into<PathBuf>, env: Vec<(String, Str
     let program = program_override.and_then(|text| text.split_whitespace().next())
                                   .unwrap_or(default_program);
 
+    let cwd = cwd.into();
+    let roots = std::env::var_os("HOME").map(|home| ConfigRoots { home:   PathBuf::from(home),
+                                                                  folder: cwd.clone(), });
     let command = ProbeCommand::new(program,
                                     args.iter().map(|arg| (*arg).to_owned()).collect(),
                                     cwd).with_env(env);
 
-    ProbePlan::Run { command, format }
+    ProbePlan::Run { command,
+                     format,
+                     roots }
 }
 
 /// Asks an agent which MCP servers it has.
@@ -66,13 +75,18 @@ pub fn plan_for(agent_type: &str, cwd: impl Into<PathBuf>, env: Vec<(String, Str
 /// Every one of those is something the section reports in words; none of them
 /// is an empty inventory.
 pub fn probe(runner: &dyn McpRunner, plan: &ProbePlan) -> Result<Inventory> {
-    let ProbePlan::Run { command, format } = plan
+    let ProbePlan::Run { command,
+                         format,
+                         roots, } = plan
     else {
         return Ok(Inventory::Unprobeable);
     };
 
     let output = runner.run(command)?;
-    let rows = format.read(&command.program, &output)?;
+    let mut rows = format.read(&command.program, &output)?;
+    if let Some(roots) = roots {
+        recover_launches(*format, &mut rows, roots);
+    }
 
     Ok(Inventory::probed(rows))
 }

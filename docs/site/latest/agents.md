@@ -192,9 +192,14 @@ A panel agent's pane also has an MCP servers section listing the servers the age
 one's state. The chevron at the start of a row lists the tools that server provides, by name and
 description, fetched when you open it. Knot's own tools are listed directly. Another server is
 asked with `tools/list`, without credentials: a server needing sign-in says so, and a disabled or
-unconnected one is not contacted. A stdio server is started for the listing only when the agent's
-listing gives its exact command and arguments - Codex does, Claude Code and Gemini give only a
-line of text - and is stopped as soon as the list arrives.
+unconnected one is not contacted. A stdio server is started for the listing only with its exact
+command and arguments, and is stopped as soon as the list arrives. Codex's listing gives them.
+Claude Code and Gemini print only one line, so Knot looks the server up by name in the agent's own
+configuration (`~/.claude.json` and `.mcp.json`, or `.gemini/settings.json`) and uses an entry only
+when it reproduces that line exactly and every matching entry agrees. A matching entry that uses
+`${VAR}` placeholders, or a same-named entry Knot can't read, stops the server being started.
+Servers that come only from managed or enterprise MCP configuration, or from Claude Code plugins or
+Gemini extensions, aren't found this way.
 
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that
