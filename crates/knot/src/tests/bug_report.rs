@@ -161,6 +161,27 @@ fn the_diagnostics_are_filled_in_on_open(cx: &mut TestAppContext) {
             "{text}");
 }
 
+/// #270: the diagnostics the issue carries say nothing about the reporter's
+/// `gh`; the window says how the report will be sent beside its buttons.
+#[gpui_kit::test]
+fn how_the_report_is_sent_is_shown_not_filed(cx: &mut TestAppContext) {
+    let (mut cx, report) = open_dialog(cx, &Stub::answering(Outcome::BrowserReady));
+
+    let (text, forge) = cx.update(|_, cx| {
+                              let report = report.read(cx);
+                              (report.diagnostics.read(cx).value().to_string(),
+                               report.forge.clone())
+                          });
+    assert!(!text.contains(&knot_core::l10n::t("bug_report.delivery.gh"))
+            && !text.contains("GitHub CLI"),
+            "the filed diagnostics mention the forge: {text}");
+    assert_eq!(forge,
+               Some(ForgeAvailability::Ready),
+               "the probe's answer should reach the window");
+    assert!(cx.debug_bounds("bug-report-delivery").is_some(),
+            "the delivery note is not drawn");
+}
+
 #[gpui_kit::test]
 fn escape_cancels_and_files_nothing(cx: &mut TestAppContext) {
     let stub = Stub::answering(Outcome::BrowserReady);
@@ -204,6 +225,8 @@ fn a_filed_issue_closes_the_window(cx: &mut TestAppContext) {
     assert_eq!(submitted[0].subject, "Crash");
     assert_eq!(submitted[0].description, "It crashed.");
     assert!(submitted[0].diagnostics.contains("Knot 1.0.0"));
+    assert!(!submitted[0].diagnostics.contains("GitHub CLI"),
+            "the filed diagnostics mention the forge (#270)");
 }
 
 #[gpui_kit::test]

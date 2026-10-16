@@ -298,11 +298,12 @@ SHALL be ordered by the earliest time any of them first saw it.
 A workspace with no recorded pull requests SHALL say so rather than showing an
 empty list.
 
-The launcher row SHALL count pull requests only - not issues or OpenSpec
-changes - and SHALL count each pull request once, however many agents
-recorded it, and SHALL show how many of the workspace's recorded pull requests
-are open, how many are merged and how many are closed, so the state of the
-session's output is readable without opening the view. A draft pull request
+The launcher row SHALL count pull requests, issues and OpenSpec changes, as
+"The Changes row counts what the view holds" describes. It SHALL count each
+pull request once, however many agents recorded it, and its tooltip SHALL show
+how many of the workspace's recorded pull requests are open, how many are
+merged and how many are closed, so the state of the session's output is
+readable without opening the view. A draft pull request
 SHALL count as open, matching the forge's own vocabulary, in which draft is a
 property of an open pull request rather than a fourth state.
 
@@ -350,25 +351,25 @@ shown, whichever of its tabs is chosen.
 
 - **WHEN** the workspace has four recorded pull requests whose states have been
   fetched - two open, one of them draft, one merged and one closed
-- **THEN** the launcher row shows two open, one merged and one closed
+- **THEN** the launcher row's tooltip shows two open, one merged and one closed
 
 #### Scenario: A state changes while the window is open
 
 - **WHEN** a listed pull request is merged on GitHub and the next refresh runs
-- **THEN** the launcher row's breakdown moves that one from open to merged
+- **THEN** the launcher row's tooltip breakdown moves that one from open to merged
   without the user reopening the window
 
 #### Scenario: No state has been fetched yet
 
 - **WHEN** the workspace window is opened after a restart and the Changes view's
   Pull Requests tab has not been shown
-- **THEN** the launcher row shows the total count of records rather than a
+- **THEN** the launcher row's tooltip shows the total count of records rather than a
   breakdown
 
 #### Scenario: Only some states are known
 
 - **WHEN** three pull requests have state and one request failed
-- **THEN** the launcher row shows the three by state and counts the fourth as
+- **THEN** the launcher row's tooltip shows the three by state and counts the fourth as
   pending
 
 #### Scenario: A pull request several agents opened
@@ -382,7 +383,7 @@ shown, whichever of its tabs is chosen.
 
 - **WHEN** three pull requests are open and the forge says a fourth does not
   exist
-- **THEN** the launcher row shows three open and one not found, and counts none
+- **THEN** the launcher row's tooltip shows three open and one not found, and counts none
   as pending
 
 #### Scenario: A filter does not change the launcher row
@@ -554,7 +555,7 @@ The Swift reference has no pull request list, so it has nothing of the kind.
 
 - **WHEN** a listed merged pull request passes the retention window while the
   workspace window is open
-- **THEN** the launcher row's merged count drops by one without the user
+- **THEN** the launcher row's tooltip merged count drops by one without the user
   reopening the window
 
 ### Requirement: A pull request the forge does not know is shown as not found
@@ -661,7 +662,7 @@ The Swift reference has no pull request list, so it has nothing of the kind.
 
 - **WHEN** the view is filtered to closed and an open pull request that is
   hidden by the filter is merged on GitHub
-- **THEN** the launcher row's breakdown moves it from open to merged without
+- **THEN** the launcher row's tooltip breakdown moves it from open to merged without
   the user clearing the filter
 
 ### Requirement: The user can search the Pull Requests view
@@ -1013,3 +1014,54 @@ The Swift reference has no such view.
 
 - **WHEN** the view was last on Issues and Knot is quit and relaunched
 - **THEN** the view opens on Pull Requests
+
+### Requirement: The Changes row counts what the view holds
+
+The launcher row's second line SHALL count the workspace's recorded pull
+requests, the open issues and the un-archived OpenSpec changes the Changes view
+has fetched, each kind once:
+
+- With none of any kind, the row SHALL show its title alone, with no second
+  line.
+- With one or two kinds counted, each SHALL be named in full and singular or
+  plural by its count, in the order pull requests, issues, OpenSpec changes -
+  "3 pull requests, 2 issues", "1 pull request, 3 OpenSpec changes".
+- With all three counted, each SHALL use its short name - "3 PRs, 2 issues,
+  4 changes" - so the line fits the sidebar.
+
+A kind with a count of zero SHALL be left out of the line. Issues and OpenSpec
+changes SHALL be counted from what the view has fetched for its Issues and
+OpenSpec tabs, which `workspace-issues` and `workspace-openspec-changes` fetch
+only while those tabs are shown; a kind not yet fetched SHALL be left out
+rather than counted as zero. An issue count from a repository whose list was
+cut at its limit SHALL be shown as a floor ("100+ issues"). Every noun and the
+separator SHALL be localized, with a singular and a plural entry per noun.
+
+#### Scenario: Nothing to count
+
+- **WHEN** the workspace has no recorded pull requests and the view has fetched
+  no issues or OpenSpec changes
+- **THEN** the Changes row shows its title alone
+
+#### Scenario: Two kinds in full
+
+- **WHEN** there are three recorded pull requests and two fetched open issues,
+  and no OpenSpec changes
+- **THEN** the row's second line reads "3 pull requests, 2 issues"
+
+#### Scenario: One of a kind is singular
+
+- **WHEN** there is one recorded pull request and three fetched OpenSpec
+  changes
+- **THEN** the row's second line reads "1 pull request, 3 OpenSpec changes"
+
+#### Scenario: All three kinds in short form
+
+- **WHEN** there are three pull requests, two issues and four OpenSpec changes
+- **THEN** the row's second line reads "3 PRs, 2 issues, 4 changes"
+
+#### Scenario: A capped issue list
+
+- **WHEN** a repository's issue list was cut at its limit
+- **THEN** the issue count is shown as a floor, such as "100+ issues"
+

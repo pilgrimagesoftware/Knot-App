@@ -398,3 +398,24 @@ pub(crate) const PANEL_MARKDOWN_ROWS_KEPT: usize = 256;
 /// fill and draws nothing (#222). Sized so the blurb, the group and Restore
 /// Defaults all fit the tab's 560 px window (`pane_target_height`).
 pub(crate) const KEYBOARD_SHORTCUTS_LIST_MAX_HEIGHT: f32 = 280.;
+
+/// A kind the sidebar's Changes row counts (#210), as catalog keys: its long
+/// and short nouns, each singular then plural. Long while one or two kinds
+/// are counted, short once all three are, so the line fits the sidebar.
+pub(crate) struct CountNouns {
+    pub(crate) long:  (&'static str, &'static str),
+    pub(crate) short: (&'static str, &'static str),
+}
+
+pub(crate) const CHANGES_COUNT_PULL_REQUESTS: CountNouns =
+    CountNouns { long:  ("changes_view.count.pull_request", "changes_view.count.pull_requests"),
+                 short: ("changes_view.count.pr_short", "changes_view.count.prs_short"), };
+
+pub(crate) const CHANGES_COUNT_ISSUES: CountNouns =
+    CountNouns { long:  ("changes_view.count.issue", "changes_view.count.issues"),
+                 short: ("changes_view.count.issue_short", "changes_view.count.issues_short"), };
+
+pub(crate) const CHANGES_COUNT_OPENSPEC_CHANGES: CountNouns = CountNouns { long:  ("changes_view.count.openspec_change",
+                                                                                   "changes_view.count.openspec_changes"),
+                                                                           short: ("changes_view.count.change_short",
+                                                                                   "changes_view.count.changes_short"), };

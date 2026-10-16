@@ -389,12 +389,13 @@ edits them:
   directory).
 - **Durable data** - the collections of objects the user created or that
   Knot recorded on their behalf: saved agents, saved workspaces, personas,
-  bench templates, library prompts, recent repositories and recorded pull
-  requests. These SHALL be stored in the platform's application-data
+  bench templates, library prompts, saved library locations, recent
+  repositories and recorded pull requests. These SHALL be stored in the platform's application-data
   directory (on macOS, `~/Library/Application Support` under the
   application's directory), as one document per collection: saved agents,
-  workspaces, personas, bench templates, library prompts, recent repositories
-  and recorded pull requests each in their own document.
+  workspaces, personas, bench templates, library prompts, saved library
+  locations, recent repositories and recorded pull requests each in their own
+  document.
 
   Recorded pull requests are durable data rather than a preference even though
   the user did not type them: they are a collection of objects with identity
@@ -425,10 +426,10 @@ documents SHALL still hold; only their location coincides.
 #### Scenario: Each collection is its own document
 
 - **WHEN** a store holding agents, workspaces, personas, bench templates,
-  library prompts, recent repositories and recorded pull requests is
-  persisted
+  library prompts, saved library locations, recent repositories and recorded
+  pull requests is persisted
 - **THEN** the application-data directory holds one document per collection,
-  seven in all
+  eight in all
 
 #### Scenario: A fresh install writes only what it has
 
@@ -447,6 +448,13 @@ documents SHALL still hold; only their location coincides.
 - **WHEN** a store that predates the library-prompt document is loaded
 - **THEN** it loads successfully with an empty library, and no document for
   it is written until a prompt is added
+
+#### Scenario: A store with no saved library locations
+
+- **WHEN** a store that predates the library-location document is loaded
+- **THEN** it loads successfully with no saved locations, the built-in
+  Knot-Library is still available, and no document for saved locations is
+  written until one is saved
 
 #### Scenario: A saved workspace holds no UI state
 

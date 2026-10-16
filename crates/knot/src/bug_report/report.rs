@@ -67,6 +67,9 @@ pub(crate) struct BugReport {
     pub(crate) subject:     Entity<InputState>,
     pub(crate) description: Entity<TextareaState>,
     pub(crate) diagnostics: Entity<TextareaState>,
+    /// How the report will be sent, from the last diagnostics probe; `None`
+    /// until the first one lands. Shown beside the buttons, not filed (#270).
+    pub(crate) forge:       Option<ForgeAvailability>,
     /// The logs to attach, in the order they are offered. None by default:
     /// a log is the user's to share.
     pub(crate) attached:    Vec<LogKind>,
@@ -122,6 +125,7 @@ impl BugReport {
                subject,
                description,
                diagnostics,
+               forge: None,
                attached: Vec::new(),
                screenshots: Vec::new(),
                skipped: 0,
@@ -216,6 +220,7 @@ impl BugReport {
         let text = diagnostics.text();
         self.diagnostics
             .update(cx, |state, cx| state.set_value(text, window, cx));
+        self.forge = Some(diagnostics.forge.clone());
         cx.notify();
     }
 

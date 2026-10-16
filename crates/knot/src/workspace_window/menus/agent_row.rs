@@ -325,17 +325,11 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
                                          session_id:     source.session_id.clone(), };
             open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
         }
+        // The store copies every setup field and names the copy off the
+        // existing names; the window starts it only if its mode does (#289).
         AgentMenuEntry::DuplicateAgent => {
-            // The store copies every setup field and names the copy off the
-            // existing names; see `AgentStore::duplicate`.
-            let Some(created) = targets.store.lock().duplicate(targets.id)
-            else {
-                return;
-            };
             targets.window_entity.update(app, |view, cx| {
-                                     view.persist_agents(cx);
-                                     view.select_agent(created);
-                                     cx.notify();
+                                     view.duplicate_agent(targets.id, cx);
                                  });
         }
         // The bench is edited from the settings window too; both write onto

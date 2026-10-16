@@ -67,7 +67,8 @@ fn busy_slot(runtime: &tokio::runtime::Runtime) -> Arc<Mutex<PanelSessionSlot>> 
                                                              env:                        Vec::new(),
                                                              args:                       Vec::new(),
                                                              subagents:                  None,
-                                                             startup_prompt:             None, };
+                                                             startup_prompt:             None,
+                                                             times:                      None, };
                panel_session::connect_into(&connecting, request, &progress, |_| {}).await;
            });
     for _ in 0..500 {

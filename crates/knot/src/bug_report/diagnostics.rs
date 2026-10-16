@@ -1,5 +1,5 @@
-//! What accompanies every report: which binary is running, on what, and
-//! whether the forge can be reached.
+//! What accompanies every report: which binary is running and on what - and,
+//! for the window's own use, whether the forge can be reached.
 //!
 //! [`Diagnostics::collect`] blocks - it runs `sw_vers`, `uname` and
 //! `gh auth status` - so it is only ever called off the main thread.
@@ -18,6 +18,10 @@ pub(crate) struct Diagnostics {
     pub(crate) app:   String,
     pub(crate) os:    String,
     pub(crate) arch:  String,
+    /// Decides how the report is sent - filed through `gh`, or composed in
+    /// the browser - and the window says which. Not part of [`Self::text`]:
+    /// whether the reporter's own `gh` works says nothing about the bug
+    /// (#270).
     pub(crate) forge: ForgeAvailability,
 }
 
@@ -37,27 +41,13 @@ impl Diagnostics {
     pub(crate) fn text(&self) -> String {
         [("bug_report.diagnostics.app", self.app.clone()),
          ("bug_report.diagnostics.os", self.os.clone()),
-         ("bug_report.diagnostics.arch", self.arch.clone()),
-         ("bug_report.diagnostics.forge", forge_label(&self.forge))]
-            .into_iter()
-            .map(|(key, value)| format!("{}: {value}", knot_core::l10n::t(key)))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
-
-/// The forge's readiness in words. The three standing states are told apart
-/// because each has a different next step for the user.
-pub(super) fn forge_label(forge: &ForgeAvailability) -> String {
-    match forge {
-        ForgeAvailability::Missing => knot_core::l10n::t("bug_report.forge.missing"),
-        ForgeAvailability::Unauthenticated => {
-            knot_core::l10n::t("bug_report.forge.unauthenticated")
-        }
-        ForgeAvailability::Ready => knot_core::l10n::t("bug_report.forge.ready"),
-        ForgeAvailability::Failed(reason) => {
-            knot_core::l10n::t_with("bug_report.forge.failed", &[("reason", reason)])
-        }
+         ("bug_report.diagnostics.arch", self.arch.clone())].into_iter()
+                                                            .map(|(key, value)| {
+                                                                format!("{}: {value}",
+                                                                        knot_core::l10n::t(key))
+                                                            })
+                                                            .collect::<Vec<_>>()
+                                                            .join("\n")
     }
 }
 
@@ -120,11 +110,10 @@ mod tests {
         let text = sample(ForgeAvailability::Ready).text();
         let lines: Vec<&str> = text.lines().collect();
 
-        assert_eq!(lines.len(), 4, "{text}");
+        assert_eq!(lines.len(), 3, "{text}");
         for (line, key) in lines.iter().zip(["bug_report.diagnostics.app",
                                              "bug_report.diagnostics.os",
-                                             "bug_report.diagnostics.arch",
-                                             "bug_report.diagnostics.forge"])
+                                             "bug_report.diagnostics.arch"])
         {
             assert!(line.starts_with(&format!("{}: ", knot_core::l10n::t(key))),
                     "{line} is not labelled by {key}");
@@ -155,23 +144,20 @@ mod tests {
                    "linux (Linux 6.8.0)");
     }
 
+    /// The reporter's `gh` is how the report travels, not part of the bug:
+    /// whatever state it is in, the block that is filed does not mention it
+    /// (#270).
     #[test]
-    fn the_forge_states_are_told_apart() {
-        let labels: Vec<String> =
-            [ForgeAvailability::Missing,
-             ForgeAvailability::Unauthenticated,
-             ForgeAvailability::Ready,
-             ForgeAvailability::Failed("no such host".to_owned())].iter()
-                                                                  .map(forge_label)
-                                                                  .collect();
-
-        for (index, label) in labels.iter().enumerate() {
-            assert!(!label.starts_with("bug_report."),
-                    "{label} rendered its key");
-            assert!(labels.iter().skip(index + 1).all(|other| other != label),
-                    "{label} is shared by two states");
+    fn the_filed_block_never_mentions_the_forge() {
+        for forge in [ForgeAvailability::Missing,
+                      ForgeAvailability::Unauthenticated,
+                      ForgeAvailability::Ready,
+                      ForgeAvailability::Failed("no such host".to_owned())]
+        {
+            let text = sample(forge).text();
+            assert!(!text.contains("GitHub CLI") && !text.contains("no such host"),
+                    "{text}");
         }
-        assert!(labels[3].contains("no such host"), "{}", labels[3]);
     }
 
     #[test]
