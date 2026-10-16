@@ -100,6 +100,14 @@ impl<K: Ord + Clone, V: Clone + PartialEq> RefreshCache<K, V> {
         self.values.lock().get(key).is_some_and(predicate)
     }
 
+    /// Folds every cached value into one answer under the lock, without
+    /// copying any of them - for a render that needs a total, not the
+    /// values (#210's counts: an issue page holds up to 100 issues).
+    /// `step` runs with the lock held, so it must not block or lock again.
+    pub(crate) fn fold<A>(&self, init: A, step: impl FnMut(A, &V) -> A) -> A {
+        self.values.lock().values().fold(init, step)
+    }
+
     /// Every cached value, copied out so a render can read them without
     /// holding the lock across the element tree it builds.
     pub(crate) fn snapshot(&self) -> BTreeMap<K, V> {

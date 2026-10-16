@@ -672,10 +672,32 @@ plan:
   empty: "No plan committed yet."
 
 # The Changes view (#504): pull requests, issues and OpenSpec changes, one
-# tab each. Its launcher row keeps counting pull requests only.
+# tab each.
 changes_view:
   title: "Changes"
   no_pull_requests: "No pull requests"
+  # The launcher row's counts (#210). Long nouns when one or two kinds are
+  # counted, short ones when all three are, so the line still fits the
+  # sidebar. Each noun has a singular and a plural entry; `separator` joins
+  # the counted kinds and `at_least` marks a count Knot knows is capped.
+  count:
+    pull_request: "pull request"
+    pull_requests: "pull requests"
+    issue: "issue"
+    issues: "issues"
+    openspec_change: "OpenSpec change"
+    openspec_changes: "OpenSpec changes"
+    pr_short: "PR"
+    prs_short: "PRs"
+    issue_short: "issue"
+    issues_short: "issues"
+    change_short: "change"
+    changes_short: "changes"
+    separator: ", "
+    at_least: "%{count}+"
+    item: "%{count} %{noun}"
+  # The row's tooltip line for the pull requests' states.
+  pull_request_states: "Pull requests: %{states}"
   tab:
     pull_requests: "Pull Requests"
     issues: "Issues"
