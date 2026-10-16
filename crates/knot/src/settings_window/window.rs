@@ -253,6 +253,13 @@ pub(crate) struct SettingsWindow {
 }
 
 impl SettingsWindow {
+    /// Shows `tab`, as clicking it in the tab strip does.
+    #[cfg(test)]
+    pub(crate) fn select_tab(&mut self, tab: SettingsTab, cx: &mut gpui_kit::Context<Self>) {
+        self.selected_tab = tab;
+        cx.notify();
+    }
+
     /// Write the preferences the panes have just changed on the shared
     /// surface.
     ///
