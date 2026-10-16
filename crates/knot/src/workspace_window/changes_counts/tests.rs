@@ -177,5 +177,25 @@ fn the_window_counts_what_the_view_has_fetched(cx: &mut gpui_kit::TestAppContext
                                "a failed repository adds nothing; a capped one marks a floor");
                     assert_eq!(counted.openspec_changes, Count::exact(2));
                     assert_eq!(counted.pull_requests, Count::exact(0));
+
+                    // The counts follow the caches: a later answer replaces
+                    // the earlier one in the very next read, with nothing to
+                    // invalidate in between.
+                    let caches = &mut view.work_items;
+                    caches.issues.mark_all_stale();
+                    caches.changes.mark_all_stale();
+                    caches.issues
+                          .claim_refresh(slug("gadget"), age)
+                          .expect("a fresh claim")
+                          .record(IssueLookup::Page(IssuePage { issues:    vec![issue(3), issue(4)],
+                                                                truncated: false, }));
+                    caches.changes
+                          .claim_refresh(PathBuf::from("/repo/a"), age)
+                          .expect("a fresh claim")
+                          .record(Vec::new());
+
+                    let updated = view.changes_counts();
+                    assert_eq!(updated.issues, Count::exact(4), "no longer capped");
+                    assert_eq!(updated.openspec_changes, Count::exact(0));
                 });
 }

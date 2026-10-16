@@ -185,3 +185,25 @@ fn marking_stale_reclaims_every_key_and_keeps_its_value() {
     assert_eq!(cache.get(&"a".to_string()), Some(7));
     assert!(cache.claim_refresh("a".to_string(), NEVER).is_some());
 }
+
+/// #210: a fold reads every cached value under the lock - a total without a
+/// copy - and sees a value recorded after the last fold.
+#[test]
+fn a_fold_totals_every_value_and_sees_a_new_one() {
+    let mut cache: RefreshCache<&str, Vec<u32>> = RefreshCache::default();
+    let age = std::time::Duration::from_secs(60);
+    cache.claim_refresh("a", age)
+         .expect("a claim")
+         .record(vec![1, 2]);
+    cache.claim_refresh("b", age)
+         .expect("a claim")
+         .record(vec![3]);
+
+    assert_eq!(cache.fold(0, |total, values| total + values.len()), 3);
+
+    cache.mark_all_stale();
+    cache.claim_refresh("a", age)
+         .expect("a claim")
+         .record(Vec::new());
+    assert_eq!(cache.fold(0, |total, values| total + values.len()), 1);
+}

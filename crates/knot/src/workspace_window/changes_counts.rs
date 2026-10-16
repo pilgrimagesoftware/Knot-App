@@ -18,6 +18,9 @@ use knot_core::l10n;
 
 use super::WorkspaceWindow;
 use super::work_items::IssueLookup;
+use crate::consts::{
+    CHANGES_COUNT_ISSUES, CHANGES_COUNT_OPENSPEC_CHANGES, CHANGES_COUNT_PULL_REQUESTS,
+};
 
 /// One kind's count, and whether it is a floor rather than the total - an
 /// issue list stops at a fixed number per repository.
@@ -42,32 +45,18 @@ pub(crate) struct ChangesCounts {
     pub(crate) openspec_changes: Count,
 }
 
-/// A kind's catalog keys: the long and short nouns, singular then plural.
-struct Nouns {
-    long:  (&'static str, &'static str),
-    short: (&'static str, &'static str),
-}
-
-const PULL_REQUESTS: Nouns =
-    Nouns { long:  ("changes_view.count.pull_request", "changes_view.count.pull_requests"),
-            short: ("changes_view.count.pr_short", "changes_view.count.prs_short"), };
-const ISSUES: Nouns = Nouns { long:  ("changes_view.count.issue", "changes_view.count.issues"),
-                              short: ("changes_view.count.issue_short",
-                                      "changes_view.count.issues_short"), };
-const OPENSPEC_CHANGES: Nouns =
-    Nouns { long:  ("changes_view.count.openspec_change", "changes_view.count.openspec_changes"),
-            short: ("changes_view.count.change_short", "changes_view.count.changes_short"), };
-
 impl ChangesCounts {
     /// The row's second line, or `None` when there is nothing to count and
     /// the row shows its title alone.
     pub(crate) fn summary(&self) -> Option<String> {
         let counted =
-            [(self.pull_requests, &PULL_REQUESTS),
-             (self.issues, &ISSUES),
-             (self.openspec_changes, &OPENSPEC_CHANGES)].into_iter()
-                                                        .filter(|(count, _)| count.count > 0)
-                                                        .collect::<Vec<_>>();
+            [(self.pull_requests, &CHANGES_COUNT_PULL_REQUESTS),
+             (self.issues, &CHANGES_COUNT_ISSUES),
+             (self.openspec_changes, &CHANGES_COUNT_OPENSPEC_CHANGES)].into_iter()
+                                                                      .filter(|(count, _)| {
+                                                                          count.count > 0
+                                                                      })
+                                                                      .collect::<Vec<_>>();
         if counted.is_empty() {
             return None;
         }
@@ -101,20 +90,23 @@ fn counted_text(count: Count, singular: &str, plural: &str) -> String {
 impl WorkspaceWindow {
     /// The counts the Changes row shows, from the pull request records and
     /// whatever the Issues and OpenSpec tabs have fetched.
+    ///
+    /// Read on every sidebar render, so the caches are folded under their
+    /// locks rather than snapshotted: a snapshot would clone every cached
+    /// issue page per keystroke to read one length from each.
     pub(super) fn changes_counts(&self) -> ChangesCounts {
-        let mut issues = Count::default();
-        for lookup in self.work_items.issues.snapshot().into_values() {
-            if let IssueLookup::Page(page) = lookup {
-                issues.count += page.issues.len() as u64;
-                issues.at_least |= page.truncated;
-            }
-        }
+        let issues = self.work_items
+                         .issues
+                         .fold(Count::default(), |mut issues, lookup| {
+                             if let IssueLookup::Page(page) = lookup {
+                                 issues.count += page.issues.len() as u64;
+                                 issues.at_least |= page.truncated;
+                             }
+                             issues
+                         });
         let changes = self.work_items
                           .changes
-                          .snapshot()
-                          .into_values()
-                          .map(|changes| changes.len() as u64)
-                          .sum();
+                          .fold(0, |total, changes| total + changes.len() as u64);
         ChangesCounts { pull_requests: Count::exact(self.pull_request_counts().total() as u64),
                         issues,
                         openspec_changes: Count::exact(changes) }
