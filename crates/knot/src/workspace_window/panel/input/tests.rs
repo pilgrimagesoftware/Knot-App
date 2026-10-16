@@ -65,7 +65,8 @@ pub(in crate::workspace_window::panel::input) fn ready_slot(
                                                   env:                        Vec::new(),
                                                   args:                       Vec::new(),
                                                   subagents:                  None,
-                                                  startup_prompt:             None, };
+                                                  startup_prompt:             None,
+                                                  times:                      None, };
     runtime.block_on(panel_session::connect_into(&slot, request, &progress, |_| {}));
     assert_eq!(slot.lock().phase(),
                panel_session::PanelPhase::Ready,

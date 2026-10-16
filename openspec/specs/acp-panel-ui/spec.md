@@ -1458,3 +1458,27 @@ reserve layout space.
   held
 - **THEN** the hold ends and timestamps hide, since macOS does not deliver
   the ⌘ key-up to a window that lost key status
+
+### Requirement: A restored conversation keeps its entries' times
+Knot SHALL record when each prompt, response and tool call of a session
+happens, per ACP session and across launches, since a loaded session's replay
+carries no times. A replayed entry SHALL show its recorded time, matched by
+identity rather than position, and one with no recorded time SHALL show no
+timestamp rather than the moment it was replayed.
+
+#### Scenario: A replayed prompt shows when it was sent
+- **WHEN** a session whose prompt was sent an hour ago is restored and
+  replayed
+- **THEN** that prompt's timestamp reads an hour ago, not "just now"
+
+#### Scenario: Replayed entries are matched by identity
+- **WHEN** a replay leaves out entries the live session had (a shell
+  command, a notice) or adds ones it did not
+- **THEN** a prompt is still matched by its text, a tool call by its id, and
+  a response by the recorded response after its matched prompt or tool call
+
+#### Scenario: An unrecorded replayed entry has no time
+- **WHEN** a replay contains a prompt Knot never recorded - one injected by
+  the agent's harness, or from before times were recorded
+- **THEN** it shows no timestamp, and the recorded entries after it keep
+  theirs
