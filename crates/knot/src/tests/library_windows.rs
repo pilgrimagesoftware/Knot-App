@@ -189,3 +189,38 @@ fn every_library_window_renders(cx: &mut TestAppContext) {
              });
     }
 }
+
+/// The Personas toolbar's buttons sit together at the left of their group,
+/// as the Prompts pane's do - not spread across its width (#300). Each one
+/// starts within a small gap of where the one before it ends.
+#[gpui_kit::test]
+fn the_personas_toolbar_buttons_sit_together(cx: &mut TestAppContext) {
+    let window = cx.update(|cx| {
+                       gpui_kit::init(cx);
+                       WindowRegistry::install(cx);
+                       install_settings(cx);
+                       open_library_window(Library::Personas, store(), cx);
+                       cx.windows()
+                         .last()
+                         .copied()
+                         .expect("the Personas window opened")
+                   });
+    let mut probe = VisualTestContext::from_window(window, cx);
+    probe.run_until_parked();
+    probe.update(|window, cx| {
+             _ = window.draw(cx);
+         });
+
+    let bounds = ["personas-add",
+                  "personas-restore-defaults",
+                  "personas-import-from-library"].map(|selector| {
+                                                     probe.debug_bounds(selector)
+                 .unwrap_or_else(|| panic!("{selector} was not drawn"))
+                                                 });
+    for pair in bounds.windows(2) {
+        let gap = f32::from(pair[1].left() - pair[0].right());
+        assert!((0.0..=12.0).contains(&gap),
+                "a toolbar button sits {gap}px from the one before it - spread across the \
+                 group rather than grouped at its left");
+    }
+}

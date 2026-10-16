@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use gpui_kit::Context;
+use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
 use gpui_kit::Styled;
@@ -212,8 +213,10 @@ impl LibraryWindow {
         v_flex().gap_3().child(
             crate::controls::group(knot_core::l10n::t("settings.personas.personas"))
                 .child(
+                    // Grouped at the left like the Prompts pane's toolbar,
+                    // not spread across the group (#300).
                     h_flex()
-                        .justify_between()
+                        .gap_1()
                         .child(
                             crate::controls::icon_button(
                                 "personas-add",
@@ -221,6 +224,7 @@ impl LibraryWindow {
                                 knot_core::l10n::t("settings.personas.add"),
                                 false,
                             )
+                            .debug_selector(|| "personas-add".into())
                             .on_click({
                                 let parent = library_window.downgrade();
                                 move |_, _, app| {
@@ -235,6 +239,7 @@ impl LibraryWindow {
                                 knot_core::l10n::t("settings.personas.restore_defaults"),
                                 false,
                             )
+                            .debug_selector(|| "personas-restore-defaults".into())
                             .on_click({
                                 let library_window = library_window.clone();
                                 move |_, window, app| {
@@ -264,6 +269,7 @@ impl LibraryWindow {
                                 knot_core::l10n::t("settings.personas.import_from_library"),
                                 false,
                             )
+                            .debug_selector(|| "personas-import-from-library".into())
                             .on_click(|_, window, app| {
                                 window.dispatch_action(Box::new(crate::app_bootstrap::OpenImport), app);
                             }),
