@@ -865,7 +865,7 @@ mcp:
   tools_none: "This server provides no tools."
   tools_failed: "Couldn't list tools: %{error}"
   tools_not_connected: "Tools are listed only for a server the agent is connected to."
-  tools_no_launch: "The agent's listing doesn't give this server's exact command, so Knot can't start it to list its tools."
+  tools_no_launch: "Knot couldn't confirm this server's exact command from the agent's configuration, so it won't start it to list its tools."
   # The shell companion opened for the handover, named so it is obvious in
   # the sidebar what it is and that closing it is fine.
   terminal_name: "MCP"

@@ -65,10 +65,11 @@ pub struct ServerRow {
     /// Why, when the tooling said. Carried beside the state rather than
     /// inside it so the vocabulary stays closed.
     pub detail: Option<String>,
-    /// Exactly how a stdio server is started, when the listing says so in
-    /// separate words (#40). `None` when it only gives the command line as
-    /// text, which cannot be split back into a program and its arguments
-    /// with any confidence - so its tools cannot be listed.
+    /// Exactly how a stdio server is started (#40): from the listing when it
+    /// gives separate words (Codex), else recovered from the agent's
+    /// configuration by [`crate::launch`] (#280). `None` when neither
+    /// confirms it - a command line given only as text is never split - so
+    /// its tools cannot be listed.
     pub launch: Option<StdioServer>,
 }
 

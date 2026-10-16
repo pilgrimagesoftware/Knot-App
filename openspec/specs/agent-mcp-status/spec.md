@@ -360,12 +360,19 @@ called - and only when the probe reported it connected or could not tell:
 
 - An HTTP server SHALL be asked without any credential. One answering that it
   wants sign-in SHALL be reported as such; the sign-in belongs to the agent.
-- A stdio server SHALL be started only when the agent's listing gave its
-  program, arguments and environment as separate values, in the directory the
-  listing names or else the agent's folder, and SHALL be stopped - with every
-  process it started - as soon as the listing ends. A command given only as
-  one line of text SHALL NOT be split into a guess; the row SHALL say its
-  tools cannot be listed instead.
+- A stdio server SHALL be started only with an exact launch - program,
+  arguments and environment as separate values - in the directory that names
+  or else the agent's folder, and SHALL be stopped - with every process it
+  started - as soon as the listing ends. The launch SHALL come from the
+  agent's listing when it gives separate values. When the listing gives the
+  command only as one line, the launch MAY be recovered from the agent's own
+  configuration files, read only, and only from an entry of the same name
+  whose program and arguments joined with spaces are exactly the listed line.
+  Every such entry across the agent's configuration scopes SHALL agree
+  exactly, environment and directory included, and none SHALL contain a `$`
+  placeholder; otherwise nothing is recovered. A command line SHALL NOT be
+  split into a guess, and credentials in that configuration SHALL NOT be
+  read. A server with no exact launch SHALL say its tools cannot be listed.
 - A server that is disabled, awaiting approval, needing sign-in or failed
   SHALL NOT be contacted, and the row SHALL say why.
 
@@ -394,8 +401,16 @@ and a failure SHALL be shown in words rather than as an empty list.
 
 #### Scenario: A stdio server listed only as text
 
-- **WHEN** the user opens the row of a stdio server whose listing gave its
-  command only as one line
+- **WHEN** a Claude Code agent lists a stdio server as
+  `node index.js --root /tmp/a b`, and its user configuration holds that
+  server as `node` with arguments `index.js`, `--root`, `/tmp/a b`
+- **THEN** opening the row starts `node` with exactly those three arguments
+  and lists its tools
+
+#### Scenario: Configuration that does not confirm the line
+
+- **WHEN** a stdio server's listed line matches no same-named configuration
+  entry, or two matching entries differ, or the entry holds a `$` placeholder
 - **THEN** no process is started, and the row says why its tools cannot be
   listed
 
