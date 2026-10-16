@@ -16,6 +16,12 @@
 //! looks, since it spans scope precedence, plugin-contributed servers and
 //! per-project approval, all of which the CLI already does correctly.
 //!
+//! The one thing configuration *is* read for is recovering a stdio server's
+//! exact launch after the CLI has listed it, because Claude Code and Gemini
+//! print the command only as one line (#280). [`launch`] uses an entry only
+//! when it reproduces the listed line exactly and every such entry agrees,
+//! so the list itself is still the CLI's.
+//!
 //! What it costs, and the honesty that buys: the probe is a *separate
 //! process* resolving the same configuration, so it is a fresh health check
 //! and not a window into the running session. ACP offers nothing better -
@@ -29,6 +35,7 @@ pub mod consts;
 pub mod endpoint;
 pub mod error;
 pub mod inventory;
+pub mod launch;
 pub mod parse;
 pub mod probe;
 pub mod runner;
@@ -38,6 +45,7 @@ pub mod state;
 pub use endpoint::same_endpoint;
 pub use error::{ProbeError, Result};
 pub use inventory::Inventory;
+pub use launch::{ConfigRoots, recover_launches};
 pub use parse::ListFormat;
 pub use probe::{ProbePlan, plan_for, probe};
 pub use runner::{CommandRunner, McpRunner, ProbeCommand};

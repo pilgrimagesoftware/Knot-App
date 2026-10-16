@@ -25,3 +25,24 @@ pub const OUTPUT_DRAIN_FLOOR: Duration = Duration::from_millis(100);
 /// wild was a 1.5 KB `node -e` program - and the row that renders it sits in
 /// a virtualized list, where an over-tall row misreports its own height.
 pub const MAX_LABEL_CHARS: usize = 48;
+
+/// Claude Code's user-level configuration file, in the home directory. It
+/// holds the user scope's `mcpServers` and, under [`CLAUDE_PROJECTS_KEY`],
+/// each project's local scope (#280).
+pub const CLAUDE_USER_CONFIG: &str = ".claude.json";
+
+/// The object in [`CLAUDE_USER_CONFIG`] whose keys are project paths.
+pub const CLAUDE_PROJECTS_KEY: &str = "projects";
+
+/// Claude Code's project-scope file, found from the agent's folder upward.
+pub const CLAUDE_PROJECT_CONFIG: &str = ".mcp.json";
+
+/// The directory holding Gemini's `settings.json`, in the home directory
+/// for the user scope and from the agent's folder upward for the project's.
+pub const GEMINI_CONFIG_DIR: &str = ".gemini";
+
+/// Gemini's settings file within [`GEMINI_CONFIG_DIR`].
+pub const GEMINI_SETTINGS_FILE: &str = "settings.json";
+
+/// The key both CLIs keep their server entries under.
+pub const MCP_SERVERS_KEY: &str = "mcpServers";
