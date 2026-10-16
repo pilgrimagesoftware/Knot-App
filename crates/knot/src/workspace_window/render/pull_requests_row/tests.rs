@@ -109,3 +109,28 @@ fn not_found_is_shown_only_when_there_is_some() {
     assert!(!without.contains(&l10n::t_with("pull_requests.count_not_found", &[("count", "0")])),
             "{without}");
 }
+
+/// #210: the tooltip is the title alone when nothing is counted, the title
+/// with the summary otherwise, and the pull requests' states on a line of
+/// their own when there are any.
+#[test]
+fn the_tooltip_names_the_summary_and_the_states() {
+    use super::row_tooltip;
+
+    let title = l10n::t("changes_view.title");
+    assert_eq!(row_tooltip(None, None), title);
+
+    let with_summary = row_tooltip(Some("3 PRs, 2 issues, 4 changes"), None);
+    assert!(with_summary.starts_with(&title)
+            && with_summary.contains("3 PRs, 2 issues, 4 changes"),
+            "{with_summary}");
+    assert!(!with_summary.contains('\n'));
+
+    let with_states = row_tooltip(Some("3 pull requests"),
+                                  Some("2 open · 1 merged".to_owned()));
+    let (first, second) = with_states.split_once('\n').expect("a second line");
+    assert!(first.contains("3 pull requests"), "{first}");
+    assert_eq!(second,
+               l10n::t_with("changes_view.pull_request_states",
+                            &[("states", "2 open · 1 merged")]));
+}

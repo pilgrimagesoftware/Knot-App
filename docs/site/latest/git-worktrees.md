@@ -123,8 +123,16 @@ The Pull Requests tab lists the pull requests recorded against the workspace's
 agents, grouped by the agent that opened them and ordered by the sort you choose,
 newest first until you choose another. A pull request is listed once however many
 agents recorded it, in a group headed by all of them, and shared groups come
-before single-agent groups. The launcher row counts pull requests only, each
-once, as open, merged and closed.
+before single-agent groups.
+
+The launcher row's second line counts what the view holds: recorded pull
+requests, and the open issues and OpenSpec changes it has fetched, shown once
+you have opened the Issues or OpenSpec tab in that window. With nothing to
+count the row is its title alone. One or two kinds are named in full - `3 pull
+requests, 2 issues` - and all three use short names - `3 PRs, 2 issues, 4
+changes`. A capped issue list counts as a floor, `100+ issues`. Hover the row
+for the pull requests by state: open, merged and closed, each pull request
+counted once.
 
 ### Working with the list
 

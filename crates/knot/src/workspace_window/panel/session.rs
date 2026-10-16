@@ -79,6 +79,10 @@ impl WorkspaceWindow {
             eprintln!("agent {id}: {} options not passed to its adapter: {:?}",
                       agent.agent_type, options.ignored);
         }
+        // Bound to the settings' store root, so a window over test settings
+        // keeps its times under the test's directory, not the user's (#220).
+        let times = crate::settings_global::read(cx).conversation_times_dir()
+                                                    .map(panel_session::TimesStore::new);
         let cache_dir = knot_core::cache_dir();
         // The options' config goes into the same variable as the
         // instructions, under them, so an option cannot displace them.
@@ -164,7 +168,8 @@ impl WorkspaceWindow {
                                                             args: options.args,
                                                             env: delivery.env,
                                                             subagents,
-                                                            startup_prompt };
+                                                            startup_prompt,
+                                                            times };
                         panel_session::connect_into(&slot, request, &progress, |session_id| {
                             // Written out straight away, not left for the next
                             // roster change: with conversations restored, this

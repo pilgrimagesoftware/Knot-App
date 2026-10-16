@@ -1,6 +1,8 @@
 //! When Report is available, and what the window says about the last
 //! attempt. Pure, so the rules are tested without a window.
 
+use knot_forge::ForgeAvailability;
+
 use super::screenshots::Handoff;
 
 /// Where the window stands. Everything but [`Phase::Submitting`] leaves the
@@ -62,6 +64,26 @@ pub(super) fn filed_message(url: &str, handoff: Handoff) -> String {
     knot_core::l10n::t_with(key, &[("url", url)])
 }
 
+/// How Report will send the issue, for the line beside the buttons (#270).
+///
+/// Filed through `gh` when it is ready; otherwise composed in the browser,
+/// with any attached logs handed over as scrubbed copies (#284) - and the
+/// reason `gh` cannot be used, since each has its own fix. `None` while the
+/// probe that decides it is still running.
+pub(super) fn delivery_note(forge: Option<&ForgeAvailability>) -> String {
+    match forge {
+        None => knot_core::l10n::t("bug_report.delivery.checking"),
+        Some(ForgeAvailability::Ready) => knot_core::l10n::t("bug_report.delivery.gh"),
+        Some(ForgeAvailability::Missing) => knot_core::l10n::t("bug_report.delivery.missing"),
+        Some(ForgeAvailability::Unauthenticated) => {
+            knot_core::l10n::t("bug_report.delivery.unauthenticated")
+        }
+        Some(ForgeAvailability::Failed(reason)) => {
+            knot_core::l10n::t_with("bug_report.delivery.failed", &[("reason", reason)])
+        }
+    }
+}
+
 /// Whether Report can be chosen: both fields hold something other than
 /// whitespace, and no submission is already in flight.
 pub(super) fn can_report(subject: &str, description: &str, phase: &Phase) -> bool {
@@ -121,6 +143,26 @@ mod tests {
     fn a_failure_names_its_cause() {
         let message = Phase::Failed("HTTP 403".to_owned()).message().unwrap();
         assert!(message.contains("HTTP 403"), "{message}");
+    }
+
+    /// Every state says something different - each has its own next step -
+    /// and none renders its key or leaves a placeholder behind.
+    #[test]
+    fn the_delivery_note_tells_every_forge_state_apart() {
+        let notes = [None,
+                     Some(ForgeAvailability::Ready),
+                     Some(ForgeAvailability::Missing),
+                     Some(ForgeAvailability::Unauthenticated),
+                     Some(ForgeAvailability::Failed("no such host".to_owned()))].map(|forge| {
+                                                                                    delivery_note(forge.as_ref())
+                                                                                });
+        for (index, note) in notes.iter().enumerate() {
+            assert!(!note.starts_with("bug_report."), "{note} rendered its key");
+            assert!(!note.contains("%{"), "a placeholder was left: {note}");
+            assert!(notes.iter().skip(index + 1).all(|other| other != note),
+                    "{note} is shared by two states");
+        }
+        assert!(notes[4].contains("no such host"), "{}", notes[4]);
     }
 
     /// Each hand-off has its own confirmation, and every one keeps the URL.
