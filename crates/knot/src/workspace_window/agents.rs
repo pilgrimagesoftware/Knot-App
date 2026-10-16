@@ -91,6 +91,23 @@ impl WorkspaceWindow {
         cx.notify();
     }
 
+    /// Duplicates `source` (see `AgentStore::duplicate`), saves the roster
+    /// and shows the copy, returning its id. `None` when `source` is gone.
+    ///
+    /// Shown as a created agent, not selected as a chosen one: the copy keeps
+    /// the source's activation mode, so a duplicate of a `passive` agent
+    /// waits to be selected or messaged like any new passive agent, and one
+    /// of an `active` agent starts (#289). Selecting it marked it activated,
+    /// which started every duplicate whatever its mode.
+    pub(in crate::workspace_window) fn duplicate_agent(&mut self, source: Uuid,
+                                                       cx: &mut Context<Self>)
+                                                       -> Option<Uuid> {
+        let created = self.store.lock().duplicate(source)?;
+        self.persist_agents(cx);
+        self.show_created_agent(created, cx);
+        Some(created)
+    }
+
     /// Starts every agent a direct message activated, per `mcp-messaging`'s
     /// "Direct send activates a deactivated recipient".
     ///
