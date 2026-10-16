@@ -11,7 +11,8 @@ fn plan() -> ProbePlan {
     ProbePlan::Run { command: ProbeCommand::new("claude",
                                                 vec!["mcp".to_owned(), "list".to_owned()],
                                                 Path::new("/projects/api")),
-                     format:  ListFormat::ClaudeCode, }
+                     format:  ListFormat::ClaudeCode,
+                     roots:   None, }
 }
 
 #[test]
@@ -126,7 +127,7 @@ fn every_listable_type_has_a_reader_and_the_reverse() {
 fn a_plan_is_built_from_the_agent_type() {
     let plan = super::plan_for("claude", Path::new("/projects/api"), vec![], None);
 
-    let ProbePlan::Run { command, format } = plan
+    let ProbePlan::Run { command, format, .. } = plan
     else {
         panic!("claude is listable")
     };
@@ -178,4 +179,33 @@ fn unknown_states_survive_into_the_inventory() {
     assert_eq!(inventory.rows().len(), 2);
     assert!(inventory.any_in(ServerState::Unknown));
     assert_eq!(inventory.attention_count(), 0, "unknown is not an alarm");
+}
+
+/// #280: a Claude Code stdio row comes back from the probe with the launch
+/// its configuration holds, when that entry is exactly what was listed.
+#[test]
+fn a_probe_recovers_a_listed_stdio_servers_launch() {
+    let home = tempfile::tempdir().expect("home");
+    std::fs::write(home.path().join(".claude.json"),
+                   r#"{"mcpServers":{"files":{"type":"stdio","command":"node",
+                       "args":["/opt/files/index.js","--root","/tmp/a b"],"env":{"GREETING":"hi"}}}}"#)
+        .expect("write config");
+    let plan = ProbePlan::Run { command: ProbeCommand::new("claude",
+                                                           vec!["mcp".to_owned(),
+                                                                "list".to_owned()],
+                                                           home.path()),
+                                format:  ListFormat::ClaudeCode,
+                                roots:   Some(crate::launch::ConfigRoots { home:
+                                                                               home.path()
+                                                                                   .to_path_buf(),
+                                                                           folder:
+                                                                               home.path()
+                                                                                   .join("project"), }), };
+    let runner = StubRunner::ok("files: node /opt/files/index.js --root /tmp/a b - ✔ Connected\n");
+
+    let inventory = probe(&runner, &plan).expect("a listing");
+
+    let launch = inventory.rows()[0].launch.clone().expect("recovered");
+    assert_eq!(launch.args, ["/opt/files/index.js", "--root", "/tmp/a b"]);
+    assert_eq!(launch.env, [("GREETING".to_owned(), "hi".to_owned())]);
 }

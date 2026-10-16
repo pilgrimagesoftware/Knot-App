@@ -75,7 +75,10 @@ impl Render for SettingsWindow {
         // title, blurb and action rows stay pinned) - scrolling the body too
         // would let both containers move at once and make the group's
         // title/border appear to drift.
-        let settings_body = div().id("settings-body").flex_1().min_h_0();
+        let settings_body = div().id("settings-body")
+                                 .debug_selector(|| "settings-body".into())
+                                 .flex_1()
+                                 .min_h_0();
         let settings_body = if matches!(self.selected_tab, SettingsTab::Keyboard) {
             settings_body.overflow_hidden()
                          .child(body)

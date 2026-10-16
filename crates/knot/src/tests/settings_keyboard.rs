@@ -199,6 +199,55 @@ fn toggling_a_family_modifier_moves_all_nine(cx: &mut TestAppContext) {
       });
 }
 
+/// The tab's shortcut list is on screen and can be used, and the tab fits
+/// its window (#222).
+///
+/// It is clicked rather than measured: the list used to fill its parent from
+/// inside a `GroupBox`, whose content never stretches, so it got no height.
+/// Its rows were still laid out - they had bounds, at the right place - but
+/// the region showing them was empty, and a click there reached nothing.
+#[gpui_kit::test]
+fn the_keyboard_tab_lists_its_shortcuts_where_they_can_be_clicked(cx: &mut TestAppContext) {
+    let fixture = settings_window(cx);
+    cx.update(|cx| {
+          fixture.view.update(cx, |view, cx| {
+                          view.select_tab(crate::settings_window::SettingsTab::Keyboard, cx);
+                      });
+      });
+    let mut window = VisualTestContext::from_window(fixture.window, cx);
+    window.run_until_parked();
+    let rows = window.debug_bounds("keyboard-shortcuts-rows")
+                     .expect("the shortcut list is drawn");
+    let height = window.update(|window, _| window.viewport_size().height);
+    assert!(rows.top() < height, "the list starts below the window");
+
+    // The first row is the workspace family; its first control is the ⌃
+    // toggle, just past the label column and the row's gap.
+    let before = window.update(|_, cx| {
+                     SettingsWindow::resolved_keybindings(cx).modifiers(Shortcut::SelectWorkspace)
+                 })
+                 .expect("the workspace family has modifiers");
+    let toggle = gpui_kit::point(rows.left() + gpui_kit::px(SettingsWindow::LABEL_WIDTH + 24.),
+                                 rows.top() + gpui_kit::px(12.));
+    window.simulate_click(toggle, gpui_kit::Modifiers::default());
+    window.run_until_parked();
+    let after = window.update(|_, cx| {
+                    SettingsWindow::resolved_keybindings(cx).modifiers(Shortcut::SelectWorkspace)
+                })
+                .expect("the workspace family has modifiers");
+    assert_ne!(after.control, before.control,
+               "the first row's ⌃ toggle was not reachable");
+
+    // The list is capped so the whole tab fits its window: Restore Defaults
+    // below the list stays inside the body rather than clipped by it.
+    let body = window.debug_bounds("settings-body")
+                     .expect("the settings body is drawn");
+    let restore = window.debug_bounds("keyboard-restore-defaults-row")
+                        .expect("Restore Defaults is drawn");
+    assert!(restore.bottom() <= body.bottom(),
+            "Restore Defaults is clipped: {restore:?} past {body:?}");
+}
+
 /// The recorder's interception, end to end: a real key press reaches the
 /// armed recorder through the app's keystroke interceptor, not through a
 /// call the test makes, and disarms it.

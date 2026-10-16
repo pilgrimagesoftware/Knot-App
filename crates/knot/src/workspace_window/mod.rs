@@ -14,6 +14,7 @@ mod autopilot;
 mod autopilot_tests;
 mod bench;
 mod bench_popover;
+mod changes_counts;
 mod changes_tab;
 mod chrome;
 mod creation;

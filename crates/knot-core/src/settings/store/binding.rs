@@ -64,6 +64,12 @@ impl Settings {
     /// [`Self::with_store_root`] from its argument, and
     /// [`Self::platform_default`] for the one case that wants the real
     /// directories without a successful load.
+    /// Where conversation timings are kept, or `None` for settings bound to
+    /// no store root - which then have nowhere to write them either.
+    pub fn conversation_times_dir(&self) -> Option<std::path::PathBuf> {
+        self.paths.as_ref().map(StorePaths::conversation_times)
+    }
+
     pub(super) fn resolved_paths(&self) -> Result<StorePaths> {
         self.paths.clone().ok_or_else(|| {
                               Error::Config("settings are not bound to a store root, so there is \

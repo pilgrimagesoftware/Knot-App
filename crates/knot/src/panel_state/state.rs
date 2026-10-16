@@ -27,10 +27,14 @@ pub struct PanelState {
     /// supports `usage_update` notifications.
     pub context_usage:              Option<(u64, u64)>,
     pub messages:                   Vec<PanelMessage>,
-    /// When each entry in [`Self::messages`] was recorded, one-to-one by
-    /// index. Only [`Self::push_message`] may grow either `Vec`, so they
-    /// never drift apart.
-    pub sent_at:                    Vec<SystemTime>,
+    /// When each entry in [`Self::messages`] happened, one-to-one by index.
+    /// Only [`Self::push_message`] may grow either `Vec`, so they never drift
+    /// apart. `None` for a replayed entry whose time is not known: shown
+    /// without one rather than with the moment it was replayed (#220).
+    pub sent_at:                    Vec<Option<SystemTime>>,
+    /// When the entries happened, kept across a restored session - see
+    /// [`super::EntryTimes`].
+    pub times:                      super::EntryTimes,
     /// Set by a `session/request_permission` event; sending further
     /// prompts SHALL be blocked while this is set (enforced by the caller
     /// that owns the `AcpSession`, not this pure state).
@@ -87,6 +91,14 @@ pub struct PanelState {
 impl PanelState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A restored session's state: entries folded in are its replayed
+    /// history until the first live prompt, which gives them the times in
+    /// `log` - see [`super::EntryTimes`].
+    pub fn restoring(log: Vec<super::TimedEntry>) -> Self {
+        Self { times: super::EntryTimes::restoring(log),
+               ..Self::default() }
     }
 
     /// Take the pull request URLs seen since the last call.
@@ -175,6 +187,9 @@ impl PanelState {
     /// the reader was at the tail, so it does not pull someone reading back
     /// through the history to the bottom (#246).
     pub fn push_prompt(&mut self, text: String, follow: bool) {
+        // The first live prompt ends a restored session's replay, so the
+        // replayed entries can take their logged times now.
+        self.times.go_live(&self.messages, &mut self.sent_at);
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
         self.tracking = follow;
@@ -237,8 +252,9 @@ impl PanelState {
     /// The only way `messages` may grow, so [`Self::sent_at`] never falls
     /// out of step with it.
     pub(super) fn push_message(&mut self, message: PanelMessage) {
+        let at = self.times.stamp(&message);
         self.messages.push(message);
-        self.sent_at.push(SystemTime::now());
+        self.sent_at.push(at);
     }
 
     /// Updates the card for `id` with the run's latest state, reporting
