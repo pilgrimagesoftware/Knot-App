@@ -390,3 +390,11 @@ pub(crate) const KEY_HINT_DELAY: Duration = Duration::from_millis(500);
 /// screen is never the one dropped; small enough that a session thousands
 /// of replies long does not keep every parsed document alive.
 pub(crate) const PANEL_MARKDOWN_ROWS_KEPT: usize = 256;
+
+/// The tallest the Keyboard tab's shortcut list grows before it scrolls.
+///
+/// A cap rather than a fill: the list sits inside a `GroupBox`, whose content
+/// boxes never stretch, so a region filling its parent there has no height to
+/// fill and draws nothing (#222). Sized so the blurb, the group and Restore
+/// Defaults all fit the tab's 560 px window (`pane_target_height`).
+pub(crate) const KEYBOARD_SHORTCUTS_LIST_MAX_HEIGHT: f32 = 280.;

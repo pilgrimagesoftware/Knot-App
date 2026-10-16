@@ -10,7 +10,6 @@ use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::Selectable;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
-use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::div;
 use knot_core::ShortcutModifiers;
 
@@ -48,11 +47,14 @@ impl SettingsWindow {
         }
         // Only the list scrolls: the blurb above and Restore Defaults below
         // stay where they are, like the Personas window's title and actions.
-        let list = div().id("keyboard-shortcuts-list")
-                        .flex_1()
-                        .min_h_0()
-                        .overflow_y_scrollbar()
-                        .child(rows);
+        // Capped, as the Personas list is: a list filling its parent cannot
+        // live inside a `GroupBox`, whose content never stretches - it got no
+        // height at all and the tab showed an empty group (#222).
+        let list = crate::capped_scroll::capped_scroll(
+            "keyboard-shortcuts-list",
+            gpui_kit::px(crate::consts::KEYBOARD_SHORTCUTS_LIST_MAX_HEIGHT),
+            rows.debug_selector(|| "keyboard-shortcuts-rows".into()),
+        );
         let settings_window = cx.entity();
         v_flex().size_full()
                 .gap_3()
@@ -61,10 +63,11 @@ impl SettingsWindow {
                             .text_color(cx.theme().muted_foreground)
                             .child(knot_core::l10n::t("settings.keyboard.blurb")))
                 .child(crate::controls::group(knot_core::l10n::t("settings.keyboard.shortcuts"))
-                           .flex_1()
-                           .min_h_0()
                            .child(list))
-                .child(h_flex().flex_shrink_0().justify_end().child(
+                .child(h_flex().debug_selector(|| "keyboard-restore-defaults-row".into())
+                        .flex_shrink_0()
+                        .justify_end()
+                        .child(
                     Button::new("keyboard-restore-defaults")
                         .label(knot_core::l10n::t("settings.keyboard.restore_defaults"))
                         .on_click(move |_, _, app| {
