@@ -1,4 +1,30 @@
 
+## 1.33.0 - 2026-10-16
+
+### Added
+- Count issues and OpenSpec changes on the Changes row
+- Recover Claude Code and Gemini stdio launches
+
+
+### Changed
+- Split the panel connect path out of panel_session
+
+
+### Fixed
+- Show the shortcut list in the settings Keyboard tab
+- Group the Personas toolbar buttons at the left
+- Keep a duplicated passive agent from starting
+- Keep the gh status out of a report's filed diagnostics
+- Keep a restored conversation's real timestamps
+- Never save a restored session's times over themselves empty
+- Let placeholder and unreadable entries veto a launch
+
+
+### Performance
+- Count the Changes row without cloning the caches
+
+
+
 ## 1.32.0 - 2026-10-15
 
 ### Added
