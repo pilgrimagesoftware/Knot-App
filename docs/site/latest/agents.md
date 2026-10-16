@@ -196,8 +196,10 @@ unconnected one is not contacted. A stdio server is started for the listing only
 command and arguments, and is stopped as soon as the list arrives. Codex's listing gives them.
 Claude Code and Gemini print only one line, so Knot looks the server up by name in the agent's own
 configuration (`~/.claude.json` and `.mcp.json`, or `.gemini/settings.json`) and uses an entry only
-when it reproduces that line exactly and every matching entry agrees. An entry using `${VAR}`
-placeholders is not used.
+when it reproduces that line exactly and every matching entry agrees. A matching entry that uses
+`${VAR}` placeholders, or a same-named entry Knot can't read, stops the server being started.
+Servers that come only from managed or enterprise MCP configuration, or from Claude Code plugins or
+Gemini extensions, aren't found this way.
 
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that

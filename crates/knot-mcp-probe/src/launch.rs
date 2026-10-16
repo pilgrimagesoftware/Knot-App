@@ -14,19 +14,26 @@
 //! - **The listed line decides.** An entry is a candidate only when its program
 //!   and arguments, joined with spaces, are exactly the line the CLI listed, so
 //!   nothing can be started that the agent would not start.
-//! - **Every candidate must agree.** Claude Code's documented scope precedence
-//!   does not hold in practice - a same-named user entry was seen to win over
-//!   an unapproved project `.mcp.json` entry - so this does not guess which
-//!   scope the CLI resolved. It gathers every same-named candidate from every
-//!   scope and uses the launch only when they are identical, environment and
-//!   directory included. Any disagreement leaves the row without a launch.
+//! - **Every candidate must agree, and any doubt vetoes.** Claude Code's
+//!   documented scope precedence does not hold in practice - a same-named user
+//!   entry was seen to win over an unapproved project `.mcp.json` entry - so
+//!   this never guesses which scope the CLI resolved. Every same-named entry
+//!   whose line matches is a candidate, and the launch is used only when all of
+//!   them are identical, environment and directory included. A candidate
+//!   carrying a `$` placeholder vetoes rather than being skipped: the CLI may
+//!   well resolve that one, and skipping it would launch another scope's
+//!   environment under its name. A same-named entry that cannot be read as an
+//!   entry at all vetoes too, since its line is unknown.
 //!
-//! An entry carrying a `$` placeholder anywhere is not a candidate: both CLIs
-//! expand variables, reproducing that is a guess, and the line match would
-//! not catch a wrong environment value. Credentials are not read: `headers`
-//! and OAuth settings are HTTP concerns, and only stdio rows are touched. A
-//! missing, unreadable or unrecognized file contributes nothing and is not an
-//! error - the row says its tools cannot be listed, as before.
+//! Credentials are not read: `headers` and OAuth settings are HTTP concerns,
+//! and only stdio rows are touched. A missing or unreadable *file* contributes
+//! nothing and is not an error - the row says its tools cannot be listed, as
+//! before.
+//!
+//! What this cannot see: configuration Knot does not read - managed or
+//! enterprise MCP policy, and servers contributed by Claude Code plugins or
+//! Gemini extensions - takes no part in the agreement. A row whose name comes
+//! only from there has no candidate here and recovers nothing.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -35,6 +42,10 @@ use knot_mcp_client::StdioServer;
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::consts::{
+    CLAUDE_PROJECT_CONFIG, CLAUDE_PROJECTS_KEY, CLAUDE_USER_CONFIG, GEMINI_CONFIG_DIR,
+    GEMINI_SETTINGS_FILE, MCP_SERVERS_KEY,
+};
 use crate::parse::ListFormat;
 use crate::server::{ServerRow, Target};
 
@@ -86,8 +97,16 @@ impl Entry {
     }
 }
 
+/// One same-named entry in a configuration file: read, or present but not in
+/// a shape this crate understands - which still counts, as a veto.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Candidate {
+    Read(Entry),
+    Unreadable,
+}
+
 /// One configuration file's servers, by name.
-type Scope = BTreeMap<String, Entry>;
+type Scope = BTreeMap<String, Candidate>;
 
 /// Fills in the launch of every stdio row in `rows` that has none, from the
 /// configuration `format`'s CLI reads, under the rules in the module docs.
@@ -105,18 +124,28 @@ pub fn recover_launches(format: ListFormat, rows: &mut [ServerRow], roots: &Conf
     }
 }
 
-/// The launch every matching candidate agrees on, or `None` when there is
-/// no candidate or they differ.
+/// The launch every same-named candidate agrees on, or `None` when there is
+/// none, any is unreadable or carries a placeholder, or any two differ.
+///
+/// Only the line match narrows the candidates. Nothing else is filtered out
+/// before the agreement check, because a skipped entry is exactly how a
+/// launch the CLI would not use gets chosen.
 fn agreed_launch(scopes: &[Scope], name: &str, listed: &str) -> Option<StdioServer> {
-    let mut candidates = scopes.iter()
-                               .filter_map(|scope| scope.get(name))
-                               .filter(|entry| !entry.has_placeholder())
-                               .filter(|entry| entry.line().as_deref() == Some(listed));
-    let first = candidates.next()?;
-    if candidates.any(|other| other != first) {
-        return None;
+    let mut agreed: Option<&Entry> = None;
+    for candidate in scopes.iter().filter_map(|scope| scope.get(name)) {
+        let entry = match candidate {
+            Candidate::Unreadable => return None,
+            Candidate::Read(entry) => entry,
+        };
+        if entry.line().as_deref() != Some(listed) {
+            continue;
+        }
+        if entry.has_placeholder() || agreed.is_some_and(|first| first != entry) {
+            return None;
+        }
+        agreed = Some(entry);
     }
-    first.clone().into_launch()
+    agreed.cloned().and_then(Entry::into_launch)
 }
 
 /// Every file Claude Code may resolve a server from: the local scope in
@@ -125,8 +154,10 @@ fn agreed_launch(scopes: &[Scope], name: &str, listed: &str) -> Option<StdioServ
 /// filesystem root, and the user scope in `~/.claude.json`.
 fn claude_scopes(roots: &ConfigRoots) -> Vec<Scope> {
     let mut scopes = Vec::new();
-    let user_file = read_json(&roots.home.join(".claude.json"));
-    if let Some(projects) = user_file.as_ref().and_then(|file| file.get("projects")) {
+    let user_file = read_json(&roots.home.join(CLAUDE_USER_CONFIG));
+    if let Some(projects) = user_file.as_ref()
+                                     .and_then(|file| file.get(CLAUDE_PROJECTS_KEY))
+    {
         let mut keys = vec![real_path(&roots.folder), roots.folder.clone()];
         if let Some(root) = git_root(&roots.folder) {
             keys.push(real_path(&root));
@@ -137,7 +168,7 @@ fn claude_scopes(roots: &ConfigRoots) -> Vec<Scope> {
                           .filter_map(|key| projects.get(key.to_string_lossy().as_ref()))
                           .map(servers_in));
     }
-    scopes.extend(ancestors_with(&roots.folder, Path::new(".mcp.json")));
+    scopes.extend(ancestors_with(&roots.folder, Path::new(CLAUDE_PROJECT_CONFIG)));
     scopes.extend(user_file.as_ref().map(servers_in));
     scopes
 }
@@ -145,7 +176,7 @@ fn claude_scopes(roots: &ConfigRoots) -> Vec<Scope> {
 /// Every file Gemini may resolve a server from: each `.gemini/settings.json`
 /// from the folder up, then the user's.
 fn gemini_scopes(roots: &ConfigRoots) -> Vec<Scope> {
-    let settings = Path::new(".gemini").join("settings.json");
+    let settings = Path::new(GEMINI_CONFIG_DIR).join(GEMINI_SETTINGS_FILE);
     let mut scopes = ancestors_with(&roots.folder, &settings);
     scopes.extend(read_json(&roots.home.join(&settings)).as_ref()
                                                         .map(servers_in));
@@ -172,18 +203,18 @@ fn real_path(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// The `mcpServers` object of `value`, entries that are not a recognizable
-/// shape left out rather than failing the rest.
+/// The server entries of `value`, by name. An entry not in a recognizable
+/// shape is kept as [`Candidate::Unreadable`] rather than dropped, so it can
+/// veto a launch under its name.
 fn servers_in(value: &Value) -> Scope {
-    value.get("mcpServers")
+    value.get(MCP_SERVERS_KEY)
          .and_then(Value::as_object)
          .map(|servers| {
              servers.iter()
-                    .filter_map(|(name, entry)| {
-                        serde_json::from_value::<Entry>(entry.clone()).ok()
-                                                                      .map(|entry| {
-                                                                          (name.clone(), entry)
-                                                                      })
+                    .map(|(name, entry)| {
+                        let candidate = serde_json::from_value::<Entry>(entry.clone())
+                            .map_or(Candidate::Unreadable, Candidate::Read);
+                        (name.clone(), candidate)
                     })
                     .collect()
          })

@@ -369,10 +369,15 @@ called - and only when the probe reported it connected or could not tell:
   configuration files, read only, and only from an entry of the same name
   whose program and arguments joined with spaces are exactly the listed line.
   Every such entry across the agent's configuration scopes SHALL agree
-  exactly, environment and directory included, and none SHALL contain a `$`
-  placeholder; otherwise nothing is recovered. A command line SHALL NOT be
-  split into a guess, and credentials in that configuration SHALL NOT be
-  read. A server with no exact launch SHALL say its tools cannot be listed.
+  exactly, environment and directory included. Any such entry containing a
+  `$` placeholder, and any same-named entry that cannot be read as an entry,
+  SHALL prevent recovery rather than being skipped. Otherwise nothing is
+  recovered. Configuration Knot does not read - managed or enterprise MCP
+  policy, and servers contributed by agent plugins or extensions - takes no
+  part in that agreement, and a server known only from there recovers no
+  launch. A command line SHALL NOT be split into a guess, and credentials in
+  that configuration SHALL NOT be read. A server with no exact launch SHALL
+  say its tools cannot be listed.
 - A server that is disabled, awaiting approval, needing sign-in or failed
   SHALL NOT be contacted, and the row SHALL say why.
 
@@ -410,7 +415,8 @@ and a failure SHALL be shown in words rather than as an empty list.
 #### Scenario: Configuration that does not confirm the line
 
 - **WHEN** a stdio server's listed line matches no same-named configuration
-  entry, or two matching entries differ, or the entry holds a `$` placeholder
+  entry, or two matching entries differ, or a matching entry holds a `$`
+  placeholder while another does not, or a same-named entry cannot be read
 - **THEN** no process is started, and the row says why its tools cannot be
   listed
 

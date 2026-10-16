@@ -285,3 +285,61 @@ fn only_stdio_rows_without_a_launch_are_touched() {
 
     assert_eq!(recovered(ListFormat::ClaudeCode, &home, http), None);
 }
+
+/// PR #303 review, the blocking case: the user scope's `files` uses a
+/// placeholder Claude resolves, and a project `.mcp.json` defines the same
+/// line with a literal environment. Skipping the placeholder entry would
+/// launch the project file's environment under a name the CLI resolved from
+/// the user scope, so the placeholder must veto instead.
+#[test]
+fn a_placeholder_candidate_vetoes_rather_than_being_skipped() {
+    let home = Home::new();
+    home.write(".claude.json",
+               r#"{ "mcpServers": { "files": { "command": "node", "args": ["x.js"], "env": { "TOKEN": "${X}" } } } }"#);
+    home.write_in_project(".mcp.json",
+                          r#"{ "mcpServers": { "files": { "command": "node", "args": ["x.js"], "env": { "TOKEN": "attacker" } } } }"#);
+
+    assert_eq!(recovered(ListFormat::ClaudeCode, &home, stdio("files", "node x.js")),
+               None);
+}
+
+/// A placeholder in an entry for a *different* line is not a candidate, so
+/// it does not veto: only the line match narrows.
+#[test]
+fn a_placeholder_in_a_different_line_does_not_veto() {
+    let home = Home::new();
+    home.write(".claude.json",
+           r#"{ "mcpServers": { "files": { "command": "node", "args": ["${DIR}/other.js"] } } }"#);
+    home.write_in_project(".mcp.json",
+                      r#"{ "mcpServers": { "files": { "command": "node", "args": ["x.js"] } } }"#);
+
+    assert!(recovered(ListFormat::ClaudeCode, &home, stdio("files", "node x.js")).is_some());
+}
+
+/// A same-named entry that cannot be read as an entry - here `args` is not a
+/// list of strings - has an unknown line, so it vetoes rather than vanishing.
+#[test]
+fn an_unparsable_same_named_entry_vetoes() {
+    let home = Home::new();
+    home.write(".claude.json",
+               r#"{ "mcpServers": { "files": { "command": "node", "args": "x.js" } } }"#);
+    home.write_in_project(".mcp.json",
+                      r#"{ "mcpServers": { "files": { "command": "node", "args": ["x.js"] } } }"#);
+
+    assert_eq!(recovered(ListFormat::ClaudeCode, &home, stdio("files", "node x.js")),
+               None);
+}
+
+/// Joining loses argument boundaries: `["a b"]` and `["a", "b"]` both list
+/// as `node a b`. Both are candidates and they differ, so nothing is started.
+#[test]
+fn entries_that_join_to_the_same_line_but_split_differently_recover_nothing() {
+    let home = Home::new();
+    home.write(".claude.json",
+               r#"{ "mcpServers": { "files": { "command": "node", "args": ["a b"] } } }"#);
+    home.write_in_project(".mcp.json",
+                          r#"{ "mcpServers": { "files": { "command": "node", "args": ["a", "b"] } } }"#);
+
+    assert_eq!(recovered(ListFormat::ClaudeCode, &home, stdio("files", "node a b")),
+               None);
+}
