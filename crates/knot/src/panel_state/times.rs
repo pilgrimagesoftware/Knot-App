@@ -139,9 +139,27 @@ impl EntryTimes {
         self.log.extend(live);
     }
 
-    /// Everything to persist for this session.
+    /// The entries logged live so far - empty while a restored session is
+    /// still replaying, whose own entries are in [`Self::snapshot`].
+    #[cfg(test)]
     pub fn log(&self) -> &[TimedEntry] {
         &self.log
+    }
+
+    /// Everything to persist for this session: a restored log not yet
+    /// reconciled, then what has been logged live.
+    ///
+    /// Not [`Self::log`] alone. A restored session that ends - or sees a turn
+    /// end - before its first live prompt has logged nothing live, and saving
+    /// that would overwrite the restored times with an empty document: open a
+    /// conversation, look at it, close it, and every real time is gone.
+    pub fn snapshot(&self) -> Vec<TimedEntry> {
+        self.pending
+            .iter()
+            .flatten()
+            .chain(&self.log)
+            .cloned()
+            .collect()
     }
 }
 

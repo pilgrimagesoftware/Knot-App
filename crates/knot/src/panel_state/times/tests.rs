@@ -174,3 +174,14 @@ fn the_prompt_hash_is_stable() {
     assert_eq!(prompt_hash("a"), 0xAF63_DC4C_8601_EC8C);
     assert_eq!(prompt_hash("  a\n"), prompt_hash("a"));
 }
+
+/// What a restored session saves before its first live prompt is the
+/// restored log, not the empty live one.
+#[test]
+fn a_replaying_session_snapshots_its_restored_log() {
+    let restored = live_session().times.log().to_vec();
+    let mut state = PanelState::restoring(restored.clone());
+    replay(&mut state);
+    assert!(state.times.log().is_empty());
+    assert_eq!(state.times.snapshot(), restored);
+}
