@@ -4,10 +4,11 @@
 //! not an icon in the bottom bar: it is a view of the whole workspace, so it
 //! belongs with the rows it summarises.
 //!
-//! What it adds is the breakdown. The count is the point of the row - "what
-//! did this session produce, and where does it stand" - so it shows open,
-//! merged and closed rather than one total the user has to open the view to
-//! interpret.
+//! What it adds is the count (#210): how many pull requests, open issues and
+//! OpenSpec changes the Changes view holds, worded by
+//! `changes_counts::ChangesCounts::summary`. The pull requests' own states -
+//! open, merged, closed - are in its tooltip, so the line stays short enough
+//! for a sidebar.
 
 use gpui_kit::base::{StyledExt, h_flex};
 use gpui_kit::component::tooltip::Tooltip;
@@ -26,20 +27,20 @@ impl WorkspaceWindow {
     /// The Changes row, which opens the Changes view (#504).
     ///
     /// Always present: the view holds the repositories' issues and OpenSpec
-    /// changes as well as pull requests, so a workspace with none of the
-    /// latter still has somewhere for the row to lead. Its counts stay pull
-    /// requests only, as `pull-request-tracking` requires.
+    /// changes as well as pull requests, so a workspace with none of them
+    /// still has somewhere for the row to lead.
     pub(super) fn pull_requests_row(&self, compact: bool, cx: &mut Context<Self>)
                                     -> gpui_kit::AnyElement {
-        let counts = self.pull_request_counts();
+        let summary = self.changes_counts().summary();
+        let pull_requests = self.pull_request_counts();
         let is_showing = self.view_mode == WorkspaceViewMode::Changes;
 
         // The second line ellipsizes in a narrow sidebar, and the compact
         // sidebar drops it altogether - so the whole of it goes in a tooltip,
-        // the one place the full breakdown is always readable.
-        let tooltip = format!("{} — {}",
-                              knot_core::l10n::t("changes_view.title"),
-                              counts_label(counts));
+        // with the pull requests' states, the one place both are always
+        // readable.
+        let tooltip = row_tooltip(summary.as_deref(),
+                                  (pull_requests.total() > 0).then(|| counts_label(pull_requests)));
 
         let hint = self.key_hints
                        .shown()
@@ -89,7 +90,7 @@ impl WorkspaceWindow {
                               // instead of ellipsizing.
                               row.child(div().flex_1()
                                              .min_w_0()
-                                             .child(title_and_counts(counts, cx)))
+                                             .child(title_and_counts(summary.clone(), cx)))
                           }))
            .on_click(cx.listener(|view, _: &ClickEvent, _window, cx| {
                            view.view_mode = view.view_mode.toggled(WorkspaceViewMode::Changes);
@@ -99,22 +100,41 @@ impl WorkspaceWindow {
     }
 }
 
-/// The row's label and, under it, what is known about the states.
-fn title_and_counts(counts: PullRequestCounts, cx: &mut Context<WorkspaceWindow>)
+/// The row's label and, under it, what the view holds - or the label alone
+/// when it holds nothing Knot has counted.
+fn title_and_counts(summary: Option<String>, cx: &mut Context<WorkspaceWindow>)
                     -> gpui_kit::AnyElement {
     gpui_kit::base::v_flex().min_w_0()
                             .child(div().font_semibold()
                                         .child(knot_core::l10n::t("changes_view.title")))
-                            .child(div().text_xs()
-                                        .overflow_hidden()
-                                        .whitespace_nowrap()
-                                        .text_ellipsis()
-                                        .text_color(cx.theme().muted_foreground)
-                                        .child(counts_label(counts)))
+                            .children(summary.map(|summary| {
+                                                 div().text_xs()
+                                                      .overflow_hidden()
+                                                      .whitespace_nowrap()
+                                                      .text_ellipsis()
+                                                      .text_color(cx.theme().muted_foreground)
+                                                      .child(summary)
+                                             }))
                             .into_any_element()
 }
 
-/// What the row says about the states it knows.
+/// The tooltip: the title with the summary, and the pull requests' states
+/// on a line of their own when there are any.
+pub(crate) fn row_tooltip(summary: Option<&str>, pull_request_states: Option<String>) -> String {
+    let title = knot_core::l10n::t("changes_view.title");
+    let mut tooltip = match summary {
+        Some(summary) => format!("{title} — {summary}"),
+        None => title,
+    };
+    if let Some(states) = pull_request_states {
+        tooltip.push('\n');
+        tooltip.push_str(&knot_core::l10n::t_with("changes_view.pull_request_states",
+                                                  &[("states", &states)]));
+    }
+    tooltip
+}
+
+/// What the row's tooltip says about the pull requests' states.
 ///
 /// A breakdown once anything has been fetched, and the plain total before
 /// that. Showing "0 open · 0 merged · 0 closed" for four records Knot has not
