@@ -57,6 +57,13 @@ pub const LIBRARY_LOCATIONS_FILE: &str = "library-locations.json";
 /// `SavedAgent`, so a URL scrolling past does not rewrite `agents.json`.
 pub const PULL_REQUESTS_FILE: &str = "pull-requests.json";
 
+/// The directory of per-session conversation timings: one document per ACP
+/// session, recording when each of its entries happened, so a restored
+/// session shows its real times instead of the moment it was replayed
+/// (#220). Durable: an agent replays its history without times, so nothing
+/// can regenerate them.
+pub const CONVERSATION_TIMES_DIR: &str = "conversation-times";
+
 /// The single document every setting used to live in, read once on load and
 /// renamed to [`LEGACY_MIGRATED_EXTENSION`] after its values have been
 /// distributed across the documents above.

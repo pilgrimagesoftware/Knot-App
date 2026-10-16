@@ -72,7 +72,8 @@ fn registering_slot(runtime: &tokio::runtime::Runtime, text: &str) -> Arc<Mutex<
                                                    env:                        Vec::new(),
                                                    args:                       Vec::new(),
                                                    subagents:                  None,
-                                                   startup_prompt:             Some(startup), };
+                                                   startup_prompt:             Some(startup),
+                                                   times:                      None, };
                panel_session::connect_into(&connecting, request, &progress, |_| {}).await;
            });
     for _ in 0..500 {

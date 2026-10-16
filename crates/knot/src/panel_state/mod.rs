@@ -8,7 +8,8 @@
 //! holds and what the UI asks of it, `fold` is how the event stream changes
 //! it, and `summary` groups a turn's contiguous tool calls for compact mode.
 //! `harness` tells a replayed user chunk the user typed from one the agent's
-//! harness injected.
+//! harness injected. `times` keeps when each entry happened across a
+//! restored session.
 //!
 //! Contract: `openspec/specs/acp-panel-ui/spec.md`.
 
@@ -17,6 +18,7 @@ mod harness;
 mod message;
 mod state;
 mod summary;
+mod times;
 
 pub use message::PanelMessage;
 pub use message::ShellCard;
@@ -24,6 +26,11 @@ pub use message::ShellDelivery;
 pub use message::ToolCallCard;
 pub use state::PanelState;
 pub use summary::ToolRunSummary;
+// The session tests seed a log with a prompt's hash; nothing else outside
+// this module needs to compute one.
+#[cfg(test)]
+pub use times::prompt_hash;
+pub use times::{EntryTimes, TimedEntry};
 
 #[cfg(test)]
 mod tests;

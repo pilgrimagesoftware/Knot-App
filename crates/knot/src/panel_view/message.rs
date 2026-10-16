@@ -117,6 +117,7 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                         .sent_at
                         .get(index)
                         .copied()
+                        .flatten()
                         .map(|at| render_timestamp(at, "panel-prompt-time", index, cmd_held)),
                 )
                 .child(
@@ -190,6 +191,7 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                         .sent_at
                         .get(index)
                         .copied()
+                        .flatten()
                         .map(|at| render_timestamp(at, "panel-response-time", index, cmd_held)),
                 )
                 // Plain `w_full().min_w_0()`, deliberately *not* a

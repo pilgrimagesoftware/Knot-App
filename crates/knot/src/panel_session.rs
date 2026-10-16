@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use knot_acp::{
     ConfigOption, PermissionDecision, PermissionRequest, Result as AcpResult, SessionEvent,
+    SessionUpdate,
 };
 use knot_agent_launch::{AdapterConfig, ContextSource, DefaultMode};
 use knot_terminal::{AcpSession, ConnectProgress, ConnectStep, SessionTarget};
@@ -20,8 +21,10 @@ use crate::subagent_feed::SubagentSink;
 
 mod agent_identity;
 mod default_mode;
+mod times_store;
 
 pub(crate) use agent_identity::AgentIdentity;
+pub use times_store::TimesStore;
 
 pub struct PanelSessionHandle {
     session:        AcpSession,
@@ -39,12 +42,35 @@ impl PanelSessionHandle {
     /// the session ends. `mcp_url` is Knot's own MCP HTTP server URL, wired
     /// into the session when MCP is enabled.
     pub async fn start(config: &AdapterConfig, target: SessionTarget<'_>,
-                       progress: &ConnectProgress, subagents: Option<SubagentSink>)
+                       progress: &ConnectProgress, subagents: Option<SubagentSink>,
+                       times: Option<TimesStore>)
                        -> AcpResult<Self> {
+        // Read before the session opens, so the log is in place before the
+        // first replayed entry is folded (#220).
+        let restored = match (&times, target.prior_session_id) {
+            (Some(store), Some(prior)) => {
+                let (store, prior) = (store.clone(), prior.to_owned());
+                tokio::task::spawn_blocking(move || store.load(&prior)).await
+                                                                       .unwrap_or_default()
+            }
+            _ => Vec::new(),
+        };
+        let restoring = target.prior_session_id.is_some();
         let (session, config_options, mut events) =
             AcpSession::start(config, target, progress).await?;
-        let mut initial_state = PanelState::new();
+        let mut initial_state = if restoring {
+            PanelState::restoring(restored)
+        }
+        else {
+            PanelState::new()
+        };
+        // Asked to restore but given a fresh session: nothing replays, and
+        // the old log is not this session's.
+        if restoring && !session.resumed() {
+            initial_state.times.discard_restore();
+        }
         initial_state.config_options = config_options;
+        let session_id = session.session_id().to_owned();
         let state = Arc::new(Mutex::new(initial_state));
         let dirty = Arc::new(AtomicBool::new(false));
 
@@ -62,9 +88,23 @@ impl PanelSessionHandle {
                 if let Some(sink) = &subagents {
                     sink.observe(&event);
                 }
-                {
+                let turn_over =
+                    ended || matches!(event, SessionEvent::Update(SessionUpdate::TurnEnd { .. }));
+                let log = {
                     let mut state = drain_state.lock();
                     state.apply(event);
+                    turn_over.then(|| state.times.log().to_vec())
+                };
+                // Saved once per turn, off this task: a turn's entries are
+                // all logged by the time it ends, and a write per streamed
+                // chunk would be thousands of them.
+                if let (Some(log), Some(store)) = (log, times.clone()) {
+                    let session_id = session_id.clone();
+                    tokio::task::spawn_blocking(move || {
+                        if let Err(error) = store.save(&session_id, &log) {
+                            eprintln!("failed to save conversation times: {error}");
+                        }
+                    });
                 }
                 drain_dirty.store(true, Ordering::SeqCst);
                 if ended {
@@ -420,6 +460,9 @@ pub struct ConnectRequest<'a> {
     /// `None` when the agent has none. Withheld with the registration prompt
     /// when the session resumed.
     pub startup_prompt:             Option<StartupRequest>,
+    /// Where the session's conversation times are kept, or `None` to keep
+    /// none - see [`TimesStore`].
+    pub times:                      Option<TimesStore>,
 }
 
 /// A startup prompt's raw text and what its variables expand with. The
@@ -444,7 +487,8 @@ pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, request: ConnectR
     let mut handle = match PanelSessionHandle::start(request.config,
                                                      target,
                                                      progress,
-                                                     request.subagents).await
+                                                     request.subagents,
+                                                     request.times).await
     {
         Ok(handle) => handle,
         Err(error) => {
