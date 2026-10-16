@@ -1,5 +1,6 @@
 //! Showing a newly created agent (#269): it is selected either way, and
-//! started only when its activation mode says so.
+//! started only when its activation mode says so. A duplicate is a created
+//! agent too, with its source's mode (#289).
 //!
 //! The agents use an agent type with no terminal process and no ACP
 //! adapter, so nothing launches; `activated` is what decides whether the
@@ -71,6 +72,15 @@ impl Fixture {
         id
     }
 
+    /// Duplicates `source` the way the agent menu's Duplicate does.
+    fn duplicate(&self, source: Uuid, cx: &mut TestAppContext) -> Uuid {
+        cx.update(|cx| {
+              self.view
+                  .update(cx, |view, cx| view.duplicate_agent(source, cx))
+          })
+          .expect("the source exists")
+    }
+
     fn activated(&self, id: Uuid) -> bool {
         self.store
             .lock()
@@ -103,4 +113,35 @@ fn a_new_active_agent_is_shown_and_started(cx: &mut TestAppContext) {
 
     assert_eq!(fixture.selected(cx), Some(id));
     assert!(fixture.activated(id));
+}
+
+/// The reported defect: Duplicate selected the copy as if the user had
+/// chosen it, which activated - and so started - a passive agent. The source
+/// is running here, the case that made it easy to miss: the copy must
+/// follow the source's mode, not its run state.
+#[gpui_kit::test]
+fn duplicating_a_passive_agent_does_not_start_the_copy(cx: &mut TestAppContext) {
+    let fixture = open_workspace(cx);
+    let source = fixture.create_and_show(ActivationMode::Passive, cx);
+    fixture.store.lock().set_activated(source, true);
+
+    let copy = fixture.duplicate(source, cx);
+
+    assert_ne!(copy, source);
+    assert_eq!(fixture.selected(cx), Some(copy), "the copy is shown");
+    assert!(!fixture.activated(copy),
+            "a duplicate of a passive agent started");
+    assert!(fixture.activated(source),
+            "duplicating left the source as it was");
+}
+
+#[gpui_kit::test]
+fn duplicating_an_active_agent_starts_the_copy(cx: &mut TestAppContext) {
+    let fixture = open_workspace(cx);
+    let source = fixture.create_and_show(ActivationMode::Active, cx);
+
+    let copy = fixture.duplicate(source, cx);
+
+    assert_eq!(fixture.selected(cx), Some(copy));
+    assert!(fixture.activated(copy));
 }
