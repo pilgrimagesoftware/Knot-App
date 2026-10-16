@@ -481,12 +481,14 @@ bug_report:
     app: "App"
     os: "OS"
     arch: "Architecture"
-    forge: "GitHub CLI"
-  forge:
-    missing: "not installed"
-    unauthenticated: "not authenticated"
-    ready: "ready"
-    failed: "unavailable (%{reason})"
+  # #270: how Report will send the issue, shown beside the buttons rather
+  # than filed with the diagnostics.
+  delivery:
+    checking: "Checking the GitHub CLI…"
+    gh: "Report files the issue on GitHub through the GitHub CLI."
+    missing: "The GitHub CLI is not installed, so Report opens the issue in your browser to post. Attached logs are shown in Finder as scrubbed copies to drag in."
+    unauthenticated: "The GitHub CLI is not signed in (run gh auth login), so Report opens the issue in your browser to post. Attached logs are shown in Finder as scrubbed copies to drag in."
+    failed: "The GitHub CLI could not be checked (%{reason}), so Report opens the issue in your browser to post. Attached logs are shown in Finder as scrubbed copies to drag in."
   submitting: "Filing the issue…"
   filed: "Issue filed: %{url}"
   failed: "The issue could not be filed: %{error}"

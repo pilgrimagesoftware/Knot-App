@@ -153,8 +153,9 @@ fn screenshots_section(entity: &Entity<BugReport>, report: &BugReport, app: &App
             .children(skipped)
 }
 
-/// Cancel and Report, anchored bottom-right. Cancel closes the window and
-/// discards the report, as Escape does; Report files it.
+/// How Report will send the issue on the left, Cancel and Report anchored
+/// bottom-right. Cancel closes the window and discards the report, as Escape
+/// does; Report files it.
 pub(super) fn report_footer(entity: &Entity<BugReport>, app: &App) -> impl IntoElement {
     let report = entity.read(app);
     let enabled = report.can_report(app);
@@ -162,7 +163,16 @@ pub(super) fn report_footer(entity: &Entity<BugReport>, app: &App) -> impl IntoE
     let submit = entity.clone();
     h_flex().flex_shrink_0()
             .justify_end()
+            .items_center()
             .gap_2()
+            // Here rather than in the diagnostics: how the issue travels is
+            // the reporter's business, not the bug's (#270).
+            .child(div().debug_selector(|| "bug-report-delivery".into())
+                        .flex_1()
+                        .min_w_0()
+                        .text_xs()
+                        .text_color(app.theme().muted_foreground)
+                        .child(super::form::delivery_note(report.forge.as_ref())))
             .child(div().debug_selector(|| "cancel-bug-report".into())
                         .child(Button::new("cancel-bug-report").label(knot_core::l10n::t("bug_report.cancel"))
                                                                .on_click(|_: &ClickEvent, window, _| {

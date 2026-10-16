@@ -131,9 +131,14 @@ controls whether logs are offered - logs appear for a bug only.
 
 An app diagnostics section is filled in automatically and is not editable. It
 shows the running binary's version and build identifier (as the About window
-does), the host OS and version, the hardware architecture, and whether the
-forge tool Knot uses is available and authenticated - not installed, not
-authenticated, or ready. The diagnostics are selectable text for copying.
+does), the host OS and version, and the hardware architecture, and it goes into
+the issue. The diagnostics are selectable text for copying.
+
+A line beside the buttons says how Report will send the issue. With the GitHub
+CLI installed and signed in, Report files it directly. Otherwise the line names
+the reason (not installed, not signed in, or could not be checked), and Report
+opens the issue in your browser for you to post. That line is not filed with
+the issue.
 
 The window can attach the application log and the MCP server log, each chosen
 separately and neither by default; a chosen log is attached as its recent
