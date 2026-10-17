@@ -81,7 +81,8 @@ mod tests {
                 markdown_maximized: false,
                 markdown_history:   Vec::new(),
                 mermaid_source:     None,
-                mermaid_title:      None, }
+                mermaid_title:      None,
+                checklist:          None, }
     }
 
     #[test]
