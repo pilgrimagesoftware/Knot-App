@@ -35,8 +35,9 @@ fn nothing_closed_has_nothing_to_reopen() {
 
 #[test]
 fn a_closed_section_with_an_empty_slot_is_reopenable() {
-    let closed = ClosedArtifacts { markdown: Some(file("plan")),
-                                   mermaid:  Some(diagram("graph TD; A-->B;")), };
+    let closed = ClosedArtifacts { markdown:  Some(file("plan")),
+                                   mermaid:   Some(diagram("graph TD; A-->B;")),
+                                   checklist: None, };
 
     let restore = closed.reopenable(&ArtifactSnapshot::default());
 
@@ -47,11 +48,13 @@ fn a_closed_section_with_an_empty_slot_is_reopenable() {
 /// reopen control must not swap the old one back over it.
 #[test]
 fn a_section_the_agent_has_refilled_is_not_reopened() {
-    let closed = ClosedArtifacts { markdown: Some(file("old")),
-                                   mermaid:  Some(diagram("graph TD; A-->B;")), };
+    let closed = ClosedArtifacts { markdown:  Some(file("old")),
+                                   mermaid:   Some(diagram("graph TD; A-->B;")),
+                                   checklist: None, };
     let open = ArtifactSnapshot { markdown:  Some(file("new")),
                                   maximized: false,
-                                  mermaid:   None, };
+                                  mermaid:   None,
+                                  checklist: None, };
 
     let restore = closed.reopenable(&open);
 
@@ -86,7 +89,7 @@ fn close_all_then_reopen_restores_both_sections(cx: &mut TestAppContext) {
     fixture.view.update(&mut fixture.window, |view, _| {
                     assert!(view.reopenable_artifacts(id).is_empty(),
                             "nothing is closed while both are open");
-                    view.close_artifact_sections(id, CloseTarget::Both);
+                    view.close_artifact_sections(id, CloseTarget::All);
                     assert!(!view.artifact_panel_open(id), "close-all closes the panel");
                     assert!(!view.reopenable_artifacts(id).is_empty(),
                             "a closed panel offers to come back");
@@ -132,7 +135,7 @@ fn forgetting_the_agent_forgets_what_it_closed(cx: &mut TestAppContext) {
     let id = show_both(&mut fixture);
 
     fixture.view.update(&mut fixture.window, |view, _| {
-                    view.close_artifact_sections(id, CloseTarget::Both);
+                    view.close_artifact_sections(id, CloseTarget::All);
                     view.forget_artifact_panel(id);
 
                     assert!(view.reopenable_artifacts(id).is_empty());

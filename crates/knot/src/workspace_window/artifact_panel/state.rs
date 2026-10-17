@@ -88,6 +88,26 @@ pub(in crate::workspace_window) struct ArtifactSnapshot {
     pub(in crate::workspace_window) markdown:  Option<PathBuf>,
     pub(in crate::workspace_window) maximized: bool,
     pub(in crate::workspace_window) mermaid:   Option<String>,
+    /// The whole checklist, answers included: a tick or an answer written
+    /// by another window, or a republish from the MCP thread, has to reach
+    /// this one's frame too (#301).
+    pub(in crate::workspace_window) checklist: Option<knot_agents::Checklist>,
+}
+
+impl ArtifactSnapshot {
+    /// What `agent`'s artifact fields hold. The one place the snapshot is
+    /// built, so the render path and the poll cannot disagree on its shape.
+    pub(in crate::workspace_window) fn of(agent: &knot_agents::Agent) -> Self {
+        Self { markdown:  agent.markdown_file.clone(),
+               maximized: agent.markdown_maximized,
+               mermaid:   agent.mermaid_source.clone(),
+               checklist: agent.checklist.clone(), }
+    }
+
+    /// Whether any artifact is set at all.
+    pub(in crate::workspace_window) fn is_empty(&self) -> bool {
+        self.markdown.is_none() && self.mermaid.is_none() && self.checklist.is_none()
+    }
 }
 
 impl WorkspaceWindow {
@@ -148,8 +168,11 @@ impl WorkspaceWindow {
     /// the user has not touched still has to be found.
     pub(in crate::workspace_window) fn artifact_panel_open(&self, id: Uuid) -> bool {
         let store = self.store.lock();
-        store.agent(id)
-             .is_some_and(|agent| agent.markdown_file.is_some() || agent.mermaid_source.is_some())
+        store.agent(id).is_some_and(|agent| {
+                           agent.markdown_file.is_some()
+                           || agent.mermaid_source.is_some()
+                           || agent.checklist.is_some()
+                       })
     }
 
     /// Drops every trace of `id`'s panel, with the agent.
@@ -158,6 +181,7 @@ impl WorkspaceWindow {
         self.artifact_panel_resize.remove(&id);
         self.artifact_split_resize.remove(&id);
         self.artifact_closed.remove(&id);
+        self.checklist_inputs.remove(&id);
         // Dropping the document stops its watch.
         self.markdown_documents.remove(&id);
     }
@@ -175,7 +199,7 @@ impl WorkspaceWindow {
         // with it so the next one opens at the defaults. Checked on the
         // snapshot rather than on `markdown_maximized`, which
         // `clear_markdown_panel` has already set false by now.
-        if snapshot.markdown.is_none() && snapshot.mermaid.is_none() {
+        if snapshot.is_empty() {
             return self.artifact_panel.remove(&id).is_some();
         }
         let entry = self.artifact_panel.entry(id).or_default();
@@ -207,12 +231,7 @@ impl WorkspaceWindow {
             let store = self.store.lock();
             store.agents()
                  .iter()
-                 .map(|agent| {
-                     (agent.id,
-                      ArtifactSnapshot { markdown:  agent.markdown_file.clone(),
-                                         maximized: agent.markdown_maximized,
-                                         mermaid:   agent.mermaid_source.clone(), })
-                 })
+                 .map(|agent| (agent.id, ArtifactSnapshot::of(agent)))
                  .collect()
         };
         let mut moved = false;

@@ -19,6 +19,7 @@ mod composer_overscroll;
 mod import_window;
 mod keybindings;
 mod l10n_catalog;
+mod l10n_catalog_checklist;
 mod l10n_catalog_library_import;
 mod layout_model;
 mod library_windows;

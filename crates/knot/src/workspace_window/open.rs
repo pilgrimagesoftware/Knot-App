@@ -121,6 +121,7 @@ impl WorkspaceWindow {
                     artifact_split_resize: BTreeMap::new(),
                     artifact_drawn: BTreeMap::new(),
                     artifact_closed: BTreeMap::new(),
+                    checklist_inputs: BTreeMap::new(),
                     markdown_documents: BTreeMap::new(),
                     pull_request_states:
                         crate::pull_request_state::PullRequestStateCache::default(),

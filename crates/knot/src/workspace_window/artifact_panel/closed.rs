@@ -14,6 +14,7 @@
 
 use std::path::PathBuf;
 
+use knot_agents::Checklist;
 use uuid::Uuid;
 
 use super::state::ArtifactSnapshot;
@@ -24,17 +25,22 @@ use crate::workspace_window::WorkspaceWindow;
 pub(in crate::workspace_window) enum CloseTarget {
     Markdown,
     Mermaid,
+    Checklist,
     /// The toolbar's close-all.
-    Both,
+    All,
 }
 
 impl CloseTarget {
     const fn markdown(self) -> bool {
-        matches!(self, Self::Markdown | Self::Both)
+        matches!(self, Self::Markdown | Self::All)
     }
 
     const fn mermaid(self) -> bool {
-        matches!(self, Self::Mermaid | Self::Both)
+        matches!(self, Self::Mermaid | Self::All)
+    }
+
+    const fn checklist(self) -> bool {
+        matches!(self, Self::Checklist | Self::All)
     }
 }
 
@@ -52,8 +58,11 @@ pub(in crate::workspace_window) struct ClosedDiagram {
 /// going further back for files.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(in crate::workspace_window) struct ClosedArtifacts {
-    pub(in crate::workspace_window) markdown: Option<PathBuf>,
-    pub(in crate::workspace_window) mermaid:  Option<ClosedDiagram>,
+    pub(in crate::workspace_window) markdown:  Option<PathBuf>,
+    pub(in crate::workspace_window) mermaid:   Option<ClosedDiagram>,
+    /// The checklist as the user left it, ticks and answers included, so
+    /// reopening it does not lose what they had done (#301).
+    pub(in crate::workspace_window) checklist: Option<Checklist>,
 }
 
 impl ClosedArtifacts {
@@ -65,12 +74,13 @@ impl ClosedArtifacts {
     /// it.
     pub(in crate::workspace_window) fn reopenable(&self, open: &ArtifactSnapshot)
                                                   -> ClosedArtifacts {
-        ClosedArtifacts { markdown: self.markdown.clone().filter(|_| open.markdown.is_none()),
-                          mermaid:  self.mermaid.clone().filter(|_| open.mermaid.is_none()), }
+        ClosedArtifacts { markdown:  self.markdown.clone().filter(|_| open.markdown.is_none()),
+                          mermaid:   self.mermaid.clone().filter(|_| open.mermaid.is_none()),
+                          checklist: self.checklist.clone().filter(|_| open.checklist.is_none()), }
     }
 
     pub(in crate::workspace_window) fn is_empty(&self) -> bool {
-        self.markdown.is_none() && self.mermaid.is_none()
+        self.markdown.is_none() && self.mermaid.is_none() && self.checklist.is_none()
     }
 }
 
@@ -94,7 +104,8 @@ impl WorkspaceWindow {
                            .filter(|_| target.mermaid())
                            .map(|source| ClosedDiagram { source,
                                                          title: agent.mermaid_title.clone() });
-        if markdown.is_none() && mermaid.is_none() {
+        let checklist = agent.checklist.clone().filter(|_| target.checklist());
+        if markdown.is_none() && mermaid.is_none() && checklist.is_none() {
             return;
         }
         let closed = self.artifact_closed.entry(id).or_default();
@@ -108,6 +119,12 @@ impl WorkspaceWindow {
             closed.mermaid = Some(diagram);
             if let Err(error) = store.clear_mermaid_panel(id) {
                 eprintln!("failed to close the diagram section: {error}");
+            }
+        }
+        if let Some(list) = checklist {
+            closed.checklist = Some(list);
+            if let Err(error) = store.clear_checklist(id) {
+                eprintln!("failed to close the checklist section: {error}");
             }
         }
     }
@@ -144,7 +161,7 @@ impl WorkspaceWindow {
             return;
         };
         if self.artifact_panel_open(id) {
-            self.close_artifact_sections(id, CloseTarget::Both);
+            self.close_artifact_sections(id, CloseTarget::All);
         }
         else {
             self.reopen_artifacts(id);
@@ -174,6 +191,11 @@ impl WorkspaceWindow {
            && let Err(error) = store.set_mermaid_panel(id, diagram.source, diagram.title)
         {
             eprintln!("failed to reopen the diagram section: {error}");
+        }
+        if let Some(list) = restore.checklist
+           && let Err(error) = store.restore_checklist(id, list)
+        {
+            eprintln!("failed to reopen the checklist section: {error}");
         }
     }
 }
