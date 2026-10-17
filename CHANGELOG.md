@@ -1,4 +1,19 @@
 
+## 1.34.0 - 2026-10-17
+
+### Added
+- Add a checklist artifact to the agent model
+- Add show-checklist and get-checklist
+- Show the checklist in the artifact panel
+
+
+### Fixed
+- Give each replaced checklist a new revision
+- Declare show-checklist's item schema and clean its text
+- Keep checklist answer fields in step with the store
+
+
+
 ## 1.33.0 - 2026-10-16
 
 ### Added
