@@ -26,6 +26,15 @@
       verify with a test
 - [x] 3.5 Localize the section's copy; verify the keys resolve
 
-## 4. Docs
+## 4. Review fixes (#307)
 
-- [x] 4.1 List the two tools in `docs/site/latest/coordination.md`
+- [x] 4.1 Key answer fields on `Checklist::revision`, drop them on close, and
+      re-seed an unfocused field from the store; verify with a window test of
+      the close-then-republish sequence
+- [x] 4.2 Mark a checklist sent only once delivered; verify both outcomes
+- [x] 4.3 Give `show-checklist`'s `items` an element schema and clean its
+      descriptions; verify with catalog tests
+
+## 5. Docs
+
+- [x] 5.1 List the two tools in `docs/site/latest/coordination.md`

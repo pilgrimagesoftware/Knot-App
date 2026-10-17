@@ -52,3 +52,20 @@ offers to send again.
 `PropertySchema` declares only a type and a description, so `items` is declared
 as an `array` with its object shape described in prose, as `plan-tasks` does,
 and validated in the handler: non-empty ids and text, unique ids, a known kind.
+
+### Answer fields follow the store
+
+The answer fields are views of the checklist in the store, never a second
+copy. They are keyed on `Checklist::revision` - new for every replaced or
+restored list, from a process-wide counter so a list shown again after a close
+never reuses one - and rebuilt from the store when it changes; closing the
+checklist drops them; and an unfocused field whose value differs from the
+store's is re-seeded. A focused field is left alone, since the user's own
+edits reach the store on every change.
+
+### Sent means delivered
+
+Send marks the checklist sent only when delivery succeeded: a panel session
+took the prompt (or queued it), or a terminal session took the text. With
+neither, the list stays unsent so `get-checklist` never tells the agent it has
+answers it did not receive.

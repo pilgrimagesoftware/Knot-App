@@ -26,18 +26,25 @@ JSON object input schema with typed properties and a required list.
 `title`. `items` SHALL be a non-empty array of objects, each with a non-empty
 `id` unique within the list, a non-empty `text`, and an optional `kind` of
 `check` (the default) or `question`. A malformed list SHALL be a tool error
-naming the offending item, and SHALL leave the agent's checklist unchanged.
-
-A valid call SHALL set the target agent's checklist, shown in its artifact
-panel, and mark it unsent. Calling it again SHALL replace the items while
-keeping the user's tick or answer for every item whose `id` and `kind` are
-unchanged. `show-checklist` SHALL be independent of `display-markdown` and
-`view-mermaid`: it SHALL NOT close or replace their artifacts.
+naming the offending item and SHALL leave the agent's checklist unchanged. A
+valid call SHALL set the agent's checklist, unsent, in its artifact panel.
 
 #### Scenario: Show a checklist
 
 - **WHEN** `show-checklist` is called with a check and a question
 - **THEN** the agent's artifact panel shows both, unticked and unanswered
+
+#### Scenario: A malformed list is refused
+
+- **WHEN** `show-checklist` is called with two items sharing an id
+- **THEN** the call is a tool error naming the duplicate and no checklist is set
+
+### Requirement: show-checklist keeps the user's answers on update
+
+Calling `show-checklist` for an agent that already has a checklist SHALL
+replace its items while keeping the user's tick or answer for every item whose
+`id` and `kind` are unchanged. It SHALL NOT close or replace the agent's
+markdown or diagram artifacts.
 
 #### Scenario: An update keeps the answers
 
@@ -45,10 +52,10 @@ unchanged. `show-checklist` SHALL be independent of `display-markdown` and
   with that item's id and kind and reworded text
 - **THEN** the item shows the new text and is still ticked
 
-#### Scenario: A malformed list is refused
+#### Scenario: A changed kind starts over
 
-- **WHEN** `show-checklist` is called with two items sharing an id
-- **THEN** the call is a tool error naming the duplicate and no checklist is set
+- **WHEN** an answered question is shown again with the same id as a check
+- **THEN** the check is unticked
 
 ### Requirement: get-checklist
 
