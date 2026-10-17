@@ -71,7 +71,10 @@ pub fn show_checklist(store: &mut AgentStore, arguments: &Value) -> ToolCallResu
     let id = agent.id;
     let count = items.len();
     let title = optional_str(arguments, "title").map(str::to_owned);
-    store.set_checklist(id, title, items).ok();
+    // Cannot fail: the agent was found just above, under the same lock.
+    if let Err(error) = store.set_checklist(id, title, items) {
+        return ToolCallResult::error(error.to_string());
+    }
 
     success(&ShowChecklistResponse { success: true,
                                      message: format!("Checklist of {count} items shown in the artifact panel. The user's answers arrive as a message when they press Send; call get-checklist to read them at any time."), })

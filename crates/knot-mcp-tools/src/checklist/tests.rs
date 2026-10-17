@@ -108,3 +108,41 @@ fn an_unknown_agent_is_reported() {
 
     assert_eq!(result.is_error, Some(true));
 }
+
+fn definition(name: &str) -> knot_mcp::ToolDefinition {
+    crate::catalog::tool_catalog().into_iter()
+                                  .find(|tool| tool.name == name)
+                                  .unwrap_or_else(|| panic!("{name} is in the catalog"))
+}
+
+/// The descriptions go verbatim into every agent's `tools/list`; a lost line
+/// continuation leaves runs of indentation inside them (#307).
+#[test]
+fn the_checklist_tool_descriptions_have_no_runs_of_spaces() {
+    for name in ["show-checklist", "get-checklist"] {
+        let tool = definition(name);
+        let texts = std::iter::once(tool.description.clone()).chain(tool.input_schema
+                                                                        .properties
+                                                                        .values()
+                                                                        .map(|prop| {
+                                                                            prop.description.clone()
+                                                                        }));
+        for text in texts {
+            assert!(!text.contains("  "), "{name}: {text:?}");
+        }
+    }
+}
+
+/// An array parameter declares its elements, which some function-calling
+/// backends require (#307).
+#[test]
+fn show_checklist_declares_the_shape_of_its_items() {
+    let tool = definition("show-checklist");
+    let schema = serde_json::to_value(&tool.input_schema).expect("the schema serializes");
+    let items = &schema["properties"]["items"]["items"];
+
+    assert_eq!(items["type"], "object");
+    assert_eq!(items["required"], json!(["id", "text"]));
+    assert_eq!(items["properties"]["kind"]["enum"],
+               json!(["check", "question"]));
+}

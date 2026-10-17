@@ -30,7 +30,8 @@ fn mutates_agent_state(name: &str) -> bool {
 
 fn prop(schema_type: &str, description: &str) -> PropertySchema {
     PropertySchema { schema_type: schema_type.to_string(),
-                     description: description.to_string(), }
+                     description: description.to_string(),
+                     items:       None, }
 }
 
 fn schema(properties: &[(&str, &str, &str)], required: &[&str]) -> ToolInputSchema {
@@ -190,18 +191,50 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                 ("source", "string", "Mermaid diagram source text (e.g. 'graph TD; A-->B;')"),
                 ("title", "string", "Optional title to display above the diagram")],
               &["agentId", "source"]),
-         tool(consts::SHOW_CHECKLIST,
-              "Show the user a checklist in the artifact panel: questions to answer in free                text and items to tick off, kept in one place instead of scrolling away in the                conversation. Calling it again replaces the list but keeps the user's answers                for items with the same id and kind. The answers come back as a message when                the user presses Send; call get-checklist to read them sooner.",
-              &[("agentId", "string", "Your agent ID"),
-                ("title", "string", "Optional title shown above the list"),
-                ("items",
-                 "array",
-                 "At least one item, each an object: id (unique in this list, used to keep the                   user's answer when you update the list), text (what to ask or check), and                   kind: 'check' for a checkbox (the default) or 'question' for a free-text                   answer")],
-              &["agentId", "items"]),
+         show_checklist_tool(),
          tool(consts::GET_CHECKLIST,
-              "Read your checklist as the user has left it: each item with its kind, whether                a check is ticked and a question's answer, and whether the user has sent it.",
+              "Read your checklist as the user has left it: each item with its kind, \
+               whether a check is ticked and a question's answer, and whether the user has \
+               sent it.",
               &[("agentId", "string", "Your agent ID")],
               &["agentId"]),]
+}
+
+/// `show-checklist`, whose `items` array declares its element schema: some
+/// function-calling backends (Gemini's) reject an array parameter without
+/// one.
+fn show_checklist_tool() -> ToolDefinition {
+    let mut definition =
+        tool(consts::SHOW_CHECKLIST,
+             "Show the user a checklist in the artifact panel: questions to answer in free \
+              text and items to tick off, kept in one place instead of scrolling away in the \
+              conversation. Calling it again replaces the list but keeps the user's answers \
+              for items with the same id and kind. The answers come back as a message when \
+              the user presses Send; call get-checklist to read them sooner.",
+             &[("agentId", "string", "Your agent ID"),
+               ("title", "string", "Optional title shown above the list"),
+               ("items",
+                "array",
+                "At least one item: id (unique in this list, used to keep the user's answer \
+                 when you update the list), text (what to ask or check), and kind ('check' \
+                 for a checkbox, the default, or 'question' for a free-text answer)")],
+             &["agentId", "items"]);
+    if let Some(items) = definition.input_schema.properties.get_mut("items") {
+        items.items = Some(serde_json::json!({
+                               "type": "object",
+                               "properties": {
+                                   "id": { "type": "string", "description": "Unique within this list" },
+                                   "text": { "type": "string", "description": "What to ask or check" },
+                                   "kind": {
+                                       "type": "string",
+                                       "enum": ["check", "question"],
+                                       "description": "'check' (default) or 'question'"
+                                   }
+                               },
+                               "required": ["id", "text"]
+                           }));
+    }
+    definition
 }
 
 #[async_trait]
