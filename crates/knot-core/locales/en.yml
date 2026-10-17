@@ -1044,6 +1044,13 @@ artifact_panel:
   review_tooltip: "Start reviewing with comments"
   submit_review: "Submit Review"
   submit_review_tooltip: "Submit review comments to agent"
+  # #301: a checklist an agent shows with show-checklist.
+  checklist: "Checklist"
+  checklist_send: "Send"
+  checklist_send_tooltip: "Send your answers to the agent"
+  checklist_sent: "Sent"
+  checklist_sent_tooltip: "These answers were sent; change one to send again"
+  checklist_answer_placeholder: "Your answer"
   font_smaller: "Decrease font size"
   font_larger: "Increase font size"
   copy_markdown: "Copy contents"

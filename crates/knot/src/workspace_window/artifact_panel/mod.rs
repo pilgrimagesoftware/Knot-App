@@ -21,6 +21,7 @@
 //! markdown file off the render path, [`review`] is the Approve / Review flow,
 //! and [`controls`] draws the buttons for all three.
 
+pub(super) mod checklist;
 pub(super) mod closed;
 pub(super) mod controls;
 pub(super) mod document;

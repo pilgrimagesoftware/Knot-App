@@ -216,7 +216,7 @@ impl WorkspaceWindow {
             return pane;
         };
         let snapshot = self.artifact_snapshot(id);
-        let artifact = self.render_artifact_panel(id, &snapshot, cx);
+        let artifact = self.render_artifact_panel(id, &snapshot, window, cx);
 
         // Expanded: the panel is the content area. The sidebar and any open
         // git panel are outside this element and so are unaffected, which is

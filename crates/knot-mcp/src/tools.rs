@@ -40,6 +40,11 @@ pub struct PropertySchema {
     #[serde(rename = "type")]
     pub schema_type: String,
     pub description: String,
+    /// The JSON Schema for an `array`'s elements. Some function-calling
+    /// backends (Gemini's) reject an array parameter without one. `None`
+    /// leaves the key out, as for every non-array property.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub items:       Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]

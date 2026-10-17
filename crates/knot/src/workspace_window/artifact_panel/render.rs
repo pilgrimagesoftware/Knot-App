@@ -30,6 +30,7 @@ use uuid::Uuid;
 
 use super::closed::CloseTarget;
 use super::layout;
+use super::section::SectionChrome;
 use super::section::section_chrome;
 use super::state::ArtifactSnapshot;
 use crate::workspace_window::WorkspaceWindow;
@@ -42,21 +43,62 @@ impl WorkspaceWindow {
     /// reads could disagree across a write from the MCP server's thread.
     pub(in crate::workspace_window) fn artifact_snapshot(&self, id: Uuid) -> ArtifactSnapshot {
         let store = self.store.lock();
-        let Some(agent) = store.agent(id)
-        else {
-            return ArtifactSnapshot::default();
-        };
-        ArtifactSnapshot { markdown:  agent.markdown_file.clone(),
-                           maximized: agent.markdown_maximized,
-                           mermaid:   agent.mermaid_source.clone(), }
+        store.agent(id)
+             .map(ArtifactSnapshot::of)
+             .unwrap_or_default()
     }
 
-    /// The artifact panel for `id`, or `None` when that agent has neither an
-    /// open file nor an open diagram.
+    /// The artifact panel for `id`, or `None` when that agent has no
+    /// artifact open.
+    ///
+    /// The checklist (#301) is not part of the markdown/diagram split: it
+    /// has an area of its own below them, sharing the height evenly, and
+    /// fills the panel when it is the only artifact. Generalising the split
+    /// and its collapse to three sections was more machinery than a list
+    /// the user works through and sends needs.
     pub(in crate::workspace_window) fn render_artifact_panel(&mut self, id: Uuid,
                                                              snapshot: &ArtifactSnapshot,
+                                                             window: &mut gpui_kit::Window,
                                                              cx: &mut Context<Self>)
                                                              -> Option<gpui_kit::AnyElement> {
+        let documents = self.artifact_sections(id, snapshot, cx);
+        // Closable on its own only beside another section: alone, the
+        // toolbar's close-all already closes exactly it, as for the others.
+        let chrome = SectionChrome { collapsible: false,
+                                     collapsed:   false,
+                                     closable:    documents.is_some(), };
+        let checklist =
+            snapshot.checklist
+                    .clone()
+                    .map(|list| self.render_checklist_pane(id, &list, chrome, window, cx));
+        let body = match (documents, checklist) {
+            (None, None) => return None,
+            (Some(only), None) | (None, Some(only)) => only,
+            (Some(documents), Some(checklist)) => {
+                v_flex().size_full()
+                        .min_h_0()
+                        .child(div().flex_1().min_h_0().child(documents))
+                        .child(div().flex_1()
+                                    .min_h_0()
+                                    .border_t_1()
+                                    .border_color(cx.theme().border)
+                                    .child(checklist))
+                        .into_any_element()
+            }
+        };
+        let expanded = self.artifact_arrangement(id).expanded;
+        Some(v_flex().size_full()
+                     .bg(cx.theme().background)
+                     .child(self.artifact_toolbar(id, expanded, cx))
+                     .child(div().flex_1().min_h_0().child(body))
+                     .into_any_element())
+    }
+
+    /// The markdown and diagram sections, split, stacked or alone - or
+    /// `None` when neither is open.
+    fn artifact_sections(&mut self, id: Uuid, snapshot: &ArtifactSnapshot,
+                         cx: &mut Context<Self>)
+                         -> Option<gpui_kit::AnyElement> {
         let mermaid = snapshot.mermaid.clone().map(|source| {
                                                   let title = {
                                                       let store = self.store.lock();
@@ -112,11 +154,7 @@ impl WorkspaceWindow {
                                                                .into_any_element(),
             (None, None) => return None,
         };
-        Some(v_flex().size_full()
-                     .bg(cx.theme().background)
-                     .child(self.artifact_toolbar(id, arrangement.expanded, cx))
-                     .child(div().flex_1().min_h_0().child(sections))
-                     .into_any_element())
+        Some(sections)
     }
 
     /// The two sections with a draggable divider between them.
@@ -203,7 +241,7 @@ impl WorkspaceWindow {
                     .small()
                     .tooltip(knot_core::l10n::t("artifact_panel.close_all"))
                     .on_click(cx.listener(move |view, _, _window, cx| {
-                        view.close_artifact_sections(id, CloseTarget::Both);
+                        view.close_artifact_sections(id, CloseTarget::All);
                         cx.notify();
                     })))
                 .into_any_element()

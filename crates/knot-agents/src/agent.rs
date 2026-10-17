@@ -107,14 +107,16 @@ pub struct Agent {
     pub acp_session_id:    Option<String>,
     pub metadata:          BTreeMap<String, String>,
 
-    // Panel state, set by the `display-markdown` / `view-mermaid` MCP
-    // tools. Not yet consumed by any UI.
+    // Artifact panel state, set by the `display-markdown`, `view-mermaid`
+    // and `show-checklist` MCP tools. Runtime only, never persisted.
     pub markdown_file:      Option<PathBuf>,
     pub markdown_maximized: bool,
     /// Most recent first.
     pub markdown_history:   Vec<PathBuf>,
     pub mermaid_source:     Option<String>,
     pub mermaid_title:      Option<String>,
+    /// The checklist the agent asked the user to work through (#301).
+    pub checklist:          Option<crate::checklist::Checklist>,
 }
 
 impl Agent {
@@ -225,6 +227,7 @@ mod tests {
                 markdown_maximized: false,
                 markdown_history:   Vec::new(),
                 mermaid_source:     None,
-                mermaid_title:      None, }
+                mermaid_title:      None,
+                checklist:          None, }
     }
 }

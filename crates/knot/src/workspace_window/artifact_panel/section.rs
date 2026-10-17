@@ -34,6 +34,9 @@ use crate::workspace_window::WorkspaceWindow;
 pub(in crate::workspace_window) enum Section {
     Markdown,
     Mermaid,
+    /// The checklist (#301). Never collapsible: it sits in its own area
+    /// below the other two rather than in their split.
+    Checklist,
 }
 
 impl Section {
@@ -46,6 +49,7 @@ impl Section {
         match self {
             Self::Markdown => "markdown-pane-close",
             Self::Mermaid => "mermaid-pane-close",
+            Self::Checklist => "checklist-pane-close",
         }
     }
 }
@@ -136,6 +140,9 @@ impl WorkspaceWindow {
                                 Section::Mermaid => {
                                     view.toggle_artifact_mermaid_collapsed(id);
                                 }
+                                // No chevron is ever drawn for it; see
+                                // `Section::Checklist`.
+                                Section::Checklist => {}
                             }
                             cx.notify();
                         }))
@@ -161,6 +168,7 @@ impl WorkspaceWindow {
                         let target = match section {
                             Section::Markdown => CloseTarget::Markdown,
                             Section::Mermaid => CloseTarget::Mermaid,
+                            Section::Checklist => CloseTarget::Checklist,
                         };
                         view.close_artifact_sections(id, target);
                         cx.notify();

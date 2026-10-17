@@ -5,6 +5,7 @@
 //! Contract: `openspec/specs/agent-lifecycle/spec.md`.
 
 mod agent;
+mod checklist;
 mod convert;
 mod duplicate_name;
 mod error;
@@ -12,6 +13,7 @@ mod registry;
 mod store;
 
 pub use agent::{Agent, AgentState};
+pub use checklist::{Checklist, ChecklistItem, ChecklistItemKind};
 pub use convert::{from_saved, to_saved};
 pub use duplicate_name::duplicate_name;
 pub use error::{AgentError, Result};

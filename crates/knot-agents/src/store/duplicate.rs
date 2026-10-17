@@ -59,7 +59,8 @@ impl AgentStore {
                     markdown_maximized: _,
                     markdown_history: _,
                     mermaid_source: _,
-                    mermaid_title: _, } = self.agent(source)?.clone();
+                    mermaid_title: _,
+                    checklist: _, } = self.agent(source)?.clone();
 
         let name =
             crate::duplicate_name(&name, self.agents.iter().map(|agent| agent.name.as_str()));
