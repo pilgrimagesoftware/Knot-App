@@ -48,7 +48,8 @@ impl AgentStore {
                             markdown_maximized: false,
                             markdown_history: Vec::new(),
                             mermaid_source: None,
-                            mermaid_title: None };
+                            mermaid_title: None,
+                            checklist: None };
         let id = agent.id;
         match opts.insert_after
                   .and_then(|sibling| self.agents.iter().position(|a| a.id == sibling))

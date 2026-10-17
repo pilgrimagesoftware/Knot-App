@@ -6,6 +6,7 @@ mod agents;
 mod args;
 mod autopilot;
 mod catalog;
+mod checklist;
 mod consts;
 mod error;
 mod identity;
@@ -379,7 +380,7 @@ mod tests {
     #[test]
     fn lists_exactly_the_catalogued_tools_with_object_schemas() {
         let defs = catalog().list();
-        assert_eq!(defs.len(), 18);
+        assert_eq!(defs.len(), 20);
         for def in &defs {
             assert_eq!(def.input_schema.schema_type, "object");
         }
@@ -399,6 +400,8 @@ mod tests {
                          "set-status",
                          "display-markdown",
                          "view-mermaid",
+                         "show-checklist",
+                         "get-checklist",
                          "plan-tasks",
                          "dispatch-task",
                          "complete-task",

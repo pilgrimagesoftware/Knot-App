@@ -49,7 +49,8 @@ pub fn from_saved(saved: &SavedAgent) -> Agent {
             markdown_maximized: false,
             markdown_history:   Vec::new(),
             mermaid_source:     None,
-            mermaid_title:      None, }
+            mermaid_title:      None,
+            checklist:          None, }
 }
 
 /// Extract the durable subset of a runtime agent for persistence.

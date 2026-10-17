@@ -65,6 +65,33 @@ Each agent connects on a URL that names it (`…/mcp?agent=<id>`), which Knot pl
 | `set-status` | Set the agent's human-readable status text; an empty string clears it, separate from the automatic state. |
 | `display-markdown` | Show a Markdown file in the calling agent's panel, optionally expanded. |
 | `view-mermaid` | Show a Mermaid diagram in the calling agent's panel, optionally titled. |
+| `show-checklist` | Show a checklist of questions and checkbox items in the calling agent's panel. The user answers in place and presses Send to deliver the answers. Calling it again keeps answers for unchanged items. |
+| `get-checklist` | Read the checklist as the user has left it: ticks, answers, and whether it was sent. |
+
+#### Checklists
+
+Use a checklist when an agent needs several answers or confirmations from the
+user at once. The list stays in the artifact panel instead of scrolling away in
+the conversation. Each item has an `id`, the `text` to show, and a `kind`:
+`check` for a checkbox (the default) or `question` for a free-text answer.
+
+```json
+{
+  "agentId": "<your agent id>",
+  "title": "Before I release",
+  "items": [
+    { "id": "tests", "text": "The test suite passes on your machine" },
+    { "id": "version", "text": "Which version number should this be?", "kind": "question" }
+  ]
+}
+```
+
+The user's ticks and answers are recorded as they make them, and
+`get-checklist` returns them at any time. When the user presses Send, the agent
+receives the whole list as one message, each item with its id and its tick or
+answer. Calling `show-checklist` again updates the list and keeps the answers
+for items whose id and kind are unchanged. Closing the checklist and reopening
+the panel restores it with its answers.
 
 ### Planning tasks
 

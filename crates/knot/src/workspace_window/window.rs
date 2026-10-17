@@ -420,6 +420,9 @@ pub(crate) struct WorkspaceWindow {
     /// header's reopen control. Outlives the arrangement, which goes when the
     /// panel closes - remembering past that is the whole point.
     pub(super) artifact_closed: BTreeMap<Uuid, super::artifact_panel::closed::ClosedArtifacts>,
+    /// Each agent's checklist answer fields (#301), dropped with the panel
+    /// in `forget_artifact_panel`.
+    pub(super) checklist_inputs: BTreeMap<Uuid, super::artifact_panel::checklist::ChecklistInputs>,
     /// Each agent's open markdown file, read off the render path. See
     /// `artifact_panel::document`.
     pub(super) markdown_documents:
