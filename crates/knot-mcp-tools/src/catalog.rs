@@ -15,7 +15,7 @@ use knot_mcp::{
 };
 use uuid::Uuid;
 
-use crate::{McpToolCatalog, agents, consts, messaging, panels, repos, tasks};
+use crate::{McpToolCatalog, agents, checklist, consts, messaging, panels, repos, tasks};
 
 fn mutates_agent_state(name: &str) -> bool {
     matches!(name,
@@ -24,7 +24,8 @@ fn mutates_agent_state(name: &str) -> bool {
              | consts::CLOSE_AGENT
              | consts::SET_STATUS
              | consts::DISPLAY_MARKDOWN
-             | consts::VIEW_MERMAID)
+             | consts::VIEW_MERMAID
+             | consts::SHOW_CHECKLIST)
 }
 
 fn prop(schema_type: &str, description: &str) -> PropertySchema {
@@ -188,7 +189,19 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
               &[("agentId", "string", "Your agent ID"),
                 ("source", "string", "Mermaid diagram source text (e.g. 'graph TD; A-->B;')"),
                 ("title", "string", "Optional title to display above the diagram")],
-              &["agentId", "source"]),]
+              &["agentId", "source"]),
+         tool(consts::SHOW_CHECKLIST,
+              "Show the user a checklist in the artifact panel: questions to answer in free                text and items to tick off, kept in one place instead of scrolling away in the                conversation. Calling it again replaces the list but keeps the user's answers                for items with the same id and kind. The answers come back as a message when                the user presses Send; call get-checklist to read them sooner.",
+              &[("agentId", "string", "Your agent ID"),
+                ("title", "string", "Optional title shown above the list"),
+                ("items",
+                 "array",
+                 "At least one item, each an object: id (unique in this list, used to keep the                   user's answer when you update the list), text (what to ask or check), and                   kind: 'check' for a checkbox (the default) or 'question' for a free-text                   answer")],
+              &["agentId", "items"]),
+         tool(consts::GET_CHECKLIST,
+              "Read your checklist as the user has left it: each item with its kind, whether                a check is ticked and a question's answer, and whether the user has sent it.",
+              &[("agentId", "string", "Your agent ID")],
+              &["agentId"]),]
 }
 
 #[async_trait]
@@ -270,6 +283,10 @@ impl ToolCatalog for McpToolCatalog {
                 panels::display_markdown(&mut self.agents.lock(), &arguments)
             }
             consts::VIEW_MERMAID => panels::view_mermaid(&mut self.agents.lock(), &arguments),
+            consts::SHOW_CHECKLIST => {
+                checklist::show_checklist(&mut self.agents.lock(), &arguments)
+            }
+            consts::GET_CHECKLIST => checklist::get_checklist(&self.agents.lock(), &arguments),
             consts::PLAN_TASKS => {
                 tasks::plan_tasks(&mut self.agents.lock(), &mut self.graphs.lock(), &arguments)
             }
