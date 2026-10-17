@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use gpui_kit::AppContext;
 use gpui_kit::Context;
 use gpui_kit::Entity;
+use gpui_kit::Focusable;
 use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
@@ -41,9 +42,15 @@ use crate::workspace_window::WorkspaceWindow;
 use crate::workspace_window::prompt_queue::PromptOrigin;
 
 /// One agent's answer fields, by item id, each with the subscription that
-/// writes its edits back to the store. Dropped with the checklist.
+/// writes its edits back to the store.
+///
+/// Keyed on the [`Checklist::revision`] they were drawn for: a replaced or
+/// restored list can hold different answers than the fields show, so they
+/// are rebuilt from the store rather than trusted (#307). Dropped when the
+/// checklist is closed.
 #[derive(Default)]
 pub(in crate::workspace_window) struct ChecklistInputs {
+    revision:          u64,
     pub(super) fields: BTreeMap<String, (Entity<InputState>, Subscription)>,
 }
 
@@ -66,7 +73,7 @@ impl WorkspaceWindow {
         let actions = vec![self.checklist_send_button(id, checklist.submitted, cx)];
         let header =
             self.artifact_section_header(id, Section::Checklist, &title, chrome, actions, cx);
-        self.prune_checklist_inputs(id, checklist);
+        self.rekey_checklist_inputs(id, checklist.revision);
         let rows =
             checklist.items
                      .iter()
@@ -142,23 +149,34 @@ impl WorkspaceWindow {
         let panel = self.is_panel_agent(id);
         // One line for a terminal: whether a newline typed at the prompt
         // submits early depends on the CLI.
-        let Some(summary) = self.store.lock().edit_checklist(id, |list| {
-                                                 list.submitted = true;
-                                                 if panel {
-                                                     list.summary()
-                                                 }
-                                                 else {
-                                                     list.summary_line()
-                                                 }
-                                             })
+        let Some(summary) = self.store.lock().agent(id).and_then(|agent| {
+                                                           agent.checklist.as_ref().map(|list| {
+                                                                       if panel {
+                                                                           list.summary()
+                                                                       }
+                                                                       else {
+                                                                           list.summary_line()
+                                                                       }
+                                                                   })
+                                                       })
         else {
             return;
         };
-        if panel {
-            self.deliver_panel_prompt(id, summary, PromptOrigin::User);
+        let delivered = if panel {
+            self.deliver_panel_prompt(id, summary, PromptOrigin::User)
         }
         else {
-            self.send_terminal_command(id, &summary, cx);
+            self.send_terminal_command(id, &summary, cx)
+        };
+        // Marked sent only once it went: "Sent" in the header, and
+        // `submitted` in get-checklist, are a claim the agent has it.
+        if delivered {
+            self.store
+                .lock()
+                .edit_checklist(id, |list| list.submitted = true);
+        }
+        else {
+            eprintln!("agent {id} has no session to send its checklist to");
         }
         cx.notify();
     }
@@ -170,7 +188,16 @@ impl WorkspaceWindow {
                        -> Entity<InputState> {
         let inputs = self.checklist_inputs.entry(id).or_default();
         if let Some((input, _)) = inputs.fields.get(item) {
-            return input.clone();
+            let input = input.clone();
+            // The store is what Send and get-checklist read, so a field must
+            // never show anything else. A field the user is typing in is
+            // left alone: its own edits reach the store on every change.
+            let focused = input.read(cx).focus_handle(cx).is_focused(window);
+            if !focused && input.read(cx).value() != answer {
+                let answer = answer.to_owned();
+                input.update(cx, |state, cx| state.set_value(answer, window, cx));
+            }
+            return input;
         }
         let answer = answer.to_owned();
         let input = cx.new(|cx| {
@@ -199,14 +226,13 @@ impl WorkspaceWindow {
         input
     }
 
-    /// Drops the fields of items `checklist` no longer has, so a republish
-    /// that removes a question does not leave its field behind.
-    fn prune_checklist_inputs(&mut self, id: Uuid, checklist: &Checklist) {
-        if let Some(inputs) = self.checklist_inputs.get_mut(&id) {
-            inputs.fields.retain(|item, _| {
-                             checklist.item(item)
-                                      .is_some_and(|item| item.kind == ChecklistItemKind::Question)
-                         });
+    /// Drops `id`'s answer fields when they were drawn for another list
+    /// than `revision`, so the next frame builds them from the store.
+    fn rekey_checklist_inputs(&mut self, id: Uuid, revision: u64) {
+        let inputs = self.checklist_inputs.entry(id).or_default();
+        if inputs.revision != revision {
+            inputs.fields.clear();
+            inputs.revision = revision;
         }
     }
 }

@@ -176,10 +176,16 @@ impl WorkspaceWindow {
         }
     }
 
-    /// Types `text` at `id`'s terminal prompt and submits it.
-    pub(super) fn send_terminal_command(&self, id: Uuid, text: &str, cx: &mut Context<Self>) {
+    /// Types `text` at `id`'s terminal prompt and submits it. Returns
+    /// whether `id` has a terminal to type into.
+    pub(super) fn send_terminal_command(&self, id: Uuid, text: &str, cx: &mut Context<Self>)
+                                        -> bool {
+        if !self.sessions.contains_key(&id) {
+            return false;
+        }
         self.send_terminal_text(id, text);
         self.send_terminal_keys_after(id, Some(consts::TERMINAL_ESCAPE_KEY_DELAY), cx);
+        true
     }
 
     /// Escape, then Return, each after its delay -

@@ -126,6 +126,9 @@ impl WorkspaceWindow {
             if let Err(error) = store.clear_checklist(id) {
                 eprintln!("failed to close the checklist section: {error}");
             }
+            // Its fields go with it: a list shown again is a new list, and
+            // nothing it has should be drawn from these (#307).
+            self.checklist_inputs.remove(&id);
         }
     }
 
