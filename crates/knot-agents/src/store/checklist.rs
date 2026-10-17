@@ -19,8 +19,9 @@ impl AgentStore {
 
     /// Puts back a checklist exactly as it was, answers included - for
     /// reopening one the user closed.
-    pub fn restore_checklist(&mut self, id: Uuid, checklist: Checklist) -> Result<()> {
+    pub fn restore_checklist(&mut self, id: Uuid, mut checklist: Checklist) -> Result<()> {
         let agent = self.agent_mut(id).ok_or(AgentError::NotFound(id))?;
+        checklist.revision = crate::checklist::next_revision();
         agent.checklist = Some(checklist);
         Ok(())
     }

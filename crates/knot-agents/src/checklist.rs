@@ -9,6 +9,16 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// The source of [`Checklist::revision`]: process-wide, so a checklist shown
+/// again after being closed never reuses a number an earlier one had.
+static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
+
+/// A revision no checklist has had before.
+pub(crate) fn next_revision() -> u64 {
+    NEXT_REVISION.fetch_add(1, Ordering::Relaxed)
+}
 
 /// What an item asks of the user. A closed vocabulary, spelled in the tool's
 /// arguments as `check` and `question`.
@@ -76,6 +86,11 @@ pub struct Checklist {
     /// Whether the user has sent the answers to the agent since the
     /// checklist last changed under them.
     pub submitted: bool,
+    /// Which list this is: new each time the list is replaced or restored,
+    /// and kept through the user's own ticks and answers. What a view keyed
+    /// on the list's items checks before trusting what it already drew -
+    /// a replacement can reset an answer the view still shows (#307).
+    pub revision:  u64,
 }
 
 impl Checklist {
@@ -102,7 +117,8 @@ impl Checklist {
                          .collect();
         Self { title,
                items,
-               submitted: false }
+               submitted: false,
+               revision: next_revision() }
     }
 
     /// The item named `id`.
