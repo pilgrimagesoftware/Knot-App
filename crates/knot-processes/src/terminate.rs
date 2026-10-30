@@ -8,13 +8,13 @@
 
 use std::time::{Duration, Instant};
 
-use crate::command::run;
+use crate::command::run_with_timeout;
 use crate::consts::{
-    KILL_PROGRAM, PS_PROGRAM, PS_STATE_ARGS, SIGNAL_KILL, SIGNAL_TERM, STATE_ZOMBIE,
-    TERMINATE_GRACE, TERMINATE_POLL_INTERVAL,
+    DEFAULT_TIMEOUT, KILL_PROGRAM, PS_PROGRAM, PS_STATE_ARGS, SIGNAL_KILL, SIGNAL_TERM,
+    STATE_ZOMBIE, TERMINATE_GRACE, TERMINATE_POLL_INTERVAL,
 };
 use crate::error::{ProcessError, Result};
-use crate::sample::sample;
+use crate::sample::sample_within;
 use crate::table::ProcessTable;
 
 /// The floor on the poll interval, so a short grace period in a test does not
@@ -55,13 +55,22 @@ pub fn terminate(target: &TerminationTarget) -> Result<Termination> {
 }
 
 pub fn terminate_with_grace(target: &TerminationTarget, grace: Duration) -> Result<Termination> {
-    match verify(&sample()?, target) {
+    terminate_within(target, grace, DEFAULT_TIMEOUT)
+}
+
+/// [`terminate_with_grace`] with every `ps` and `kill` it runs given
+/// `timeout` rather than [`DEFAULT_TIMEOUT`]; the test seam's way in
+/// (`crate::test_seams`). `grace` is still the escalation period - that is
+/// behaviour under test, not a budget the machine has to beat.
+pub(crate) fn terminate_within(target: &TerminationTarget, grace: Duration, timeout: Duration)
+                               -> Result<Termination> {
+    match verify(&sample_within(timeout)?, target) {
         Identity::Gone => return Ok(Termination::AlreadyExited),
         Identity::Mismatch => return Err(ProcessError::IdentityMismatch { pid: target.pid }),
         Identity::Match => {}
     }
 
-    if let Some(outcome) = signal(target.pid, SIGNAL_TERM)? {
+    if let Some(outcome) = signal(target.pid, SIGNAL_TERM, timeout)? {
         return Ok(outcome);
     }
 
@@ -70,18 +79,18 @@ pub fn terminate_with_grace(target: &TerminationTarget, grace: Duration) -> Resu
     let deadline = Instant::now() + grace;
 
     while Instant::now() < deadline {
-        if !is_alive(target.pid)? {
+        if !is_alive(target.pid, timeout)? {
             return Ok(Termination::Terminated);
         }
 
         std::thread::sleep(poll);
     }
 
-    if !is_alive(target.pid)? {
+    if !is_alive(target.pid, timeout)? {
         return Ok(Termination::Terminated);
     }
 
-    match signal(target.pid, SIGNAL_KILL)? {
+    match signal(target.pid, SIGNAL_KILL, timeout)? {
         Some(outcome) => Ok(outcome),
         None => Ok(Termination::Killed),
     }
@@ -91,9 +100,9 @@ pub fn terminate_with_grace(target: &TerminationTarget, grace: Duration) -> Resu
 ///
 /// `Ok(None)` means it landed. `Ok(Some(..))` means it was rejected because
 /// the process had already gone, which the spec calls success.
-fn signal(pid: u32, name: &str) -> Result<Option<Termination>> {
+fn signal(pid: u32, name: &str, timeout: Duration) -> Result<Option<Termination>> {
     let pid_text = pid.to_string();
-    let output = run(KILL_PROGRAM, &[name, &pid_text])?;
+    let output = run_with_timeout(KILL_PROGRAM, &[name, &pid_text], timeout)?;
 
     if output.success {
         return Ok(None);
@@ -102,7 +111,7 @@ fn signal(pid: u32, name: &str) -> Result<Option<Termination>> {
     // `kill` reports a missing process and a refused signal the same way -- a
     // non-zero exit and a message whose wording is the platform's, not ours.
     // Ask the kernel which it was instead of matching on that text.
-    if !is_alive(pid)? {
+    if !is_alive(pid, timeout)? {
         return Ok(Some(Termination::AlreadyExited));
     }
 
@@ -117,12 +126,12 @@ fn signal(pid: u32, name: &str) -> Result<Option<Termination>> {
 /// process that exits promptly on `TERM` under a parent that is slow to reap
 /// it would otherwise look alive for the whole grace period and be reported as
 /// killed.
-fn is_alive(pid: u32) -> Result<bool> {
+fn is_alive(pid: u32, timeout: Duration) -> Result<bool> {
     let pid_text = pid.to_string();
     let mut args = PS_STATE_ARGS.to_vec();
     args.push(&pid_text);
 
-    let output = run(PS_PROGRAM, &args)?;
+    let output = run_with_timeout(PS_PROGRAM, &args, timeout)?;
 
     if !output.success {
         return Ok(false);

@@ -57,10 +57,12 @@ fn a_hanging_command_is_killed_at_the_timeout() {
             started.elapsed());
 }
 
-/// A CLI that would prompt must fail rather than wait. With stdin inherited
-/// `cat` reads from the test harness's own stdin and waits there, so this
-/// ends as `TimedOut` at the guard; exiting at all is the proof. No clock is
-/// asserted: under load, a correct run can take longer than any fixed bound.
+/// A CLI that would prompt must fail rather than wait. Stdin is closed, so
+/// `cat` reads end-of-file and exits at once, and the run succeeds. Were it
+/// inherited instead, `cat` would wait on the test harness's own stdin and
+/// the run would only end as `TimedOut` at the guard - so succeeding at all
+/// is the proof. No clock is asserted: under load, a correct run can take
+/// longer than any fixed bound.
 #[test]
 fn stdin_is_closed_so_a_prompting_command_does_not_wait() {
     let dir = TempDir::new().unwrap();

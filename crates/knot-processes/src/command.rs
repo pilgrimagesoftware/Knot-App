@@ -56,11 +56,12 @@ pub fn run_checked(program: impl Into<OsString>, args: &[&str]) -> Result<String
     run_checked_with_timeout(program, args, DEFAULT_TIMEOUT)
 }
 
-/// [`run_checked`] under `timeout` rather than [`DEFAULT_TIMEOUT`]. Private:
-/// production has one budget; this is so a test can run a checked command
-/// without its result depending on how fast the machine spawns.
-fn run_checked_with_timeout(program: impl Into<OsString>, args: &[&str], timeout: Duration)
-                            -> Result<String> {
+/// [`run_checked`] under `timeout` rather than [`DEFAULT_TIMEOUT`]. Not
+/// public: production has one budget; this is so a test can run a checked
+/// command without its result depending on how fast the machine spawns.
+pub(crate) fn run_checked_with_timeout(program: impl Into<OsString>, args: &[&str],
+                                       timeout: Duration)
+                                       -> Result<String> {
     let program = program.into();
     let label = display_command(&program, args);
     let output = run_with_timeout(program, args, timeout)?;

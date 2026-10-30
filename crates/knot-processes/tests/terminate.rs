@@ -5,11 +5,32 @@
 //! this process as the session root, so nothing outside the test's own subtree
 //! can be signalled even if an assertion is wrong.
 
-use std::process::{Child, Command};
+use std::io::{BufRead, BufReader};
+use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
-use knot_processes::terminate::terminate_with_grace;
-use knot_processes::{ProcessError, Termination, TerminationTarget, sample, terminate};
+mod support;
+
+use knot_processes::consts::TERMINATE_GRACE;
+use knot_processes::{ProcessError, ProcessTable, Termination, TerminationTarget};
+use support::HANG_GUARD;
+
+/// The process table, through the test seam; see `support::HANG_GUARD`.
+fn sample() -> knot_processes::Result<ProcessTable> {
+    knot_processes::test_seams::sample(HANG_GUARD)
+}
+
+/// `terminate_with_grace` through the test seam: `grace` is the behaviour
+/// under test, and only the budget for each `ps` and `kill` is the guard's.
+fn terminate_with_grace(target: &TerminationTarget, grace: Duration)
+                        -> knot_processes::Result<Termination> {
+    knot_processes::test_seams::terminate_with_grace(target, grace, HANG_GUARD)
+}
+
+/// `terminate` - the default grace period - through the test seam.
+fn terminate(target: &TerminationTarget) -> knot_processes::Result<Termination> {
+    terminate_with_grace(target, TERMINATE_GRACE)
+}
 
 /// Short enough to keep the escalation test quick, long enough that a process
 /// that does exit on `TERM` is seen exiting rather than killed by the clock.
@@ -59,11 +80,22 @@ fn a_process_exits_on_term() {
 #[test]
 fn a_process_that_ignores_term_is_killed_after_the_grace_period() {
     // `trap "" TERM` makes the shell ignore the signal outright; the loop
-    // keeps it alive so there is something for `KILL` to reach.
-    let child = Reaped(Command::new("sh").arg("-c")
-                                         .arg("trap '' TERM; while :; do sleep 0.1; done")
-                                         .spawn()
-                                         .expect("spawn a TERM-ignoring shell"));
+    // keeps it alive so there is something for `KILL` to reach. It says so
+    // once the trap is in place, and the test waits for that: TERM sent
+    // before the shell got that far ended it at once, and under load it
+    // could, so the outcome was `Terminated` with nothing wrong.
+    let mut shell = Command::new("sh").arg("-c")
+                                      .arg("trap '' TERM; echo ready; while :; do sleep 0.1; done")
+                                      .stdout(Stdio::piped())
+                                      .spawn()
+                                      .expect("spawn a TERM-ignoring shell");
+    let mut ready = String::new();
+    BufReader::new(shell.stdout.take().expect("stdout piped")).read_line(&mut ready)
+                                                              .expect("read the shell's readiness");
+    assert_eq!(ready.trim(),
+               "ready",
+               "the shell ignores TERM before it is targeted");
+    let child = Reaped(shell);
     let pid = child.0.id();
 
     let outcome = terminate_with_grace(&target_for(pid), TEST_GRACE).unwrap();

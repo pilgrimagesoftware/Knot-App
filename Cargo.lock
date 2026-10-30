@@ -4046,6 +4046,7 @@ dependencies = [
 name = "knot-processes"
 version = "1.34.0"
 dependencies = [
+ "knot-processes",
  "parking_lot",
  "tempfile",
  "thiserror 2.0.21",
