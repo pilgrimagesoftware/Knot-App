@@ -442,9 +442,7 @@ fn confirm_restart(window: &mut Window, app: &mut App, targets: &AgentMenuTarget
                  description,
                  move |app| {
                      targets.window_entity.update(app, |view, cx| {
-                                              view.restart_agents(&[targets.id],
-                                                                  keep_conversation,
-                                                                  cx);
+                                              view.restart_agent(targets.id, keep_conversation, cx);
                                               cx.notify();
                                           });
                  });
