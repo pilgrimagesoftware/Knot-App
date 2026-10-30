@@ -26,6 +26,7 @@ use gpui_kit::Styled;
 use gpui_kit::Window;
 use gpui_kit::anchored;
 use gpui_kit::base::RootPlugin;
+use gpui_kit::base::StyledExt;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::Root;
 use gpui_kit::deferred;
@@ -62,11 +63,22 @@ impl Render for LinkTooltip {
                                        .text_color(theme.popover_foreground)
                                        .text_xs()
                                        .shadow_md()
-                                       .overflow_hidden()
-                                       .whitespace_nowrap()
-                                       .text_ellipsis()
-                                       .child(link.url))).with_priority(1)
-                                                         .into_any_element()
+                                       // A Markdown title, `[text](url "title")`,
+                                       // reads above the address it describes.
+                                       .children(link.title
+                                                     .filter(|title| !title.is_empty())
+                                                     .map(|title| {
+                                                         div().font_medium()
+                                                              .overflow_hidden()
+                                                              .whitespace_nowrap()
+                                                              .text_ellipsis()
+                                                              .child(title)
+                                                     }))
+                                       .child(div().overflow_hidden()
+                                                   .whitespace_nowrap()
+                                                   .text_ellipsis()
+                                                   .child(link.url)))).with_priority(1)
+                                                                      .into_any_element()
     }
 }
 

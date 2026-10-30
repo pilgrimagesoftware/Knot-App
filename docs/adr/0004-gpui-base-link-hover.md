@@ -24,7 +24,7 @@ Knot already consumes a forked `gpui-base` (ADR-0003).
 
 ## Decision
 
-Add one commit to the fork, on a new branch `knot/link-hover-0.7.0` cut from
+Add two commits to the fork, on a new branch `knot/link-hover-0.7.0` cut from
 `knot/auto-grow-0.7.0`. Knot's `[patch.crates-io]` points at the new branch.
 
 The commit adds `text::hovered_link(window, cx) -> Option<HoveredLink>`
@@ -38,6 +38,14 @@ The commit adds `text::hovered_link(window, cx) -> Option<HoveredLink>`
   paragraph losing the pointer cannot erase another's report.
 - A change redraws the window: `refresh` from an event, or
   `request_animation_frame` when found while painting.
+- A report lapses when its owner stops being painted with the pointer still on
+  its link (a switched view, a row virtualized away, replaced text), since
+  nothing it owns runs to clear it then. Each window frame gets an epoch, begun
+  by the window's `TextSelectionLayer`, which every `Root` draws first. The
+  owner's paint re-stamps its report, which redraws nothing. After a frame
+  that ends with a report its owner did not re-stamp, the report is dropped
+  and the window drawn once more. This was a second commit, `270145a6`, added
+  after review.
 
 Knot draws the label in a `Root` plugin (`crates/knot/src/link_tooltip.rs`),
 so every window and every Markdown surface gets it without per-surface code.
@@ -64,9 +72,9 @@ link's own click.
 
 ## Consequences
 
-- The fork now carries five commits, and its exit condition is two things: an
+- The fork now carries six commits, and its exit condition is two things: an
   upstream release with the relaxed `auto_grow` bound (ADR-0003) and a
-  link-hover hook. Until both land, every gpui-kit bump rebases five commits.
+  link-hover hook. Until both land, every gpui-kit bump rebases six commits.
 - `knot/auto-grow-0.7.0` is kept so that reverting #326 still builds. Do not
   delete or force-push either branch: CI resolves them.
 - The commit is a candidate to propose upstream (longbridge/gpui-kit). If
