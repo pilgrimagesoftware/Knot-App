@@ -116,9 +116,29 @@ pub struct AgentStore {
     /// or a workspace can take its records with it, in the one place that
     /// knows either is going away. See [`pull_requests`].
     pull_requests:        Vec<SavedPullRequest>,
+    /// Counts the changes a window draws but may not have made itself -
+    /// an agent's status text and state, written from the MCP server's
+    /// thread or a tracker, with no GPUI context to notify from (#17).
+    ///
+    /// A counter, not a flag: every workspace window polls the one store,
+    /// and a flag the first to poll cleared would leave the rest showing
+    /// the old text. Each window remembers the revision it last drew
+    /// instead. Moved only when a value actually changes, so a write that
+    /// repeats what is there does not cost a repaint.
+    revision:             u64,
 }
 
 impl AgentStore {
+    /// How many drawn changes the store has seen; see the `revision` field.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Records a drawn change.
+    fn revise(&mut self) {
+        self.revision = self.revision.wrapping_add(1);
+    }
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -191,20 +211,32 @@ impl AgentStore {
     /// keeps the time the agent actually finished, rather than moving it to
     /// whenever the state was last re-reported.
     pub fn set_state(&mut self, id: Uuid, state: AgentState) {
+        let changed = self.agent(id).is_some_and(|agent| agent.state != state);
         self.update(id, |agent| {
                 if state == AgentState::Idle && agent.state != AgentState::Idle {
                     agent.idle_since = Some(std::time::SystemTime::now());
                 }
                 agent.state = state;
             });
+        if changed {
+            self.revise();
+        }
     }
 
     pub fn update_metadata(&mut self, id: Uuid, metadata: BTreeMap<String, String>) {
         self.update(id, |agent| agent.metadata.extend(metadata));
     }
 
+    /// Sets `id`'s status text - the `set-status` tool's write, which lands
+    /// on the MCP server's thread. Moves [`Self::revision`] when the text
+    /// changes, which is how a window not otherwise repainting finds out.
     pub fn set_status_text(&mut self, id: Uuid, status: String) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.status_text != status);
         self.update(id, |agent| agent.status_text = status);
+        if changed {
+            self.revise();
+        }
     }
 
     pub fn set_terminal_title(&mut self, id: Uuid, title: String) {
