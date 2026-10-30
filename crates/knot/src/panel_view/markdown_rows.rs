@@ -104,6 +104,11 @@ impl MarkdownRows {
         else {
             return;
         };
+        // No find, and nothing painted from one: the common frame, which
+        // need not copy the rendered text to learn that.
+        if find.is_none() && row.highlighted.is_none() {
+            return;
+        }
         let text = row.state.read(cx).rendered_text();
         let wanted =
             find.map(|find| Highlighted { generation: find.generation,
