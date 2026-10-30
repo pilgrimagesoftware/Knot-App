@@ -183,7 +183,8 @@ impl WorkspaceWindow {
                                    folder: shorten_path(&agent.folder),
                                    header_title: agent.header_title().to_string(),
                                    agent_type: agent.agent_type.clone(),
-                                   state })
+                                   state,
+                                   session_limit: agent.active_session_limit().cloned() })
     }
 }
 

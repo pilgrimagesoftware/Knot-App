@@ -232,6 +232,9 @@ impl AgentStore {
                 if state != AgentState::Input {
                     agent.awaiting_reason = None;
                 }
+                if state != AgentState::Error {
+                    agent.session_limit = None;
+                }
                 agent.state = state;
             });
         if changed {
@@ -252,6 +255,18 @@ impl AgentStore {
         let changed = self.agent(id)
                           .is_some_and(|agent| agent.awaiting_reason.as_deref() != Some(&reason));
         self.update(id, |agent| agent.awaiting_reason = Some(reason));
+        if changed {
+            self.revise();
+        }
+    }
+
+    /// Records the usage limit that stopped `id`'s session; see
+    /// [`Agent::session_limit`]. Moves the revision on a change, since the
+    /// write comes from the window's poll for an agent it may not show.
+    pub fn set_session_limit(&mut self, id: Uuid, limit: Option<crate::SessionLimit>) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.session_limit != limit);
+        self.update(id, |agent| agent.session_limit = limit);
         if changed {
             self.revise();
         }

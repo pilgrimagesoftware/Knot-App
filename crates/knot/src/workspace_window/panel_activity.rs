@@ -46,6 +46,11 @@ pub(super) fn acp_status(state: &PanelState) -> (AgentState, Option<String>) {
     if state.turn_active {
         return (AgentState::Running, None);
     }
+    // A turn stopped by a usage limit is not an agent at rest: nothing it is
+    // asked will be answered until the limit lifts (#318).
+    if state.session_limit.is_some() {
+        return (AgentState::Error, None);
+    }
     (AgentState::Idle, None)
 }
 
