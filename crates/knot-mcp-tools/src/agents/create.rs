@@ -109,6 +109,7 @@ pub fn create_agent(store: &mut AgentStore, arguments: &serde_json::Value,
 
     let create_worktree = optional_bool(arguments, "createWorktree").unwrap_or(false);
     let branch_name = optional_str(arguments, "branchName");
+    let worktree_path = optional_str(arguments, "worktreePath").filter(|path| !path.is_empty());
     if create_worktree && branch_name.is_none_or(str::is_empty) {
         return ToolCallResult::error("Missing required parameter: branchName");
     }
@@ -131,12 +132,14 @@ pub fn create_agent(store: &mut AgentStore, arguments: &serde_json::Value,
         return ToolCallResult::error("Missing required parameter: repoPath");
     };
     let folder = match (create_worktree, branch_name) {
-        (true, Some(branch)) => match crate::repos::create_worktree_path(&repo_path, branch) {
-            Ok(path) => path.to_string_lossy().into_owned(),
-            Err(error) => {
-                return ToolCallResult::error(format!("Failed to create worktree: {error}"));
+        (true, Some(branch)) => {
+            match crate::repos::create_worktree_path(&repo_path, branch, worktree_path) {
+                Ok(path) => path.to_string_lossy().into_owned(),
+                Err(error) => {
+                    return ToolCallResult::error(format!("Failed to create worktree: {error}"));
+                }
             }
-        },
+        }
         (true, None) => return ToolCallResult::error("Missing required parameter: branchName"),
         (false, _) => repo_path,
     };
