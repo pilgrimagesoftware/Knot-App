@@ -10,6 +10,7 @@ use gpui_kit::App;
 use gpui_kit::AppContext;
 use gpui_kit::Context;
 use gpui_kit::Entity;
+use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
 use gpui_kit::Render;
@@ -17,6 +18,8 @@ use gpui_kit::Styled;
 use gpui_kit::Subscription;
 use gpui_kit::WeakEntity;
 use gpui_kit::Window;
+use gpui_kit::WindowBounds;
+use gpui_kit::WindowOptions;
 use gpui_kit::base::Disableable;
 use gpui_kit::base::h_flex;
 use gpui_kit::base::v_flex;
@@ -32,11 +35,33 @@ use gpui_kit::component::input::TextareaState;
 use gpui_kit::component::menu::DropdownMenu;
 use gpui_kit::div;
 use gpui_kit::px;
+use gpui_kit::size;
 use uuid::Uuid;
 
 use crate::app_support::observe_system_appearance;
+use crate::consts::{
+    PROMPT_EDITOR_WINDOW_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_WIDTH,
+    PROMPT_EDITOR_WINDOW_WIDTH,
+};
 use crate::library_window::LibraryWindow;
-use crate::library_window::persona_editor::persona_editor_window_options;
+
+/// The prompt editor's own window: larger than the persona and bench
+/// editors', whose options it used to share, and resizable down to a size
+/// that still fits the form (#322). The text area takes whatever height
+/// the window has.
+fn prompt_editor_window_options(title: impl Into<gpui_kit::SharedString>, cx: &App)
+                                -> WindowOptions {
+    WindowOptions { titlebar: Some(gpui_kit::TitlebarOptions { title: Some(title.into()),
+                                                               ..Default::default() }),
+                    window_bounds:
+                        Some(WindowBounds::centered(size(px(PROMPT_EDITOR_WINDOW_WIDTH),
+                                                         px(PROMPT_EDITOR_WINDOW_HEIGHT)),
+                                                    cx)),
+                    window_min_size: Some(size(px(PROMPT_EDITOR_WINDOW_MIN_WIDTH),
+                                               px(PROMPT_EDITOR_WINDOW_MIN_HEIGHT))),
+                    is_resizable: true,
+                    ..WindowOptions::default() }
+}
 
 /// Opens the prompt editor: `prompt` is `None` for "Add Prompt…" and `Some`
 /// for a row's edit action.
@@ -51,7 +76,7 @@ pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
     };
     let name = prompt.as_ref().map(|p| p.name.clone()).unwrap_or_default();
     let text = prompt.as_ref().map(|p| p.text.clone()).unwrap_or_default();
-    let options = persona_editor_window_options(title, cx);
+    let options = prompt_editor_window_options(title, cx);
     let _ = cx.open_window(options, move |window, cx| {
                   observe_system_appearance(window);
                   let name_input = cx.new(|cx| {
@@ -154,7 +179,8 @@ impl Render for PromptEditor {
             .child(h_flex().flex_1()
                            .gap_2()
                            .child(label("settings.prompt_editor.text"))
-                           .child(v_flex().flex_1()
+                           .child(v_flex().debug_selector(|| "prompt-editor-text".into())
+                                          .flex_1()
                                           .h_full()
                                           .gap_1()
                                           .child(Textarea::new(&self.text_input).flex_1()
@@ -192,3 +218,6 @@ impl Render for PromptEditor {
             )
     }
 }
+
+#[cfg(test)]
+mod tests;
