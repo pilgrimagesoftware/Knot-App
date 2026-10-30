@@ -261,6 +261,7 @@ impl CommandCenterWindow {
                                                                   header_title:
                                                                       agent.header_title()
                                                                            .to_string(),
+                                                                  input_reason: agent.input_reason().map(str::to_owned),
                                                                   git_stats,
                                                                   is_running: agent.activated }
                                                 })

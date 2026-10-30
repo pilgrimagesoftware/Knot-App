@@ -165,6 +165,7 @@ fn test_agent(name: &str, registered: bool) -> Agent {
             activated:          false,
             state:              AgentState::Idle,
             idle_since:         None,
+            awaiting_reason:    None,
             status_text:        String::new(),
             is_registered:      registered,
             is_pending_start:   false,

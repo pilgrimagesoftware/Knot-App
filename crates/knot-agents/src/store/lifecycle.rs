@@ -34,6 +34,7 @@ impl AgentStore {
                             activated: opts.activation_mode == ActivationMode::Active,
                             state: AgentState::Idle,
                             idle_since: None,
+                            awaiting_reason: None,
                             status_text: String::new(),
                             is_registered: false,
                             is_pending_start: false,

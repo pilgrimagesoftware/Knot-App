@@ -18,7 +18,15 @@ impl PanelState {
         match event {
             SessionEvent::Update(update) => self.apply_update(update),
             SessionEvent::PermissionRequest(request) => self.request_permission(request),
-            SessionEvent::Ended(cause) => self.ended = Some(cause),
+            SessionEvent::PermissionResolved { rpc_id } => self.forget_permission(&rpc_id),
+            // The client answers every request still pending with Deny as
+            // the session ends, but reports those answers after `Ended`,
+            // which is the last event the drain reads - so nothing would
+            // otherwise take them off screen (#344).
+            SessionEvent::Ended(cause) => {
+                self.ended = Some(cause);
+                self.clear_permissions();
+            }
         }
     }
 

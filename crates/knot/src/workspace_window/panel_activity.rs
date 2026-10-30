@@ -123,6 +123,7 @@ impl WorkspaceWindow {
         let landed = std::sync::Arc::clone(&self.panel_status_landed);
         let queue = cx.has_global::<AwaitingInput>()
                       .then(|| cx.global::<AwaitingInput>().0.clone());
+        let reasons = std::sync::Arc::clone(&self.store);
         let sink = EventSink { on_status:
                                    Some(Box::new(move |event: knot_activity::StatusEvent| {
                                             store.lock().set_state(id, event.status);
@@ -133,12 +134,18 @@ impl WorkspaceWindow {
                                             // flag is how it reaches a frame.
                                             landed.store(true, Ordering::Release);
                                         })),
-                               on_awaiting_input: queue.map(|queue| {
-                                                           Box::new(move |message| {
-                                                               queue.lock().push((id, message));
-                                                           })
-                                                           as Box<dyn FnMut(Option<String>) + Send>
-                                                       }),
+                               // The permission's title is why the agent
+                               // waits, on its cell as in the notification
+                               // (#344) - so this sink is installed even
+                               // where no notification queue is.
+                               on_awaiting_input:
+                                   Some(Box::new(move |message: Option<String>| {
+                                            let reason = message.as_deref().map(permission_reason);
+                                            reasons.lock().set_awaiting_reason(id, reason);
+                                            if let Some(queue) = &queue {
+                                                queue.lock().push((id, message));
+                                            }
+                                        })),
                                ..Default::default() };
         let tracker = Tracker::spawn(TrackerConfig::for_agent_type(agent_type), tracking, sink);
         self.panel_trackers.insert(id, tracker);
@@ -148,3 +155,9 @@ impl WorkspaceWindow {
 
 #[cfg(test)]
 mod tests;
+
+/// What a Panel agent's cell says it is waiting for while an ACP permission
+/// request titled `title` is pending.
+pub(super) fn permission_reason(title: &str) -> String {
+    knot_core::l10n::t_with("sidebar.awaiting_permission", &[("title", title)])
+}

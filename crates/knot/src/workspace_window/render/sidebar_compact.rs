@@ -28,15 +28,17 @@ use crate::workspace_window::key_hints::with_key_hint;
 /// [`super::sidebar`] owns.
 pub(crate) struct CompactAgentRow {
     /// The agent, which keys its state dot.
-    pub id:         uuid::Uuid,
+    pub id:           uuid::Uuid,
     /// Already clamped to a single grapheme by the caller.
-    pub avatar:     String,
-    pub state:      knot_agents::AgentState,
+    pub avatar:       String,
+    pub state:        knot_agents::AgentState,
     /// When the agent last went idle, for the dot's tooltip.
-    pub idle_since: Option<std::time::SystemTime>,
-    pub is_shell:   bool,
+    pub idle_since:   Option<std::time::SystemTime>,
+    /// Why the agent is waiting on the user, for the dot's tooltip.
+    pub input_reason: Option<String>,
+    pub is_shell:     bool,
     /// The row's key hint while ⌘ is held (`key_hints`).
-    pub hint:       Option<String>,
+    pub hint:         Option<String>,
 }
 
 /// The compact row's body: the avatar alone, centred, with the state dot
@@ -50,12 +52,14 @@ pub(crate) fn compact_agent_row_body(row: CompactAgentRow, cx: &gpui_kit::App) -
                           avatar,
                           state,
                           idle_since,
+                          input_reason,
                           is_shell,
                           hint, } = row;
     let dot = (!is_shell).then(|| {
                              status_dot(id,
                                         state,
                                         idle_since,
+                                        input_reason,
                                         crate::status_palette::status_palette(cx)).absolute()
                                                                                   .bottom_0()
                                                                                   .right_0()

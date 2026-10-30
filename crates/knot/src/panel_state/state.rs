@@ -146,6 +146,27 @@ impl PanelState {
         }
     }
 
+    /// Forgets the request with `rpc_id` once the client reports it answered,
+    /// by any path, including the ones that never touch this state: Stop's
+    /// `cancelled`, or the session ending. Without it a request answered
+    /// that way stayed pending here, and the agent showed "Awaiting input"
+    /// until its turn ended, or for good (#344).
+    ///
+    /// A request the UI already resolved is gone by now, so this is then a
+    /// no-op: it matches by id, never "whichever is showing".
+    pub(super) fn forget_permission(&mut self, rpc_id: &serde_json::Value) {
+        if self.pending_permission
+               .as_ref()
+               .is_some_and(|request| &request.rpc_id == rpc_id)
+        {
+            self.resolve_permission();
+        }
+        else {
+            self.queued_permissions
+                .retain(|request| &request.rpc_id != rpc_id);
+        }
+    }
+
     /// Forgets every permission request: a finished turn has none left
     /// outstanding, since the agent only ends one after each of its
     /// requests is answered - by the user, or as `cancelled` by Stop.

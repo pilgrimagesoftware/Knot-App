@@ -127,6 +127,7 @@ impl WorkspaceWindow {
                                       folder: agent.folder.clone(),
                                       state: agent.state,
                                       idle_since: agent.idle_since,
+                                      input_reason: agent.input_reason().map(str::to_owned),
                                       is_shell: agent.is_shell(),
                                       is_companion: agent.is_companion,
                                       header_title: agent.header_title().to_string(),
