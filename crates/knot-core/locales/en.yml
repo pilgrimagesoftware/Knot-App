@@ -722,6 +722,10 @@ changes_view:
   send_prompt_to: "Send prompt to"
   # A stopped agent in the Send prompt to submenu; choosing it starts it.
   send_target_inactive: "%{name} (inactive)"
+  # A locked agent there (#310): the user can still send to it, but should
+  # know it is locked out of agent messaging.
+  send_target_locked: "%{name} (locked)"
+  send_target_inactive_locked: "%{name} (inactive, locked)"
   prompt:
     issue: "Work on this issue: %{url}"
     change: "Work on this OpenSpec change: %{name}"

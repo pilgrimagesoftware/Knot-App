@@ -82,7 +82,9 @@ that is not running is dimmed, whether it is passive and never started or was de
 Lock Agent shuts an agent out of agent messaging: no agent can message it, so a message cannot
 start it, and it cannot message other agents. Broadcast to All Agents skips it too. The row shows a
 **Locked** line while it lasts, and the lock is kept across a relaunch. Unlock Agent undoes it.
-Typing into the agent yourself is unaffected. Both items are also in the menu bar's Agents menu.
+Typing into the agent yourself is unaffected, and so is **Send prompt to**: a locked agent is still
+listed there, marked with a lock and "(locked)", so you know before you send. Both items are also
+in the menu bar's Agents menu.
 
 Click a row to select its agent, drag a row up or down to reorder agents - with companions moving
 with their owner and the Dashboard and Pull Requests rows pinned at the top - or right-click a row
