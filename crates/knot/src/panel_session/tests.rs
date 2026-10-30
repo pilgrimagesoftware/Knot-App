@@ -11,7 +11,9 @@ use super::*;
 /// `session/prompt` - standing in for an agent whose first turn is
 /// blocked (Gemini stalls its registration turn on a
 /// `session/request_permission` for the first Knot MCP tool call,
-/// which only a `Ready` slot can show and answer).
+/// which only a `Ready` slot can show and answer). It notes the prompt's
+/// arrival in `$KNOT_TEST_LOG`, which is the moment the test checks the
+/// slot at.
 fn stalling_prompt_adapter() -> AdapterConfig {
     AdapterConfig { command:                   "sh",
                     args:                      &[
@@ -22,6 +24,7 @@ fn stalling_prompt_adapter() -> AdapterConfig {
                       case "$method" in
                         initialize) echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"protocolVersion\":1,\"capabilities\":{}}}" ;;
                         session/new) echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"sessionId\":\"sess-1\"}}" ;;
+                        session/prompt) echo "$method" >> "$KNOT_TEST_LOG" ;;
                       esac
                     done"#,
     ],
@@ -30,12 +33,24 @@ fn stalling_prompt_adapter() -> AdapterConfig {
                     install:                   None, }
 }
 
+/// How long the slot test waits before calling the connection hung. Not a
+/// budget the machine has to beat - nothing is decided by it running out
+/// except that something is stuck - so it is far past any spawn delay.
+const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(120);
+
 /// The registration turn must not gate the slot: an agent that asks
 /// permission mid-registration can only be answered through a `Ready`
 /// slot, so publishing the handle after the turn finishes deadlocks
 /// the connection.
+///
+/// Decided by order, not by a clock (#14): the slot is read at the moment
+/// the adapter receives the registration prompt, and it has to be `Ready`
+/// by then. However long the adapter takes to start, that moment comes
+/// after `connect_into` has decided which way round the two go.
 #[tokio::test]
 async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
+    let dir = tempfile::TempDir::new().expect("a temporary directory");
+    let log = dir.path().join("methods.log");
     let (connecting, progress) = PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
     let request = ConnectRequest { config:                     &stalling_prompt_adapter(),
@@ -48,32 +63,65 @@ async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
                                    default_mode:               None,
                                    option_mode:                None,
                                    session_meta:               None,
-                                   env:                        Vec::new(),
+                                   env:                        vec![("KNOT_TEST_LOG".to_string(),
+                                                                     log.display().to_string())],
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
                                    times:                      None, };
 
     let watched = Arc::clone(&slot);
-    let became_ready = async move {
-        for _ in 0..200 {
+    // The phase the slot was in when the prompt arrived, or `Failed` as soon
+    // as the adapter could not be started - which is not this test's
+    // question, and is reported as itself rather than as "not Ready".
+    let phase_at_prompt = async move {
+        loop {
             let phase = watched.lock().phase();
-            if phase == PanelPhase::Ready {
-                return true;
+            if phase == PanelPhase::Failed {
+                return phase;
+            }
+            if std::fs::read_to_string(&log).is_ok_and(|methods| {
+                                                methods.lines().any(|m| m == "session/prompt")
+                                            })
+            {
+                // Read after the prompt was seen: had the slot gone
+                // `Ready` only after the turn, it would still be
+                // `Connecting` here, since the turn never ends.
+                return watched.lock().phase();
             }
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
-        false
     };
 
-    tokio::select! {
-        ready = became_ready => assert!(
-            ready,
-            "the slot must reach Ready while the registration turn is still in flight"
-        ),
-        () = connect_into(&slot, request, &progress, |_| {}) => {
-            panic!("the stalled registration turn should never finish")
+    let outcome = tokio::time::timeout(HANG_GUARD, async {
+                      tokio::select! {
+                          phase = phase_at_prompt => phase,
+                          () = connect_into(&slot, request, &progress, |_| {}) => {
+                              panic!("the stalled registration turn should never finish")
+                          }
+                      }
+                  }).await;
+
+    match outcome {
+        Ok(PanelPhase::Ready) => {}
+        Ok(PanelPhase::Failed) => {
+            panic!("the stand-in adapter failed to connect: {:?}",
+                   fail_reason(&slot))
         }
+        Ok(phase) => {
+            panic!("the registration prompt was sent while the slot was {phase:?}, not Ready")
+        }
+        Err(_) => panic!("no registration prompt reached the adapter within {HANG_GUARD:?}; \
+                          the slot is {:?}",
+                         slot.lock().phase()),
+    }
+}
+
+/// Why `slot` failed, if it did.
+fn fail_reason(slot: &Arc<Mutex<PanelSessionSlot>>) -> Option<String> {
+    match &*slot.lock() {
+        PanelSessionSlot::Failed(reason) => Some(reason.clone()),
+        _ => None,
     }
 }
 
