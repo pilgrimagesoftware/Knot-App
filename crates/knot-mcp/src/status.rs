@@ -60,6 +60,7 @@ mod tests {
                 view_mode:          Default::default(),
                 activation_mode:    Default::default(),
                 locked:             false,
+                autopilot_off:      false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),

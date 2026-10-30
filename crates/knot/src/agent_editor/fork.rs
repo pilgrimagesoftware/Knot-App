@@ -26,6 +26,9 @@ impl AgentPrefill {
                                  // Not carried: a lock is the user's
                                  // decision about one agent, not its setup.
                                  locked: _,
+                                 // Nor this: the fork is a new session, which follows
+                                 // the global Autopilot setting (#323).
+                                 autopilot_off: _,
                                  description,
                                  capabilities,
                                  cost_tier,

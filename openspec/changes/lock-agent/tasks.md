@@ -9,3 +9,5 @@
 - [x] 1.4 Show Locked on the sidebar row; skip locked agents in the user's
       Broadcast to All Agents
 - [x] 1.5 Mark a locked agent in "Send prompt to", which still sends to it
+- [x] 1.6 Refuse a locked or unregistered sender's broadcast with the reason a
+      send gets, instead of an empty success (#349)

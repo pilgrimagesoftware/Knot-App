@@ -123,6 +123,15 @@ pub fn spawn_autopilot(id: Uuid, last_message: String, settings: &knot_core::Set
     {
         return false;
     }
+    // Turned off for this agent alone (#323). Here, where both triggers
+    // meet, so neither can classify a reply the user said not to.
+    if sinks.agents
+            .lock()
+            .agent(id)
+            .is_some_and(|agent| agent.autopilot_off)
+    {
+        return false;
+    }
     // Classification is a blocking HTTP call; with no tokio runtime to spawn
     // it on (the tool catalog is built and exercised without one in tests and
     // benches), there is nowhere to run it.
@@ -407,5 +416,18 @@ mod tests {
     fn autopilot_needs_a_runtime_to_run_on() {
         let (sinks, id) = sinks();
         assert!(!spawn_autopilot(id, "Done.".into(), &enabled(), sinks));
+    }
+
+    /// #323: an agent with Autopilot turned off is never classified. Run
+    /// inside a runtime, where every other gate passes - an enabled, keyed
+    /// request with something to read - so only this one can refuse it, and
+    /// refusing means nothing is spawned or sent.
+    #[tokio::test]
+    async fn an_agent_with_autopilot_turned_off_is_never_classified() {
+        let (sinks, id) = sinks();
+        sinks.agents.lock().set_autopilot_off(id, true);
+
+        assert!(!spawn_autopilot(id, "Should I proceed?".into(), &enabled(), sinks.clone()));
+        assert!(sinks.queue.lock().is_empty());
     }
 }
