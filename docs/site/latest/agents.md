@@ -186,7 +186,8 @@ conversation. What you type is found in your prompts and the agent's replies, ig
 every match is highlighted; the bar shows which match you are on, like `2 of 5`. Return and
 Shift-Return, or the arrow buttons, step to the next and previous match and scroll the
 conversation to it. The `.*` button switches to regular expressions (for example `v\d+\.\d+`);
-add `(?-i)` to a pattern to match case. Tool calls, shell output and notices are not searched.
+add `(?-i)` to a pattern to match case. Replies are searched as they read, so a link's address and
+Markdown formatting don't match. Tool calls, shell output and notices are not searched.
 Escape closes the bar and puts you back in the composer.
 
 ### Inserting a saved prompt
