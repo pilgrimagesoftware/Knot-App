@@ -28,7 +28,7 @@ use super::style::PanelStyle;
 use super::style::RiskLevel;
 use crate::panel_state::PanelState;
 
-fn panel_style() -> PanelStyle {
+pub(super) fn panel_style() -> PanelStyle {
     PanelStyle { permission_risk:    RiskLevel::Neutral,
                  markdown_font_size: px(14.),
                  mono_font_family:   "Menlo".into(),
@@ -62,7 +62,8 @@ impl Render for MessageProbe {
                                              style:    &style,
                                              list:     &self.list,
                                              cmd_held: self.cmd_held,
-                                             reply:    None, },
+                                             reply:    None,
+                                             find:     None, },
                                    &message,
                                    &PanelCallbacks::new(|_| {}, || {}, |_| {}, |_| {}, || {})))
     }

@@ -14,23 +14,35 @@ use uuid::Uuid;
 /// opens in edit mode.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AgentPrefill {
-    pub(crate) name:           Option<String>,
-    pub(crate) avatar:         Option<String>,
+    pub(crate) name:            Option<String>,
+    pub(crate) avatar:          Option<String>,
     /// Folder for the new agent, the way the Swift reference's
     /// `addAgent(to:)` does from a dashboard's "Add Agent" tile: copied
     /// from an existing agent in the workspace.
-    pub(crate) folder:         Option<String>,
-    pub(crate) agent_type:     Option<String>,
-    pub(crate) persona_id:     Option<Uuid>,
-    pub(crate) startup_prompt: Option<knot_core::StartupPrompt>,
+    pub(crate) folder:          Option<String>,
+    pub(crate) agent_type:      Option<String>,
+    pub(crate) persona_id:      Option<Uuid>,
+    pub(crate) startup_prompt:  Option<knot_core::StartupPrompt>,
     /// The owner, when creating a companion of an existing agent.
-    pub(crate) created_by:     Option<Uuid>,
-    pub(crate) is_companion:   bool,
+    pub(crate) created_by:      Option<Uuid>,
+    pub(crate) is_companion:    bool,
     /// The session the new agent continues, when forking. The created
     /// agent carries it as both its session id and its resume target, with
     /// the fork flag set, so the fork picks the conversation up rather than
     /// taking it over.
-    pub(crate) session_id:     Option<String>,
+    pub(crate) session_id:      Option<String>,
+    /// The rest of the source's setup, for a fork (#38). Each is `None`
+    /// when nothing is derived, so the form's own default applies; a fork
+    /// sets all of them, and the user can change any before creating.
+    pub(crate) shell_command:   Option<String>,
+    pub(crate) description:     Option<String>,
+    pub(crate) capabilities:    Option<knot_core::Capabilities>,
+    pub(crate) cost_tier:       Option<knot_core::CostTier>,
+    pub(crate) activation_mode: Option<knot_core::ActivationMode>,
+    /// The session setup - model, permission mode, effort - the created
+    /// agent starts with. Not a form field: like a duplicate's, it is the
+    /// source's last choice, changed afterwards in the panel.
+    pub(crate) session_config:  std::collections::BTreeMap<String, String>,
 }
 
 /// The agent type a submitted create actually uses.

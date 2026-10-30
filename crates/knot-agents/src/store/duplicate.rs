@@ -29,6 +29,13 @@ impl AgentStore {
                     shell_command,
                     persona_id,
                     activation_mode,
+                    // Not copied: a lock shuts one agent out of messaging,
+                    // and is the user's decision about that agent, not part
+                    // of how it is set up.
+                    locked: _,
+                    // Not copied either: turning Autopilot off is about one
+                    // session, and the copy is a new one (#323).
+                    autopilot_off: _,
                     description,
                     capabilities,
                     cost_tier,
@@ -45,6 +52,8 @@ impl AgentStore {
                     activated: _,
                     state: _,
                     idle_since: _,
+                    awaiting_reason: _,
+                    session_limit: _,
                     status_text: _,
                     is_registered: _,
                     is_pending_start: _,

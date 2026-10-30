@@ -26,10 +26,10 @@ use crate::{AwaitingInputQueue, McpToolCatalog};
 /// queued because there is nothing for a window to act on.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AutopilotEffect {
-    /// Mark the agent as needing input and notify, with no particular
-    /// message - `knot-desktop-notifications`'s generic awaiting-input
-    /// copy applies, same as an explicit `status: "input"` hook.
-    Mark,
+    /// Mark the agent as needing input and notify, with the
+    /// classification that flagged the reply - `None` for the custom
+    /// action's fallback, where nothing was classified.
+    Mark(Option<Classification>),
     /// Open the decision dialog, carrying the message that prompted it.
     Ask {
         last_message:   String,
@@ -43,7 +43,7 @@ impl AutopilotEffect {
     fn from_effect(effect: Effect) -> Option<Self> {
         match effect {
             Effect::None => None,
-            Effect::Mark => Some(Self::Mark),
+            Effect::Mark(classification) => Some(Self::Mark(classification)),
             Effect::Ask { last_message,
                           classification, } => Some(Self::Ask { last_message,
                                                                 classification }),
@@ -123,6 +123,15 @@ pub fn spawn_autopilot(id: Uuid, last_message: String, settings: &knot_core::Set
     {
         return false;
     }
+    // Turned off for this agent alone (#323). Here, where both triggers
+    // meet, so neither can classify a reply the user said not to.
+    if sinks.agents
+            .lock()
+            .agent(id)
+            .is_some_and(|agent| agent.autopilot_off)
+    {
+        return false;
+    }
     // Classification is a blocking HTTP call; with no tokio runtime to spawn
     // it on (the tool catalog is built and exercised without one in tests and
     // benches), there is nowhere to run it.
@@ -151,21 +160,59 @@ pub fn spawn_autopilot(id: Uuid, last_message: String, settings: &knot_core::Set
 /// turn, and marking the agent as waiting on the user would leave it showing
 /// "Awaiting input" while it works - or for good, when nothing reports the
 /// turn starting.
+///
+/// Nothing lands for an agent with Autopilot turned off (#323), checked here
+/// as well as before classifying: the classification is an HTTP round trip,
+/// and the user can turn Autopilot off while it is in flight. Its late
+/// result is dropped whole - no wait, no notification, no injected reply.
 pub fn land(id: Uuid, effect: Effect, sinks: &AutopilotSinks) {
+    if sinks.agents
+            .lock()
+            .agent(id)
+            .is_some_and(|agent| agent.autopilot_off)
+    {
+        return;
+    }
     let Some(effect) = AutopilotEffect::from_effect(effect)
     else {
         return;
     };
     match &effect {
-        AutopilotEffect::Mark | AutopilotEffect::Ask { .. } => {
-            sinks.agents.lock().set_state(id, AgentState::Input);
-            if let Some(awaiting_input) = &sinks.awaiting_input {
-                awaiting_input.lock().push((id, None));
-            }
+        AutopilotEffect::Mark(classification) => wait_on_user(id, *classification, sinks),
+        AutopilotEffect::Ask { classification, .. } => {
+            wait_on_user(id, Some(*classification), sinks);
         }
         AutopilotEffect::InjectText(_) => {}
     }
     sinks.queue.lock().push((id, effect));
+}
+
+/// Puts `id` in Input with the reason Autopilot stopped it, on its cell and
+/// in the notification: without one, "Awaiting input" on a reply that asks
+/// nothing could not be told from a real request, or traced to Autopilot
+/// at all (#344).
+fn wait_on_user(id: Uuid, classification: Option<Classification>, sinks: &AutopilotSinks) {
+    let reason = awaiting_reason(classification);
+    {
+        let mut agents = sinks.agents.lock();
+        agents.set_state(id, AgentState::Input);
+        agents.set_awaiting_reason(id, Some(reason.clone()));
+    }
+    if let Some(awaiting_input) = &sinks.awaiting_input {
+        awaiting_input.lock().push((id, Some(reason)));
+    }
+}
+
+/// What the cell says about a wait Autopilot started.
+fn awaiting_reason(classification: Option<Classification>) -> String {
+    let key = match classification {
+        Some(Classification::Binary) => "autopilot.reason.binary",
+        Some(Classification::Open) => "autopilot.reason.open",
+        // A completed reply never lands here; `dispatch` returns nothing
+        // for it. Should one arrive, it is still Autopilot's call.
+        Some(Classification::Completed) | None => "autopilot.reason.unchecked",
+    };
+    knot_core::l10n::t(key).to_string()
 }
 
 /// The last assistant message to classify, per
@@ -273,10 +320,52 @@ mod tests {
     #[test]
     fn a_mark_waits_on_the_user_and_notifies() {
         let (sinks, id) = sinks();
-        land(id, Effect::Mark, &sinks);
+        land(id, Effect::Mark(Some(Classification::Open)), &sinks);
         assert_eq!(state(&sinks, id), AgentState::Input);
         assert_eq!(awaiting(&sinks), 1);
-        assert_eq!(*sinks.queue.lock(), vec![(id, AutopilotEffect::Mark)]);
+        assert_eq!(*sinks.queue.lock(),
+                   vec![(id, AutopilotEffect::Mark(Some(Classification::Open)))]);
+    }
+
+    fn reason(sinks: &AutopilotSinks, id: Uuid) -> Option<String> {
+        sinks.agents
+             .lock()
+             .agent(id)
+             .and_then(|agent| agent.awaiting_reason.clone())
+    }
+
+    /// #344: the cell and the notification both say Autopilot stopped the
+    /// agent, and what it read in the reply.
+    #[test]
+    fn a_wait_autopilot_starts_says_why_on_the_cell_and_in_the_notification() {
+        for (effect, key) in [(Effect::Mark(Some(Classification::Open)), "autopilot.reason.open"),
+                              (Effect::Mark(Some(Classification::Binary)),
+                               "autopilot.reason.binary"),
+                              (Effect::Mark(None), "autopilot.reason.unchecked"),
+                              (Effect::Ask { last_message:   "Shall I?".into(),
+                                             classification: Classification::Binary, },
+                               "autopilot.reason.binary")]
+        {
+            let (sinks, id) = sinks();
+            land(id, effect, &sinks);
+
+            let expected = knot_core::l10n::t(key).to_string();
+            assert_ne!(expected, key, "{key} resolves");
+            assert_eq!(reason(&sinks, id).as_deref(), Some(expected.as_str()));
+            let notified = sinks.awaiting_input.as_ref().unwrap().lock()[0].1.clone();
+            assert_eq!(notified.as_deref(), Some(expected.as_str()));
+        }
+    }
+
+    /// The reason belongs to the wait: once the agent moves on, it goes.
+    #[test]
+    fn the_reason_goes_when_the_agent_leaves_input() {
+        let (sinks, id) = sinks();
+        land(id, Effect::Mark(Some(Classification::Open)), &sinks);
+
+        sinks.agents.lock().set_state(id, AgentState::Running);
+
+        assert_eq!(reason(&sinks, id), None);
     }
 
     #[test]
@@ -339,5 +428,41 @@ mod tests {
     fn autopilot_needs_a_runtime_to_run_on() {
         let (sinks, id) = sinks();
         assert!(!spawn_autopilot(id, "Done.".into(), &enabled(), sinks));
+    }
+
+    /// #323: an agent with Autopilot turned off is never classified. Run
+    /// inside a runtime, where every other gate passes - an enabled, keyed
+    /// request with something to read - so only this one can refuse it, and
+    /// refusing means nothing is spawned or sent.
+    #[tokio::test]
+    async fn an_agent_with_autopilot_turned_off_is_never_classified() {
+        let (sinks, id) = sinks();
+        sinks.agents.lock().set_autopilot_off(id, true);
+
+        assert!(!spawn_autopilot(id, "Should I proceed?".into(), &enabled(), sinks.clone()));
+        assert!(sinks.queue.lock().is_empty());
+    }
+
+    /// #323: Autopilot turned off for an agent while its classification is
+    /// in flight. `land` is what runs when the result comes back, so turning
+    /// it off and then landing is that race, decided the late way: whatever
+    /// the result, nothing reaches the agent.
+    #[test]
+    fn a_result_landing_after_autopilot_is_turned_off_is_dropped() {
+        for effect in [Effect::Mark(Some(Classification::Open)),
+                       Effect::Ask { last_message:   "Shall I?".into(),
+                                     classification: Classification::Binary, },
+                       Effect::InjectText("yes, continue".into())]
+        {
+            let (sinks, id) = sinks();
+            let before = state(&sinks, id);
+            sinks.agents.lock().set_autopilot_off(id, true);
+
+            land(id, effect.clone(), &sinks);
+
+            assert_eq!(state(&sinks, id), before, "{effect:?} left the state alone");
+            assert_eq!(awaiting(&sinks), 0, "{effect:?} raised no notification");
+            assert!(sinks.queue.lock().is_empty(), "{effect:?} queued nothing");
+        }
     }
 }

@@ -83,6 +83,10 @@ fn ai_provider_label_names_every_provider() {
                "Anthropic");
     assert_eq!(SettingsWindow::ai_provider_label(AiProvider::Google),
                "Google");
+    assert_eq!(SettingsWindow::ai_provider_label(AiProvider::OpenCode),
+               "OpenCode Zen");
+    assert_eq!(SettingsWindow::ai_provider_label(AiProvider::OpenRouter),
+               "OpenRouter");
 }
 
 /// Every provider names a model, via the shared `knot-autopilot` mapping

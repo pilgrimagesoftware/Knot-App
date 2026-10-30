@@ -13,9 +13,9 @@ use gpui_kit::{
 use uuid::Uuid;
 
 use crate::app_state::state_color;
-use crate::app_state::state_label;
 use crate::app_support::single_line;
 use crate::consts;
+use crate::status_palette::StatusPalette;
 
 pub(crate) const CARD_WIDTH: f32 = 280.;
 /// Every agent card is this tall, whatever it has to show. Two of a card's
@@ -30,18 +30,24 @@ pub(crate) const GRID_SPACING: f32 = 16.;
 /// borrow-lifetime tie to the caller's lock.
 #[derive(Debug, Clone)]
 pub(crate) struct DashboardAgent {
-    pub id:           Uuid,
-    pub avatar:       String,
-    pub name:         String,
-    pub folder_name:  String,
-    pub state:        knot_agents::AgentState,
-    pub is_shell:     bool,
-    pub header_title: String,
-    pub git_stats:    Option<knot_git::DiffStats>,
+    pub id:            Uuid,
+    pub avatar:        String,
+    pub name:          String,
+    pub folder_name:   String,
+    pub state:         knot_agents::AgentState,
+    pub is_shell:      bool,
+    pub header_title:  String,
+    /// Why the agent is waiting on the user, shown under its status while
+    /// it is (#344); see `knot_agents::Agent::input_reason`.
+    pub input_reason:  Option<String>,
+    /// The usage limit that stopped it, named in place of "Error" (#318);
+    /// see `knot_agents::Agent::active_session_limit`.
+    pub session_limit: Option<knot_agents::SessionLimit>,
+    pub git_stats:     Option<knot_git::DiffStats>,
     /// Whether the agent has a session, as the sidebar row means it: a
     /// `passive` agent that never started and a deactivated one are both
     /// not running, and the card's working indicator says so.
-    pub is_running:   bool,
+    pub is_running:    bool,
 }
 
 /// One workspace's section as needed by a dashboard grid.
@@ -127,7 +133,7 @@ pub(crate) fn sort_picker(current: DashboardSort,
 }
 
 /// One agent card: avatar, name, status, folder name, and git diff stats.
-fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
+fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static StatusPalette,
               on_tap: impl Fn(Uuid, &mut gpui_kit::Window, &mut gpui_kit::App) + 'static)
               -> impl IntoElement {
     let id = agent.id;
@@ -135,6 +141,14 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
     let name = agent.name.clone();
     let folder_name = agent.folder_name.clone();
     let header_title = agent.header_title.clone();
+    let status = crate::app_state::status_label(agent.state, agent.session_limit.as_ref(), false);
+    // The line under the title: why the agent waits, or when its limit
+    // lifts.
+    let input_reason = agent.input_reason.clone().or_else(|| {
+                                                     agent.session_limit
+                                     .as_ref()
+                                     .and_then(crate::app_state::session_limit_resets)
+                                                 });
     let is_shell = agent.is_shell;
     let state = agent.state;
     let is_running = agent.is_running;
@@ -164,7 +178,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                                           .gap_0p5()
                                           .child(div().font_semibold().child(name))
                                           .child(div().text_sm()
-                                                      .text_color(rgb(consts::COLOR_CARD_MUTED))
+                                                      .text_color(rgb(palette.card_muted))
                                                       .overflow_hidden()
                                                       .whitespace_nowrap()
                                                       .text_ellipsis()
@@ -178,12 +192,12 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                            // goes blank when it is not running at all,
                            // which no colour of label says.
                            .child(div().flex_shrink_0()
-                                       .child(crate::working_indicator::render(state, is_running)))
+                                       .child(crate::working_indicator::render(state, is_running, palette)))
                            .children((!is_shell).then(|| {
                                                     div().text_sm()
                                                          .flex_shrink_0()
-                                                         .text_color(state_color(state))
-                                                         .child(state_label(state))
+                                                         .text_color(state_color(state, palette))
+                                                         .child(status)
                                                 })))
             .children((!header_title.is_empty()).then(|| {
                                                     div().text_sm()
@@ -192,9 +206,22 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                                                          .text_ellipsis()
                                                          .child(single_line(&header_title))
                                                 }))
+            // Why an agent showing "Awaiting input" is waiting (#344): a
+            // permission request, or Autopilot's reading of its reply. One
+            // line, in the status's colour, under the title it explains.
+            .children(input_reason.map(|reason| {
+                                      div().id(gpui_kit::ElementId::from(format!("dashboard-agent-reason-{id}")))
+                                           .debug_selector(|| "dashboard-agent-input-reason".into())
+                                           .text_sm()
+                                           .text_color(state_color(state, palette))
+                                           .overflow_hidden()
+                                           .whitespace_nowrap()
+                                           .text_ellipsis()
+                                           .child(single_line(&reason))
+                                  }))
             .children(git_stats.filter(|stats| stats.files_changed > 0)
                                .map(|stats| {
-                                   crate::app_state::diff_stats_row(&stats, muted).text_xs()
+                                   crate::app_state::diff_stats_row(&stats, muted, palette).text_xs()
                                }))
             .on_click(move |_: &ClickEvent, window, cx| on_tap(id, window, cx))
 }
@@ -235,6 +262,7 @@ pub(crate) struct WorkspaceSectionCallbacks<Tap, Nav, Add> {
 
 pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is_global: bool,
                                                muted: gpui_kit::Hsla,
+                                               palette: &'static StatusPalette,
                                                callbacks: WorkspaceSectionCallbacks<Tap,
                                                                          Nav,
                                                                          Add>)
@@ -277,7 +305,7 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
             .child(if workspace.agents.is_empty() {
                        div().pl_3()
                             .text_sm()
-                            .text_color(rgb(consts::COLOR_CARD_MUTED))
+                            .text_color(rgb(palette.card_muted))
                             .child(knot_core::l10n::t("dashboard.no_agents"))
                             .into_any_element()
                    }
@@ -286,7 +314,7 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
                                .flex_wrap()
                                .gap(px(GRID_SPACING))
                                .children(workspace.agents.iter().map(|agent| {
-                                                                    agent_card(agent, muted, {
+                                                                    agent_card(agent, muted, palette, {
                                                                         let on_agent_tap =
                                                                             on_agent_tap.clone();
                                                                         move |id, window, cx| {

@@ -24,6 +24,8 @@ fn the_stored_strings_are_the_ones_already_in_users_settings_files() {
     assert_eq!(AiProvider::OpenAi.as_str(), "openai");
     assert_eq!(AiProvider::Anthropic.as_str(), "anthropic");
     assert_eq!(AiProvider::Google.as_str(), "google");
+    assert_eq!(AiProvider::OpenCode.as_str(), "opencode");
+    assert_eq!(AiProvider::OpenRouter.as_str(), "openrouter");
     assert_eq!(AutopilotAction::Mark.as_str(), "mark");
     assert_eq!(AutopilotAction::Ask.as_str(), "ask");
     assert_eq!(AutopilotAction::Continue.as_str(), "continue");

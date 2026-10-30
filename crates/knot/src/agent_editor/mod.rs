@@ -3,9 +3,11 @@
 //! `fields` holds the form's values and the rules that turn them into an
 //! agent's data, `window` owns the dialog and its state, `submit` is what
 //! pressing the button does, `pickers` are the two native choosers,
-//! `startup_prompt` is the Startup Prompt control, and `render` draws it.
+//! `startup_prompt` is the Startup Prompt control, `fork` is what Fork Agent
+//! pre-fills, and `render` draws it.
 
 mod fields;
+mod fork;
 mod pickers;
 mod render;
 mod startup_prompt;

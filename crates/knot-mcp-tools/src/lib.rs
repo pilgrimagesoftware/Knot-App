@@ -181,16 +181,22 @@ impl McpToolCatalog {
         }
 
         let agents = Arc::clone(&self.agents);
+        let reasons = Arc::clone(&self.agents);
         let awaiting_input = self.awaiting_input.lock().clone();
         let sink = EventSink { on_status: Some(Box::new(move |event| {
                                                    agents.lock().set_state(id, event.status);
                                                })),
-                               on_awaiting_input: awaiting_input.map(|queue| {
-                                                                    Box::new(move |message| {
-                    let mut queue = queue.lock();
-                    queue.push((id, message));
-                }) as Box<dyn FnMut(Option<String>) + Send>
-                                                                }),
+                               // The hook's own message - "Claude needs your
+                               // permission to use Bash" - is why the agent
+                               // waits, on its cell as in the notification
+                               // (#344).
+                               on_awaiting_input:
+                                   Some(Box::new(move |message: Option<String>| {
+                                            reasons.lock().set_awaiting_reason(id, message.clone());
+                                            if let Some(queue) = &awaiting_input {
+                                                queue.lock().push((id, message));
+                                            }
+                                        })),
                                ..Default::default() };
         // Hook-reported status is exclusively a Terminal-mode path - a
         // Panel-mode agent's status is driven by ACP session events

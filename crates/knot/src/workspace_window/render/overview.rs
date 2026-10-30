@@ -74,6 +74,8 @@ impl WorkspaceWindow {
                                 state: agent.state,
                                 is_shell: agent.is_shell(),
                                 header_title: agent.header_title().to_string(),
+                                input_reason: agent.input_reason().map(str::to_owned),
+                                session_limit: agent.active_session_limit().cloned(),
                                 git_stats,
                                 is_running: agent.activated,
                             }
@@ -161,6 +163,7 @@ impl WorkspaceWindow {
                         dashboard_workspace,
                         false,
                         cx.theme().muted_foreground,
+                        crate::status_palette::status_palette(cx),
                         dashboard::WorkspaceSectionCallbacks { on_agent_tap,
                                                                on_workspace_nav,
                                                                on_add_agent },

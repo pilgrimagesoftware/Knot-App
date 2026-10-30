@@ -31,6 +31,7 @@ use gpui_kit::px;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::sidebar_compact::{CompactAgentRow, compact_agent_row_body};
+use super::status_dot::DotDetail;
 use super::status_dot::status_dot;
 use crate::app_support::single_line;
 use crate::consts;
@@ -87,8 +88,12 @@ impl WorkspaceWindow {
                                 folder,
                                 state,
                                 idle_since,
+                                input_reason,
+                                session_limit,
                                 is_shell,
                                 is_companion,
+                                is_locked,
+                                autopilot,
                                 header_title,
                                 persona_name,
                                 agent_type,
@@ -215,6 +220,8 @@ impl WorkspaceWindow {
                                                                          avatar,
                                                                          state,
                                                                          idle_since,
+                                                                         input_reason: input_reason.clone(),
+                                                                         session_limit: session_limit.clone(),
                                                                          is_shell,
                                                                          hint: hint.clone() },
                                                        cx).into_any_element()
@@ -266,6 +273,33 @@ impl WorkspaceWindow {
                                         detail_line(
                                             gpui_kit::assets::IconName::CornerDownRight,
                                             knot_core::l10n::t("agent.companion"),
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // A locked agent is shut out of agent
+                                    // messaging (#310). Said on the row,
+                                    // because a message to it fails and the
+                                    // user should not have to open a menu to
+                                    // find out why.
+                                    .children(is_locked.then(|| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::Lock,
+                                            knot_core::l10n::t("agent.locked"),
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // Autopilot reads this agent's replies
+                                    // and may answer or flag them (#323).
+                                    .children(autopilot.then(|| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::Fan,
+                                            knot_core::l10n::t("agent.autopilot"),
                                             DetailLineSize::Small,
                                             title_font_name.clone(),
                                             title_font_size,
@@ -328,7 +362,12 @@ impl WorkspaceWindow {
                             // stopped agent's row is dimmed as a whole
                             // (see `agent-list-ui`).
                             .children((!is_shell).then(|| {
-                                status_dot(id, state, idle_since).mt_1()
+                                status_dot(id,
+                                           state,
+                                           DotDetail { idle_since,
+                                                       input_reason: input_reason.clone(),
+                                                       session_limit: session_limit.clone() },
+                                           crate::status_palette::status_palette(cx)).mt_1()
                             }))
                             .into_any_element()
                             })

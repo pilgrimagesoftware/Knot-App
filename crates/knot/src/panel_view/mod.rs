@@ -13,6 +13,8 @@
 //! Contract: `openspec/specs/acp-panel-ui/spec.md`.
 
 mod callbacks;
+mod find;
+mod find_text;
 mod markdown_rows;
 mod message;
 mod panel_list;
@@ -28,6 +30,10 @@ mod tool_call;
 // `rows`, builds a `PanelStyle` and `PanelCallbacks` per frame, and calls
 // `render_panel` with them. Everything else here is internal to the module.
 pub(crate) use callbacks::PanelCallbacks;
+pub(crate) use find::{
+    FindColors, FindHighlight, FindMatch, FindMode, FindQuery, PlainTexts, conversation_matches,
+    searched_text as find_searched_text,
+};
 pub(crate) use panel_list::PanelList;
 // The panel's own list is built by `PanelList::new`; only the scroll tests'
 // fixed-row probe needs the overdraw on its own.
@@ -44,6 +50,8 @@ pub(crate) use style::risk_color;
 
 #[cfg(test)]
 mod message_tests;
+#[cfg(test)]
+mod response_actions_tests;
 #[cfg(test)]
 mod shimmer_tests;
 #[cfg(test)]

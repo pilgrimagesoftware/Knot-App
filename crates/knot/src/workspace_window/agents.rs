@@ -58,6 +58,12 @@ impl WorkspaceWindow {
         self.store.lock().set_activated(id, true);
     }
 
+    /// The agent this window has selected, for tests outside the module.
+    #[cfg(test)]
+    pub(crate) fn selected_agent_id(&self) -> Option<Uuid> {
+        self.selected_agent
+    }
+
     /// Brings `id` to the front of this window: selects it, leaves the
     /// dashboard for the terminal view, and starts its session.
     ///
@@ -169,7 +175,7 @@ impl WorkspaceWindow {
     /// Starts whichever session `id`'s type runs. Both calls are needed:
     /// each is a no-op for the kind of agent the other one serves, and both
     /// are no-ops until `activated` is set.
-    fn start_sessions(&mut self, id: Uuid, cx: &mut Context<Self>) {
+    pub(in crate::workspace_window) fn start_sessions(&mut self, id: Uuid, cx: &mut Context<Self>) {
         self.ensure_session(id, cx);
         self.ensure_panel_session(id, cx);
     }
@@ -257,7 +263,14 @@ impl WorkspaceWindow {
     /// The panel state goes either way. A kept conversation is loaded again
     /// with `session/load`, which replays its history into a fresh state;
     /// keeping the old one would show every message twice.
-    pub(super) fn restart_agents(&mut self, ids: &[Uuid], keep_conversation: bool, cx: &App) {
+    ///
+    /// Each restarted agent that is activated is started again at once,
+    /// whether or not it is on screen - a restart is a stop and a start, and
+    /// nothing else would start one the user is not looking at. An agent
+    /// that is not activated is only reset: Restart All restarts what is
+    /// running, and does not start every agent the user had stopped.
+    pub(super) fn restart_agents(&mut self, ids: &[Uuid], keep_conversation: bool,
+                                 cx: &mut Context<Self>) {
         {
             // One lock for the whole batch rather than one per agent: the
             // restarts are independent, and reacquiring between them lets
@@ -283,13 +296,30 @@ impl WorkspaceWindow {
         // resumed by a relaunch, and a kept conversation's resume-session id
         // has just changed.
         self.persist_agents(cx);
+        for id in ids {
+            self.start_sessions(*id, cx);
+        }
+    }
+
+    /// Restarts `id` from its own row - Restart Agent or Restart with New
+    /// Conversation - and starts it, activating it first if it was stopped.
+    ///
+    /// The user chose this agent, so an inactive one is started rather than
+    /// only reset, which left it as stopped as before and looked like the
+    /// menu item did nothing (#311). The same rule as selecting a row:
+    /// `agent-lifecycle`, "Deactivating an agent".
+    pub(in crate::workspace_window) fn restart_agent(&mut self, id: Uuid,
+                                                     keep_conversation: bool,
+                                                     cx: &mut Context<Self>) {
+        self.store.lock().set_activated(id, true);
+        self.restart_agents(&[id], keep_conversation, cx);
     }
 
     /// Restarts every agent in the workspace, per `agent-list-ui`'s "Restart
     /// All" requirement - the row menu's Restart Agent applied once per
     /// agent. `keep_conversation` is what the confirmation said would
     /// happen, decided when it opened.
-    pub(super) fn restart_all_agents(&mut self, keep_conversation: bool, cx: &App) {
+    pub(super) fn restart_all_agents(&mut self, keep_conversation: bool, cx: &mut Context<Self>) {
         let ids = self.workspace_agent_ids();
         self.restart_agents(&ids, keep_conversation, cx);
     }
@@ -328,9 +358,13 @@ impl WorkspaceWindow {
     /// terminal.
     ///
     /// An agent with neither is skipped quietly - one unreachable agent is
-    /// not a reason to withhold the message from the rest.
+    /// not a reason to withhold the message from the rest. So is a locked
+    /// one, which takes no messages (#310).
     pub(super) fn broadcast_to_agents(&mut self, text: &str) {
-        for id in self.workspace_agent_ids() {
+        // The ids first: `workspace_agent_ids` takes the store lock itself.
+        let ids = self.workspace_agent_ids();
+        let recipients = broadcast_recipients(&self.store.lock(), ids);
+        for id in recipients {
             self.deliver_prompt(id, text);
         }
     }
@@ -382,6 +416,14 @@ fn claim_activations(queue: &crate::app_support::ActivationQueue, mine: &[Uuid])
     claimed
 }
 
+/// The agents among `ids` a broadcast reaches: every one but those locked
+/// against messaging (#310).
+fn broadcast_recipients(store: &knot_agents::AgentStore, ids: Vec<Uuid>) -> Vec<Uuid> {
+    ids.into_iter()
+       .filter(|id| !store.agent(*id).is_some_and(|agent| agent.locked))
+       .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -418,5 +460,17 @@ mod tests {
 
         assert_eq!(claim_activations(&queue, &[mine]), vec![mine, mine]);
         assert!(queue.lock().is_empty());
+    }
+
+    /// #310: the user's Broadcast to All Agents passes over a locked agent.
+    #[test]
+    fn a_broadcast_passes_over_a_locked_agent() {
+        let mut store = knot_agents::AgentStore::new();
+        let open = store.create("/tmp/open", knot_agents::CreateOptions::default());
+        let locked = store.create("/tmp/locked", knot_agents::CreateOptions::default());
+        store.set_locked(locked, true);
+
+        assert_eq!(super::broadcast_recipients(&store, vec![open, locked]),
+                   vec![open]);
     }
 }

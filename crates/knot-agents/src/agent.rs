@@ -59,6 +59,13 @@ pub struct Agent {
     /// When this agent's session starts on its own. Durable; distinct from
     /// [`Agent::activated`], which is runtime-only.
     pub activation_mode: ActivationMode,
+    /// Shut out of agent messaging (#310): no agent can message it, so no
+    /// message starts it, and it can message no agent. Durable. The routing
+    /// rules in `knot-messaging` enforce it.
+    pub locked:          bool,
+    /// Autopilot turned off for this agent alone (#323): no reply of its is
+    /// classified, whatever the global setting. Durable.
+    pub autopilot_off:   bool,
     /// Registry metadata: what this agent is for, what it can be asked to
     /// do, and how expensive it is to ask. Durable, and deliberately
     /// restart-free to edit - none of it changes how the session runs, so
@@ -91,6 +98,18 @@ pub struct Agent {
     /// message, and a restart clears it. Set by
     /// [`crate::AgentStore::set_state`], never by hand.
     pub idle_since:        Option<SystemTime>,
+    /// Why the agent is waiting on the user while its state is
+    /// [`AgentState::Input`] - a permission request's title, or what
+    /// Autopilot read in its last reply - shown beside "Awaiting input"
+    /// (#344). Set with [`crate::AgentStore::set_awaiting_reason`] and
+    /// cleared by [`crate::AgentStore::set_state`] as the agent leaves
+    /// Input, so it never outlives the wait it explains.
+    pub awaiting_reason:   Option<String>,
+    /// The usage limit that stopped this agent's session, while its state
+    /// is [`AgentState::Error`] because of it (#318). Set with
+    /// [`crate::AgentStore::set_session_limit`] and cleared by
+    /// [`crate::AgentStore::set_state`] as the agent leaves Error.
+    pub session_limit:     Option<crate::SessionLimit>,
     pub status_text:       String,
     pub is_registered:     bool,
     pub is_pending_start:  bool,
@@ -120,6 +139,41 @@ pub struct Agent {
 }
 
 impl Agent {
+    /// Whether Autopilot reads this agent's replies: on in Settings, not
+    /// turned off for this agent (#323), and a coding agent rather than a
+    /// shell. What the indicator on its row and the title bar shows.
+    #[must_use]
+    pub fn autopilot_applies(&self, enabled_in_settings: bool) -> bool {
+        enabled_in_settings && !self.autopilot_off && !self.is_shell()
+    }
+
+    /// The usage limit that stopped this agent, while it is stopped by one:
+    /// `None` outside [`AgentState::Error`]. What every surface showing
+    /// "Session limit" reads (#318).
+    #[must_use]
+    pub fn active_session_limit(&self) -> Option<&crate::SessionLimit> {
+        if self.state == AgentState::Error {
+            self.session_limit.as_ref()
+        }
+        else {
+            None
+        }
+    }
+
+    /// Why this agent is waiting on the user, while it is: `None` outside
+    /// [`AgentState::Input`] and for a wait nothing explained. What every
+    /// surface showing "Awaiting input" reads, so none shows a reason the
+    /// agent has moved past.
+    #[must_use]
+    pub fn input_reason(&self) -> Option<&str> {
+        if self.state == AgentState::Input {
+            self.awaiting_reason.as_deref()
+        }
+        else {
+            None
+        }
+    }
+
     /// Whether this is a plain shell agent (no AI).
     /// The ACP session a Panel-mode connection should `session/load`, or
     /// `None` to start a new one.
@@ -205,6 +259,8 @@ mod tests {
                 persona_id:         None,
                 view_mode:          ViewMode::Terminal,
                 activation_mode:    ActivationMode::Passive,
+                locked:             false,
+                autopilot_off:      false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),
@@ -213,6 +269,8 @@ mod tests {
                 activated:          false,
                 state:              AgentState::Idle,
                 idle_since:         None,
+                awaiting_reason:    None,
+                session_limit:      None,
                 status_text:        String::new(),
                 is_registered:      false,
                 is_pending_start:   false,

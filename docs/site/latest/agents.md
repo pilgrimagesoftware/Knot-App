@@ -79,13 +79,24 @@ type, persona, status, and folder - each with a leading icon identifying what th
 status line shows the agent's own status text when it has one, otherwise its terminal title. A row
 that is not running is dimmed, whether it is passive and never started or was deactivated.
 
+Turn Off Autopilot / Turn On Autopilot sit beside Lock Agent while Autopilot is on in Settings; see
+[Autopilot]({{ '/latest/autopilot/' | relative_url }}).
+
+Lock Agent shuts an agent out of agent messaging: no agent can message it, so a message cannot
+start it, and it cannot message other agents. Broadcast to All Agents skips it too. The row shows a
+**Locked** line while it lasts, and the lock is kept across a relaunch. Unlock Agent undoes it.
+Typing into the agent yourself is unaffected, and so is **Send prompt to**: a locked agent is still
+listed there, marked with a lock and "(locked)", so you know before you send. Both items are also
+in the menu bar's Agents menu.
+
 Click a row to select its agent, drag a row up or down to reorder agents - with companions moving
 with their owner and the Dashboard and Pull Requests rows pinned at the top - or right-click a row
 for its context menu.
 
 The context menu offers companion creation (New Companion…, New Shell Companion), editing (Edit
 Agent…, Fork Agent, Duplicate Agent), placement (Move to Workspace, Save to Bench, Bench Agent…),
-opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Restart Agent,
+opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Lock Agent or
+Unlock Agent, Restart Agent,
 Restart with New Conversation, Remove Agent), showing the items that apply. A companion shows only
 Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
@@ -117,11 +128,21 @@ sort the dashboard.
 | Idle | Green | Quiet and waiting. |
 | Awaiting input | Red | Needs you - for example a permission prompt is open. |
 | Error | Red | The session ended with an error. |
+| Session limit | Red | The agent's provider refused the turn: its session or usage limit is reached. The header says when it resets, if the provider said. |
 
 Terminal output moves an agent to Working and back to Idle after a short quiet period; typing keeps
 it Working. A permission request moves it to Awaiting input immediately; Return moves it to Working
-and Escape to Idle. A shell agent stays Idle whatever its output. A session that exits non-zero, or
-a panel connection that ends with an error, moves the agent to Error. The dashboard's cards add a
+and Escape to Idle. A permission answered any other way, such as cancelled by Stop or by the session
+ending, takes the agent out of Awaiting input as soon as it is answered. A shell agent stays Idle
+whatever its output.
+
+An agent in Awaiting input says why when it knows: hover its state dot, or read the line under its
+dashboard card. A pending permission request shows its title (`permission requested for Bash`); a
+wait Autopilot started says what it read in the agent's last reply (`Autopilot: the last reply asks
+you a question`). The reason goes as soon as the agent leaves Awaiting input. A session that exits non-zero, or
+a panel connection that ends with an error, moves the agent to Error. A panel agent whose turn is
+refused with a session or usage limit ("You've hit your session limit · resets 5:20pm") shows Session
+limit instead, in red, until you send it another prompt. The dashboard's cards add a
 glanceable working/thinking indicator that reflects the same status and animates on each change; the
 sidebar row does not draw it.
 
@@ -140,6 +161,15 @@ and delivered when the turn ends; a stop control interrupts the active turn. You
 agent between the panel and the raw terminal without interrupting its turn or terminal process, and
 each agent remembers the mode you last chose.
 
+Resting the pointer on a link in a response, or in a Markdown pane, shows the address it goes to
+beside the pointer, so you can see where a link leads before you click it.
+
+Point at a message to act on it. A prompt you sent shows a copy button; an agent's response shows
+its controls - Copy, Reply (quotes it into the composer), Scroll to your message, and Scroll to
+top. The latest response keeps its controls in view, so you can copy or reply to the answer you
+just got without hunting for them; earlier ones show theirs only while you point at them, and
+showing them moves nothing.
+
 Scrolled back to read earlier messages, you stay where you are: replies streaming in and long
 replies finishing their layout do not move the conversation. Only a prompt you send yourself
 scrolls to the bottom to show its answer. One Knot sends for you - an inbox check or a startup
@@ -148,6 +178,17 @@ prompt - leaves your place alone unless you were already at the bottom.
 The composer grows with your draft and does not scroll past its last line, so a draft cannot be
 scrolled out of view. The control bar's model and effort pickers open at a fixed width, so long
 model names fit whichever one is selected.
+
+### Finding text in a conversation
+
+Press ⌘F in an agent's panel, even while typing in the composer, to open a find bar above the
+conversation. What you type is found in your prompts and the agent's replies, ignoring case, and
+every match is highlighted; the bar shows which match you are on, like `2 of 5`. Return and
+Shift-Return, or the arrow buttons, step to the next and previous match and scroll the
+conversation to it. The `.*` button switches to regular expressions (for example `v\d+\.\d+`);
+add `(?-i)` to a pattern to match case. Replies are searched as they read, so a link's address and
+Markdown formatting don't match. Tool calls, shell output and notices are not searched.
+Escape closes the bar and puts you back in the composer.
 
 ### Inserting a saved prompt
 

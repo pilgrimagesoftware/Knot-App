@@ -5,6 +5,7 @@
 //! off it for one concern - `sessions` for the PTYs, `panel` for the ACP side,
 //! `render` for the element tree, `repaint` for the poll that drives it.
 
+mod activation;
 mod agent_info;
 mod agent_row;
 mod agents;
@@ -56,6 +57,8 @@ mod sidebar_drag;
 mod sidebar_layout;
 #[cfg(test)]
 mod status_dot_tests;
+#[cfg(test)]
+mod status_repaint_tests;
 pub(crate) mod terminal_font;
 mod terminal_pane;
 mod title;

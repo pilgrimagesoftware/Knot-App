@@ -144,12 +144,10 @@ fn the_agents_menu_carries_the_reference_shortcuts(cx: &mut TestAppContext) {
           assert_bound(cx, "cmd-shift-r", &AgentMenuRestartWithNewConversation);
           assert_bound(cx, "cmd-w", &CloseWindow);
       });
-    // Still gpui's, not ours: cmd-f is the platform's find key, and is left
-    // for whatever find this port grows. Asserted on macOS only because
-    // that is where gpui spells Search's key `cmd-f`; see
-    // `the_edit_menu_leaves_the_text_keys_with_gpui`.
-    #[cfg(target_os = "macos")]
-    cx.update(|cx| assert_bound(cx, "cmd-f", &input::Search));
+    // Not an Agents item: cmd-f is the platform's find key, and it is the
+    // conversation's find (#251). A text field's own `Search` keeps the key
+    // inside the field and hands it up to the same find.
+    cx.update(|cx| assert_bound(cx, "cmd-f", &crate::app_bootstrap::PanelFind));
     assert!(!agent_menu_key_bindings().iter().any(|binding| {
                                                  binding.action().partial_eq(&AgentMenuRemoveAgent)
                                              }),

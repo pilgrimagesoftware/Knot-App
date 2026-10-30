@@ -35,13 +35,17 @@ use crate::window_registry::WindowRegistry;
 use crate::workspace_window::WorkspaceWindow;
 
 pub(crate) struct CommandCenterWindow {
-    store:          Arc<Mutex<knot_agents::AgentStore>>,
-    messages:       Arc<Mutex<knot_messaging::MessageStore>>,
-    dashboard_sort: dashboard::DashboardSort,
+    store:                Arc<Mutex<knot_agents::AgentStore>>,
+    messages:             Arc<Mutex<knot_messaging::MessageStore>>,
+    dashboard_sort:       dashboard::DashboardSort,
     /// Diff stats per agent card. This window shows every workspace's
     /// agents, so it is the worst place to run `git` where the card is
     /// drawn - which is what it did.
-    diff_stats:     DiffStatsCache,
+    diff_stats:           DiffStatsCache,
+    /// The `AgentStore::revision` this window last drew. A card's status
+    /// text and state are written where no notify reaches - the MCP server's
+    /// thread, the hooks - so the store poll compares against this (#17).
+    drawn_store_revision: u64,
 }
 
 impl CommandCenterWindow {
@@ -60,12 +64,15 @@ impl CommandCenterWindow {
                   // re-resolves the system palette and repaints.
                   observe_system_appearance(window);
                   window.set_window_title(&knot_core::l10n::t("dashboard.command_center"));
-                  let view =
-                      cx.new(|_| CommandCenterWindow { store,
-                                                       messages,
-                                                       dashboard_sort:
-                                                           dashboard::DashboardSort::default(),
-                                                       diff_stats: DiffStatsCache::default() });
+                  let view = cx.new(|cx| {
+                                   spawn_store_poll(cx);
+                                   CommandCenterWindow { store,
+                                                         messages,
+                                                         dashboard_sort:
+                                                             dashboard::DashboardSort::default(),
+                                                         diff_stats: DiffStatsCache::default(),
+                                                         drawn_store_revision: 0 }
+                               });
                   cx.new(|cx| Root::new(view, window, cx))
               })
             {
@@ -77,6 +84,13 @@ impl CommandCenterWindow {
             }
                                                  },
         );
+    }
+
+    /// Whether the store has changed since this window last drew; see
+    /// `drawn_store_revision`.
+    fn store_revised(&mut self) -> bool {
+        let current = self.store.lock().revision();
+        crate::store_revision::revised(&mut self.drawn_store_revision, current)
     }
 
     /// Asks for a fresh diff stat for every agent with a card, for the ones
@@ -130,21 +144,10 @@ impl CommandCenterWindow {
                 return;
             };
             entity.update(app, |view, cx| {
-                      let Some(workspace_id) =
-                          view.store
-                              .lock()
-                              .workspaces()
-                              .iter()
-                              .find(|workspace| workspace.agent_ids.contains(&id))
-                              .map(|workspace| workspace.id)
-                      else {
-                          return;
-                      };
-                      WorkspaceWindow::open_with_selection(Arc::clone(&view.store),
-                                                           Arc::clone(&view.messages),
-                                                           workspace_id,
-                                                           Some(id),
-                                                           cx);
+                      WorkspaceWindow::open_agent(Arc::clone(&view.store),
+                                                  Arc::clone(&view.messages),
+                                                  id,
+                                                  cx);
                   });
         }
     }
@@ -247,6 +250,8 @@ impl CommandCenterWindow {
                                                                   header_title:
                                                                       agent.header_title()
                                                                            .to_string(),
+                                                                  input_reason: agent.input_reason().map(str::to_owned),
+                                session_limit: agent.active_session_limit().cloned(),
                                                                   git_stats,
                                                                   is_running: agent.activated }
                                                 })
@@ -283,6 +288,7 @@ impl CommandCenterWindow {
 impl Render for CommandCenterWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let muted = cx.theme().muted_foreground;
+        let palette = crate::status_palette::status_palette(cx);
         self.refresh_diff_stats(cx);
         let diff_stats = self.diff_stats.snapshot();
         let dashboard_workspaces = self.dashboard_workspaces(&diff_stats);
@@ -299,6 +305,7 @@ impl Render for CommandCenterWindow {
                     workspace,
                     true,
                     muted,
+                    palette,
                     dashboard::WorkspaceSectionCallbacks { on_agent_tap:     on_agent_tap.clone(),
                                                            on_workspace_nav:
                                                                on_workspace_nav.clone(),
@@ -356,3 +363,28 @@ impl Render for CommandCenterWindow {
             )
     }
 }
+
+/// Repaints the Command Center when the agent store changes off the UI
+/// thread. Its cards have no other poll: the workspace windows' repaint poll
+/// notifies only themselves. Ends with the window, which drops the view.
+fn spawn_store_poll(cx: &mut Context<CommandCenterWindow>) {
+    cx.spawn(async move |this, cx| {
+          loop {
+              cx.background_executor()
+                .timer(consts::REPAINT_POLL_INTERVAL)
+                .await;
+              let polled = this.update(cx, |view, cx| {
+                                   if view.store_revised() {
+                                       cx.notify();
+                                   }
+                               });
+              if polled.is_err() {
+                  break;
+              }
+          }
+      })
+      .detach();
+}
+
+#[cfg(test)]
+mod tests;

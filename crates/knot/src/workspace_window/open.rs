@@ -39,6 +39,32 @@ impl WorkspaceWindow {
         Self::open_with_selection(store, messages, workspace_id, None, cx);
     }
 
+    /// Opens the window of the workspace that holds agent `id`, with `id`
+    /// selected and shown - or raises that window and shows `id` in it, if
+    /// it is already open. Reports whether `id` belongs to a workspace at
+    /// all: an agent removed since, or an id that was never an agent's,
+    /// opens nothing.
+    ///
+    /// Every route that knows only an agent - a Command Center card, a
+    /// clicked notification (#1) - comes here, so they cannot disagree about
+    /// which window an agent lives in.
+    pub(crate) fn open_agent(store: Arc<Mutex<knot_agents::AgentStore>>,
+                             messages: Arc<Mutex<knot_messaging::MessageStore>>, id: Uuid,
+                             cx: &mut App)
+                             -> bool {
+        let workspace_id = store.lock()
+                                .workspaces()
+                                .iter()
+                                .find(|workspace| workspace.agent_ids.contains(&id))
+                                .map(|workspace| workspace.id);
+        let Some(workspace_id) = workspace_id
+        else {
+            return false;
+        };
+        Self::open_with_selection(store, messages, workspace_id, Some(id), cx);
+        true
+    }
+
     /// Like `open`, but overrides the agent that would otherwise be picked
     /// by `agent_selection_for_workspace` - used when a caller (e.g. a
     /// Command Center card) already knows which agent the user wants to
@@ -137,6 +163,8 @@ impl WorkspaceWindow {
                     store,
                     messages,
                     nudged_messages: BTreeMap::new(),
+                    drawn_store_revision: 0,
+                    start_requested: std::collections::BTreeSet::new(),
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
                     selected_agent,
@@ -168,6 +196,7 @@ impl WorkspaceWindow {
                     panel_prompt_results: Arc::new(Mutex::new(Vec::new())),
                     panel_lists: BTreeMap::new(),
                     panel_list_row_counts: BTreeMap::new(),
+                    panel_finds: BTreeMap::new(),
                     window_handle: window.window_handle(),
                     titled_as: workspace_name.clone(),
                     panel_pending_context: BTreeMap::new(),

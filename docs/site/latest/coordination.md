@@ -56,7 +56,7 @@ Each agent connects on a URL that names it (`…/mcp?agent=<id>`), which Knot pl
 | --- | --- |
 | `create-agent` | Create an agent from explicit fields, or deploy a bench template; the new agent is attributed to the caller. |
 | `close-agent` | Close an agent, allowed only for an agent the caller created. |
-| `create-worktree` | Create a worktree on a new branch and return its path. |
+| `create-worktree` | Create a worktree on a new branch and return its path; `path` puts it where the project says worktrees go. |
 
 ### Status and display
 
@@ -107,6 +107,8 @@ the panel restores it with its answers.
 `send-message` is a direct message to one agent; `broadcast-message` creates one message per eligible recipient in the caller's workspace, excluding the sender, unregistered agents, and shell agents. The sender must be registered or the send is rejected. Messages are held in memory only and do not survive a restart.
 
 Routing is workspace-scoped: a recipient outside the sender's workspace is treated as not found. Shell agents cannot receive messages. A companion agent can only send to and receive from its owner, and broadcast applies the same filter per recipient.
+
+A locked agent is shut out of agent messaging. A direct send to it fails with "Recipient is locked and cannot receive messages", so the message never starts it; broadcast skips it; and `dispatch-task` passes over it when matching by capability, or fails when it is the named assignee. A locked agent's own sends fail with "Locked agents cannot send messages", and its broadcasts reach no one. `list-agents` and `describe-agents` report `locked` for each agent.
 
 A new message is unread. `check-messages` returns the caller's unread messages and, by default, marks them read; the caller can request a non-destructive read that leaves the flags alone. Unread queries report whether anything is unread and the most recent unread message id. Cleanup caps stored read messages at 100, dropping the oldest read messages and never an unread one.
 

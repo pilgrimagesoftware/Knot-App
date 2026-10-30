@@ -115,6 +115,15 @@ pub struct SavedAgent {
     /// `Passive` from `CreateOptions` instead.
     #[serde(default = "default_activation_mode")]
     pub activation_mode: ActivationMode,
+    /// Shut out of agent messaging: it receives no messages, so none starts
+    /// it, and it sends none (#310). The user's choice, kept across a
+    /// relaunch; absent from older records, which load unlocked.
+    #[serde(default)]
+    pub locked:          bool,
+    /// Autopilot turned off for this agent alone, whatever the global
+    /// setting (#323). Absent from older records, which load following it.
+    #[serde(default)]
+    pub autopilot_off:   bool,
     /// Registry metadata: what this agent is for, what it can be asked to
     /// do, and how expensive it is to ask. Absent from records written
     /// before the registry existed, which load undescribed, untagged and
@@ -169,6 +178,8 @@ impl SavedAgent {
                view_mode: ViewMode::default(),
                acp_session_id: None,
                activation_mode: default_activation_mode(),
+               locked: false,
+               autopilot_off: false,
                description: String::new(),
                capabilities: Capabilities::new(),
                cost_tier: CostTier::default(),

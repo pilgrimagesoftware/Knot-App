@@ -17,20 +17,19 @@ pub mod layout;
 pub mod mermaid;
 
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::{
-    AnyElement, App, FontWeight, Hsla, IntoElement, ParentElement, PathBuilder, Styled, canvas,
-    div, point, px,
+    AnyElement, App, FontWeight, Hsla, InteractiveElement, IntoElement, ParentElement, PathBuilder,
+    StatefulInteractiveElement, Styled, canvas, div, point, px,
 };
 
-use crate::plan_view::layout::{CARD_HEIGHT, CARD_WIDTH, Edge, Layout};
+use crate::plan_view::layout::{
+    CARD_HEIGHT, CARD_LINE_HEIGHT, CARD_PADDING_Y, CARD_TEXT_SIZE, CARD_WIDTH, Edge,
+    LABEL_LINES_ALONE, LABEL_LINES_WITH_STATE, Layout,
+};
 use crate::plan_view::mermaid::PlanGraph;
 
-/// How far an edge's control point reaches horizontally, as a fraction of
-/// the gap it spans. Enough curve to separate edges that share an anchor,
-/// not so much that a short hop loops.
-const EDGE_CURVE: f32 = 0.5;
 const EDGE_WIDTH: f32 = 1.5;
-const ARROWHEAD: f32 = 5.;
 
 /// The accent for a task state. Unknown states - a class this build does
 /// not know - draw neutral rather than being dropped, so a diagram from a
@@ -46,9 +45,29 @@ fn state_color(state: Option<&str>, cx: &App) -> Hsla {
 }
 
 /// One task, as a card at the position the layout gave it.
-fn card(node: &mermaid::PlanNode, left: f32, top: f32, cx: &App) -> AnyElement {
+///
+/// A card is read, not operated (#31). Its label is cut to what fits, with
+/// the whole label and state in a tooltip on hover. It is neither resizable
+/// nor movable: the layout is computed from the plan's dependencies, and
+/// the next update would put it back. And a click does nothing, so the card
+/// keeps the default cursor rather than offering one: the task's agent and
+/// its conversation are already a click away in the sidebar.
+fn card(index: usize, node: &mermaid::PlanNode, left: f32, top: f32, cx: &App) -> AnyElement {
     let accent = state_color(node.state.as_deref(), cx);
-    div().absolute()
+    let label_lines = if node.state.is_some() {
+        LABEL_LINES_WITH_STATE
+    }
+    else {
+        LABEL_LINES_ALONE
+    };
+    let tooltip = match &node.state {
+        Some(state) => format!("{}\n{state}", node.label),
+        None => node.label.clone(),
+    };
+    div().id(("plan-card", index))
+         .debug_selector(move || format!("plan-card-{index}"))
+         .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+         .absolute()
          .left(px(left))
          .top(px(top))
          .w(px(CARD_WIDTH))
@@ -66,40 +85,40 @@ fn card(node: &mermaid::PlanNode, left: f32, top: f32, cx: &App) -> AnyElement {
          .child(div().flex_1()
                      .min_w_0()
                      .px_2()
-                     .py_1()
-                     .child(div().text_xs()
+                     .py(px(CARD_PADDING_Y))
+                     .text_size(px(CARD_TEXT_SIZE))
+                     .line_height(px(CARD_LINE_HEIGHT))
+                     .child(div().debug_selector(move || format!("plan-card-label-{index}"))
                                  .font_weight(FontWeight::MEDIUM)
                                  .text_color(cx.theme().foreground)
+                                 .line_clamp(label_lines)
+                                 .text_ellipsis()
                                  .child(node.label.clone()))
-                     .child(div().text_xs()
-                                 .text_color(accent)
+                     .child(div().text_color(accent)
                                  .child(node.state.clone().unwrap_or_default())))
          .into_any_element()
 }
 
 /// Paints every dependency as a curve from one card's right edge to the
 /// next card's left edge, with a filled arrowhead at the target.
+///
+/// Painted at the canvas's own origin: a path is in window coordinates,
+/// and the layout's are the diagram's - see [`Edge::curve`].
 fn edges(edge_list: Vec<Edge>, color: Hsla) -> AnyElement {
-    canvas(move |_, _, _| {
+    canvas(move |bounds, _, _| {
+               let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
+               let at = |(x, y): (f32, f32)| point(px(x), px(y));
                edge_list.iter()
                         .filter_map(|edge| {
-                            let (from_x, from_y) = edge.from;
-                            let (to_x, to_y) = edge.to;
-                            let reach = (to_x - from_x).abs() * EDGE_CURVE;
-
+                            let curve = edge.curve(origin);
                             let mut line = PathBuilder::stroke(px(EDGE_WIDTH));
-                            line.move_to(point(px(from_x), px(from_y)));
-                            line.cubic_bezier_to(point(px(to_x - ARROWHEAD), px(to_y)),
-                                                 point(px(from_x + reach), px(from_y)),
-                                                 point(px(to_x - reach), px(to_y)));
+                            line.move_to(at(curve.start));
+                            line.cubic_bezier_to(at(curve.end),
+                                                 at(curve.control1),
+                                                 at(curve.control2));
 
                             let mut head = PathBuilder::fill();
-                            head.add_polygon(&[point(px(to_x), px(to_y)),
-                                               point(px(to_x - ARROWHEAD * 1.6),
-                                                     px(to_y - ARROWHEAD * 0.8)),
-                                               point(px(to_x - ARROWHEAD * 1.6),
-                                                     px(to_y + ARROWHEAD * 0.8))],
-                                             true);
+                            head.add_polygon(&curve.head.map(at), true);
                             Some((line.build().ok()?, head.build().ok()?))
                         })
                         .collect::<Vec<_>>()
@@ -131,9 +150,15 @@ pub fn plan_diagram(source: &str, cx: &App) -> Option<AnyElement> {
              // Edges first, so a card always draws over the line that
              // reaches it rather than being crossed by it.
              .child(edges(laid.edges.clone(), cx.theme().muted_foreground.opacity(0.7)));
-    for placed in &laid.cards {
-        canvas_layer =
-            canvas_layer.child(card(&graph.nodes[placed.node], placed.left, placed.top, cx));
+    for (index, placed) in laid.cards.iter().enumerate() {
+        canvas_layer = canvas_layer.child(card(index,
+                                               &graph.nodes[placed.node],
+                                               placed.left,
+                                               placed.top,
+                                               cx));
     }
     Some(canvas_layer.into_any_element())
 }
+
+#[cfg(test)]
+mod tests;

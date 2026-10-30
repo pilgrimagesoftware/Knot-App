@@ -20,9 +20,12 @@ Knot is a desktop workspace for running multiple AI coding agents. Download a pa
 ## Download a release
 
 1. Open [Knot releases](https://github.com/pilgrimagesoftware/Knot-App/releases).
-2. Download the asset for your operating system and architecture.
-3. On macOS, move `Knot.app` to `/Applications` before opening it.
-4. Launch Knot, create or open a workspace, then add the coding agents you want it to manage.
+2. Download the asset for your operating system and architecture, and `SHA256SUMS` from the same release.
+3. Check the download from the folder it is in. `shasum -a 256 -c SHA256SUMS --ignore-missing` must print `OK` beside the file name.
+4. On macOS, move `Knot.app` to `/Applications` before opening it.
+5. Launch Knot, create or open a workspace, then add the coding agents you want it to manage.
+
+Each release also carries `Knot_<version>_aarch64.cdx.json`, a [CycloneDX](https://cyclonedx.org) software bill of materials that lists the Rust crates built into the app.
 
 ## macOS quarantine and signing
 

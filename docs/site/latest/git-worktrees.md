@@ -83,6 +83,22 @@ named `<repo-name>-<sanitized-branch>`, sanitizing by replacing `/` and space
 with `-`: repository `/src/app` with branch `feat/login` suggests
 `/src/app-feat-login`, beside the repository rather than inside it.
 
+An agent's `create-worktree` call (and `create-agent` with `createWorktree`)
+uses that suggestion only when it names no location. Pass `path`
+(`worktreePath` for `create-agent`) to put the worktree where the project's
+instructions say worktrees go:
+
+```json
+{ "repoPath": "/src/app", "branchName": "feature/37-login",
+  "path": "~/src/app-Worktrees/37-login" }
+```
+
+The path must be absolute; a leading `~/` is the home folder. Missing parent
+folders are created, and a relative path is refused rather than resolved, since
+the tool runs in Knot, not in the agent's folder. `create-agent` refuses
+`worktreePath` without `createWorktree`, rather than creating the agent in the
+repository and ignoring the location.
+
 ## Pull request tracking
 
 Knot watches each agent's output for GitHub pull request URLs and records every

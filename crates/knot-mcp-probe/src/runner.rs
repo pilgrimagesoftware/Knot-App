@@ -158,42 +158,56 @@ impl McpRunner for CommandRunner {
                                               seconds: self.timeout.as_secs(), });
         };
 
-        if status.success() {
-            // Not every CLI writes its listing to stdout. `gemini mcp list`
-            // puts the whole thing on stderr and leaves stdout empty, which
-            // this crate discovered the hard way: the shape was captured
-            // through `2>&1`, so nothing noticed until it was run for real
-            // against the installed binary and came back unreadable.
-            //
-            // Preferring stdout keeps the ordinary case exact - a CLI that
-            // lists on stdout and warns on stderr is read from stdout, not
-            // from both blended together.
-            return Ok(prefer_nonempty(stdout, stderr));
-        }
-
-        // A CLI that health-checks as it lists can exit non-zero *and* have
-        // listed: `claude mcp list` does exactly that when a server fails to
-        // connect. Output that still holds rows is the answer; the exit code
-        // alone would throw away the very state the section exists to show.
-        //
-        // Only stdout counts here. On a genuine failure stderr holds the
-        // error message, and treating that as a listing would send it to a
-        // parser that can only report it as unreadable - losing the reason.
-        if !stdout.trim().is_empty() {
-            return Ok(stdout);
-        }
-
-        let output = if stderr.trim().is_empty() {
-            stdout
-        }
-        else {
-            stderr
-        };
-
-        Err(ProbeError::Command { program: command.label(),
-                                  output:  output.trim().to_owned(),
-                                  code:    status.code().unwrap_or(-1), })
+        outcome(&command.label(),
+                status.success(),
+                status.code(),
+                stdout,
+                stderr)
     }
+}
+
+/// What a finished run answers, from how it exited and what it wrote: the
+/// listing, or the error to report.
+///
+/// Decided apart from running the command so every case is testable without
+/// a subprocess, and so no test of it can race the clock.
+fn outcome(label: &str, success: bool, code: Option<i32>, stdout: String, stderr: String)
+           -> Result<String> {
+    if success {
+        // Not every CLI writes its listing to stdout. `gemini mcp list`
+        // puts the whole thing on stderr and leaves stdout empty, which
+        // this crate discovered the hard way: the shape was captured
+        // through `2>&1`, so nothing noticed until it was run for real
+        // against the installed binary and came back unreadable.
+        //
+        // Preferring stdout keeps the ordinary case exact - a CLI that
+        // lists on stdout and warns on stderr is read from stdout, not
+        // from both blended together.
+        return Ok(prefer_nonempty(stdout, stderr));
+    }
+
+    // A CLI that health-checks as it lists can exit non-zero *and* have
+    // listed: `claude mcp list` does exactly that when a server fails to
+    // connect. Output that still holds rows is the answer; the exit code
+    // alone would throw away the very state the section exists to show.
+    //
+    // Only stdout counts here. On a genuine failure stderr holds the
+    // error message, and treating that as a listing would send it to a
+    // parser that can only report it as unreadable - losing the reason.
+    if !stdout.trim().is_empty() {
+        return Ok(stdout);
+    }
+
+    let output = if stderr.trim().is_empty() {
+        stdout
+    }
+    else {
+        stderr
+    };
+
+    Err(ProbeError::Command { program: label.to_owned(),
+                              output:  output.trim().to_owned(),
+                              code:    code.unwrap_or(-1), })
 }
 
 /// The binary to spawn: resolved on the agent's own `PATH` when it has one,

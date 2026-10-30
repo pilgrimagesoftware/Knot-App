@@ -181,6 +181,61 @@ fn create_agent_uses_new_worktree_path() {
     assert!(Path::new(&created.folder).is_dir());
 }
 
+/// #342: a `worktreePath` with no worktree to create is refused rather than
+/// dropped - the caller would otherwise believe its agent sits where it asked.
+#[test]
+fn create_agent_refuses_a_worktree_path_without_create_worktree() {
+    let dir = tempfile::tempdir().unwrap();
+    let requested = dir.path().join("Worktrees").join("worker");
+    let mut store = AgentStore::new();
+    let caller = store.create("/tmp/caller", CreateOptions::default());
+    let result = create_agent(&mut store,
+                              &json!({"agentId": caller.to_string(), "name": "worker", "agentType": "claude", "repoPath": dir.path(), "worktreePath": requested}),
+                              &[]);
+    assert_eq!(result.is_error, Some(true));
+    assert!(result.content[0].text.contains("createWorktree"),
+            "{}",
+            result.content[0].text);
+    assert!(!store.agents().iter().any(|agent| agent.name == "worker"),
+            "no agent is created");
+    assert!(!requested.exists(), "nothing is made at the requested path");
+}
+
+/// #37: `worktreePath` places the new agent's worktree where the caller's
+/// instructions say.
+#[test]
+fn create_agent_puts_its_worktree_at_the_requested_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    std::fs::create_dir(&repo).unwrap();
+    let run = |args: &[&str]| Runner::new(&repo).run(args).unwrap();
+    run(&["init", "-q", "-b", "main"]);
+    run(&["config", "user.email", "test@example.com"]);
+    run(&["config", "user.name", "Test"]);
+    std::fs::write(repo.join("seed.txt"), "seed\n").unwrap();
+    run(&["add", "-A"]);
+    run(&["-c",
+          "commit.gpgsign=false",
+          "-c",
+          "gpg.format=openpgp",
+          "commit",
+          "-qm",
+          "init"]);
+    let requested = dir.path().join("Worktrees").join("worker");
+    let mut store = AgentStore::new();
+    let caller = store.create("/tmp/caller", CreateOptions::default());
+    let result = create_agent(&mut store,
+                              &json!({"agentId": caller.to_string(), "name": "worker", "agentType": "claude", "repoPath": repo, "createWorktree": true, "branchName": "feature/worker", "worktreePath": requested}),
+                              &[]);
+    assert_eq!(result.is_error, None, "{}", result.content[0].text);
+    let created = store.agents()
+                       .iter()
+                       .find(|agent| agent.name == "worker")
+                       .unwrap();
+    assert_eq!(Path::new(&created.folder), requested);
+    assert!(requested.is_dir());
+}
+
 #[test]
 fn create_agent_missing_fields_without_bench_id_errors() {
     let mut store = AgentStore::new();

@@ -23,21 +23,28 @@ use crate::workspace_window::WorkspaceWindow;
 /// Parameters for [`open_agent_editor`], grouped to keep the function's
 /// argument count in check.
 pub(crate) struct SelectedAgentHeader {
-    pub(crate) avatar:       String,
-    pub(crate) name:         String,
-    pub(crate) folder:       String,
-    pub(crate) header_title: String,
+    pub(crate) avatar:        String,
+    pub(crate) name:          String,
+    pub(crate) folder:        String,
+    pub(crate) header_title:  String,
     /// Snapshotted with the rest of the header but not drawn: the header
     /// shows the agent's identity, and its type is already implied by the
     /// avatar. Kept because the struct is the header's whole snapshot.
     #[allow(dead_code)]
-    pub(crate) agent_type:   String,
+    pub(crate) agent_type:    String,
     /// The agent's state and its diff stat *lookup*: the outer `Option`
     /// is whether the first refresh has finished, the inner one whether
     /// it found a repository. Only a missing lookup means "still
     /// working" - a folder that is not a git checkout must not sit on
     /// "Getting stats…" for the life of the window.
-    pub(crate) state:        Option<(knot_agents::AgentState, Option<Option<knot_git::DiffStats>>)>,
+    pub(crate) state: Option<(knot_agents::AgentState, Option<Option<knot_git::DiffStats>>)>,
+    /// The usage limit that stopped the agent, which the header names in
+    /// place of "Error" (#318).
+    pub(crate) session_limit: Option<knot_agents::SessionLimit>,
+    /// Whether Autopilot is turned off for this agent alone (#323). The
+    /// title bar adds the setting it can read there to decide whether to
+    /// show the indicator.
+    pub(crate) autopilot_off: bool,
 }
 
 impl WorkspaceWindow {
@@ -114,7 +121,9 @@ impl WorkspaceWindow {
     pub(super) fn render_diff_stats_button(stats: &knot_git::DiffStats, font_family: String,
                                            font_size: gpui_kit::Pixels, cx: &mut Context<Self>)
                                            -> gpui_kit::AnyElement {
-        let row = app_state::diff_stats_row(stats, cx.theme().muted_foreground);
+        let row = app_state::diff_stats_row(stats,
+                                            cx.theme().muted_foreground,
+                                            crate::status_palette::status_palette(cx));
 
         gpui_kit::div()
             .id("agent-git-stats")

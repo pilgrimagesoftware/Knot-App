@@ -10,6 +10,7 @@ mod convert;
 mod duplicate_name;
 mod error;
 mod registry;
+mod session_limit;
 mod store;
 
 pub use agent::{Agent, AgentState};
@@ -18,4 +19,5 @@ pub use convert::{from_saved, to_saved};
 pub use duplicate_name::duplicate_name;
 pub use error::{AgentError, Result};
 pub use registry::{RegistryEntry, RegistryQuery, RegistryStatus, RegistryView, visible_to};
+pub use session_limit::SessionLimit;
 pub use store::{AdoptedCounts, AgentStore, CreateOptions, EditRequest, RemovedAgent};

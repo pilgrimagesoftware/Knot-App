@@ -66,6 +66,7 @@ Open the settings window's Keyboard tab to view and change every shortcut in thi
 - Agent selection uses the plain ⌘ modifier while workspace selection uses ⌥⌘, because moving between the agents of one workspace is more frequent than moving between workspaces. ⌘0 opens the workspace manager, so the Command Center uses ⌥⌘0.
 - Jump to bottom uses ⌃⌘↓ rather than the platform's ⌘↓, because the composer holds ⌘↓, ⇧⌘↓ and ⌥⌘↓ for its own caret movement and takes them first while it is focused.
 - ⇧⌘A is reserved for the permission prompt's fixed Allow, so it is not available as a binding.
+- ⌘F is reserved for finding text in a conversation ([The conversation panel]({{ '/latest/agents/' | relative_url }})), so it is not available as a binding.
 - A stored binding that breaks these rules, or that does not parse, is ignored at launch in favour of its default, so a hand-edited or older preferences document cannot leave Knot without its shortcuts.
 
 ## Source contracts

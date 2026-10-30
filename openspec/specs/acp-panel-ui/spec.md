@@ -474,9 +474,14 @@ for the status SHALL be carried by the icon's tooltip.
   matching the panel's existing pass-through behavior for unknown statuses
 
 ### Requirement: Response action bar
-Each completed agent response SHALL display an action bar with: copy
+Each completed agent response SHALL carry an action bar with: copy
 response, reply to the response, scroll to the user message that produced
 this response, and scroll to the top of the conversation history.
+
+The latest message's bar SHALL always be shown. On any earlier response the
+bar SHALL be shown only while the pointer is over that response, its bar
+included, and hidden otherwise; a hidden bar SHALL take no clicks. Its space
+SHALL be reserved whether shown or not, so revealing it moves nothing.
 
 Reply SHALL quote the response into the prompt input as a Markdown block
 quote - every line prefixed with `>`, blank lines as a bare `>` - followed by
@@ -508,6 +513,16 @@ caret at the end, on the line below the quote.
 #### Scenario: Scroll to top
 - **WHEN** the user activates "scroll to top" on an agent response
 - **THEN** the panel scrolls the history to its earliest message
+
+#### Scenario: An earlier response's controls appear on hover
+- **WHEN** the pointer rests on an agent response that is not the latest
+  message
+- **THEN** its action bar is shown, and when the pointer leaves the response
+  the bar is hidden again without the conversation moving
+
+#### Scenario: The latest response's controls need no hover
+- **WHEN** the latest message is a completed agent response
+- **THEN** its action bar is shown wherever the pointer is
 
 ### Requirement: Track response toggle
 
@@ -1482,3 +1497,69 @@ timestamp rather than the moment it was replayed.
   the agent's harness, or from before times were recorded
 - **THEN** it shows no timestamp, and the recorded entries after it keep
   theirs
+
+### Requirement: Finding text in the conversation
+
+⌘F in an agent's panel SHALL open a find bar above its conversation, focused,
+including while the composer has focus. It SHALL find what is typed in the
+prompts and replies, ignoring case, either as text or, with its toggle on, as
+a regular expression. Tool calls, shell runs, notices and errors SHALL NOT be
+searched. A reply SHALL be searched as it reads, not as its Markdown is
+written: a link's address and Markdown syntax SHALL NOT match.
+
+#### Scenario: Matches are counted and highlighted
+
+- **WHEN** the user types `gate` and the conversation holds it three times
+  across a prompt and a reply
+- **THEN** the bar reads 1 of 3, every match is highlighted and the current
+  one is highlighted differently
+
+#### Scenario: A link's address is not searched
+
+- **WHEN** a reply reads "see the guide and the docs", where "the guide" links
+  to `https://example.com/docs`, and the user types `docs`
+- **THEN** the bar reads 1 of 1, and the highlighted match is the visible
+  "docs"
+
+#### Scenario: Stepping between matches
+
+- **WHEN** the user presses Return, or Shift-Return
+- **THEN** the next, or previous, match becomes current, wrapping at either
+  end, and the conversation scrolls to it and stops following new output
+
+#### Scenario: A regular expression
+
+- **WHEN** the regular-expression toggle is on and the user types `v\d+`
+- **THEN** the pattern's matches are found, and a pattern that does not
+  parse finds nothing and the bar says it is invalid
+
+#### Scenario: Closing
+
+- **WHEN** the user presses Escape or the close button
+- **THEN** the bar and every highlight are gone, and the composer has focus
+
+### Requirement: A link shows where it goes
+
+While the pointer rests on a link in rendered Markdown, in a panel response
+or the Markdown pane, the link's URL SHALL be shown beside the pointer. It
+SHALL be hidden once the pointer leaves the link, including onto plain text
+in the same paragraph. The label SHALL take no input: the link under it SHALL
+stay clickable, and pointing at a link inside a response SHALL still reveal
+that response's action bar.
+
+#### Scenario: Resting on a link
+
+- **WHEN** the pointer rests on a link to `https://example.com/docs`
+- **THEN** `https://example.com/docs` is shown beside the pointer
+
+#### Scenario: Leaving the link
+
+- **WHEN** the pointer moves from the link onto plain text or out of the
+  paragraph
+- **THEN** the URL is no longer shown
+
+#### Scenario: A link inside an earlier response
+
+- **WHEN** the pointer rests on a link inside a response that is not the
+  latest message
+- **THEN** the link's URL is shown and the response's action bar is revealed

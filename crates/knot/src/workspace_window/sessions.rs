@@ -194,6 +194,12 @@ impl WorkspaceWindow {
     /// agent has no `sessions` entry at all, so without the panel half
     /// removing it left its adapter subprocess running.
     pub(super) fn remove_session(&mut self, id: Uuid) {
+        // Here rather than in `teardown_session`: a Restart removes the
+        // session without tearing the agent down, and a claim left behind
+        // would keep the activation sweep from starting it again - lit with
+        // nothing running, #320 once more (#329 review). No spawn failure
+        // reaches this, so it cannot turn into a retry loop.
+        self.start_requested.remove(&id);
         // The view goes with the session: its pump would otherwise outlive
         // the terminal it draws, and its subscription the agent it reports.
         self.terminal_panes.remove(&id);
@@ -283,6 +289,7 @@ impl WorkspaceWindow {
         self.panel_stopping.remove(&id);
         self.panel_lists.remove(&id);
         self.panel_list_row_counts.remove(&id);
+        self.panel_finds.remove(&id);
         self.panel_pending_context.remove(&id);
         self.panel_composer_styling.remove(&id);
         self.forget_panel_mentions(id);

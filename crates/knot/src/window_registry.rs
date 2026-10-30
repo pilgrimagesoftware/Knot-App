@@ -92,6 +92,19 @@ impl WindowRegistry {
         false
     }
 
+    /// Redraws the window open for `key`, if one is, so it shows what has
+    /// changed under it - a window drawn from settings another window just
+    /// wrote. A closed window's entry is dropped, as in [`Self::activate`].
+    pub(crate) fn refresh(key: WindowKey, cx: &mut App) {
+        let Some(handle) = Self::handle(key, cx)
+        else {
+            return;
+        };
+        if handle.update(cx, |_, window, _| window.refresh()).is_err() {
+            Self::forget(key, cx);
+        }
+    }
+
     /// The workspace window open for `key`, if one still is.
     ///
     /// Callers that also need to change what the raised window is showing - a

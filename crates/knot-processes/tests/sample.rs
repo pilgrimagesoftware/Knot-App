@@ -2,7 +2,16 @@
 //! `openspec/specs/agent-processes/spec.md` -- "Descendant processes are
 //! enumerated transitively".
 
-use knot_processes::sample;
+mod support;
+
+use knot_processes::ProcessTable;
+use support::HANG_GUARD;
+
+/// The process table, through the test seam: `ps` under [`HANG_GUARD`]
+/// rather than the production budget it would race on a loaded machine.
+fn sample() -> knot_processes::Result<ProcessTable> {
+    knot_processes::test_seams::sample(HANG_GUARD)
+}
 
 #[test]
 fn the_table_contains_this_test_binary() {

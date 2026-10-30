@@ -69,7 +69,8 @@ fn a_live_agent_projects_with_its_automatic_state() {
     assert_eq!(entry.status,
                RegistryStatus::Live { state:         AgentState::Running,
                                       status_text:   "Refactoring auth".to_string(),
-                                      is_registered: true, });
+                                      is_registered: true,
+                                      locked:        false, });
 }
 
 /// "Cheapest idle candidate ranks first".

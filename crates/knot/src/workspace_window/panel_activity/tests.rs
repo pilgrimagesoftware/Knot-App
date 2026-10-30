@@ -170,3 +170,56 @@ fn only_a_turn_that_stops_on_its_own_has_ended() {
     assert!(!turn_ended(Some(AgentState::Input), AgentState::Idle));
     assert!(!turn_ended(Some(AgentState::Idle), AgentState::Running));
 }
+
+/// #344: a Panel agent waiting on a permission says which, on its cell.
+#[test]
+fn a_pending_permission_reason_names_the_tool_call() {
+    let reason = super::permission_reason("Run cargo test");
+
+    assert!(reason.contains("Run cargo test") && !reason.contains("%{"),
+            "the title survives substitution: {reason}");
+}
+
+const LIMIT_ERROR: &str = "The agent could not answer: acp error response (code -32603): \
+                           Internal error: You've hit your session limit · resets 5:20pm \
+                           (America/Los_Angeles)";
+
+/// #318: a turn stopped by a usage limit reports Error - the dot goes red -
+/// until the user sends again.
+#[test]
+fn a_turn_stopped_by_a_session_limit_is_an_error_until_the_next_prompt() {
+    let mut state = PanelState::new();
+    state.push_user_message("hi".to_string());
+    state.push_error(LIMIT_ERROR.to_string());
+
+    assert_eq!(acp_status(&state), (AgentState::Error, None));
+    assert_eq!(state.session_limit
+                    .as_ref()
+                    .and_then(|limit| limit.resets.as_deref()),
+               Some("5:20pm (America/Los_Angeles)"));
+
+    state.push_user_message("try again".to_string());
+    assert_eq!(acp_status(&state), (AgentState::Running, None));
+    assert_eq!(state.session_limit, None);
+}
+
+/// Any other failed turn leaves the agent idle, as before.
+#[test]
+fn any_other_failed_turn_is_idle() {
+    let mut state = PanelState::new();
+    state.push_user_message("hi".to_string());
+    state.push_error("The agent could not answer: quota exhausted".to_string());
+
+    assert_eq!(acp_status(&state), (AgentState::Idle, None));
+}
+
+/// A permission the agent is waiting on still wins: it is what the user
+/// can act on.
+#[test]
+fn a_pending_permission_wins_over_a_session_limit() {
+    let mut state = PanelState::new();
+    state.push_error(LIMIT_ERROR.to_string());
+    state.pending_permission = Some(permission(None));
+
+    assert_eq!(acp_status(&state).0, AgentState::Input);
+}

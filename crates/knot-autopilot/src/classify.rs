@@ -48,6 +48,12 @@ Answer ONLY with one word: "completed", "binary", or "open".
 - "binary": The agent has a clear plan and is asking for simple approval or confirmation to proceed. A yes/no answer would suffice.
 - "open": The agent is asking an open-ended question, requesting the user to choose between options, or asking for information or feedback.
 
+Answer "binary" or "open" only when the message asks the user - the person reading it - a question or for a decision the agent needs before it can go on. Everything else is "completed", including:
+- a status report, progress update or summary, even one that mentions reviews, approvals, permissions, CI or waiting;
+- a message saying nothing is needed from the user;
+- questions or requests addressed to other agents, or quoted from them;
+- a closing courtesy after finished work, such as "Let me know if you need anything else." (A plan presented for the user's approval is not finished work.)
+
 When in doubt between "binary" and "open", answer "open".
 When in doubt between "completed" and anything else, answer "completed".
 
@@ -56,6 +62,9 @@ Examples of "completed":
 - "The tests are all passing now."
 - "I found the bug in line 42..."
 - "Done! The feature is implemented."
+- "PR #12 is in review and CI is running. Nothing needs your input."
+- "Builder 3 asked me to hold off until their review lands; I'm waiting on them."
+- "Fixed and pushed. Let me know if you need anything else."
 
 Examples of "binary":
 - "Should I proceed with this approach?"
@@ -118,5 +127,18 @@ mod tests {
         assert!(is_empty_response("EMPTY"));
         assert!(is_empty_response("  empty  "));
         assert!(!is_empty_response("yes, continue"));
+    }
+
+    /// #344: replies that ask the user nothing were flagged as needing
+    /// input. The prompt has to say what counts as asking, and show a
+    /// report that explicitly needs nothing as "completed".
+    #[test]
+    fn the_prompt_counts_a_report_that_needs_nothing_as_completed() {
+        let completed = CLASSIFICATION_PROMPT.split("Examples of \"completed\":")
+                                             .nth(1)
+                                             .and_then(|rest| rest.split("Examples of").next())
+                                             .expect("the prompt lists completed examples");
+        assert!(completed.contains("Nothing needs your input"));
+        assert!(CLASSIFICATION_PROMPT.contains("only when the message asks the user"));
     }
 }

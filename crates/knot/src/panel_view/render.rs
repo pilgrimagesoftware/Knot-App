@@ -21,6 +21,7 @@ use knot_acp::PermissionRequest;
 use parking_lot::Mutex;
 
 use super::callbacks::PanelCallbacks;
+use super::find::FindHighlight;
 use super::message::*;
 use super::panel_list::PanelList;
 use super::rows::*;
@@ -62,9 +63,15 @@ pub(crate) fn render_panel(state: Arc<Mutex<PanelState>>, panel: PanelList, styl
     let row_style = style.clone();
     gpui_kit::list(panel.list, move |index, window, cx| {
         let state = row_state.lock();
+        let find = row_panel.find.borrow().clone();
+        let reply = reply_markdown(index, &state, &row_panel, window, cx);
+        if reply.is_some() {
+            row_panel.markdown.highlight(index, find.as_ref(), cx);
+        }
         let frame = RowFrame { window,
                                cmd_held,
-                               reply: reply_markdown(index, &state, &row_panel, window, cx) };
+                               reply,
+                               find };
         render_row(index,
                    &state,
                    &row_style,
@@ -99,6 +106,8 @@ struct RowFrame<'a> {
     cmd_held: bool,
     /// Set only for an assistant reply - see [`reply_markdown`].
     reply:    Option<Entity<TextViewState>>,
+    /// The open find (#251), if any.
+    find:     Option<FindHighlight>,
 }
 
 /// The Markdown state for the row at `index`, when it is an assistant
@@ -138,7 +147,8 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
               -> gpui_kit::AnyElement {
     let RowFrame { window,
                    cmd_held,
-                   reply, } = frame;
+                   reply,
+                   find, } = frame;
     let row = match row_at(state, index) {
         Some(PanelRow::Message(message_index)) => {
             match compact_row(message_index, state, style.compact_tool_calls) {
@@ -164,7 +174,8 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
                                              style,
                                              list,
                                              cmd_held,
-                                             reply },
+                                             reply,
+                                             find: find.as_ref() },
                                    message,
                                    callbacks)
                 }

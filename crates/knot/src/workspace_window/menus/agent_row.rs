@@ -79,7 +79,11 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
                          has_move_targets:     own_workspace.is_some() && !move_targets.is_empty(),
                          has_markdown_history: !history.is_empty(),
                          is_running:           agent.activated,
-                         is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel, };
+                         is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel,
+                         can_lock:             !agent.locked,
+                         can_unlock:           agent.locked,
+                         can_autopilot_off:    !agent.autopilot_off,
+                         can_autopilot_on:     agent.autopilot_off, };
     (facts, move_targets, history)
 }
 
@@ -121,6 +125,7 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
                                      -> PopupMenu {
     let (facts, move_targets, markdown_history) =
         agent_menu_facts(&targets.store.lock(), targets.id);
+    let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
     let mut menu = menu;
     for entry in agent_context_menu_entries(facts) {
         menu = match entry {
@@ -286,6 +291,25 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
                                          ..Default::default() };
             open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
         }
+        // No confirmation: unlocking undoes it, and nothing is lost either
+        // way - messages refused while locked were never stored.
+        // Reversible from the same menu, so no confirmation.
+        AgentMenuEntry::AutopilotOff | AgentMenuEntry::AutopilotOn => {
+            let off = entry == AgentMenuEntry::AutopilotOff;
+            targets.store.lock().set_autopilot_off(targets.id, off);
+            targets.window_entity.update(app, |view, cx| {
+                                     view.persist_agents(cx);
+                                     cx.notify();
+                                 });
+        }
+        AgentMenuEntry::LockAgent | AgentMenuEntry::UnlockAgent => {
+            let locked = entry == AgentMenuEntry::LockAgent;
+            targets.store.lock().set_locked(targets.id, locked);
+            targets.window_entity.update(app, |view, cx| {
+                                     view.persist_agents(cx);
+                                     cx.notify();
+                                 });
+        }
         AgentMenuEntry::Deactivate => {
             // No confirmation: nothing is lost that selecting the row will
             // not bring back, which is the test Restart and Remove fail.
@@ -314,15 +338,7 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
             else {
                 return;
             };
-            let prefill = AgentPrefill { name:           Some(format!("{} (fork)", source.name)),
-                                         avatar:         Some(source.avatar.clone()),
-                                         folder:         Some(source.folder.clone()),
-                                         agent_type:     Some(source.agent_type.clone()),
-                                         persona_id:     source.persona_id,
-                                         startup_prompt: source.startup_prompt.clone(),
-                                         created_by:     None,
-                                         is_companion:   false,
-                                         session_id:     source.session_id.clone(), };
+            let prefill = AgentPrefill::fork_of(&source);
             open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
         }
         // The store copies every setup field and names the copy off the
@@ -442,9 +458,7 @@ fn confirm_restart(window: &mut Window, app: &mut App, targets: &AgentMenuTarget
                  description,
                  move |app| {
                      targets.window_entity.update(app, |view, cx| {
-                                              view.restart_agents(&[targets.id],
-                                                                  keep_conversation,
-                                                                  cx);
+                                              view.restart_agent(targets.id, keep_conversation, cx);
                                               cx.notify();
                                           });
                  });

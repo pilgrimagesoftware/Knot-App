@@ -110,9 +110,13 @@ pub fn broadcast_message(agents: &AgentStore, messages: &mut MessageStore,
     let sender = sender.clone();
     let members = workspace_members(agents, sender.id);
 
-    let count = broadcast(messages, notifier, &sender, &members, content);
-    success(&BroadcastResponse { success:         count > 0,
-                                 recipient_count: count, })
+    // A refused sender is an error, as on `send-message`, not a broadcast
+    // that happened to reach nobody (#349).
+    match broadcast(messages, notifier, &sender, &members, content) {
+        Ok(count) => success(&BroadcastResponse { success:         count > 0,
+                                                  recipient_count: count, }),
+        Err(err) => ToolCallResult::error(err.to_string()),
+    }
 }
 
 /// RFC 3339, matching the Swift reference's `ISO8601DateFormatter`.
@@ -333,5 +337,74 @@ mod tests {
 
         assert_eq!(result.is_error, None);
         assert!(result.content[0].text.contains("\"recipientCount\": 2"));
+    }
+
+    /// #310: a locked agent cannot be messaged, and so is not started by a
+    /// message either.
+    #[test]
+    fn a_locked_recipient_is_refused_and_not_started() {
+        let mut agents = AgentStore::new();
+        let from = registered(&mut agents, "/tmp/a");
+        let to = registered(&mut agents, "/tmp/b");
+        agents.set_locked(to, true);
+        let mut messages = MessageStore::new();
+        let activation = activation_queue();
+
+        let result = send_message(&agents,
+                                  &mut messages,
+                                  &NoopNotifier,
+                                  Some(&activation),
+                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
+
+        assert_eq!(result.is_error, Some(true));
+        assert_eq!(result.content[0].text,
+                   knot_messaging::SendError::RecipientLocked.to_string());
+        assert!(activation.lock().is_empty(),
+                "a refused message starts nothing");
+        assert!(messages.unread_for(to).is_empty());
+    }
+
+    /// #310: a locked agent cannot message others.
+    #[test]
+    fn a_locked_sender_is_refused() {
+        let mut agents = AgentStore::new();
+        let from = registered(&mut agents, "/tmp/a");
+        let to = registered(&mut agents, "/tmp/b");
+        agents.set_locked(from, true);
+        let mut messages = MessageStore::new();
+        let activation = activation_queue();
+
+        let result = send_message(&agents,
+                                  &mut messages,
+                                  &NoopNotifier,
+                                  Some(&activation),
+                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
+
+        assert_eq!(result.is_error, Some(true));
+        assert_eq!(result.content[0].text,
+                   knot_messaging::SendError::SenderLocked.to_string());
+        assert!(activation.lock().is_empty());
+    }
+
+    /// #349: a locked agent's broadcast is refused with the reason, as its
+    /// send is - not answered `success: false` with a count of zero, which
+    /// reads the same as a workspace with nobody else in it.
+    #[test]
+    fn a_locked_sender_broadcast_is_refused_with_the_reason() {
+        let mut agents = AgentStore::new();
+        let from = registered(&mut agents, "/tmp/a");
+        let to = registered(&mut agents, "/tmp/b");
+        agents.set_locked(from, true);
+        let mut messages = MessageStore::new();
+
+        let result = broadcast_message(&agents,
+                                       &mut messages,
+                                       &NoopNotifier,
+                                       &json!({"from": from.to_string(), "content": "hi"}));
+
+        assert_eq!(result.is_error, Some(true));
+        assert_eq!(result.content[0].text,
+                   knot_messaging::SendError::SenderLocked.to_string());
+        assert!(messages.unread_for(to).is_empty());
     }
 }

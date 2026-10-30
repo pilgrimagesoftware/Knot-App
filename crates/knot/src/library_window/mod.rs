@@ -20,5 +20,8 @@ mod render;
 mod window;
 
 pub(crate) use library::Library;
+#[cfg(test)]
+pub(crate) use prompt_editor::PromptEditor;
+pub(crate) use prompt_editor::open_prompt_editor;
 pub(crate) use window::LibraryWindow;
 pub(crate) use window::open_library_window;

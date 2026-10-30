@@ -17,7 +17,7 @@ when it opens. Switching tabs preserves in-progress text.
 
 | Tab | Sections and controls |
 |---|---|
-| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Re-open workspaces on launch" - on by default, enabled only while agent restore is on, "Keep running in menu bar when closed"); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
+| General | Appearance (Auto/System/Light/Dark); Startup ("Restore agents on launch", "Restore last conversation" - enabled only while agent restore is on, keeping its value when off, "Re-open workspaces on launch" - on by default, enabled only while agent restore is on); Notifications ("Desktop notifications"); Agent Panel ("Shift+Enter to send" - when off, Enter sends and Shift+Enter adds a newline) |
 | Coding | Source Folder (current folder, folder picker, clear with confirmation); Agent Options (agent-type picker, per-type options field) |
 | Autopilot | Enable autopilot, AI Provider picker, API key, Action picker, and custom prompt configuration (see [Autopilot]({{ '/latest/autopilot/' | relative_url }})) |
 | Voice | "Enable voice input"; engine picker (Apple SpeechAnalyzer only, disabled); read-only push-to-talk key, not changeable here; "Auto-insert transcription"; controls disabled while voice input is off |
@@ -86,15 +86,16 @@ enabled, it raises a notification titled "Knot - <agent name>", bodied with the
 transition's message, or "Needs your attention" when there is none. A
 notification is raised only on the transition into Awaiting input, not on later
 reports, and not for an agent already awaiting input or one currently visible
-in the active workspace. Clicking a notification with a valid agent id brings
-the application to the front.
+in the active workspace. Clicking a notification brings Knot to the front and
+takes you to that agent: its workspace's window opens, or comes forward if it is
+already open, with the agent selected.
 
 ## Autopilot
 
 Autopilot watches agents in the agent panel, and Claude Code and Codex agents in a
 terminal, for completed turns and decides
 what to do when an agent goes idle and might need your input. When enabled, it
-requires an AI provider and API key (OpenAI, Anthropic, or Google, each called
+requires an AI provider and API key (OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter, each called
 with a fixed, cheap model). Full details, including the decision loop, custom
 action templates, and configuration options, are in
 [Autopilot]({{ '/latest/autopilot/' | relative_url }}).

@@ -52,6 +52,10 @@ pub struct PanelState {
     /// decision - the last message's action bar (copy needs stable text)
     /// and its track toggle are mutually exclusive on this flag.
     pub turn_active:                bool,
+    /// The usage limit the last turn ended on, if it ended on one (#318):
+    /// the agent shows "Session limit" until the user sends again. Set by
+    /// [`Self::push_error`], cleared by the next prompt.
+    pub session_limit:              Option<knot_agents::SessionLimit>,
     /// Whether the in-flight response should auto-scroll to follow new
     /// content, per the track toggle's per-response scope (design decision
     /// "Track toggle scope"). Reset to `true` at the start of each turn.
@@ -146,6 +150,27 @@ impl PanelState {
         }
     }
 
+    /// Forgets the request with `rpc_id` once the client reports it answered,
+    /// by any path, including the ones that never touch this state: Stop's
+    /// `cancelled`, or the session ending. Without it a request answered
+    /// that way stayed pending here, and the agent showed "Awaiting input"
+    /// until its turn ended, or for good (#344).
+    ///
+    /// A request the UI already resolved is gone by now, so this is then a
+    /// no-op: it matches by id, never "whichever is showing".
+    pub(super) fn forget_permission(&mut self, rpc_id: &serde_json::Value) {
+        if self.pending_permission
+               .as_ref()
+               .is_some_and(|request| &request.rpc_id == rpc_id)
+        {
+            self.resolve_permission();
+        }
+        else {
+            self.queued_permissions
+                .retain(|request| &request.rpc_id != rpc_id);
+        }
+    }
+
     /// Forgets every permission request: a finished turn has none left
     /// outstanding, since the agent only ends one after each of its
     /// requests is answered - by the user, or as `cancelled` by Stop.
@@ -192,6 +217,9 @@ impl PanelState {
         self.times.go_live(&self.messages, &mut self.sent_at);
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
+        // A new turn tries again; if the limit still holds, its error sets
+        // this back.
+        self.session_limit = None;
         self.tracking = follow;
     }
 
@@ -231,7 +259,11 @@ impl PanelState {
     /// the error response *is* the turn's outcome, no `TurnEnd` follows
     /// it, and leaving `turn_active` set would lock the composer out of
     /// sending anything else for the rest of the session.
+    ///
+    /// An error that reports a usage limit is kept as
+    /// [`Self::session_limit`], which is what turns the agent's dot red.
     pub fn push_error(&mut self, text: String) {
+        self.session_limit = knot_agents::SessionLimit::from_error(&text);
         self.push_message(PanelMessage::Error(text));
         self.turn_active = false;
     }

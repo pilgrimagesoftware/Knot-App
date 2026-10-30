@@ -12,7 +12,7 @@ use knot_messaging::DeliveryEvent;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
-use crate::consts;
+use crate::status_palette::StatusPalette;
 
 // UNWIRED: ported from the Swift reference, no view reads it yet.
 // Reached only from tests; kept as the port's staging area rather than
@@ -53,13 +53,53 @@ pub(crate) fn state_label(state: knot_agents::AgentState) -> &'static str {
     }
 }
 
+/// What a status surface calls the agent's state: [`state_label`], except
+/// that an agent stopped by its session's usage limit says so instead of
+/// "Error" (#318), with when it lifts when `with_reset` and the provider
+/// said. `limit` is [`knot_agents::Agent::active_session_limit`].
+pub(crate) fn status_label(state: knot_agents::AgentState,
+                           limit: Option<&knot_agents::SessionLimit>, with_reset: bool)
+                           -> String {
+    match (state, limit) {
+        (knot_agents::AgentState::Error, Some(limit)) => {
+            match limit.resets.as_deref().filter(|_| with_reset) {
+                Some(resets) => knot_core::l10n::t_with("sidebar.status_session_limit_resets",
+                                                        &[("resets", resets)]),
+                None => knot_core::l10n::t("sidebar.status_session_limit").to_string(),
+            }
+        }
+        _ => state_label(state).to_string(),
+    }
+}
+
+/// "Resets <when>", for a line beside a short "Session limit" label.
+pub(crate) fn session_limit_resets(limit: &knot_agents::SessionLimit) -> Option<String> {
+    limit.resets
+         .as_deref()
+         .map(|resets| {
+             knot_core::l10n::t_with("sidebar.session_limit_resets", &[("resets", resets)])
+         })
+}
+
 /// The sidebar status dot's tooltip (#582): the header's label for `state`,
 /// and for an idle agent that has finished a message in this run, when it
 /// did. Called when the tooltip opens, so "5m ago" is never stale.
+///
+/// An agent waiting on the user says why, when something said (#344):
+/// `input_reason` is [`knot_agents::Agent::input_reason`]. One stopped by a
+/// usage limit says so, and when it lifts (#318).
 pub(crate) fn state_tooltip(state: knot_agents::AgentState,
-                            idle_since: Option<std::time::SystemTime>)
+                            idle_since: Option<std::time::SystemTime>,
+                            input_reason: Option<&str>,
+                            session_limit: Option<&knot_agents::SessionLimit>)
                             -> String {
+    if let (knot_agents::AgentState::Error, Some(_)) = (state, session_limit) {
+        return status_label(state, session_limit, true);
+    }
     let label = state_label(state);
+    if let (knot_agents::AgentState::Input, Some(reason)) = (state, input_reason) {
+        return awaiting_because(label, reason);
+    }
     match (state, idle_since) {
         (knot_agents::AgentState::Idle, Some(at)) => {
             knot_core::l10n::t_with("sidebar.status_idle_since",
@@ -71,20 +111,18 @@ pub(crate) fn state_tooltip(state: knot_agents::AgentState,
     }
 }
 
-/// Status-dot color for the agent's automatic state. Diverges from the
-/// Swift reference (which uses red for both input and error) by giving
-/// "awaiting input" its own blue, since it isn't a failure state.
-/// Diff-stat colors, drawn from the same palette as [`state_color`]:
-/// additions green, deletions red, the changed-file count blue. Only the
-/// numbers take these - the words around them stay muted, so the figures
-/// are what the eye lands on.
-pub(crate) const DIFF_ADDED_COLOR: u32 = consts::COLOR_IDLE;
-pub(crate) const DIFF_REMOVED_COLOR: u32 = consts::COLOR_ERROR;
-pub(crate) const DIFF_FILES_COLOR: u32 = consts::COLOR_INPUT;
+/// "Awaiting input: <reason>", for the dot's tooltip and the dashboard
+/// card's status line.
+pub(crate) fn awaiting_because(label: &str, reason: &str) -> String {
+    knot_core::l10n::t_with("sidebar.status_awaiting_because",
+                            &[("state", label), ("reason", reason)])
+}
 
 /// A diff stat with only its figures colored - additions green, deletions
 /// red, the changed-file count blue - and the words and brackets muted, so
-/// the numbers are what the eye lands on. Shared by the workspace header
+/// the numbers are what the eye lands on. The figures take `palette`'s
+/// idle, error and input colours, the same as [`state_color`]'s, in the
+/// shade for the active appearance (#12). Shared by the workspace header
 /// and the dashboard cards so the two can't drift apart; the caller styles
 /// the row's font and size.
 ///
@@ -96,30 +134,37 @@ pub(crate) const DIFF_FILES_COLOR: u32 = consts::COLOR_INPUT;
 /// through [`crate::app_support::single_line`], and it needs no such pass:
 /// every string here is formatted from integers Knot holds, so none can
 /// arrive carrying a line break.
-pub(crate) fn diff_stats_row(stats: &knot_git::DiffStats, muted: gpui_kit::Hsla) -> gpui_kit::Div {
+pub(crate) fn diff_stats_row(stats: &knot_git::DiffStats, muted: gpui_kit::Hsla,
+                             palette: &StatusPalette)
+                             -> gpui_kit::Div {
     let files = knot_core::l10n::plural_noun(stats.files_changed, "count.file", "count.files");
     h_flex().flex_shrink_0()
             .whitespace_nowrap()
             .text_color(muted)
             .gap_1()
             .items_baseline()
-            .child(div().text_color(rgb(DIFF_ADDED_COLOR))
+            .child(div().text_color(rgb(palette.idle))
                         .child(format!("+{}", stats.insertions)))
-            .child(div().text_color(rgb(DIFF_REMOVED_COLOR))
+            .child(div().text_color(rgb(palette.error))
                         .child(format!("-{}", stats.deletions)))
             .child(h_flex().items_baseline()
                            .child(div().child("("))
-                           .child(div().text_color(rgb(DIFF_FILES_COLOR))
+                           .child(div().text_color(rgb(palette.input))
                                        .child(stats.files_changed.to_string()))
                            .child(div().ml_1().child(format!("{files})"))))
 }
 
-pub(crate) fn state_color(state: knot_agents::AgentState) -> gpui_kit::Hsla {
+/// Status-dot color for the agent's automatic state. Diverges from the
+/// Swift reference (which uses red for both input and error) by giving
+/// "awaiting input" its own blue, since it isn't a failure state.
+/// The shade is `palette`'s, for the active appearance (#12).
+pub(crate) fn state_color(state: knot_agents::AgentState, palette: &StatusPalette)
+                          -> gpui_kit::Hsla {
     match state {
-        knot_agents::AgentState::Idle => rgb(consts::COLOR_IDLE).into(),
-        knot_agents::AgentState::Running => rgb(consts::COLOR_RUNNING).into(),
-        knot_agents::AgentState::Input => rgb(consts::COLOR_INPUT).into(),
-        knot_agents::AgentState::Error => rgb(consts::COLOR_ERROR).into(),
+        knot_agents::AgentState::Idle => rgb(palette.idle).into(),
+        knot_agents::AgentState::Running => rgb(palette.running).into(),
+        knot_agents::AgentState::Input => rgb(palette.input).into(),
+        knot_agents::AgentState::Error => rgb(palette.error).into(),
     }
 }
 
@@ -529,16 +574,8 @@ pub(crate) fn notification_body(message: &str) -> &str {
 }
 
 /// Parses a [`SystemNotificationResponse`]'s tag back into the agent id it
-/// was posted for, or `None` if the tag isn't a valid uuid.
-///
-/// The full "select this exact agent" click-to-navigate parity with the
-/// Swift reference needs a registry mapping agent id -> owning workspace
-/// window, which doesn't exist yet (each workspace is an independent
-/// `Shell` window/entity with its own `agent_selection`, and nothing
-/// currently tracks which window owns which agent across windows). Until
-/// that exists, a click only raises the app to the front
-/// (`App::activate(true)`, same as the existing `ShowAllWindows` action);
-/// it doesn't switch the front window's selection to the clicked agent.
+/// was posted for, or `None` if the tag isn't a valid uuid. A click routes
+/// to that agent through `notification_click`.
 pub(crate) fn notification_response_agent_id(response: &SystemNotificationResponse)
                                              -> Option<Uuid> {
     Uuid::parse_str(&response.tag).ok()

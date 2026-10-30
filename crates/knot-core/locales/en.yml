@@ -50,9 +50,24 @@ sidebar:
   # in this run (#582). `state` is the header's status label, `when` the
   # panel's relative time ("5m ago"), `at` the absolute moment.
   status_idle_since: "%{state} · last message %{when} (%{at})"
+  # An agent waiting on the user, and why (#344): `reason` is a permission
+  # request's title or what Autopilot read in the agent's last reply.
+  status_awaiting_because: "%{state}: %{reason}"
+  # An agent whose session hit its provider's usage limit (#318), in place of
+  # "Error"; `resets` is when it lifts, as the provider put it.
+  status_session_limit: "Session limit"
+  status_session_limit_resets: "Session limit · resets %{resets}"
+  session_limit_resets: "Resets %{resets}"
+  # A Panel agent's pending ACP permission request, by its tool call's title.
+  awaiting_permission: "permission requested for %{title}"
 
 agent:
   companion: "Shell companion"
+  locked: "Locked"
+  # Autopilot reads this agent's replies (#323): the row's detail line and
+  # the title bar indicator's tooltip.
+  autopilot: "Autopilot"
+  autopilot_active: "Autopilot is on for this agent"
   # How a duplicated agent is named. The shape is the translator's:
   # where the number goes relative to the name, and what separates
   # them, are read back off this entry rather than assumed at the
@@ -126,10 +141,23 @@ panel:
     hours_ago: "%{hours}h ago"
     days_ago: "%{days}d ago"
   # The composer's Insert Prompt button and the list it opens.
+  # The conversation's find bar (#251).
+  find:
+    placeholder: "Find in conversation"
+    regex: "Regular expression"
+    count: "%{current} of %{total}"
+    no_matches: "No matches"
+    invalid: "Invalid pattern"
+    previous: "Previous match"
+    next: "Next match"
+    close: "Close"
   prompt_picker:
     tooltip: "Insert Prompt (%{shortcut})"
     search_placeholder: "Search prompts"
     empty_library: "No saved prompts - Open Prompts…"
+    new_prompt: "New Prompt…"
+    add: "Add Prompt…"
+    edit: "Edit Prompt…"
   # The input area's session-config dropdowns. One render path serves the
   # permission, model and effort axes, so the copy names no axis: only the
   # model list is long enough to need searching, but all three share it.
@@ -196,7 +224,6 @@ settings:
     restore_conversation: "Restore last conversation"
     reopen_workspaces: "Re-open workspaces on launch"
     notifications: "Notifications"
-    keep_in_menu_bar: "Keep running in menu bar when closed"
     desktop_notifications: "Desktop notifications"
     agent_panel: "Agent Panel"
     shift_enter_to_send: "Shift+Enter to send"
@@ -350,6 +377,7 @@ keymap:
     permission_allow_always: "Always allow permission"
     permission_deny: "Deny permission"
     permission_selector: "Permission mode selector"
+    find: "Find in conversation"
     undo: "Undo"
     redo: "Redo"
     cut: "Cut"
@@ -402,6 +430,10 @@ menu:
     markdown_files: "Markdown Files"
     agent_info: "Agent Info…"
     register_agent: "Register Agent"
+    lock_agent: "Lock Agent"
+    unlock_agent: "Unlock Agent"
+    autopilot_off: "Turn Off Autopilot"
+    autopilot_on: "Turn On Autopilot"
     deactivate: "Deactivate"
     restart_agent: "Restart Agent"
     restart_new_conversation: "Restart with New Conversation"
@@ -590,6 +622,11 @@ autopilot:
     replied: "Autopilot replied for you"
     mark: "Autopilot: this reply needs your input"
     ask: "Autopilot: asking you how to continue"
+  # Why an agent Autopilot stopped is waiting, shown on its cell (#344).
+  reason:
+    binary: "Autopilot: the last reply asks for a go-ahead"
+    open: "Autopilot: the last reply asks you a question"
+    unchecked: "Autopilot: the custom action could not check the last reply"
 
 broadcast:
   window_title: "Broadcast to All Agents"
@@ -707,6 +744,10 @@ changes_view:
   send_prompt_to: "Send prompt to"
   # A stopped agent in the Send prompt to submenu; choosing it starts it.
   send_target_inactive: "%{name} (inactive)"
+  # A locked agent there (#310): the user can still send to it, but should
+  # know it is locked out of agent messaging.
+  send_target_locked: "%{name} (locked)"
+  send_target_inactive_locked: "%{name} (inactive, locked)"
   prompt:
     issue: "Work on this issue: %{url}"
     change: "Work on this OpenSpec change: %{name}"

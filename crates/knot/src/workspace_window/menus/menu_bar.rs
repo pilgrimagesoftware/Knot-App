@@ -14,11 +14,14 @@ use gpui_kit::InteractiveElement;
 
 use super::agent_row::{move_agent_to_workspace, run_agent_menu_action, show_agent_markdown_file};
 use crate::agent_menu::AgentMenuAgentInfo;
+use crate::agent_menu::AgentMenuAutopilotOff;
+use crate::agent_menu::AgentMenuAutopilotOn;
 use crate::agent_menu::AgentMenuBenchAgent;
 use crate::agent_menu::AgentMenuDeactivate;
 use crate::agent_menu::AgentMenuDuplicateAgent;
 use crate::agent_menu::AgentMenuEditAgent;
 use crate::agent_menu::AgentMenuForkAgent;
+use crate::agent_menu::AgentMenuLockAgent;
 use crate::agent_menu::AgentMenuMarkdownFiles;
 use crate::agent_menu::AgentMenuMoveToWorkspace;
 use crate::agent_menu::AgentMenuMoveToWorkspaceTarget;
@@ -33,6 +36,7 @@ use crate::agent_menu::AgentMenuRestartWithNewConversation;
 use crate::agent_menu::AgentMenuSaveToBench;
 use crate::agent_menu::AgentMenuShowMarkdownFile;
 use crate::agent_menu::AgentMenuSnapshot;
+use crate::agent_menu::AgentMenuUnlockAgent;
 use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::agent_context_menu_entries;
 use crate::app_bootstrap;
@@ -158,6 +162,7 @@ impl WorkspaceWindow {
         };
         let (facts, move_targets, markdown_history) = agent_menu_facts(&store, id);
         drop(store);
+        let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
         Some(SelectedAgentMenu { targets:  AgentMenuTargets { store: Arc::clone(&self.store),
                                                               window_entity: cx.entity(),
                                                               workspace_id: self.workspace_id,
@@ -181,7 +186,9 @@ impl WorkspaceWindow {
                                    folder: shorten_path(&agent.folder),
                                    header_title: agent.header_title().to_string(),
                                    agent_type: agent.agent_type.clone(),
-                                   state })
+                                   state,
+                                   session_limit: agent.active_session_limit().cloned(),
+                                   autopilot_off: agent.autopilot_off })
     }
 }
 
@@ -218,6 +225,10 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
                                     MarkdownFiles => AgentMenuMarkdownFiles,
                                     AgentInfo => AgentMenuAgentInfo,
                                     RegisterAgent => AgentMenuRegisterAgent,
+                                    LockAgent => AgentMenuLockAgent,
+                                    UnlockAgent => AgentMenuUnlockAgent,
+                                    AutopilotOff => AgentMenuAutopilotOff,
+                                    AutopilotOn => AgentMenuAutopilotOn,
                                     Deactivate => AgentMenuDeactivate,
                                     RestartAgent => AgentMenuRestartAgent,
                                     RestartWithNewConversation => AgentMenuRestartWithNewConversation,

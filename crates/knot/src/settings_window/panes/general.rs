@@ -86,7 +86,6 @@ impl SettingsWindow {
             crate::settings_global::read(cx).restore_conversation_on_launch;
         let reopen_workspaces_on_launch =
             crate::settings_global::read(cx).reopen_workspaces_on_launch;
-        let keep_in_menu_bar = crate::settings_global::read(cx).keep_in_menu_bar;
         crate::controls::group(knot_core::l10n::t("settings.general.startup"))
                     .child(Self::row(
                         knot_core::l10n::t("settings.general.restore_agents"),
@@ -139,23 +138,6 @@ impl SettingsWindow {
                                     settings_window.update(app, |view, cx| {
                                         crate::settings_global::write(cx, |settings| {
                                             settings.reopen_workspaces_on_launch = checked;
-                                        });
-                                        view.persist(cx);
-                                    })
-                                }
-                            }),
-                    ))
-                    .child(Self::row(
-                        knot_core::l10n::t("settings.general.keep_in_menu_bar"),
-                        Switch::new("keep-in-menu-bar")
-                            .checked(keep_in_menu_bar)
-                            .on_click({
-                                let settings_window = settings_window.clone();
-                                move |checked, _, app| {
-                                    let checked = *checked;
-                                    settings_window.update(app, |view, cx| {
-                                        crate::settings_global::write(cx, |settings| {
-                                            settings.keep_in_menu_bar = checked;
                                         });
                                         view.persist(cx);
                                     })

@@ -57,7 +57,7 @@ impl SubagentSink {
             // The session is gone, so its records describe a turn that can no
             // longer be running. Same reasoning as a turn ending.
             SessionEvent::Ended(_) => self.registry.lock().clear(self.agent),
-            SessionEvent::PermissionRequest(_) => {}
+            SessionEvent::PermissionRequest(_) | SessionEvent::PermissionResolved { .. } => {}
         }
     }
 

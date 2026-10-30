@@ -70,6 +70,11 @@ impl WorkspaceWindow {
         // Before the repaint checks below, so an agent started here has its
         // slot in place when they run.
         let activated = self.activate_messaged_agents(cx);
+        // After the queue: an agent activated anywhere else - created over
+        // MCP, a companion, a selection - but not started is started here,
+        // so a lit row is always a running agent (#316, #320). A local, so
+        // it runs every tick whatever the chain below decides.
+        let started = self.start_activated_agents(cx);
         // Every agent's taps, not just the selected one's: an agent working
         // in an unselected pane is the case this feature exists for.
         let pull_requests_recorded = self.drain_pull_requests(cx);
@@ -107,6 +112,10 @@ impl WorkspaceWindow {
         // unrelated to repaint the window, which on an idle workspace is the
         // "could be never" the two above exist to prevent.
         let pull_requests_expiring = self.pull_requests_expiring();
+        // An agent's status text and state are written on the MCP server's
+        // thread, often for an agent that is not the caller and is doing
+        // nothing - no streaming turn, nothing else to repaint for it (#17).
+        let store_revised = self.store_revised();
         // The Changes view's repositories, issues and OpenSpec changes land
         // from `spawn_blocking` the same way, and the issues wait for the
         // repositories: without this the Issues tab would sit on its first
@@ -165,6 +174,7 @@ impl WorkspaceWindow {
            || panel_dirty
            || spinner_dirty
            || activated
+           || started
            || processes_sampled
            || mcp_probed
            || prompts_completed
@@ -174,6 +184,7 @@ impl WorkspaceWindow {
            || forge_probed
            || pull_request_states_changed
            || pull_requests_expiring
+           || store_revised
            || work_items_landed
            || git_actions_landed
            || git_commits_landed
@@ -293,19 +304,34 @@ impl WorkspaceWindow {
     /// through `panel_status_landed`. Both reach the `if` chain, because they
     /// are two different repaints.
     fn sync_panel_agent_states(&mut self, cx: &mut gpui_kit::Context<Self>) -> bool {
-        let panel_states = self.panel_sessions
-                               .iter()
-                               .filter_map(|(id, slot)| {
-                                   let slot = slot.lock();
-                                   let panel_session::PanelSessionSlot::Ready(handle) = &*slot
-                                   else {
-                                       return None;
-                                   };
-                                   let state_arc = handle.state();
-                                   let state = state_arc.lock();
-                                   Some((*id, panel_activity::acp_status(&state)))
-                               })
-                               .collect::<Vec<_>>();
+        let panel_states =
+            self.panel_sessions
+                .iter()
+                .filter_map(|(id, slot)| {
+                    let slot = slot.lock();
+                    let panel_session::PanelSessionSlot::Ready(handle) = &*slot
+                    else {
+                        return None;
+                    };
+                    let state_arc = handle.state();
+                    let state = state_arc.lock();
+                    Some((*id, panel_activity::acp_status(&state), state.session_limit.clone()))
+                })
+                .collect::<Vec<_>>();
+        // What stopped a session goes on the agent before its status moves,
+        // so the frame that turns the dot red already says why (#318).
+        // `set_state` clears it again as the agent leaves Error.
+        {
+            let mut store = self.store.lock();
+            for (id, _, limit) in &panel_states {
+                if limit.is_some() {
+                    store.set_session_limit(*id, limit.clone());
+                }
+            }
+        }
+        let panel_states = panel_states.into_iter()
+                                       .map(|(id, status, _)| (id, status))
+                                       .collect::<Vec<_>>();
         let moved = panel_activity::transitions(panel_states, |id| {
             self.panel_reported_states.get(&id).copied()
         });
@@ -335,6 +361,13 @@ impl WorkspaceWindow {
             }
         }
         true
+    }
+
+    /// Whether the store holds a drawn change this window has not drawn yet,
+    /// taking note of it - see `AgentStore::revision`.
+    pub(super) fn store_revised(&mut self) -> bool {
+        let current = self.store.lock().revision();
+        crate::store_revision::revised(&mut self.drawn_store_revision, current)
     }
 
     /// Sends the next queued prompt to every agent that has one, and says

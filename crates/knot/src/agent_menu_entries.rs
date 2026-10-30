@@ -25,6 +25,10 @@ pub(crate) enum AgentMenuEntry {
     MarkdownFiles,
     AgentInfo,
     RegisterAgent,
+    LockAgent,
+    UnlockAgent,
+    AutopilotOff,
+    AutopilotOn,
     Deactivate,
     RestartAgent,
     RestartWithNewConversation,
@@ -41,7 +45,7 @@ impl AgentMenuEntry {
     /// and `tests::every_agent_menu_entry_is_in_all` walks this list against
     /// an exhaustive match, so a variant added here without an action - or
     /// added to the enum without reaching this list - fails the build.
-    pub(crate) const ALL: [Self; 17] = [Self::Separator,
+    pub(crate) const ALL: [Self; 21] = [Self::Separator,
                                         Self::NewCompanion,
                                         Self::NewShellCompanion,
                                         Self::EditAgent,
@@ -54,6 +58,10 @@ impl AgentMenuEntry {
                                         Self::MarkdownFiles,
                                         Self::AgentInfo,
                                         Self::RegisterAgent,
+                                        Self::LockAgent,
+                                        Self::UnlockAgent,
+                                        Self::AutopilotOff,
+                                        Self::AutopilotOn,
                                         Self::Deactivate,
                                         Self::RestartAgent,
                                         Self::RestartWithNewConversation,
@@ -78,6 +86,10 @@ impl AgentMenuEntry {
             Self::MarkdownFiles => Some(knot_core::l10n::t("menu.agent.markdown_files")),
             Self::AgentInfo => Some(knot_core::l10n::t("menu.agent.agent_info")),
             Self::RegisterAgent => Some(knot_core::l10n::t("menu.agent.register_agent")),
+            Self::LockAgent => Some(knot_core::l10n::t("menu.agent.lock_agent")),
+            Self::UnlockAgent => Some(knot_core::l10n::t("menu.agent.unlock_agent")),
+            Self::AutopilotOff => Some(knot_core::l10n::t("menu.agent.autopilot_off")),
+            Self::AutopilotOn => Some(knot_core::l10n::t("menu.agent.autopilot_on")),
             Self::Deactivate => Some(knot_core::l10n::t("menu.agent.deactivate")),
             Self::RestartAgent => Some(knot_core::l10n::t("menu.agent.restart_agent")),
             Self::RestartWithNewConversation => {
@@ -110,6 +122,19 @@ pub(crate) struct AgentMenuFacts {
     /// session has an `initialize` response naming the agent and its
     /// version, so Agent Info is absent for a Terminal-mode agent.
     pub(crate) is_panel_mode:        bool,
+    /// Whether Lock Agent applies: the agent is unlocked (#310).
+    pub(crate) can_lock:             bool,
+    /// Whether Unlock Agent applies: the agent is locked. Two facts rather
+    /// than one `is_locked`, because the menu bar's every-item shape needs
+    /// both items in place at once.
+    pub(crate) can_unlock:           bool,
+    /// Whether Turn Off Autopilot applies: Autopilot would act on this
+    /// agent (#323). False until [`Self::with_autopilot`] says it is on at
+    /// all.
+    pub(crate) can_autopilot_off:    bool,
+    /// Whether Turn On Autopilot applies: the agent has it turned off. Two
+    /// facts for the same reason as Lock and Unlock.
+    pub(crate) can_autopilot_on:     bool,
 }
 
 impl AgentMenuFacts {
@@ -125,7 +150,21 @@ impl AgentMenuFacts {
                                                has_move_targets:     true,
                                                has_markdown_history: true,
                                                is_running:           true,
-                                               is_panel_mode:        true, };
+                                               is_panel_mode:        true,
+                                               can_lock:             true,
+                                               can_unlock:           true,
+                                               can_autopilot_off:    true,
+                                               can_autopilot_on:     true, };
+
+    /// These facts with the agent's Autopilot entries kept only while
+    /// Autopilot is on in Settings: with it off, there is nothing for one
+    /// agent to turn off or back on.
+    #[must_use]
+    pub(crate) fn with_autopilot(self, enabled: bool) -> Self {
+        Self { can_autopilot_off: self.can_autopilot_off && enabled,
+               can_autopilot_on: self.can_autopilot_on && enabled,
+               ..self }
+    }
 }
 
 /// The agent-row context menu's entries, in order, with dividers.
@@ -167,6 +206,19 @@ pub(crate) fn agent_context_menu_entries(facts: AgentMenuFacts) -> Vec<AgentMenu
          [AgentInfo].into_iter()
                     .filter(|_| facts.is_panel_mode)
                     .chain([RegisterAgent].into_iter().filter(|_| !facts.is_shell))
+                    // Lock and Unlock sit with Register: all three are about
+                    // the agent's place in agent messaging. A shell agent
+                    // has none to lock it out of (#310).
+                    .chain([LockAgent].into_iter()
+                                      .filter(|_| !facts.is_shell && facts.can_lock))
+                    .chain([UnlockAgent].into_iter()
+                                        .filter(|_| !facts.is_shell && facts.can_unlock))
+                    // Autopilot reads a coding agent's replies; a shell has
+                    // none (#323).
+                    .chain([AutopilotOff].into_iter()
+                                         .filter(|_| !facts.is_shell && facts.can_autopilot_off))
+                    .chain([AutopilotOn].into_iter()
+                                        .filter(|_| !facts.is_shell && facts.can_autopilot_on))
                     .chain([Deactivate].into_iter().filter(|_| facts.is_running))
                     .chain([RestartAgent].into_iter().filter(|_| owner_only))
                     .chain([RestartWithNewConversation].into_iter()

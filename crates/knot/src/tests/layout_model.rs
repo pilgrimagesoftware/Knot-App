@@ -155,13 +155,14 @@ fn the_status_tooltip_is_the_state_unless_idle_after_a_message() {
                   knot_agents::AgentState::Input,
                   knot_agents::AgentState::Error]
     {
-        assert_eq!(state_tooltip(state, Some(then)), state_label(state));
+        assert_eq!(state_tooltip(state, Some(then), None, None),
+                   state_label(state));
     }
-    assert_eq!(state_tooltip(knot_agents::AgentState::Idle, None),
+    assert_eq!(state_tooltip(knot_agents::AgentState::Idle, None, None, None),
                state_label(knot_agents::AgentState::Idle),
                "an idle agent that has said nothing yet has no last message");
 
-    let idle = state_tooltip(knot_agents::AgentState::Idle, Some(then));
+    let idle = state_tooltip(knot_agents::AgentState::Idle, Some(then), None, None);
     assert_eq!(idle,
                knot_core::l10n::t_with("sidebar.status_idle_since",
                                        &[("state", state_label(knot_agents::AgentState::Idle)),
@@ -169,4 +170,55 @@ fn the_status_tooltip_is_the_state_unless_idle_after_a_message() {
                                          ("at", &crate::timestamp::absolute_timestamp(then))]));
     assert!(!idle.contains("%{"),
             "a placeholder was left unsubstituted: {idle}");
+}
+
+/// #344: an agent waiting on the user says why, when something said - and
+/// only while it waits.
+#[test]
+fn the_status_tooltip_says_why_an_agent_waits() {
+    let reason = "permission requested for Bash";
+    let waiting = state_tooltip(knot_agents::AgentState::Input, None, Some(reason), None);
+
+    assert_eq!(waiting,
+               crate::app_state::awaiting_because(state_label(knot_agents::AgentState::Input),
+                                                  reason));
+    assert!(waiting.contains(reason) && !waiting.contains("%{"),
+            "the reason survives substitution: {waiting}");
+    assert_eq!(state_tooltip(knot_agents::AgentState::Input, None, None, None),
+               state_label(knot_agents::AgentState::Input),
+               "an unexplained wait is just the state");
+    assert_eq!(state_tooltip(knot_agents::AgentState::Running, None, Some(reason), None),
+               state_label(knot_agents::AgentState::Running),
+               "a reason never outlives the wait");
+}
+
+/// #318: an agent stopped by its session's usage limit is named for it, not
+/// "Error", wherever its status is; the tooltip and header add when it
+/// lifts.
+#[test]
+fn a_session_limit_is_named_in_place_of_error() {
+    let error = knot_agents::AgentState::Error;
+    let limit = knot_agents::SessionLimit { resets: Some("5:20pm".to_owned()), };
+
+    let short = crate::app_state::status_label(error, Some(&limit), false);
+    assert_eq!(short, knot_core::l10n::t("sidebar.status_session_limit"));
+    assert_ne!(short, "sidebar.status_session_limit",
+               "the key must resolve");
+    assert_ne!(short, state_label(error));
+
+    let full = crate::app_state::status_label(error, Some(&limit), true);
+    assert!(full.contains("5:20pm") && !full.contains("%{"), "{full}");
+    assert_eq!(state_tooltip(error, None, None, Some(&limit)), full);
+
+    let unknown_reset = knot_agents::SessionLimit { resets: None };
+    assert_eq!(crate::app_state::status_label(error, Some(&unknown_reset), true),
+               short,
+               "with no reset time, just the name");
+    assert_eq!(crate::app_state::status_label(error, None, true),
+               state_label(error),
+               "any other error is still an error");
+    assert!(crate::app_state::session_limit_resets(&limit).is_some_and(|line| {
+                                                              line.contains("5:20pm")
+                                                              && !line.contains("%{")
+                                                          }));
 }

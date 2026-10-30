@@ -229,37 +229,40 @@ pub(crate) const MCP_STATE_POLL_INTERVAL: Duration = Duration::from_millis(500);
 // Palette
 // ---------------------------------------------------------------------------
 //
-// Fixed colours, not theme tokens: each one means the same thing in light and
-// dark, and the theme's semantic colours do not cover them. Values are the
-// Tailwind ramp the Swift reference used, so the two apps read alike.
+// The status colours, one set per appearance - see `crate::status_palette`
+// for what each means and the contrast each set is held to (#12). The hues
+// are the Tailwind ramp the Swift reference used, so the two apps read
+// alike: the 500 shades on dark, as before, and the 700 shades on light,
+// where the 500s fell short of contrast.
 
-/// Green: an agent that is idle, and a diff's added lines.
-pub(crate) const COLOR_IDLE: u32 = 0x22C55E;
+/// The status colours on a dark surface.
+pub(crate) const DARK_STATUS_PALETTE: crate::status_palette::StatusPalette =
+    crate::status_palette::StatusPalette { idle:                0x22C55E,
+                                           running:             0xF97316,
+                                           // Blue and red 400, not the 500s
+                                           // they were, and a lighter muted
+                                           // grey: as text on a selected
+                                           // row the old ones read 4.0-4.3:1.
+                                           input:               0x60A5FA,
+                                           error:               0xF87171,
+                                           // Grey 400, not the 500 it was:
+                                           // the stopped glyph is text, and
+                                           // the 500 read 3.4:1 on dark.
+                                           stopped:             0x9CA3AF,
+                                           card_muted:          0x9A9A9A,
+                                           pull_request_behind: 0xEAB308,
+                                           pull_request_merged: 0xA855F7, };
 
-/// Orange: an agent that is working, and an open pull request that cannot
-/// land without work - a conflict, a red check, a draft, a required review.
-pub(crate) const COLOR_RUNNING: u32 = 0xF97316;
-
-/// Blue: an agent awaiting input, a diff's changed-file count, and an open
-/// pull request whose checks are still running.
-pub(crate) const COLOR_INPUT: u32 = 0x3B82F6;
-
-/// Red: an agent in error, and a diff's removed lines.
-pub(crate) const COLOR_ERROR: u32 = 0xEF4444;
-
-/// Grey: an agent that is stopped, and muted dashboard text.
-pub(crate) const COLOR_STOPPED: u32 = 0x6B7280;
-
-/// Muted text on a dashboard card.
-pub(crate) const COLOR_CARD_MUTED: u32 = 0x888888;
-
-/// Yellow: an open pull request whose branch is behind its base. Updating
-/// the branch is all it needs, so it sits between green and orange.
-pub(crate) const COLOR_PULL_REQUEST_BEHIND: u32 = 0xEAB308;
-
-/// Purple: a merged pull request. The one state with no counterpart in the
-/// agent palette, and the colour GitHub itself uses for it.
-pub(crate) const COLOR_PULL_REQUEST_MERGED: u32 = 0xA855F7;
+/// The status colours on a light surface: the same hues, darker.
+pub(crate) const LIGHT_STATUS_PALETTE: crate::status_palette::StatusPalette =
+    crate::status_palette::StatusPalette { idle:                0x15803D,
+                                           running:             0xC2410C,
+                                           input:               0x1D4ED8,
+                                           error:               0xB91C1C,
+                                           stopped:             0x4B5563,
+                                           card_muted:          0x5F6368,
+                                           pull_request_behind: 0xA16207,
+                                           pull_request_merged: 0x7E22CE, };
 
 /// How much of a pull request row's state colour reaches its background.
 ///
@@ -419,3 +422,36 @@ pub(crate) const CHANGES_COUNT_OPENSPEC_CHANGES: CountNouns = CountNouns { long:
                                                                                    "changes_view.count.openspec_changes"),
                                                                            short: ("changes_view.count.change_short",
                                                                                    "changes_view.count.changes_short"), };
+
+/// The prompt editor's window, opened at a size that shows a prompt of a
+/// few paragraphs without scrolling (#322). It used to share the persona
+/// editor's 460 x 380, sized for a name and a short description; a prompt
+/// is the opposite - one line of name over a long text.
+pub(crate) const PROMPT_EDITOR_WINDOW_WIDTH: f32 = 720.;
+pub(crate) const PROMPT_EDITOR_WINDOW_HEIGHT: f32 = 560.;
+
+/// The smallest the prompt editor resizes to: the name row, several lines
+/// of text, the variables control and the button row all still fit.
+pub(crate) const PROMPT_EDITOR_WINDOW_MIN_WIDTH: f32 = 520.;
+pub(crate) const PROMPT_EDITOR_WINDOW_MIN_HEIGHT: f32 = 400.;
+
+/// The largest compiled program a conversation find's regular expression may
+/// build (#251), in bytes. A pattern past it is reported as invalid rather
+/// than stalling every keystroke.
+pub(crate) const FIND_REGEX_SIZE_LIMIT: usize = 1 << 20;
+/// A find match's background, painted under the text. Translucent so it
+/// reads on a light or a dark conversation alike.
+pub(crate) const FIND_MATCH_COLOR: u32 = 0xFACC15;
+pub(crate) const FIND_MATCH_ALPHA: f32 = 0.35;
+/// The current find match's background, stronger than the rest.
+pub(crate) const FIND_CURRENT_COLOR: u32 = 0xF97316;
+pub(crate) const FIND_CURRENT_ALPHA: f32 = 0.6;
+
+/// How far below and right of the pointer a link's URL label sits (#326),
+/// clear of the cursor.
+pub(crate) const LINK_TOOLTIP_OFFSET: f32 = 14.;
+/// The widest a link's URL label grows before the URL is cut short with an
+/// ellipsis.
+pub(crate) const LINK_TOOLTIP_MAX_WIDTH: f32 = 480.;
+/// The least room a link's URL label keeps from the window's edges.
+pub(crate) const LINK_TOOLTIP_WINDOW_MARGIN: f32 = 8.;

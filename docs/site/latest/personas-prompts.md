@@ -143,6 +143,11 @@ Nothing is sent, and focus returns to the composer with the caret after the inse
 With an empty library, the list offers to open the Prompts window instead. Shell
 companions have no composer and no Insert Prompt button.
 
+The list also adds and edits prompts without a trip to the Prompts window. The + beside
+the search field, or New Prompt… at the foot of the list, opens the prompt editor on a
+blank prompt. The pencil on a prompt's row opens that prompt in the editor with the caret
+in its text, ready to change; the composer is left as it was.
+
 ## Source contracts
 
 - openspec/specs/personas/spec.md

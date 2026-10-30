@@ -23,7 +23,11 @@ fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
                                  has_move_targets:     true,
                                  has_markdown_history: true,
                                  is_running:           true,
-                                 is_panel_mode:        true, };
+                                 is_panel_mode:        true,
+                                 can_lock:             true,
+                                 can_unlock:           false,
+                                 can_autopilot_off:    true,
+                                 can_autopilot_on:     false, };
     assert_eq!(agent_context_menu_entries(facts),
                vec![AgentMenuEntry::NewCompanion,
                     AgentMenuEntry::NewShellCompanion,
@@ -41,6 +45,8 @@ fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
                     AgentMenuEntry::Separator,
                     AgentMenuEntry::AgentInfo,
                     AgentMenuEntry::RegisterAgent,
+                    AgentMenuEntry::LockAgent,
+                    AgentMenuEntry::AutopilotOff,
                     AgentMenuEntry::Deactivate,
                     AgentMenuEntry::RestartAgent,
                     AgentMenuEntry::RestartWithNewConversation,
@@ -119,7 +125,11 @@ fn agent_context_menu_omits_companion_actions_for_companions() {
                                  has_move_targets:     true,
                                  has_markdown_history: false,
                                  is_running:           false,
-                                 is_panel_mode:        false, };
+                                 is_panel_mode:        false,
+                                 can_lock:             true,
+                                 can_unlock:           false,
+                                 can_autopilot_off:    true,
+                                 can_autopilot_on:     false, };
     assert_eq!(agent_context_menu_entries(facts),
                vec![AgentMenuEntry::EditAgent,
                     AgentMenuEntry::Separator,
@@ -324,12 +334,17 @@ fn agent_context_menu_never_emits_a_stray_divider() {
                     for (is_running, is_panel_mode) in
                         [(false, false), (false, true), (true, false), (true, true)]
                     {
+                        let locked = is_running;
                         let facts = AgentMenuFacts { is_companion,
                                                      is_shell,
                                                      has_move_targets,
                                                      has_markdown_history,
                                                      is_running,
-                                                     is_panel_mode };
+                                                     is_panel_mode,
+                                                     can_lock: !locked,
+                                                     can_unlock: locked,
+                                                     can_autopilot_off: !locked,
+                                                     can_autopilot_on: locked };
                         let entries = agent_context_menu_entries(facts);
                         assert_ne!(entries.first(),
                                    Some(&AgentMenuEntry::Separator),
@@ -346,4 +361,84 @@ fn agent_context_menu_never_emits_a_stray_divider() {
             }
         }
     }
+}
+
+/// #310: the row offers whichever of Lock and Unlock applies, never both,
+/// and neither for a shell agent, which messaging has no place for.
+#[test]
+fn the_context_menu_offers_lock_or_unlock_by_the_agents_state() {
+    let unlocked = agent_context_menu_entries(AgentMenuFacts { can_lock: true,
+                                                               ..Default::default() });
+    assert!(unlocked.contains(&AgentMenuEntry::LockAgent));
+    assert!(!unlocked.contains(&AgentMenuEntry::UnlockAgent));
+
+    let locked = agent_context_menu_entries(AgentMenuFacts { can_unlock: true,
+                                                             ..Default::default() });
+    assert!(locked.contains(&AgentMenuEntry::UnlockAgent));
+    assert!(!locked.contains(&AgentMenuEntry::LockAgent));
+
+    let shell = agent_context_menu_entries(AgentMenuFacts { is_shell: true,
+                                                            can_lock: true,
+                                                            ..Default::default() });
+    assert!(!shell.contains(&AgentMenuEntry::LockAgent));
+}
+
+/// The facts are read from the store when the menu opens, so the item
+/// follows the agent's lock.
+#[test]
+fn the_menu_facts_follow_the_agents_lock() {
+    let mut store = knot_agents::AgentStore::new();
+    let id = store.create("/tmp/a", knot_agents::CreateOptions::default());
+
+    let (facts, ..) = agent_menu_facts(&store, id);
+    assert!(facts.can_lock && !facts.can_unlock);
+
+    store.set_locked(id, true);
+    let (facts, ..) = agent_menu_facts(&store, id);
+    assert!(facts.can_unlock && !facts.can_lock);
+}
+
+/// #323: the row offers whichever of Turn Off and Turn On Autopilot applies,
+/// never both, neither for a shell agent, and neither while Autopilot is
+/// off in Settings.
+#[test]
+fn the_context_menu_offers_turning_autopilot_off_or_on_by_the_agent() {
+    let following =
+        agent_context_menu_entries(AgentMenuFacts { can_autopilot_off: true,
+                                                    ..Default::default() }.with_autopilot(true));
+    assert!(following.contains(&AgentMenuEntry::AutopilotOff));
+    assert!(!following.contains(&AgentMenuEntry::AutopilotOn));
+
+    let off =
+        agent_context_menu_entries(AgentMenuFacts { can_autopilot_on: true,
+                                                    ..Default::default() }.with_autopilot(true));
+    assert!(off.contains(&AgentMenuEntry::AutopilotOn));
+    assert!(!off.contains(&AgentMenuEntry::AutopilotOff));
+
+    let disabled =
+        agent_context_menu_entries(AgentMenuFacts { can_autopilot_off: true,
+                                                    can_autopilot_on: true,
+                                                    ..Default::default() }.with_autopilot(false));
+    assert!(!disabled.contains(&AgentMenuEntry::AutopilotOff));
+    assert!(!disabled.contains(&AgentMenuEntry::AutopilotOn));
+
+    let shell =
+        agent_context_menu_entries(AgentMenuFacts { is_shell: true,
+                                                    can_autopilot_off: true,
+                                                    ..Default::default() }.with_autopilot(true));
+    assert!(!shell.contains(&AgentMenuEntry::AutopilotOff));
+}
+
+/// The facts follow the agent's own setting in the store.
+#[test]
+fn the_menu_facts_follow_the_agents_autopilot_setting() {
+    let mut store = knot_agents::AgentStore::new();
+    let id = store.create("/tmp/a", knot_agents::CreateOptions::default());
+
+    let (facts, ..) = agent_menu_facts(&store, id);
+    assert!(facts.can_autopilot_off && !facts.can_autopilot_on);
+
+    store.set_autopilot_off(id, true);
+    let (facts, ..) = agent_menu_facts(&store, id);
+    assert!(facts.can_autopilot_on && !facts.can_autopilot_off);
 }

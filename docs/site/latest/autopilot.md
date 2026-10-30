@@ -10,7 +10,7 @@ Autopilot watches your agents for a completed turn. When an agent goes idle and 
 
 ## How Autopilot works
 
-Autopilot runs on completed turns. It requires an AI provider and API key (OpenAI, Anthropic, or Google, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
+Autopilot runs on completed turns. It requires an AI provider and API key (OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
 
 How Knot sees a turn end depends on how the agent runs:
 
@@ -29,6 +29,12 @@ Unless the configured action is Custom (which bypasses classification entirely),
 
 A classification request that fails (no network, expired key, unsupported provider) returns no classification. The agent is treated as if it had nothing to ask, so a transient outage does not interrupt you on every idle turn.
 
+### Per agent
+
+Autopilot is on or off for the whole app in Settings. While it's on, you can turn it off for one agent: choose **Turn Off Autopilot** from the agent's context menu or the Agents menu, and **Turn On Autopilot** to undo it. That agent's replies are then never classified, whatever Settings says. The choice is kept across a relaunch. A duplicate or fork of the agent starts out following Settings again.
+
+An agent Autopilot is reading shows an **Autopilot** line with a propeller icon on its sidebar row, and the same icon beside its status in the window's title bar. Shell agents never show it: Autopilot has no replies of theirs to read.
+
 ### Decision loop
 
 Once classified (if not Custom), the configured action decides what happens:
@@ -40,7 +46,9 @@ Once classified (if not Custom), the configured action decides what happens:
 | Auto-continue | Sends "yes, continue" for a binary question. An open question cannot be auto-answered, so this falls back to Mark conversation instead. |
 | Custom | Skips classification; see below. |
 
-A `completed` classification never triggers anything, no matter what action is configured.
+A `completed` classification never triggers anything, no matter what action is configured. Autopilot only counts a reply as needing you when it asks you, the reader, a question or for a decision. A status report, a reply that says nothing is needed from you, a request addressed to another agent, or "let me know if you need anything else" after finished work is `completed`.
+
+When Mark conversation or Ask me marks an agent Awaiting input, its state dot's tooltip and its dashboard card say so, with the reason, for example `Autopilot: the last reply asks for a go-ahead`. The notification carries the same text. That way a wait Autopilot started can be told apart from one the agent asked for itself.
 
 A reply Autopilot sends goes in as a prompt: in the agent panel it's queued behind a running turn like any other, and in a terminal it's typed and submitted. Sending a reply doesn't mark the agent as Awaiting input, because the reply starts its next turn.
 
@@ -92,7 +100,9 @@ Ask for 3 bullet points of requirements before proceeding.
 Open Settings from the application menu or with Cmd+,. The Autopilot tab carries these controls:
 
 - **Enable autopilot** — toggles the entire feature. When off, no classification runs and agents behave normally.
-- **AI Provider** — picker for OpenAI, Anthropic, or Google. Each is called with a fixed model chosen for cost and speed. The read-only model name is shown below the provider.
+- **AI Provider** — picker for OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter. Each is called with a fixed model chosen for cost and speed. The read-only model name is shown below the provider.
+  - **OpenCode Zen** uses an API key from the OpenCode Console and calls `deepseek-v4-flash`. It needs credits on your Zen account: OpenCode's free models answer only OpenCode itself.
+  - **OpenRouter** uses an OpenRouter API key and calls `openai/gpt-5-mini` through OpenRouter.
 - **API key** — your API key for the chosen provider. Blank or whitespace-only keys fail fast without making any network request.
 - **Action** — picker for Mark conversation, Ask me, Auto-continue, or Custom. The description of the selected action is shown below.
 - **Custom prompt** — a text area (shown only when Custom is selected). Your own prompt, appended after the system framing above. Leave it empty to disable the custom action without unchecking it.

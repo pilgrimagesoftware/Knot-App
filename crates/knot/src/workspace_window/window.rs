@@ -90,6 +90,14 @@ pub(crate) struct WorkspaceWindow {
     /// The last message each agent has been nudged about, so an unread
     /// inbox produces one prompt rather than one per idle poll.
     pub(super) nudged_messages:                  BTreeMap<Uuid, Uuid>,
+    /// The `AgentStore::revision` this window last drew, so a status text or
+    /// state written where no notify can reach - the MCP server's thread -
+    /// still repaints it (#17). Per window: every window polls the one store.
+    pub(super) drawn_store_revision:             u64,
+    /// Agents the repaint poll has already started because they were
+    /// activated without a session (#316, #320) - so one that cannot start
+    /// is not retried every tick. See `activation`.
+    pub(super) start_requested:                  std::collections::BTreeSet<Uuid>,
     /// The last awaiting-input message each agent was notified about.
     ///
     /// `Effect::AwaitingInput` fires on every status event reporting Input,
@@ -252,6 +260,8 @@ pub(crate) struct WorkspaceWindow {
     /// `render_panel_pane` can `splice` only the rows that actually
     /// changed and leave off-screen rows' measured heights alone.
     pub(super) panel_list_row_counts:            BTreeMap<Uuid, usize>,
+    /// Each agent's open find bar over its conversation (#251).
+    pub(super) panel_finds:                      BTreeMap<Uuid, panel::find_bar::PanelFind>,
     /// Files/images attached via the input area's add-context control,
     /// pending the next send - cleared once the prompt is submitted.
     pub(super) panel_pending_context:            BTreeMap<Uuid, Vec<PathBuf>>,
