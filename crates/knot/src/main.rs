@@ -54,6 +54,7 @@ mod refresh_cache;
 mod settings_global;
 mod settings_window;
 mod startup_choice;
+mod store_revision;
 mod subagent_feed;
 #[cfg(test)]
 mod tests;
