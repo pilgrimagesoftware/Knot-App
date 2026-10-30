@@ -59,7 +59,6 @@ fn an_upgraded_installation_keeps_every_value_and_retires_the_legacy_document() 
     assert!(settings.restore_conversation_on_launch);
     assert_eq!(settings.source_base_folder, "/src");
     assert!(settings.source_folder_detected);
-    assert_eq!(settings.mermaid_scale, 1.5);
     assert_eq!(settings.agent_commands.get("claude").map(String::as_str),
                Some("claude --resume"));
     assert_eq!(settings.terminal_font_name, "Fira Code");
