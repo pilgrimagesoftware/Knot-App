@@ -56,7 +56,7 @@ Each agent connects on a URL that names it (`…/mcp?agent=<id>`), which Knot pl
 | --- | --- |
 | `create-agent` | Create an agent from explicit fields, or deploy a bench template; the new agent is attributed to the caller. |
 | `close-agent` | Close an agent, allowed only for an agent the caller created. |
-| `create-worktree` | Create a worktree on a new branch and return its path. |
+| `create-worktree` | Create a worktree on a new branch and return its path; `path` puts it where the project says worktrees go. |
 
 ### Status and display
 

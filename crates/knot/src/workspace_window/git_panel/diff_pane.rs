@@ -72,7 +72,7 @@ impl WorkspaceWindow {
             return empty_pane(knot_core::l10n::t("git_panel.no_changes"), cx);
         }
 
-        let header = diff_header(&diff);
+        let header = diff_header(&diff, crate::status_palette::status_palette(cx));
         let (rows, truncated) = flatten(&diff);
         let row_count = rows.len();
 
@@ -160,16 +160,17 @@ impl WorkspaceWindow {
 /// different greens for the same number, a few pixels apart, is worse than
 /// one imperfect one - and unlike the diff body, this is a two-character
 /// accent rather than something anybody reads a screenful of.
-fn added_color() -> gpui_kit::Hsla {
-    rgb(consts::COLOR_IDLE).into()
+fn added_color(palette: &crate::status_palette::StatusPalette) -> gpui_kit::Hsla {
+    rgb(palette.idle).into()
 }
 
-fn removed_color() -> gpui_kit::Hsla {
-    rgb(consts::COLOR_ERROR).into()
+fn removed_color(palette: &crate::status_palette::StatusPalette) -> gpui_kit::Hsla {
+    rgb(palette.error).into()
 }
 
 /// The path, and the counts that are greater than zero.
-fn diff_header(diff: &FileDiff) -> gpui_kit::AnyElement {
+fn diff_header(diff: &FileDiff, palette: &crate::status_palette::StatusPalette)
+               -> gpui_kit::AnyElement {
     let additions = diff.additions();
     let deletions = diff.deletions();
 
@@ -191,7 +192,7 @@ fn diff_header(diff: &FileDiff) -> gpui_kit::AnyElement {
                            .gap_2()
                            .children((additions > 0).then(|| {
                                                         div().text_xs()
-                                              .text_color(added_color())
+                                              .text_color(added_color(palette))
                                               .child(knot_core::l10n::t_with(
                     "git_panel.additions",
                     &[("count", &additions.to_string())],
@@ -199,7 +200,7 @@ fn diff_header(diff: &FileDiff) -> gpui_kit::AnyElement {
                                                     }))
                            .children((deletions > 0).then(|| {
                                                         div().text_xs()
-                                              .text_color(removed_color())
+                                              .text_color(removed_color(palette))
                                               .child(knot_core::l10n::t_with(
                     "git_panel.deletions",
                     &[("count", &deletions.to_string())],

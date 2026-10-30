@@ -53,9 +53,12 @@ pub(crate) fn compact_agent_row_body(row: CompactAgentRow, cx: &gpui_kit::App) -
                           is_shell,
                           hint, } = row;
     let dot = (!is_shell).then(|| {
-                             status_dot(id, state, idle_since).absolute()
-                                                              .bottom_0()
-                                                              .right_0()
+                             status_dot(id,
+                                        state,
+                                        idle_since,
+                                        crate::status_palette::status_palette(cx)).absolute()
+                                                                                  .bottom_0()
+                                                                                  .right_0()
                          });
     let tile = div().relative()
                     .w(px(40.))

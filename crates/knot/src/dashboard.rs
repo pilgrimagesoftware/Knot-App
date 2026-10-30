@@ -16,6 +16,7 @@ use crate::app_state::state_color;
 use crate::app_state::state_label;
 use crate::app_support::single_line;
 use crate::consts;
+use crate::status_palette::StatusPalette;
 
 pub(crate) const CARD_WIDTH: f32 = 280.;
 /// Every agent card is this tall, whatever it has to show. Two of a card's
@@ -127,7 +128,7 @@ pub(crate) fn sort_picker(current: DashboardSort,
 }
 
 /// One agent card: avatar, name, status, folder name, and git diff stats.
-fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
+fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static StatusPalette,
               on_tap: impl Fn(Uuid, &mut gpui_kit::Window, &mut gpui_kit::App) + 'static)
               -> impl IntoElement {
     let id = agent.id;
@@ -164,7 +165,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                                           .gap_0p5()
                                           .child(div().font_semibold().child(name))
                                           .child(div().text_sm()
-                                                      .text_color(rgb(consts::COLOR_CARD_MUTED))
+                                                      .text_color(rgb(palette.card_muted))
                                                       .overflow_hidden()
                                                       .whitespace_nowrap()
                                                       .text_ellipsis()
@@ -178,11 +179,11 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                            // goes blank when it is not running at all,
                            // which no colour of label says.
                            .child(div().flex_shrink_0()
-                                       .child(crate::working_indicator::render(state, is_running)))
+                                       .child(crate::working_indicator::render(state, is_running, palette)))
                            .children((!is_shell).then(|| {
                                                     div().text_sm()
                                                          .flex_shrink_0()
-                                                         .text_color(state_color(state))
+                                                         .text_color(state_color(state, palette))
                                                          .child(state_label(state))
                                                 })))
             .children((!header_title.is_empty()).then(|| {
@@ -194,7 +195,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla,
                                                 }))
             .children(git_stats.filter(|stats| stats.files_changed > 0)
                                .map(|stats| {
-                                   crate::app_state::diff_stats_row(&stats, muted).text_xs()
+                                   crate::app_state::diff_stats_row(&stats, muted, palette).text_xs()
                                }))
             .on_click(move |_: &ClickEvent, window, cx| on_tap(id, window, cx))
 }
@@ -235,6 +236,7 @@ pub(crate) struct WorkspaceSectionCallbacks<Tap, Nav, Add> {
 
 pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is_global: bool,
                                                muted: gpui_kit::Hsla,
+                                               palette: &'static StatusPalette,
                                                callbacks: WorkspaceSectionCallbacks<Tap,
                                                                          Nav,
                                                                          Add>)
@@ -277,7 +279,7 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
             .child(if workspace.agents.is_empty() {
                        div().pl_3()
                             .text_sm()
-                            .text_color(rgb(consts::COLOR_CARD_MUTED))
+                            .text_color(rgb(palette.card_muted))
                             .child(knot_core::l10n::t("dashboard.no_agents"))
                             .into_any_element()
                    }
@@ -286,7 +288,7 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
                                .flex_wrap()
                                .gap(px(GRID_SPACING))
                                .children(workspace.agents.iter().map(|agent| {
-                                                                    agent_card(agent, muted, {
+                                                                    agent_card(agent, muted, palette, {
                                                                         let on_agent_tap =
                                                                             on_agent_tap.clone();
                                                                         move |id, window, cx| {

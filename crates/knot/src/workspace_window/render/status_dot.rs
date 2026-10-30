@@ -22,7 +22,8 @@ use crate::app_state::state_tooltip;
 /// (#582). The text is built when the tooltip opens rather than at render,
 /// so a "5m ago" read an hour later still says an hour.
 pub(super) fn status_dot(id: Uuid, state: knot_agents::AgentState,
-                         idle_since: Option<SystemTime>)
+                         idle_since: Option<SystemTime>,
+                         palette: &crate::status_palette::StatusPalette)
                          -> Stateful<gpui_kit::Div> {
     div().id(gpui_kit::ElementId::from(format!("agent-status-dot-{id}")))
          .debug_selector(|| "agent-status-dot".into())
@@ -30,7 +31,7 @@ pub(super) fn status_dot(id: Uuid, state: knot_agents::AgentState,
          .w(px(8.))
          .h(px(8.))
          .rounded_full()
-         .bg(state_color(state))
+         .bg(state_color(state, palette))
          .tooltip(move |window, cx| {
              Tooltip::new(state_tooltip(state, idle_since)).build(window, cx)
          })
