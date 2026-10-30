@@ -53,9 +53,17 @@ pub fn run(program: impl Into<OsString>, args: &[&str]) -> Result<Output> {
 
 /// Runs `program args...` and fails on a non-zero exit, returning stdout.
 pub fn run_checked(program: impl Into<OsString>, args: &[&str]) -> Result<String> {
+    run_checked_with_timeout(program, args, DEFAULT_TIMEOUT)
+}
+
+/// [`run_checked`] under `timeout` rather than [`DEFAULT_TIMEOUT`]. Private:
+/// production has one budget; this is so a test can run a checked command
+/// without its result depending on how fast the machine spawns.
+fn run_checked_with_timeout(program: impl Into<OsString>, args: &[&str], timeout: Duration)
+                            -> Result<String> {
     let program = program.into();
     let label = display_command(&program, args);
-    let output = run_with_timeout(program, args, DEFAULT_TIMEOUT)?;
+    let output = run_with_timeout(program, args, timeout)?;
 
     if output.success {
         return Ok(output.stdout);
@@ -153,19 +161,31 @@ fn display_command(program: &OsString, args: &[&str]) -> String {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::{run, run_checked, run_with_timeout};
+    use super::{Output, run_checked, run_checked_with_timeout, run_with_timeout};
     use crate::error::ProcessError;
+
+    /// The budget for a test that is not about the timeout. `run` and
+    /// `run_checked` use the production `DEFAULT_TIMEOUT` of 10 s, which a
+    /// full parallel test run outlasted spawning `false` - a correct runner
+    /// then failed the test as `Timeout`. This only stops a genuinely stuck
+    /// test; nothing is decided by it running out. The timeout tests set
+    /// their own, short budget, because killing on time is what they test.
+    const HANG_GUARD: Duration = Duration::from_secs(120);
+
+    fn run(program: &str, args: &[&str]) -> Output {
+        run_with_timeout(program, args, HANG_GUARD).expect("the command runs")
+    }
 
     #[test]
     fn checked_run_returns_stdout() {
-        let out = run_checked("echo", &["hello"]).unwrap();
+        let out = run_checked_with_timeout("echo", &["hello"], HANG_GUARD).unwrap();
 
         assert_eq!(out.trim(), "hello");
     }
 
     #[test]
     fn checked_run_reports_a_non_zero_exit() {
-        let err = run_checked("false", &[]).unwrap_err();
+        let err = run_checked_with_timeout("false", &[], HANG_GUARD).unwrap_err();
 
         match err {
             ProcessError::Command { code, .. } => assert_ne!(code, 0),
@@ -175,7 +195,7 @@ mod tests {
 
     #[test]
     fn unchecked_run_reports_a_non_zero_exit_as_output() {
-        let out = run("false", &[]).unwrap();
+        let out = run("false", &[]);
 
         assert!(!out.success);
     }
@@ -209,6 +229,8 @@ mod tests {
         assert!(matches!(err, ProcessError::Timeout { .. }), "got {err:?}");
     }
 
+    /// Through the public `run_checked`, which is safe here: a missing
+    /// program fails at spawn, before any budget is consulted.
     #[test]
     fn a_missing_program_is_an_io_error() {
         let err = run_checked("knot-no-such-program", &[]).unwrap_err();
@@ -218,12 +240,12 @@ mod tests {
 
     #[test]
     fn failure_text_prefers_stderr_and_falls_back_to_stdout() {
-        let out = run("sh", &["-c", "echo out; echo err >&2; exit 3"]).unwrap();
+        let out = run("sh", &["-c", "echo out; echo err >&2; exit 3"]);
 
         assert_eq!(out.failure_text(), "err");
         assert_eq!(out.code, 3);
 
-        let out = run("sh", &["-c", "echo only-out; exit 4"]).unwrap();
+        let out = run("sh", &["-c", "echo only-out; exit 4"]);
 
         assert_eq!(out.failure_text(), "only-out");
     }
