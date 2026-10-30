@@ -89,6 +89,15 @@ impl AgentEditor {
             {
                 eprintln!("failed to fork the agent's session: {error}");
             }
+            // Nor for session setup: a new agent has made no choices yet,
+            // and a fork has made its source's (#38).
+            for (config_id, value) in &self.prefill.session_config {
+                if let Err(error) =
+                    store.set_session_config_option(id, config_id.clone(), value.clone())
+                {
+                    eprintln!("failed to carry the session setup over: {error}");
+                }
+            }
             id
         };
         let installed = crate::settings_global::write(cx, |settings| {
