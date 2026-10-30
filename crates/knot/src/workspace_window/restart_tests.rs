@@ -140,3 +140,47 @@ fn restart_all_applies_the_choice_to_every_agent(cx: &mut TestAppContext) {
         assert_eq!(fixture.acp_session(id), None);
     }
 }
+
+fn activated(fixture: &Fixture, id: Uuid) -> bool {
+    fixture.store
+           .lock()
+           .agent(id)
+           .expect("the agent exists")
+           .activated
+}
+
+/// #311: Restart with New Conversation on an agent that is not running
+/// starts it, fresh - it used to only reset it, leaving it as stopped as
+/// before, so the menu item seemed to do nothing.
+#[gpui_kit::test]
+fn restarting_an_inactive_agent_from_its_row_starts_it_fresh(cx: &mut TestAppContext) {
+    let mut fixture = window_with_conversations(1, cx);
+    let id = fixture.agents[0];
+    assert!(!activated(&fixture, id),
+            "a passive agent nobody selected is stopped");
+
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.restart_agent(id, false, cx);
+                });
+
+    assert!(activated(&fixture, id),
+            "the agent the user restarted is started");
+    assert_eq!(fixture.acp_session(id), None, "with a new conversation");
+}
+
+/// Restart All restarts what is running; it does not start every agent the
+/// user had stopped.
+#[gpui_kit::test]
+fn restart_all_leaves_a_stopped_agent_stopped(cx: &mut TestAppContext) {
+    let mut fixture = window_with_conversations(2, cx);
+    let (stopped, running) = (fixture.agents[0], fixture.agents[1]);
+    fixture.store.lock().set_activated(running, true);
+
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.restart_all_agents(false, cx)
+                });
+
+    assert!(!activated(&fixture, stopped),
+            "a stopped agent is reset, not started");
+    assert!(activated(&fixture, running), "a running one is restarted");
+}

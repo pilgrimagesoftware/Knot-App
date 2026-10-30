@@ -49,6 +49,12 @@ impl Runner {
         self
     }
 
+    /// This runner, timeout and program included, run from `cwd` instead.
+    pub fn in_dir(&self, cwd: impl Into<PathBuf>) -> Self {
+        Self { cwd: cwd.into(),
+               ..self.clone() }
+    }
+
     pub fn cwd(&self) -> &PathBuf {
         &self.cwd
     }

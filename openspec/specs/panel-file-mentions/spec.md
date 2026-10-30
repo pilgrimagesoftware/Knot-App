@@ -76,7 +76,9 @@ agent's.
 
 When that folder is a git repository, the listing SHALL be the repository's
 tracked and untracked-but-not-ignored files, so a build directory the
-repository ignores is not offered. When it is not a repository, the listing
+repository ignores is not offered. A checked-out submodule's files SHALL be
+listed the same way, under the submodule's path. When it is not a repository,
+the listing
 SHALL be a filesystem walk that skips version-control metadata and the
 conventional dependency and build directories.
 
@@ -91,6 +93,19 @@ conventional dependency and build directories.
 - **WHEN** the user creates a file the repository does not ignore and has not
   yet staged
 - **THEN** it appears in the lookup
+
+#### Scenario: A submodule's files are offered
+
+- **WHEN** the agent's repository has a checked-out submodule at `vendor/lib`
+  containing `src/lib.rs`
+- **THEN** `vendor/lib/src/lib.rs` appears in the lookup, and `vendor/lib`
+  itself is not offered as a file
+
+#### Scenario: A submodule that is not checked out offers nothing
+
+- **WHEN** a submodule has not been checked out
+- **THEN** the lookup offers nothing under its path, and lists the rest of
+  the repository as usual
 
 #### Scenario: Each agent sees its own worktree
 
