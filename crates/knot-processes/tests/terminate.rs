@@ -6,6 +6,7 @@
 //! can be signalled even if an assertion is wrong.
 
 use std::io::{BufRead, BufReader};
+use std::os::unix::process::ExitStatusExt;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
@@ -31,6 +32,9 @@ fn terminate_with_grace(target: &TerminationTarget, grace: Duration)
 fn terminate(target: &TerminationTarget) -> knot_processes::Result<Termination> {
     terminate_with_grace(target, TERMINATE_GRACE)
 }
+
+/// `SIGKILL`'s number, the same on every Unix this runs on.
+const SIGKILL: i32 = 9;
 
 /// Short enough to keep the escalation test quick, long enough that a process
 /// that does exit on `TERM` is seen exiting rather than killed by the clock.
@@ -84,6 +88,10 @@ fn a_process_that_ignores_term_is_killed_after_the_grace_period() {
     // once the trap is in place, and the test waits for that: TERM sent
     // before the shell got that far ended it at once, and under load it
     // could, so the outcome was `Terminated` with nothing wrong.
+    //
+    // The shell must write nothing after `ready`: the reader is dropped once
+    // the line is read, so a later write would end the shell with SIGPIPE
+    // rather than the KILL under test. The exit status below holds to that.
     let mut shell = Command::new("sh").arg("-c")
                                       .arg("trap '' TERM; echo ready; while :; do sleep 0.1; done")
                                       .stdout(Stdio::piped())
@@ -95,12 +103,16 @@ fn a_process_that_ignores_term_is_killed_after_the_grace_period() {
     assert_eq!(ready.trim(),
                "ready",
                "the shell ignores TERM before it is targeted");
-    let child = Reaped(shell);
+    let mut child = Reaped(shell);
     let pid = child.0.id();
 
     let outcome = terminate_with_grace(&target_for(pid), TEST_GRACE).unwrap();
 
     assert_eq!(outcome, Termination::Killed);
+    let status = child.0.wait().expect("reap the shell");
+    assert_eq!(status.signal(),
+               Some(SIGKILL),
+               "the shell ended by KILL, not by anything else - got {status:?}");
 }
 
 #[test]
