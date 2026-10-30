@@ -41,6 +41,10 @@ pub(crate) struct SelectedAgentHeader {
     /// The usage limit that stopped the agent, which the header names in
     /// place of "Error" (#318).
     pub(crate) session_limit: Option<knot_agents::SessionLimit>,
+    /// Whether Autopilot is turned off for this agent alone (#323). The
+    /// title bar adds the setting it can read there to decide whether to
+    /// show the indicator.
+    pub(crate) autopilot_off: bool,
 }
 
 impl WorkspaceWindow {

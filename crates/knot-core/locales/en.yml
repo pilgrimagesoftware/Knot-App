@@ -64,6 +64,10 @@ sidebar:
 agent:
   companion: "Shell companion"
   locked: "Locked"
+  # Autopilot reads this agent's replies (#323): the row's detail line and
+  # the title bar indicator's tooltip.
+  autopilot: "Autopilot"
+  autopilot_active: "Autopilot is on for this agent"
   # How a duplicated agent is named. The shape is the translator's:
   # where the number goes relative to the name, and what separates
   # them, are read back off this entry rather than assumed at the
@@ -417,6 +421,8 @@ menu:
     register_agent: "Register Agent"
     lock_agent: "Lock Agent"
     unlock_agent: "Unlock Agent"
+    autopilot_off: "Turn Off Autopilot"
+    autopilot_on: "Turn On Autopilot"
     deactivate: "Deactivate"
     restart_agent: "Restart Agent"
     restart_new_conversation: "Restart with New Conversation"
