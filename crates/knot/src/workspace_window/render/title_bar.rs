@@ -15,7 +15,6 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::px;
 
 use crate::app_state::state_color;
-use crate::app_state::state_label;
 use crate::app_support::single_line;
 use crate::dashboard;
 use crate::workspace_window::WorkspaceWindow;
@@ -140,7 +139,12 @@ impl WorkspaceWindow {
                                                .child(div().font_family(title_font_name.clone())
                                                            .text_size(title_font_size)
                                                            .text_color(cx.theme().muted_foreground)
-                                                           .child(state_label(*state))))
+                                                           .child(crate::app_state::status_label(
+                                                               *state,
+                                                               selected_header.as_ref()
+                                                                              .and_then(|header| header.session_limit.as_ref()),
+                                                               true,
+                                                           ))))
                                 .child(match git_stats {
                                            Some(Some(stats)) => {
                                                // The stat row is already the

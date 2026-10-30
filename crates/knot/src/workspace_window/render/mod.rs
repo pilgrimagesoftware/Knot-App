@@ -128,6 +128,7 @@ impl WorkspaceWindow {
                                       state: agent.state,
                                       idle_since: agent.idle_since,
                                       input_reason: agent.input_reason().map(str::to_owned),
+                                      session_limit: agent.active_session_limit().cloned(),
                                       is_shell: agent.is_shell(),
                                       is_companion: agent.is_companion,
                                       is_locked: agent.locked,

@@ -82,7 +82,9 @@ that is not running is dimmed, whether it is passive and never started or was de
 Lock Agent shuts an agent out of agent messaging: no agent can message it, so a message cannot
 start it, and it cannot message other agents. Broadcast to All Agents skips it too. The row shows a
 **Locked** line while it lasts, and the lock is kept across a relaunch. Unlock Agent undoes it.
-Typing into the agent yourself is unaffected. Both items are also in the menu bar's Agents menu.
+Typing into the agent yourself is unaffected, and so is **Send prompt to**: a locked agent is still
+listed there, marked with a lock and "(locked)", so you know before you send. Both items are also
+in the menu bar's Agents menu.
 
 Click a row to select its agent, drag a row up or down to reorder agents - with companions moving
 with their owner and the Dashboard and Pull Requests rows pinned at the top - or right-click a row
@@ -123,6 +125,7 @@ sort the dashboard.
 | Idle | Green | Quiet and waiting. |
 | Awaiting input | Red | Needs you - for example a permission prompt is open. |
 | Error | Red | The session ended with an error. |
+| Session limit | Red | The agent's provider refused the turn: its session or usage limit is reached. The header says when it resets, if the provider said. |
 
 Terminal output moves an agent to Working and back to Idle after a short quiet period; typing keeps
 it Working. A permission request moves it to Awaiting input immediately; Return moves it to Working
@@ -134,7 +137,9 @@ An agent in Awaiting input says why when it knows: hover its state dot, or read 
 dashboard card. A pending permission request shows its title (`permission requested for Bash`); a
 wait Autopilot started says what it read in the agent's last reply (`Autopilot: the last reply asks
 you a question`). The reason goes as soon as the agent leaves Awaiting input. A session that exits non-zero, or
-a panel connection that ends with an error, moves the agent to Error. The dashboard's cards add a
+a panel connection that ends with an error, moves the agent to Error. A panel agent whose turn is
+refused with a session or usage limit ("You've hit your session limit · resets 5:20pm") shows Session
+limit instead, in red, until you send it another prompt. The dashboard's cards add a
 glanceable working/thinking indicator that reflects the same status and animates on each change; the
 sidebar row does not draw it.
 
