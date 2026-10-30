@@ -11,8 +11,11 @@
 //!
 //! The one exception is a window's own drawn title bar. gpui-kit's `TitleBar`
 //! moves the window from its mouse-down, and an inactive window must still be
-//! draggable by its title bar in one gesture. Windows with a native title bar
-//! need no exception: AppKit handles that bar before gpui sees the click.
+//! draggable by its title bar in one gesture. The whole strip passes the
+//! click, so a control drawn inside that bar receives it as well - the price
+//! of the drag, since gpui does not expose which part of the bar is drag
+//! area. Windows with a native title bar need no exception: AppKit handles
+//! that bar before gpui sees the click.
 
 use std::any::TypeId;
 
