@@ -21,7 +21,6 @@ use parking_lot::Mutex;
 use crate::about_window::register_about_action;
 use crate::agent_menu::agents_menu;
 use crate::app_state::build_agent_store;
-use crate::app_state::notification_response_agent_id;
 use crate::app_support;
 use crate::app_support::Activation;
 use crate::app_support::AwaitingInput;
@@ -601,19 +600,9 @@ pub(crate) fn run() {
                                                        cx);
                                set_app_menus(&MenuBarSnapshot::default(), cx);
 
-                               cx.on_system_notification_response(|response, cx| {
-                                     // Every notification brings Knot
-                                     // forward. An agent's carries its id so
-                                     // a click can route to that agent; the
-                                     // MCP server's failure is not tied to
-                                     // an agent and carries a tag that
-                                     // deliberately parses as none - which
-                                     // is why activation is no longer gated
-                                     // on finding one.
-                                     let _agent_to_route_to =
-                                         notification_response_agent_id(&response);
-                                     cx.activate(true);
-                                 });
+                               crate::notification_click::install(Arc::clone(&store),
+                                                                  Arc::clone(&messages),
+                                                                  cx);
 
                                open_workspace_manager(
                 WorkspaceManagerWindow {

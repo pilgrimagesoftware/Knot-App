@@ -86,8 +86,9 @@ enabled, it raises a notification titled "Knot - <agent name>", bodied with the
 transition's message, or "Needs your attention" when there is none. A
 notification is raised only on the transition into Awaiting input, not on later
 reports, and not for an agent already awaiting input or one currently visible
-in the active workspace. Clicking a notification with a valid agent id brings
-the application to the front.
+in the active workspace. Clicking a notification brings Knot to the front and
+takes you to that agent: its workspace's window opens, or comes forward if it is
+already open, with the agent selected.
 
 ## Autopilot
 

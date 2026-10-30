@@ -39,6 +39,7 @@ mod markdown_view;
 mod mcp_lifetime;
 mod mcp_status;
 mod menu_bar;
+mod notification_click;
 mod open_in;
 mod openspec_changes;
 mod panel_commands;
