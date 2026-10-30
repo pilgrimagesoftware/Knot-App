@@ -91,6 +91,13 @@ pub struct Agent {
     /// message, and a restart clears it. Set by
     /// [`crate::AgentStore::set_state`], never by hand.
     pub idle_since:        Option<SystemTime>,
+    /// Why the agent is waiting on the user while its state is
+    /// [`AgentState::Input`] - a permission request's title, or what
+    /// Autopilot read in its last reply - shown beside "Awaiting input"
+    /// (#344). Set with [`crate::AgentStore::set_awaiting_reason`] and
+    /// cleared by [`crate::AgentStore::set_state`] as the agent leaves
+    /// Input, so it never outlives the wait it explains.
+    pub awaiting_reason:   Option<String>,
     pub status_text:       String,
     pub is_registered:     bool,
     pub is_pending_start:  bool,
@@ -120,6 +127,20 @@ pub struct Agent {
 }
 
 impl Agent {
+    /// Why this agent is waiting on the user, while it is: `None` outside
+    /// [`AgentState::Input`] and for a wait nothing explained. What every
+    /// surface showing "Awaiting input" reads, so none shows a reason the
+    /// agent has moved past.
+    #[must_use]
+    pub fn input_reason(&self) -> Option<&str> {
+        if self.state == AgentState::Input {
+            self.awaiting_reason.as_deref()
+        }
+        else {
+            None
+        }
+    }
+
     /// Whether this is a plain shell agent (no AI).
     /// The ACP session a Panel-mode connection should `session/load`, or
     /// `None` to start a new one.
@@ -213,6 +234,7 @@ mod tests {
                 activated:          false,
                 state:              AgentState::Idle,
                 idle_since:         None,
+                awaiting_reason:    None,
                 status_text:        String::new(),
                 is_registered:      false,
                 is_pending_start:   false,

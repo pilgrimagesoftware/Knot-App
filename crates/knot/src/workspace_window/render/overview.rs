@@ -74,6 +74,7 @@ impl WorkspaceWindow {
                                 state: agent.state,
                                 is_shell: agent.is_shell(),
                                 header_title: agent.header_title().to_string(),
+                                input_reason: agent.input_reason().map(str::to_owned),
                                 git_stats,
                                 is_running: agent.activated,
                             }

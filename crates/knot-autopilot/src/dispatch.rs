@@ -22,7 +22,11 @@ pub enum Effect {
     /// Mark the agent as needing input and notify, with no message of its
     /// own - this is also the custom action's failure fallback, matching
     /// the Swift reference's `catch { ... await markInput(...) }`.
-    Mark,
+    ///
+    /// Carries the classification that flagged the reply, so the agent's
+    /// cell can say why it is waiting (#344); `None` for the custom action's
+    /// fallback, where nothing was classified.
+    Mark(Option<Classification>),
     /// Show the decision dialog carrying the agent's last message.
     Ask {
         last_message:   String,
@@ -43,7 +47,7 @@ pub fn dispatch(action: AutopilotAction, classification: Classification, last_me
         return Effect::None;
     }
     match action {
-        AutopilotAction::Mark => Effect::Mark,
+        AutopilotAction::Mark => Effect::Mark(Some(classification)),
         AutopilotAction::Ask => Effect::Ask { last_message: last_message.to_string(),
                                               classification },
         AutopilotAction::Continue => {
@@ -52,7 +56,7 @@ pub fn dispatch(action: AutopilotAction, classification: Classification, last_me
             }
             else {
                 // Open questions can't be auto-answered - fall back to mark.
-                Effect::Mark
+                Effect::Mark(Some(classification))
             }
         }
         AutopilotAction::Custom => Effect::None,
@@ -85,9 +89,9 @@ mod tests {
     #[test]
     fn mark_action_marks_regardless_of_classification() {
         assert_eq!(dispatch(AutopilotAction::Mark, Classification::Binary, "msg"),
-                   Effect::Mark);
+                   Effect::Mark(Some(Classification::Binary)));
         assert_eq!(dispatch(AutopilotAction::Mark, Classification::Open, "msg"),
-                   Effect::Mark);
+                   Effect::Mark(Some(Classification::Open)));
     }
 
     #[test]
@@ -102,7 +106,7 @@ mod tests {
         assert_eq!(dispatch(AutopilotAction::Continue, Classification::Binary, "msg"),
                    Effect::InjectText("yes, continue".to_string()));
         assert_eq!(dispatch(AutopilotAction::Continue, Classification::Open, "msg"),
-                   Effect::Mark);
+                   Effect::Mark(Some(Classification::Open)));
     }
 
     #[test]

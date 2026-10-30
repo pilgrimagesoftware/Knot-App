@@ -42,6 +42,7 @@ impl AgentPrefill {
                                  activated: _,
                                  state: _,
                                  idle_since: _,
+                                 awaiting_reason: _,
                                  status_text: _,
                                  is_registered: _,
                                  is_pending_start: _,

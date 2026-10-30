@@ -56,10 +56,17 @@ pub(crate) fn state_label(state: knot_agents::AgentState) -> &'static str {
 /// The sidebar status dot's tooltip (#582): the header's label for `state`,
 /// and for an idle agent that has finished a message in this run, when it
 /// did. Called when the tooltip opens, so "5m ago" is never stale.
+///
+/// An agent waiting on the user says why, when something said (#344):
+/// `input_reason` is [`knot_agents::Agent::input_reason`].
 pub(crate) fn state_tooltip(state: knot_agents::AgentState,
-                            idle_since: Option<std::time::SystemTime>)
+                            idle_since: Option<std::time::SystemTime>,
+                            input_reason: Option<&str>)
                             -> String {
     let label = state_label(state);
+    if let (knot_agents::AgentState::Input, Some(reason)) = (state, input_reason) {
+        return awaiting_because(label, reason);
+    }
     match (state, idle_since) {
         (knot_agents::AgentState::Idle, Some(at)) => {
             knot_core::l10n::t_with("sidebar.status_idle_since",
@@ -69,6 +76,13 @@ pub(crate) fn state_tooltip(state: knot_agents::AgentState,
         }
         _ => label.to_string(),
     }
+}
+
+/// "Awaiting input: <reason>", for the dot's tooltip and the dashboard
+/// card's status line.
+pub(crate) fn awaiting_because(label: &str, reason: &str) -> String {
+    knot_core::l10n::t_with("sidebar.status_awaiting_because",
+                            &[("state", label), ("reason", reason)])
 }
 
 /// A diff stat with only its figures colored - additions green, deletions

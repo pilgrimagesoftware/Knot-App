@@ -170,3 +170,12 @@ fn only_a_turn_that_stops_on_its_own_has_ended() {
     assert!(!turn_ended(Some(AgentState::Input), AgentState::Idle));
     assert!(!turn_ended(Some(AgentState::Idle), AgentState::Running));
 }
+
+/// #344: a Panel agent waiting on a permission says which, on its cell.
+#[test]
+fn a_pending_permission_reason_names_the_tool_call() {
+    let reason = super::permission_reason("Run cargo test");
+
+    assert!(reason.contains("Run cargo test") && !reason.contains("%{"),
+            "the title survives substitution: {reason}");
+}

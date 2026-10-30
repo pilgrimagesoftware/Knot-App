@@ -38,6 +38,9 @@ pub(crate) struct DashboardAgent {
     pub state:        knot_agents::AgentState,
     pub is_shell:     bool,
     pub header_title: String,
+    /// Why the agent is waiting on the user, shown under its status while
+    /// it is (#344); see `knot_agents::Agent::input_reason`.
+    pub input_reason: Option<String>,
     pub git_stats:    Option<knot_git::DiffStats>,
     /// Whether the agent has a session, as the sidebar row means it: a
     /// `passive` agent that never started and a deactivated one are both
@@ -136,6 +139,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
     let name = agent.name.clone();
     let folder_name = agent.folder_name.clone();
     let header_title = agent.header_title.clone();
+    let input_reason = agent.input_reason.clone();
     let is_shell = agent.is_shell;
     let state = agent.state;
     let is_running = agent.is_running;
@@ -193,6 +197,19 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                                          .text_ellipsis()
                                                          .child(single_line(&header_title))
                                                 }))
+            // Why an agent showing "Awaiting input" is waiting (#344): a
+            // permission request, or Autopilot's reading of its reply. One
+            // line, in the status's colour, under the title it explains.
+            .children(input_reason.map(|reason| {
+                                      div().id(gpui_kit::ElementId::from(format!("dashboard-agent-reason-{id}")))
+                                           .debug_selector(|| "dashboard-agent-input-reason".into())
+                                           .text_sm()
+                                           .text_color(state_color(state, palette))
+                                           .overflow_hidden()
+                                           .whitespace_nowrap()
+                                           .text_ellipsis()
+                                           .child(single_line(&reason))
+                                  }))
             .children(git_stats.filter(|stats| stats.files_changed > 0)
                                .map(|stats| {
                                    crate::app_state::diff_stats_row(&stats, muted, palette).text_xs()

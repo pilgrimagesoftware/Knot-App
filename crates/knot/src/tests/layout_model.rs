@@ -155,13 +155,13 @@ fn the_status_tooltip_is_the_state_unless_idle_after_a_message() {
                   knot_agents::AgentState::Input,
                   knot_agents::AgentState::Error]
     {
-        assert_eq!(state_tooltip(state, Some(then)), state_label(state));
+        assert_eq!(state_tooltip(state, Some(then), None), state_label(state));
     }
-    assert_eq!(state_tooltip(knot_agents::AgentState::Idle, None),
+    assert_eq!(state_tooltip(knot_agents::AgentState::Idle, None, None),
                state_label(knot_agents::AgentState::Idle),
                "an idle agent that has said nothing yet has no last message");
 
-    let idle = state_tooltip(knot_agents::AgentState::Idle, Some(then));
+    let idle = state_tooltip(knot_agents::AgentState::Idle, Some(then), None);
     assert_eq!(idle,
                knot_core::l10n::t_with("sidebar.status_idle_since",
                                        &[("state", state_label(knot_agents::AgentState::Idle)),
@@ -169,4 +169,24 @@ fn the_status_tooltip_is_the_state_unless_idle_after_a_message() {
                                          ("at", &crate::timestamp::absolute_timestamp(then))]));
     assert!(!idle.contains("%{"),
             "a placeholder was left unsubstituted: {idle}");
+}
+
+/// #344: an agent waiting on the user says why, when something said - and
+/// only while it waits.
+#[test]
+fn the_status_tooltip_says_why_an_agent_waits() {
+    let reason = "permission requested for Bash";
+    let waiting = state_tooltip(knot_agents::AgentState::Input, None, Some(reason));
+
+    assert_eq!(waiting,
+               crate::app_state::awaiting_because(state_label(knot_agents::AgentState::Input),
+                                                  reason));
+    assert!(waiting.contains(reason) && !waiting.contains("%{"),
+            "the reason survives substitution: {waiting}");
+    assert_eq!(state_tooltip(knot_agents::AgentState::Input, None, None),
+               state_label(knot_agents::AgentState::Input),
+               "an unexplained wait is just the state");
+    assert_eq!(state_tooltip(knot_agents::AgentState::Running, None, Some(reason)),
+               state_label(knot_agents::AgentState::Running),
+               "a reason never outlives the wait");
 }
