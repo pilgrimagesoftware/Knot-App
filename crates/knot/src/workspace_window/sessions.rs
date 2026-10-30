@@ -261,6 +261,9 @@ impl WorkspaceWindow {
         // states are entries nothing will ever ask for again.
         self.prune_pull_request_states();
         self.nudged_messages.remove(&id);
+        // A session torn down leaves nothing running, so the next activation
+        // has to be able to start it again.
+        self.start_requested.remove(&id);
         self.forget_awaiting_notification(id);
         self.panel_states.remove(&id);
         self.panel_prompt_inputs.remove(&id);
