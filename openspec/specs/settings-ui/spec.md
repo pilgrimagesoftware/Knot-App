@@ -57,8 +57,6 @@ The window SHALL show a "Startup" section with:
   `restore_layout_on_launch` is on (it has no effect otherwise) and
   disabled — not hidden — when it is off, so the setting's existence stays
   visible.
-- A "Keep running in menu bar when closed" toggle bound to
-  `keep_in_menu_bar`.
 
 Each toggle SHALL persist its new value immediately on change.
 
@@ -77,8 +75,8 @@ Each toggle SHALL persist its new value immediately on change.
 
 #### Scenario: Toggling a startup switch persists
 
-- **WHEN** the user turns on "Keep running in menu bar when closed"
-- **THEN** `keep_in_menu_bar` is saved as `true` immediately
+- **WHEN** the user turns off "Restore agents on launch"
+- **THEN** `restore_layout_on_launch` is saved as `false` immediately
 
 ### Requirement: Notifications control
 

@@ -199,7 +199,6 @@ settings:
     restore_conversation: "Restore last conversation"
     reopen_workspaces: "Re-open workspaces on launch"
     notifications: "Notifications"
-    keep_in_menu_bar: "Keep running in menu bar when closed"
     desktop_notifications: "Desktop notifications"
     agent_panel: "Agent Panel"
     shift_enter_to_send: "Shift+Enter to send"

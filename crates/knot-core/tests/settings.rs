@@ -37,15 +37,12 @@ fn loads_swift_shaped_document() {
     assert_eq!(s.appearance_mode, AppearanceMode::Dark);
     assert!(!s.restore_layout_on_launch);
     assert!(!s.restore_conversation_on_launch);
-    assert!(s.keep_in_menu_bar);
     assert!(!s.mcp_server_enabled);
     assert_eq!(s.mcp_server_port, 9123);
     assert_eq!(s.source_base_folder, "~/code");
     assert!(s.source_folder_detected);
     assert!(!s.desktop_notifications_enabled);
     assert_eq!(s.markdown_font_size, 16);
-    assert_eq!(s.mermaid_theme, "forest");
-    assert_eq!(s.mermaid_scale, 1.5);
     assert_eq!(s.agent_commands.get("custom1").map(String::as_str),
                Some("my-agent"));
     assert_eq!(s.agent_options.get("claude").map(String::as_str),
@@ -290,4 +287,20 @@ fn registry_metadata_survives_a_settings_round_trip() {
             "normalized on the way in");
     assert!(agent.capabilities.contains("rust"));
     assert_eq!(agent.cost_tier, CostTier::Low);
+}
+
+/// #13: `keepInMenuBar`, `mermaidTheme` and `mermaidScale` were stored and
+/// read by nothing, and are gone. A document that still carries them - the
+/// Swift shape does - loads as before, and the next write drops them.
+#[test]
+fn retired_keys_load_and_are_not_written_back() {
+    let dir = legacy_store(FIXTURE);
+    // Migrating writes each document.
+    Settings::load_from_root(dir.path()).unwrap();
+
+    let preferences = read_json(dir.path().join(PREFERENCES_FILE));
+    let obj = preferences.as_object().unwrap();
+    for key in ["keepInMenuBar", "mermaidTheme", "mermaidScale"] {
+        assert!(!obj.contains_key(key), "{key} was written back");
+    }
 }
