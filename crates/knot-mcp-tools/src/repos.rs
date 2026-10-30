@@ -5,7 +5,7 @@ use knot_discovery::RepoInfo;
 use knot_git::{Repository, worktree::is_working_tree};
 use knot_mcp::ToolCallResult;
 
-use crate::args::require_str;
+use crate::args::{optional_str, require_str};
 use crate::responses::{
     CreateWorktreeResponse, ListReposResponse, ListWorktreesResponse, RepoInfoResponse,
     WorktreeInfoResponse, success,
@@ -59,7 +59,8 @@ pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
         _ => return ToolCallResult::error("Missing required parameter: branchName"),
     };
 
-    match create_worktree_path(repo_path, branch_name) {
+    let requested = optional_str(arguments, "path").filter(|path| !path.is_empty());
+    match create_worktree_path(repo_path, branch_name, requested) {
         Ok(path) => {
             let path = path.display().to_string();
             success(&CreateWorktreeResponse { success: true,
@@ -70,15 +71,40 @@ pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
     }
 }
 
-pub fn create_worktree_path(repo_path: &str, branch_name: &str) -> crate::Result<PathBuf> {
+/// Creates a worktree of `repo_path` on a new `branch_name` and returns where
+/// it went: `requested` when the agent named a location, else the sibling
+/// `<repo>-<branch>` that `knot_git::suggest_worktree_path` picks.
+///
+/// `requested` is how an agent follows a worktree convention in its own
+/// instructions (#37). Without it the tool could only ever put the worktree
+/// beside the repository, whatever the project said.
+pub fn create_worktree_path(repo_path: &str, branch_name: &str, requested: Option<&str>)
+                            -> crate::Result<PathBuf> {
     let repo_path_ref = Path::new(repo_path);
     if !is_working_tree(repo_path_ref) {
         return Err(crate::ToolError::NotARepository { path: repo_path_ref.to_path_buf(), });
     }
 
-    let destination = knot_git::suggest_worktree_path(repo_path_ref, branch_name);
+    let destination = match requested {
+        Some(path) => requested_destination(path, std::env::home_dir().as_deref())?,
+        None => knot_git::suggest_worktree_path(repo_path_ref, branch_name),
+    };
     Repository::open(repo_path_ref).create_worktree(branch_name, &destination)?;
     Ok(destination)
+}
+
+/// `requested` as a destination: a leading `~/` is `home`, and anything still
+/// relative is refused rather than resolved against Knot's own working
+/// directory, which is not the agent's.
+fn requested_destination(requested: &str, home: Option<&Path>) -> crate::Result<PathBuf> {
+    let path = match (requested.strip_prefix("~/"), home) {
+        (Some(rest), Some(home)) => home.join(rest),
+        _ => PathBuf::from(requested),
+    };
+    if path.is_relative() {
+        return Err(crate::ToolError::RelativeWorktreePath { path });
+    }
+    Ok(path)
 }
 
 #[cfg(test)]
@@ -174,5 +200,60 @@ mod tests {
         let expected = dir.path().join("repo-feature");
         assert!(is_working_tree(&expected));
         assert!(result.content[0].text.contains("repo-feature"));
+    }
+
+    /// #37: a location the agent's instructions name is where the worktree
+    /// goes, parents and all - not beside the repository.
+    #[test]
+    fn create_worktree_honours_a_requested_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_path = dir.path().join("repo");
+        std::fs::create_dir(&repo_path).unwrap();
+        init_repo(&repo_path);
+        let requested = dir.path().join("repo-Worktrees").join("37-location");
+
+        let result = create_worktree(&json!({
+                                         "repoPath": repo_path.to_str().unwrap(),
+                                         "branchName": "feature/37-location",
+                                         "path": requested.to_str().unwrap(),
+                                     }));
+
+        assert_eq!(result.is_error, None, "{}", result.content[0].text);
+        assert!(is_working_tree(&requested));
+        assert!(!dir.path().join("repo-feature-37-location").exists(),
+                "nothing is made at the default location");
+        assert!(result.content[0].text.contains("37-location"));
+    }
+
+    #[test]
+    fn create_worktree_refuses_a_relative_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_path = dir.path().join("repo");
+        std::fs::create_dir(&repo_path).unwrap();
+        init_repo(&repo_path);
+
+        let result = create_worktree(&json!({
+                                         "repoPath": repo_path.to_str().unwrap(),
+                                         "branchName": "feature",
+                                         "path": "Worktrees/feature",
+                                     }));
+
+        assert_eq!(result.is_error, Some(true));
+        assert!(result.content[0].text.contains("absolute"));
+        assert!(!dir.path().join("repo-feature").exists(),
+                "a refused location does not fall back to the default");
+    }
+
+    #[test]
+    fn a_requested_path_under_home_is_expanded() {
+        let home = Path::new("/Users/someone");
+
+        assert_eq!(requested_destination("~/Code/Worktrees/x", Some(home)).unwrap(),
+                   home.join("Code/Worktrees/x"));
+        assert_eq!(requested_destination("/abs/x", Some(home)).unwrap(),
+                   PathBuf::from("/abs/x"));
+        assert!(matches!(requested_destination("~/x", None),
+                         Err(crate::ToolError::RelativeWorktreePath { .. })),
+                "with no home to expand against, ~/ is a relative path");
     }
 }

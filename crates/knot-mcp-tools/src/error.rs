@@ -19,6 +19,12 @@ pub enum ToolError {
     #[error("not a git repository: {path}")]
     NotARepository { path: PathBuf },
 
+    /// A worktree location an agent named is relative. The tool runs in
+    /// Knot's process, not the agent's, so there is no working directory the
+    /// agent could have meant it against.
+    #[error("worktree path must be absolute: {path}")]
+    RelativeWorktreePath { path: PathBuf },
+
     /// `git` itself refused, e.g. the branch already has a worktree.
     #[error(transparent)]
     Git(#[from] knot_git::GitError),
