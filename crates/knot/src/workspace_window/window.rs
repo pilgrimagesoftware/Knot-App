@@ -90,6 +90,10 @@ pub(crate) struct WorkspaceWindow {
     /// The last message each agent has been nudged about, so an unread
     /// inbox produces one prompt rather than one per idle poll.
     pub(super) nudged_messages:                  BTreeMap<Uuid, Uuid>,
+    /// The `AgentStore::revision` this window last drew, so a status text or
+    /// state written where no notify can reach - the MCP server's thread -
+    /// still repaints it (#17). Per window: every window polls the one store.
+    pub(super) drawn_store_revision:             u64,
     /// Agents the repaint poll has already started because they were
     /// activated without a session (#316, #320) - so one that cannot start
     /// is not retried every tick. See `activation`.
