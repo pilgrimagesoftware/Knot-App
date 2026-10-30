@@ -46,10 +46,9 @@ impl Repository {
     /// is skipped: it has nothing to offer.
     pub fn list_files(&self) -> Result<Vec<String>> {
         let mut files = self.list_own_files()?;
-        let submodules = self.submodule_paths()?;
-        if submodules.is_empty() {
-            return Ok(files);
-        }
+        // Best-effort, like each submodule's own listing below: not being
+        // able to find the submodules must not cost the repository's files.
+        let submodules = self.submodule_paths().unwrap_or_default();
         files.retain(|path| !submodules.contains(path));
         for submodule in submodules {
             let dir = self.runner.cwd().join(&submodule);
@@ -68,6 +67,12 @@ impl Repository {
                 files.extend(nested.into_iter().map(|path| format!("{submodule}/{path}")));
             }
         }
+        // During a merge conflict the index holds an entry per stage, so
+        // `ls-files` names a conflicted file - or submodule - up to three
+        // times. A picker offers each path once. Not `--deduplicate`: that
+        // needs git 2.31, and 2.30 is supported.
+        files.sort_unstable();
+        files.dedup();
         Ok(files)
     }
 
@@ -77,17 +82,22 @@ impl Repository {
         Ok(nul_separated(&output))
     }
 
-    /// The paths of the submodules in the index.
+    /// The paths of the submodules in the index, each once - a conflicted
+    /// gitlink has an entry per stage.
     fn submodule_paths(&self) -> Result<Vec<String>> {
         let output = self.runner.run_raw(consts::LS_FILES_STAGE)?;
-        Ok(nul_separated(&output).into_iter()
-                                 .filter_map(|entry| {
-                                     // `<mode> <object> <stage>\t<path>`
-                                     let (meta, path) = entry.split_once('\t')?;
-                                     meta.starts_with(consts::GITLINK_MODE)
-                                         .then(|| path.to_owned())
-                                 })
-                                 .collect())
+        let mut paths: Vec<String> =
+            nul_separated(&output).into_iter()
+                                  .filter_map(|entry| {
+                                      // `<mode> <object> <stage>\t<path>`
+                                      let (meta, path) = entry.split_once('\t')?;
+                                      meta.starts_with(consts::GITLINK_MODE)
+                                          .then(|| path.to_owned())
+                                  })
+                                  .collect();
+        paths.sort_unstable();
+        paths.dedup();
+        Ok(paths)
     }
 
     /// Parsed `git status --porcelain=v2 --branch`.

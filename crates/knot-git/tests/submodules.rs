@@ -145,3 +145,69 @@ fn a_submodule_that_is_not_checked_out_lists_nothing() {
     assert!(started.elapsed() < std::time::Duration::from_secs(10),
             "listing recursed into a submodule that is not checked out");
 }
+
+/// Commits everything in `dir` under `message`.
+fn commit(dir: &Path, message: &str) {
+    git(dir, &["add", "-A"]);
+    git(dir, &["commit", "-qm", message]);
+}
+
+/// During a merge conflict the index holds an entry per stage, so `ls-files`
+/// names a conflicted path up to three times - a conflicted submodule
+/// included, which would list every file in it three times over. Each path
+/// is offered once.
+#[test]
+fn a_conflicted_submodule_and_file_are_each_listed_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let library = dir.path().join("library");
+    let app = dir.path().join("app");
+    repo(&library, "lib.rs");
+    repo(&app, "main.rs");
+    add_submodule(&app, &library, "library");
+    let checkout = app.join("library");
+    git(&checkout, &["config", "user.email", "test@example.com"]);
+    git(&checkout, &["config", "user.name", "Test"]);
+    git(&checkout, &["config", "commit.gpgsign", "false"]);
+
+    // Two branches of the superproject point the submodule at diverging
+    // commits - each branched from the same base, so neither fast-forwards -
+    // and edit `main.rs` differently.
+    let base = Runner::new(&checkout).run(&["rev-parse", "HEAD"]).unwrap();
+    git(&app, &["checkout", "-qb", "ours"]);
+    std::fs::write(checkout.join("lib.rs"), "ours\n").unwrap();
+    commit(&checkout, "ours");
+    std::fs::write(app.join("main.rs"), "ours\n").unwrap();
+    commit(&app, "ours");
+    git(&app, &["checkout", "-q", "main"]);
+    git(&app, &["submodule", "update", "-q"]);
+    git(&app, &["checkout", "-qb", "theirs"]);
+    git(&checkout, &["checkout", "-qb", "theirs", &base]);
+    std::fs::write(checkout.join("lib.rs"), "theirs\n").unwrap();
+    commit(&checkout, "theirs");
+    std::fs::write(app.join("main.rs"), "theirs\n").unwrap();
+    commit(&app, "theirs");
+    // Expected to conflict, on both the gitlink and `main.rs`.
+    assert!(Runner::new(&app).run(&["merge", "-q", "ours"]).is_err(),
+            "the merge was meant to conflict");
+
+    // The gitlink itself is conflicted: one index entry per stage.
+    let stages = Runner::new(&app).run_raw(&["ls-files", "--stage", "-z"])
+                                  .unwrap();
+    let gitlinks =
+        stages.split('\0')
+              .filter(|entry| entry.starts_with("160000") && entry.ends_with("\tlibrary"))
+              .count();
+    assert!(gitlinks > 1,
+            "the submodule was meant to conflict: {stages:?}");
+
+    let files = Repository::open(&app).list_files().unwrap();
+
+    let mut unique = files.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(files.len(),
+               unique.len(),
+               "a path is listed twice: {files:?}");
+    assert!(files.contains(&"library/lib.rs".to_owned()), "{files:?}");
+    assert!(files.contains(&"main.rs".to_owned()), "{files:?}");
+}
