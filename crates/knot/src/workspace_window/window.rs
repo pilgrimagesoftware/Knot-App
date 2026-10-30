@@ -90,6 +90,10 @@ pub(crate) struct WorkspaceWindow {
     /// The last message each agent has been nudged about, so an unread
     /// inbox produces one prompt rather than one per idle poll.
     pub(super) nudged_messages:                  BTreeMap<Uuid, Uuid>,
+    /// Agents the repaint poll has already started because they were
+    /// activated without a session (#316, #320) - so one that cannot start
+    /// is not retried every tick. See `activation`.
+    pub(super) start_requested:                  std::collections::BTreeSet<Uuid>,
     /// The last awaiting-input message each agent was notified about.
     ///
     /// `Effect::AwaitingInput` fires on every status event reporting Input,
