@@ -25,6 +25,8 @@ const SAMPLES: &[&str] = &["plain words",
                            "1. item with `code` and [a link](u)\n\n   a second paragraph\n2. next",
                            "**bold [link](https://x/y) inside** text",
                            "# Title\n\ntext\n\n---\n\nafter a rule",
+                           "a claim[^1] made\n\n[^1]: the source of it",
+                           "x[^note] and y[^b] and x again[^note]\n\n[^b]: bee\n[^note]: noted\n\n    more of it",
                            "an ![image](x.png) between words",
                            "escaped \\*stars\\* stay"];
 
