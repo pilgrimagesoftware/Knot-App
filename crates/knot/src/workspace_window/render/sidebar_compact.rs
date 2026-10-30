@@ -18,6 +18,7 @@ use gpui_kit::base::h_flex;
 use gpui_kit::div;
 use gpui_kit::px;
 
+use super::status_dot::DotDetail;
 use super::status_dot::status_dot;
 use crate::workspace_window::key_hints::with_key_hint;
 
@@ -28,17 +29,19 @@ use crate::workspace_window::key_hints::with_key_hint;
 /// [`super::sidebar`] owns.
 pub(crate) struct CompactAgentRow {
     /// The agent, which keys its state dot.
-    pub id:           uuid::Uuid,
+    pub id:            uuid::Uuid,
     /// Already clamped to a single grapheme by the caller.
-    pub avatar:       String,
-    pub state:        knot_agents::AgentState,
+    pub avatar:        String,
+    pub state:         knot_agents::AgentState,
     /// When the agent last went idle, for the dot's tooltip.
-    pub idle_since:   Option<std::time::SystemTime>,
+    pub idle_since:    Option<std::time::SystemTime>,
     /// Why the agent is waiting on the user, for the dot's tooltip.
-    pub input_reason: Option<String>,
-    pub is_shell:     bool,
+    pub input_reason:  Option<String>,
+    /// The usage limit that stopped it, for the dot's tooltip.
+    pub session_limit: Option<knot_agents::SessionLimit>,
+    pub is_shell:      bool,
     /// The row's key hint while ⌘ is held (`key_hints`).
-    pub hint:         Option<String>,
+    pub hint:          Option<String>,
 }
 
 /// The compact row's body: the avatar alone, centred, with the state dot
@@ -53,13 +56,15 @@ pub(crate) fn compact_agent_row_body(row: CompactAgentRow, cx: &gpui_kit::App) -
                           state,
                           idle_since,
                           input_reason,
+                          session_limit,
                           is_shell,
                           hint, } = row;
     let dot = (!is_shell).then(|| {
                              status_dot(id,
                                         state,
-                                        idle_since,
-                                        input_reason,
+                                        DotDetail { idle_since,
+                                                    input_reason,
+                                                    session_limit },
                                         crate::status_palette::status_palette(cx)).absolute()
                                                                                   .bottom_0()
                                                                                   .right_0()

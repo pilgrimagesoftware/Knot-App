@@ -123,6 +123,7 @@ sort the dashboard.
 | Idle | Green | Quiet and waiting. |
 | Awaiting input | Red | Needs you - for example a permission prompt is open. |
 | Error | Red | The session ended with an error. |
+| Session limit | Red | The agent's provider refused the turn: its session or usage limit is reached. The header says when it resets, if the provider said. |
 
 Terminal output moves an agent to Working and back to Idle after a short quiet period; typing keeps
 it Working. A permission request moves it to Awaiting input immediately; Return moves it to Working
@@ -134,7 +135,9 @@ An agent in Awaiting input says why when it knows: hover its state dot, or read 
 dashboard card. A pending permission request shows its title (`permission requested for Bash`); a
 wait Autopilot started says what it read in the agent's last reply (`Autopilot: the last reply asks
 you a question`). The reason goes as soon as the agent leaves Awaiting input. A session that exits non-zero, or
-a panel connection that ends with an error, moves the agent to Error. The dashboard's cards add a
+a panel connection that ends with an error, moves the agent to Error. A panel agent whose turn is
+refused with a session or usage limit ("You've hit your session limit · resets 5:20pm") shows Session
+limit instead, in red, until you send it another prompt. The dashboard's cards add a
 glanceable working/thinking indicator that reflects the same status and animates on each change; the
 sidebar row does not draw it.
 

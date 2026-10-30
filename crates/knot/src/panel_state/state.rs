@@ -52,6 +52,10 @@ pub struct PanelState {
     /// decision - the last message's action bar (copy needs stable text)
     /// and its track toggle are mutually exclusive on this flag.
     pub turn_active:                bool,
+    /// The usage limit the last turn ended on, if it ended on one (#318):
+    /// the agent shows "Session limit" until the user sends again. Set by
+    /// [`Self::push_error`], cleared by the next prompt.
+    pub session_limit:              Option<knot_agents::SessionLimit>,
     /// Whether the in-flight response should auto-scroll to follow new
     /// content, per the track toggle's per-response scope (design decision
     /// "Track toggle scope"). Reset to `true` at the start of each turn.
@@ -213,6 +217,9 @@ impl PanelState {
         self.times.go_live(&self.messages, &mut self.sent_at);
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
+        // A new turn tries again; if the limit still holds, its error sets
+        // this back.
+        self.session_limit = None;
         self.tracking = follow;
     }
 
@@ -252,7 +259,11 @@ impl PanelState {
     /// the error response *is* the turn's outcome, no `TurnEnd` follows
     /// it, and leaving `turn_active` set would lock the composer out of
     /// sending anything else for the rest of the session.
+    ///
+    /// An error that reports a usage limit is kept as
+    /// [`Self::session_limit`], which is what turns the agent's dot red.
     pub fn push_error(&mut self, text: String) {
+        self.session_limit = knot_agents::SessionLimit::from_error(&text);
         self.push_message(PanelMessage::Error(text));
         self.turn_active = false;
     }

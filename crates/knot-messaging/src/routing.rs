@@ -138,6 +138,7 @@ mod tests {
                 state:              AgentState::Idle,
                 idle_since:         None,
                 awaiting_reason:    None,
+                session_limit:      None,
                 status_text:        String::new(),
                 is_registered:      true,
                 is_pending_start:   false,

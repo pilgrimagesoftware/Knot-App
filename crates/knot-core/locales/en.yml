@@ -53,6 +53,11 @@ sidebar:
   # An agent waiting on the user, and why (#344): `reason` is a permission
   # request's title or what Autopilot read in the agent's last reply.
   status_awaiting_because: "%{state}: %{reason}"
+  # An agent whose session hit its provider's usage limit (#318), in place of
+  # "Error"; `resets` is when it lifts, as the provider put it.
+  status_session_limit: "Session limit"
+  status_session_limit_resets: "Session limit · resets %{resets}"
+  session_limit_resets: "Resets %{resets}"
   # A Panel agent's pending ACP permission request, by its tool call's title.
   awaiting_permission: "permission requested for %{title}"
 

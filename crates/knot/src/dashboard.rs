@@ -13,7 +13,6 @@ use gpui_kit::{
 use uuid::Uuid;
 
 use crate::app_state::state_color;
-use crate::app_state::state_label;
 use crate::app_support::single_line;
 use crate::consts;
 use crate::status_palette::StatusPalette;
@@ -31,21 +30,24 @@ pub(crate) const GRID_SPACING: f32 = 16.;
 /// borrow-lifetime tie to the caller's lock.
 #[derive(Debug, Clone)]
 pub(crate) struct DashboardAgent {
-    pub id:           Uuid,
-    pub avatar:       String,
-    pub name:         String,
-    pub folder_name:  String,
-    pub state:        knot_agents::AgentState,
-    pub is_shell:     bool,
-    pub header_title: String,
+    pub id:            Uuid,
+    pub avatar:        String,
+    pub name:          String,
+    pub folder_name:   String,
+    pub state:         knot_agents::AgentState,
+    pub is_shell:      bool,
+    pub header_title:  String,
     /// Why the agent is waiting on the user, shown under its status while
     /// it is (#344); see `knot_agents::Agent::input_reason`.
-    pub input_reason: Option<String>,
-    pub git_stats:    Option<knot_git::DiffStats>,
+    pub input_reason:  Option<String>,
+    /// The usage limit that stopped it, named in place of "Error" (#318);
+    /// see `knot_agents::Agent::active_session_limit`.
+    pub session_limit: Option<knot_agents::SessionLimit>,
+    pub git_stats:     Option<knot_git::DiffStats>,
     /// Whether the agent has a session, as the sidebar row means it: a
     /// `passive` agent that never started and a deactivated one are both
     /// not running, and the card's working indicator says so.
-    pub is_running:   bool,
+    pub is_running:    bool,
 }
 
 /// One workspace's section as needed by a dashboard grid.
@@ -139,7 +141,14 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
     let name = agent.name.clone();
     let folder_name = agent.folder_name.clone();
     let header_title = agent.header_title.clone();
-    let input_reason = agent.input_reason.clone();
+    let status = crate::app_state::status_label(agent.state, agent.session_limit.as_ref(), false);
+    // The line under the title: why the agent waits, or when its limit
+    // lifts.
+    let input_reason = agent.input_reason.clone().or_else(|| {
+                                                     agent.session_limit
+                                     .as_ref()
+                                     .and_then(crate::app_state::session_limit_resets)
+                                                 });
     let is_shell = agent.is_shell;
     let state = agent.state;
     let is_running = agent.is_running;
@@ -188,7 +197,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                                     div().text_sm()
                                                          .flex_shrink_0()
                                                          .text_color(state_color(state, palette))
-                                                         .child(state_label(state))
+                                                         .child(status)
                                                 })))
             .children((!header_title.is_empty()).then(|| {
                                                     div().text_sm()

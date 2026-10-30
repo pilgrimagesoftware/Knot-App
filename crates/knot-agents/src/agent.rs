@@ -102,6 +102,11 @@ pub struct Agent {
     /// cleared by [`crate::AgentStore::set_state`] as the agent leaves
     /// Input, so it never outlives the wait it explains.
     pub awaiting_reason:   Option<String>,
+    /// The usage limit that stopped this agent's session, while its state
+    /// is [`AgentState::Error`] because of it (#318). Set with
+    /// [`crate::AgentStore::set_session_limit`] and cleared by
+    /// [`crate::AgentStore::set_state`] as the agent leaves Error.
+    pub session_limit:     Option<crate::SessionLimit>,
     pub status_text:       String,
     pub is_registered:     bool,
     pub is_pending_start:  bool,
@@ -131,6 +136,19 @@ pub struct Agent {
 }
 
 impl Agent {
+    /// The usage limit that stopped this agent, while it is stopped by one:
+    /// `None` outside [`AgentState::Error`]. What every surface showing
+    /// "Session limit" reads (#318).
+    #[must_use]
+    pub fn active_session_limit(&self) -> Option<&crate::SessionLimit> {
+        if self.state == AgentState::Error {
+            self.session_limit.as_ref()
+        }
+        else {
+            None
+        }
+    }
+
     /// Why this agent is waiting on the user, while it is: `None` outside
     /// [`AgentState::Input`] and for a wait nothing explained. What every
     /// surface showing "Awaiting input" reads, so none shows a reason the
@@ -240,6 +258,7 @@ mod tests {
                 state:              AgentState::Idle,
                 idle_since:         None,
                 awaiting_reason:    None,
+                session_limit:      None,
                 status_text:        String::new(),
                 is_registered:      false,
                 is_pending_start:   false,
