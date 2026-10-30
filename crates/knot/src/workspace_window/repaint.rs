@@ -44,6 +44,15 @@ pub(super) fn spawn_repaint_poll(view: Entity<WorkspaceWindow>,
       .detach();
 }
 
+/// Whether `current` is past the revision `drawn` last recorded, moving
+/// `drawn` up to it. Compared rather than cleared, so another window reading
+/// the same store has its own `drawn` and sees the change too.
+pub(super) fn revised(drawn: &mut u64, current: u64) -> bool {
+    let moved = *drawn != current;
+    *drawn = current;
+    moved
+}
+
 impl WorkspaceWindow {
     /// One tick of the poll, with the ids of any sessions whose process
     /// exited since the last one.
@@ -107,6 +116,10 @@ impl WorkspaceWindow {
         // unrelated to repaint the window, which on an idle workspace is the
         // "could be never" the two above exist to prevent.
         let pull_requests_expiring = self.pull_requests_expiring();
+        // An agent's status text and state are written on the MCP server's
+        // thread, often for an agent that is not the caller and is doing
+        // nothing - no streaming turn, nothing else to repaint for it (#17).
+        let store_revised = self.store_revised();
         // The Changes view's repositories, issues and OpenSpec changes land
         // from `spawn_blocking` the same way, and the issues wait for the
         // repositories: without this the Issues tab would sit on its first
@@ -174,6 +187,7 @@ impl WorkspaceWindow {
            || forge_probed
            || pull_request_states_changed
            || pull_requests_expiring
+           || store_revised
            || work_items_landed
            || git_actions_landed
            || git_commits_landed
@@ -335,6 +349,13 @@ impl WorkspaceWindow {
             }
         }
         true
+    }
+
+    /// Whether the store holds a drawn change this window has not drawn yet,
+    /// taking note of it - see `AgentStore::revision`.
+    pub(super) fn store_revised(&mut self) -> bool {
+        let current = self.store.lock().revision();
+        revised(&mut self.drawn_store_revision, current)
     }
 
     /// Sends the next queued prompt to every agent that has one, and says

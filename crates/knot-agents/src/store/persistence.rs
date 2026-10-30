@@ -37,7 +37,8 @@ impl AgentStore {
                                // which is what loads it: rebuilding the
                                // roster says nothing about what Knot has
                                // seen.
-                               pull_requests: Vec::new() };
+                               pull_requests: Vec::new(),
+                               revision: 0 };
         // A workspace invented here has no saved arrangement to restore, so
         // the first agent is what its window shows.
         if !use_saved_workspaces

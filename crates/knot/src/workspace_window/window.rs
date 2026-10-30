@@ -90,6 +90,10 @@ pub(crate) struct WorkspaceWindow {
     /// The last message each agent has been nudged about, so an unread
     /// inbox produces one prompt rather than one per idle poll.
     pub(super) nudged_messages:                  BTreeMap<Uuid, Uuid>,
+    /// The `AgentStore::revision` this window last drew, so a status text or
+    /// state written where no notify can reach - the MCP server's thread -
+    /// still repaints it (#17). Per window: every window polls the one store.
+    pub(super) drawn_store_revision:             u64,
     /// The last awaiting-input message each agent was notified about.
     ///
     /// `Effect::AwaitingInput` fires on every status event reporting Input,
