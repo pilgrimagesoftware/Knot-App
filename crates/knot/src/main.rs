@@ -28,6 +28,7 @@ mod controls;
 mod dashboard;
 mod diff_stats;
 mod external_tools;
+mod first_click;
 mod git_panel;
 mod import_window;
 mod keymap;

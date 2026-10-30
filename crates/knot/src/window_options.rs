@@ -25,6 +25,9 @@ const TRAFFIC_LIGHT_INSET: f32 = 9.;
 /// A window that draws its own header into the toolkit's title bar: the
 /// three main windows, which put workspace controls up there.
 ///
+/// A window built here must also be listed in `first_click::drag_strip`, so
+/// its drawn title bar still drags it when the window is not focused (#309).
+///
 /// Centred at `initial`, and no smaller than `min` however the user drags
 /// it. Anything past that - a restored frame, traffic-light placement - the
 /// caller sets on the options it gets back.

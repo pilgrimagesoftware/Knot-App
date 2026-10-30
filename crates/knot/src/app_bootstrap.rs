@@ -550,6 +550,9 @@ pub(crate) fn run() {
                                // application menu from the process name.
                                app_support::set_process_name(&knot_core::l10n::t("app.name"));
                                gpui_kit::init(cx);
+                               // Every window absorbs its activating click
+                               // (#309); registered before the first opens.
+                               crate::first_click::install(cx);
                                // Before every other global and before the
                                // first window: they read settings, and a
                                // window that opened without the surface
