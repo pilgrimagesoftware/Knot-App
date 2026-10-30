@@ -58,6 +58,12 @@ impl WorkspaceWindow {
         self.store.lock().set_activated(id, true);
     }
 
+    /// The agent this window has selected, for tests outside the module.
+    #[cfg(test)]
+    pub(crate) fn selected_agent_id(&self) -> Option<Uuid> {
+        self.selected_agent
+    }
+
     /// Brings `id` to the front of this window: selects it, leaves the
     /// dashboard for the terminal view, and starts its session.
     ///
