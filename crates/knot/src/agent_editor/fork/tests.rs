@@ -67,10 +67,17 @@ fn a_fork_prefill_carries_the_whole_setup() {
     assert!(!prefill.is_companion);
 }
 
-/// The editor opens on the source's setup, and Create makes an agent with
-/// it, session setup included, continuing the source's conversation.
-#[gpui_kit::test]
-fn forking_through_the_editor_creates_the_same_setup(cx: &mut TestAppContext) {
+/// The fork editor, open over a source set up by [`source_store`].
+struct Opened {
+    store:    Arc<Mutex<knot_agents::AgentStore>>,
+    expected: knot_agents::Agent,
+    window:   gpui_kit::AnyWindowHandle,
+    editor:   gpui_kit::Entity<AgentEditor>,
+    created:  Arc<Mutex<Option<Uuid>>>,
+    _dir:     TempDir,
+}
+
+fn open_fork_editor(cx: &mut TestAppContext) -> Opened {
     let dir = TempDir::new().expect("a temporary settings root");
     // Create refuses a folder that does not exist.
     let folder = dir.path().join("source");
@@ -103,9 +110,43 @@ fn forking_through_the_editor_creates_the_same_setup(cx: &mut TestAppContext) {
                              .downcast::<AgentEditor>()
                              .expect("the Root holds the agent editor")
                    });
+    Opened { store,
+             expected,
+             window,
+             editor,
+             created,
+             _dir: dir }
+}
+
+impl Opened {
+    /// Presses Create and returns the agent it made.
+    fn create(&self, cx: &mut TestAppContext) -> knot_agents::Agent {
+        cx.update(|cx| {
+              self.window
+                  .update(cx, |_, window, cx| {
+                      self.editor
+                          .update(cx, |editor, cx| editor.create(window, cx));
+                  })
+                  .expect("the editor is open");
+          });
+        let id = self.created.lock().expect("Create reports the new agent");
+        self.store
+            .lock()
+            .agent(id)
+            .expect("the fork exists")
+            .clone()
+    }
+}
+
+/// The editor opens on the source's setup, and Create makes an agent with
+/// it, session setup included, continuing the source's conversation.
+#[gpui_kit::test]
+fn forking_through_the_editor_creates_the_same_setup(cx: &mut TestAppContext) {
+    let opened = open_fork_editor(cx);
+    let expected = &opened.expected;
 
     cx.update(|cx| {
-          let form = editor.read(cx);
+          let form = opened.editor.read(cx);
           assert_eq!(form.description_input.read(cx).value(), "Builds Knot");
           assert_eq!(parse_capability_tags(&form.capabilities_input.read(cx).value()),
                      expected.capabilities);
@@ -113,16 +154,7 @@ fn forking_through_the_editor_creates_the_same_setup(cx: &mut TestAppContext) {
           assert_eq!(form.activation_mode, knot_core::ActivationMode::Active);
       });
 
-    cx.update(|cx| {
-          window.update(cx, |_, window, cx| {
-                    editor.update(cx, |editor, cx| editor.create(window, cx));
-                })
-                .expect("the editor is open");
-      });
-
-    let id = created.lock().expect("Create reports the new agent");
-    let store = store.lock();
-    let fork = store.agent(id).expect("the fork exists");
+    let fork = opened.create(cx);
     assert_eq!(fork.name, "Builder (fork)");
     assert_eq!(fork.description, "Builds Knot");
     assert_eq!(fork.capabilities, expected.capabilities);
@@ -134,4 +166,35 @@ fn forking_through_the_editor_creates_the_same_setup(cx: &mut TestAppContext) {
                                ("model".to_string(), "opus".to_string())]));
     assert_eq!(fork.resume_session_id.as_deref(), Some("sess-source"));
     assert!(fork.fork_session);
+}
+
+/// A fork whose type the user changed in the form starts its own session:
+/// a Claude session id or model means nothing to Codex.
+#[gpui_kit::test]
+fn a_fork_of_another_type_starts_fresh(cx: &mut TestAppContext) {
+    let opened = open_fork_editor(cx);
+    cx.update(|cx| {
+          opened.editor
+                .update(cx, |editor, _| editor.agent_type = "codex".to_string());
+      });
+
+    let fork = opened.create(cx);
+
+    assert_eq!(fork.agent_type, "codex");
+    assert_eq!(fork.resume_session_id, None, "no Claude session to resume");
+    assert!(!fork.fork_session);
+    assert!(fork.session_config.is_empty(), "no Claude model to replay");
+    assert_eq!(fork.description, "Builds Knot",
+               "the registry setup still carries");
+}
+
+#[test]
+fn only_the_source_type_carries_the_session() {
+    let prefill = AgentPrefill { agent_type: Some("claude".to_string()),
+                                 ..Default::default() };
+
+    assert!(prefill.carries_session_to("claude"));
+    assert!(!prefill.carries_session_to("codex"));
+    assert!(!AgentPrefill::default().carries_session_to("claude"),
+            "nothing to carry without a source type");
 }

@@ -9,7 +9,10 @@ persona, shell command, startup prompt, description, capabilities, cost tier,
 activation mode and session setup (model, permission mode, effort) - its
 session id (so the fork resumes the same conversation), a name suffixed to
 mark it as a fork, and placement immediately after the source. Every carried
-field the editor shows SHALL be editable before the agent is created.
+field the editor shows SHALL be editable before the agent is created. The
+session id and session setup SHALL be carried only when the agent is created
+with the source's agent type; a fork the user changed to another type SHALL
+start a fresh session with that type's defaults.
 
 #### Scenario: Fork carries the session forward
 - **WHEN** the user selects Fork Agent on an agent with session id `s1`
@@ -26,3 +29,9 @@ field the editor shows SHALL be editable before the agent is created.
   creates the fork without changing anything
 - **THEN** the created agent has the same description, capabilities, cost
   tier, activation mode and session setup as the source
+
+#### Scenario: A fork changed to another type starts fresh
+- **WHEN** the user forks a Claude agent and changes the type to Codex in the
+  editor before creating
+- **THEN** the created agent resumes no session and replays no session setup,
+  and still carries the source's description, capabilities and cost tier

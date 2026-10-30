@@ -55,6 +55,7 @@ impl AgentEditor {
         };
         // Defence in depth for the same invariant the form states above.
         let agent_type = created_agent_type(self.creating_a_companion(), &self.agent_type);
+        let carries_session = self.prefill.carries_session_to(&agent_type);
         let shell_command = self.shell_command_input.read(cx).value().trim().to_string();
         let description = self.description_input.read(cx).value().trim().to_string();
         let capabilities = parse_capability_tags(&self.capabilities_input.read(cx).value());
@@ -83,15 +84,23 @@ impl AgentEditor {
             // starting its own, so the new agent carries the session as
             // both its id and its resume target with the fork flag set -
             // `CreateOptions` has no field for any of the three, because
-            // every other creation path starts a session from scratch.
-            if let Some(session) = self.prefill.session_id.clone()
+            // every other creation path starts a session from scratch. Only
+            // while the type is the source's: see `carries_session_to`.
+            if carries_session
+               && let Some(session) = self.prefill.session_id.clone()
                && let Err(error) = store.fork_session(id, session)
             {
                 eprintln!("failed to fork the agent's session: {error}");
             }
             // Nor for session setup: a new agent has made no choices yet,
-            // and a fork has made its source's (#38).
-            for (config_id, value) in &self.prefill.session_config {
+            // and a fork has made its source's (#38) - for the same type.
+            let session_config = if carries_session {
+                self.prefill.session_config.iter()
+            }
+            else {
+                Default::default()
+            };
+            for (config_id, value) in session_config {
                 if let Err(error) =
                     store.set_session_config_option(id, config_id.clone(), value.clone())
                 {

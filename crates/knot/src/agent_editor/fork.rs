@@ -73,6 +73,15 @@ impl AgentPrefill {
                activation_mode: Some(*activation_mode),
                session_config:  session_config.clone(), }
     }
+
+    /// Whether an agent created as `created_type` from this prefill takes
+    /// over its session and session setup - only when the type is still the
+    /// one they came from. The form lets the user change the type, and a
+    /// Claude session id resumed by Codex, or a Claude model replayed into
+    /// it, is not a fork of anything.
+    pub(crate) fn carries_session_to(&self, created_type: &str) -> bool {
+        self.agent_type.as_deref() == Some(created_type)
+    }
 }
 
 #[cfg(test)]
