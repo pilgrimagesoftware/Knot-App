@@ -93,6 +93,7 @@ impl WorkspaceWindow {
                                 is_shell,
                                 is_companion,
                                 is_locked,
+                                autopilot,
                                 header_title,
                                 persona_name,
                                 agent_type,
@@ -287,6 +288,18 @@ impl WorkspaceWindow {
                                         detail_line(
                                             gpui_kit::assets::IconName::Lock,
                                             knot_core::l10n::t("agent.locked"),
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // Autopilot reads this agent's replies
+                                    // and may answer or flag them (#323).
+                                    .children(autopilot.then(|| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::Fan,
+                                            knot_core::l10n::t("agent.autopilot"),
                                             DetailLineSize::Small,
                                             title_font_name.clone(),
                                             title_font_size,

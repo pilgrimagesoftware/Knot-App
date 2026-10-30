@@ -27,6 +27,8 @@ pub(super) struct AgentRow {
     pub(super) is_companion:  bool,
     /// Locked against agent messaging (#310), shown as its own detail line.
     pub(super) is_locked:     bool,
+    /// Autopilot reads this agent's replies (#323), shown as a detail line.
+    pub(super) autopilot:     bool,
     pub(super) header_title:  String,
     pub(super) persona_name:  Option<String>,
     /// The agent's coding-agent type (`claude`, `opencode`, ...), shown
