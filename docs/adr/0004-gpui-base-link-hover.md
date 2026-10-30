@@ -75,6 +75,11 @@ link's own click.
 - The fork now carries six commits, and its exit condition is two things: an
   upstream release with the relaxed `auto_grow` bound (ADR-0003) and a
   link-hover hook. Until both land, every gpui-kit bump rebases six commits.
+- The lapse rule assumes a paragraph on screen paints every frame. A view
+  drawn through gpui's view caching (`AnyView::cached`) can skip painting while
+  still on screen, so its link would lapse under a still pointer. Knot caches
+  no views today; anything that starts doing so should check that the URL
+  label survives a still hover.
 - `knot/auto-grow-0.7.0` is kept so that reverting #326 still builds. Do not
   delete or force-push either branch: CI resolves them.
 - The commit is a candidate to propose upstream (longbridge/gpui-kit). If
