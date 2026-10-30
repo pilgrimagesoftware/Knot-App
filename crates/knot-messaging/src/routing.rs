@@ -6,9 +6,6 @@ use crate::message::Message;
 use crate::notify::DeliveryNotifier;
 use crate::store::MessageStore;
 
-/// The routing checks `send` and `broadcast` both apply per recipient:
-/// shell agents can't receive, a locked agent can't receive (#310), and
-/// companion ownership must match in both directions.
 /// Whether `sender` may message anyone at all - the checks `send` and
 /// `broadcast` share, so the two cannot drift apart (#349: a locked sender's
 /// broadcast used to come back as a silent zero while its send was refused).
@@ -22,6 +19,9 @@ fn may_send(sender: &Agent) -> Result<()> {
     Ok(())
 }
 
+/// The routing checks `send` and `broadcast` both apply per recipient:
+/// shell agents can't receive, a locked agent can't receive (#310), and
+/// companion ownership must match in both directions.
 fn eligible(sender: &Agent, recipient: &Agent) -> Result<()> {
     if recipient.locked {
         return Err(SendError::RecipientLocked);

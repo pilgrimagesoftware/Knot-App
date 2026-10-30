@@ -2,6 +2,23 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Sender must be registered
+
+Send and broadcast SHALL be rejected unless the sender resolves to a known
+agent that is registered with MCP. Rejection SHALL return an explanatory
+string, the same for both: broadcast SHALL be rejected with the error a send
+gets, not answered with a recipient count of zero.
+
+#### Scenario: Unregistered sender
+
+- **WHEN** an unregistered agent calls send-message
+- **THEN** no message is stored and the caller receives "Sender not registered"
+
+#### Scenario: Unregistered sender broadcasts
+
+- **WHEN** an unregistered agent calls broadcast-message
+- **THEN** no message is stored and the caller receives "Sender not registered"
+
 ### Requirement: Broadcast fan-out
 
 Broadcast SHALL create one message per eligible recipient in the sender's
@@ -18,12 +35,6 @@ reached no one.
 - **WHEN** a registered agent broadcasts in a workspace with two other
   registered non-shell agents and one shell agent
 - **THEN** two messages are created and the count is 2
-
-#### Scenario: Broadcast from an unregistered agent
-
-- **WHEN** an agent that has not registered calls broadcast-message
-- **THEN** the call is an error saying the sender is not registered, and
-  nothing is stored
 
 ## ADDED Requirements
 
