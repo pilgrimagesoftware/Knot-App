@@ -169,7 +169,7 @@ impl WorkspaceWindow {
     /// Starts whichever session `id`'s type runs. Both calls are needed:
     /// each is a no-op for the kind of agent the other one serves, and both
     /// are no-ops until `activated` is set.
-    fn start_sessions(&mut self, id: Uuid, cx: &mut Context<Self>) {
+    pub(in crate::workspace_window) fn start_sessions(&mut self, id: Uuid, cx: &mut Context<Self>) {
         self.ensure_session(id, cx);
         self.ensure_panel_session(id, cx);
     }
