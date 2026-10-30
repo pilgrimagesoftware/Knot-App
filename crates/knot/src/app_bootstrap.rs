@@ -159,7 +159,8 @@ actions!(knot_app,
           PanelPermissionAllow,
           PanelPermissionAllowAlways,
           PanelPermissionDeny,
-          PanelOpenPermissionSelector]);
+          PanelOpenPermissionSelector,
+          PanelFind]);
 
 // UNWIRED: the standard-menu items the port has not implemented yet. They
 // exist as named actions rather than `NoAction` only so each can carry its

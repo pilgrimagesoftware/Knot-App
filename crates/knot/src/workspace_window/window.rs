@@ -260,6 +260,8 @@ pub(crate) struct WorkspaceWindow {
     /// `render_panel_pane` can `splice` only the rows that actually
     /// changed and leave off-screen rows' measured heights alone.
     pub(super) panel_list_row_counts:            BTreeMap<Uuid, usize>,
+    /// Each agent's open find bar over its conversation (#251).
+    pub(super) panel_finds:                      BTreeMap<Uuid, panel::find_bar::PanelFind>,
     /// Files/images attached via the input area's add-context control,
     /// pending the next send - cleared once the prompt is submitted.
     pub(super) panel_pending_context:            BTreeMap<Uuid, Vec<PathBuf>>,

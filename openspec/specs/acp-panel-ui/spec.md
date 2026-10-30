@@ -1498,6 +1498,38 @@ timestamp rather than the moment it was replayed.
 - **THEN** it shows no timestamp, and the recorded entries after it keep
   theirs
 
+### Requirement: Finding text in the conversation
+
+⌘F in an agent's panel SHALL open a find bar above its conversation, focused,
+including while the composer has focus. It SHALL find what is typed in the
+prompts and replies, ignoring case, either as text or, with its toggle on, as
+a regular expression. Tool calls, shell runs, notices and errors SHALL NOT be
+searched.
+
+#### Scenario: Matches are counted and highlighted
+
+- **WHEN** the user types `gate` and the conversation holds it three times
+  across a prompt and a reply
+- **THEN** the bar reads 1 of 3, every match is highlighted and the current
+  one is highlighted differently
+
+#### Scenario: Stepping between matches
+
+- **WHEN** the user presses Return, or Shift-Return
+- **THEN** the next, or previous, match becomes current, wrapping at either
+  end, and the conversation scrolls to it and stops following new output
+
+#### Scenario: A regular expression
+
+- **WHEN** the regular-expression toggle is on and the user types `v\d+`
+- **THEN** the pattern's matches are found, and a pattern that does not
+  parse finds nothing and the bar says it is invalid
+
+#### Scenario: Closing
+
+- **WHEN** the user presses Escape or the close button
+- **THEN** the bar and every highlight are gone, and the composer has focus
+
 ### Requirement: A link shows where it goes
 
 While the pointer rests on a link in rendered Markdown, in a panel response
@@ -1523,4 +1555,3 @@ that response's action bar.
 - **WHEN** the pointer rests on a link inside a response that is not the
   latest message
 - **THEN** the link's URL is shown and the response's action bar is revealed
-

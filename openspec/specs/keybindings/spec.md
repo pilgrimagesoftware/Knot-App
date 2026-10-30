@@ -179,6 +179,11 @@ The Open Command Center shortcut SHALL open the Command Center, or raise it if
 it is already open. It SHALL be the key equivalent shown beside Window >
 Command Center (`app-menu`).
 
+The Swift app's three-finger double-tap helper (`ThreeFingerDoubleTap.swift`)
+is deliberately not ported: it was never bound to any action there, the
+Command Center included, so the keyboard and the menu are its only routes
+(#11).
+
 #### Scenario: Customized key reaches the menu
 
 - **WHEN** the user rebinds Open Command Center to ⌃⌘K

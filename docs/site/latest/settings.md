@@ -95,7 +95,7 @@ already open, with the agent selected.
 Autopilot watches agents in the agent panel, and Claude Code and Codex agents in a
 terminal, for completed turns and decides
 what to do when an agent goes idle and might need your input. When enabled, it
-requires an AI provider and API key (OpenAI, Anthropic, or Google, each called
+requires an AI provider and API key (OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter, each called
 with a fixed, cheap model). Full details, including the decision loop, custom
 action templates, and configuration options, are in
 [Autopilot]({{ '/latest/autopilot/' | relative_url }}).
