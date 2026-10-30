@@ -17,6 +17,8 @@ impl SettingsWindow {
             AiProvider::OpenAi => "OpenAI",
             AiProvider::Anthropic => "Anthropic",
             AiProvider::Google => "Google",
+            AiProvider::OpenCode => "OpenCode Zen",
+            AiProvider::OpenRouter => "OpenRouter",
         }
     }
 
