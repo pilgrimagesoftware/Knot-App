@@ -554,6 +554,9 @@ pub(crate) fn run() {
                                // Every window absorbs its activating click
                                // (#309); registered before the first opens.
                                crate::first_click::install(cx);
+                               // A link's URL beside the pointer (#326), in
+                               // every window.
+                               crate::link_tooltip::install(cx);
                                // Before every other global and before the
                                // first window: they read settings, and a
                                // window that opened without the surface

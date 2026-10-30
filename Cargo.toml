@@ -70,8 +70,12 @@ gpui-terminal = { git = "https://github.com/pilgrimagesoftware/gpui-terminal", t
 # 0.7.0 still has the `TextareaMode`-only bound, so the bump rebased the fork
 # rather than retiring it.
 #
-# Delete this entry, and the fork, once a release carries the relaxed bound.
-# `docs/adr/0003-gpui-base-fork-on-0-7.md` records the commits and the
-# exit condition.
+# Branch `knot/link-hover-0.7.0` is `knot/auto-grow-0.7.0` plus two commits
+# that publish the link under the pointer (`text::hovered_link`), which the
+# link URL tooltip reads (#326; `docs/adr/0004-gpui-base-link-hover.md`).
+#
+# Delete this entry, and the fork, once a release carries the relaxed bound
+# and a link-hover hook. `docs/adr/0003-gpui-base-fork-on-0-7.md` records the
+# commits and the exit condition.
 [patch.crates-io]
-gpui-base = { git = "https://github.com/pilgrimagesoftware/gpui-kit", branch = "knot/auto-grow-0.7.0" }
+gpui-base = { git = "https://github.com/pilgrimagesoftware/gpui-kit", branch = "knot/link-hover-0.7.0" }

@@ -446,3 +446,12 @@ pub(crate) const FIND_MATCH_ALPHA: f32 = 0.35;
 /// The current find match's background, stronger than the rest.
 pub(crate) const FIND_CURRENT_COLOR: u32 = 0xF97316;
 pub(crate) const FIND_CURRENT_ALPHA: f32 = 0.6;
+
+/// How far below and right of the pointer a link's URL label sits (#326),
+/// clear of the cursor.
+pub(crate) const LINK_TOOLTIP_OFFSET: f32 = 14.;
+/// The widest a link's URL label grows before the URL is cut short with an
+/// ellipsis.
+pub(crate) const LINK_TOOLTIP_MAX_WIDTH: f32 = 480.;
+/// The least room a link's URL label keeps from the window's edges.
+pub(crate) const LINK_TOOLTIP_WINDOW_MARGIN: f32 = 8.;
