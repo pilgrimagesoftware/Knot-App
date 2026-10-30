@@ -11,13 +11,16 @@
 //!
 //! The rules are `gpui-base`'s for its rendered text (`RenderedText`): marks
 //! and escapes resolved, heading and list markers left out, a link as its
-//! text and not its address, images and HTML as nothing, a soft line break
+//! text and not its address, a footnote as `[label]` with each note after
+//! the text as `[label]: ` and its blocks run together, images and HTML as
+//! nothing, a soft line break
 //! as a space, each block - a quote and a table included - ending in a
 //! newline, and table cells joined by a space. The tests hold this
 //! against a real `TextViewState`, so a toolkit change that moves the rules
 //! fails here rather than painting the wrong match.
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use markdown::ParseOptions;
@@ -55,6 +58,16 @@ fn push_block(node: &Node, out: &mut String) {
         }
         Node::Paragraph(_) | Node::Heading(_) => push_inlines(node, out),
         Node::Code(code) => out.push_str(&code.value),
+        // `[label]: ` and the note's text, its blocks run together.
+        Node::FootnoteDefinition(note) => {
+            out.push_str(&footnote_marker(note.label.as_deref(), &note.identifier));
+            out.push_str(": ");
+            let mut body = String::new();
+            for child in &note.children {
+                push_block(child, &mut body);
+            }
+            out.extend(body.chars().filter(|&c| c != '\n'));
+        }
         Node::Math(math) => out.push_str(&math.value),
         Node::Table(table) => {
             for row in &table.children {
@@ -85,10 +98,18 @@ fn push_inlines(node: &Node, out: &mut String) {
             Node::InlineCode(code) => out.push_str(&code.value),
             Node::InlineMath(math) => out.push_str(&math.value),
             Node::Break(_) => out.push('\n'),
+            Node::FootnoteReference(reference) => {
+                out.push_str(&footnote_marker(reference.label.as_deref(), &reference.identifier));
+            }
             Node::Image(_) | Node::ImageReference(_) | Node::Html(_) => {}
             other => push_inlines(other, out),
         }
     }
+}
+
+/// A footnote as the text shows it: `[label]`, the label as written.
+fn footnote_marker(label: Option<&str>, identifier: &str) -> String {
+    format!("[{}]", label.unwrap_or(identifier))
 }
 
 /// [`plain_text`] per message, worked out again only when the message's
@@ -102,12 +123,16 @@ impl PlainTexts {
         let mut hasher = DefaultHasher::new();
         source.hash(&mut hasher);
         let fingerprint = hasher.finish();
-        let entry = self.0
-                        .entry(index)
-                        .or_insert_with(|| (fingerprint.wrapping_add(1), String::new()));
-        if entry.0 != fingerprint {
-            *entry = (fingerprint, plain_text(source));
-        }
+        let entry = match self.0.entry(index) {
+            Entry::Occupied(slot) => {
+                let entry = slot.into_mut();
+                if entry.0 != fingerprint {
+                    *entry = (fingerprint, plain_text(source));
+                }
+                entry
+            }
+            Entry::Vacant(slot) => slot.insert((fingerprint, plain_text(source))),
+        };
         &entry.1
     }
 
