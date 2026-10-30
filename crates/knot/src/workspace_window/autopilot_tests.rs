@@ -149,7 +149,7 @@ fn notice(key: &str) -> PanelMessage {
 fn a_mark_says_in_the_conversation_that_autopilot_stopped_here(cx: &mut TestAppContext) {
     let fixture = busy_agent(cx);
 
-    fixture.apply(AutopilotEffect::Mark, cx);
+    fixture.apply(AutopilotEffect::Mark(None), cx);
 
     assert_eq!(fixture.conversation().last(),
                Some(&notice("autopilot.notice.mark")));
@@ -244,7 +244,7 @@ fn mark(store: &Arc<Mutex<knot_agents::AgentStore>>, agent: Uuid, cx: &mut TestA
     let sinks = knot_mcp_tools::AutopilotSinks { agents:         Arc::clone(store),
                                                  queue:          Arc::default(),
                                                  awaiting_input: Some(awaiting), };
-    knot_mcp_tools::land(agent, knot_autopilot::Effect::Mark, &sinks);
+    knot_mcp_tools::land(agent, knot_autopilot::Effect::Mark(None), &sinks);
 }
 
 /// Every Autopilot mark carries the same default body. One that follows the

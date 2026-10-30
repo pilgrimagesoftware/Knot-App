@@ -87,6 +87,7 @@ impl WorkspaceWindow {
                                 folder,
                                 state,
                                 idle_since,
+                                input_reason,
                                 is_shell,
                                 is_companion,
                                 is_locked,
@@ -216,6 +217,7 @@ impl WorkspaceWindow {
                                                                          avatar,
                                                                          state,
                                                                          idle_since,
+                                                                         input_reason: input_reason.clone(),
                                                                          is_shell,
                                                                          hint: hint.clone() },
                                                        cx).into_any_element()
@@ -344,7 +346,7 @@ impl WorkspaceWindow {
                             // stopped agent's row is dimmed as a whole
                             // (see `agent-list-ui`).
                             .children((!is_shell).then(|| {
-                                status_dot(id, state, idle_since, crate::status_palette::status_palette(cx)).mt_1()
+                                status_dot(id, state, idle_since, input_reason.clone(), crate::status_palette::status_palette(cx)).mt_1()
                             }))
                             .into_any_element()
                             })

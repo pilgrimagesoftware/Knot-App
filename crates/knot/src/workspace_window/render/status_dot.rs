@@ -18,11 +18,12 @@ use crate::app_state::state_color;
 use crate::app_state::state_tooltip;
 
 /// Agent `id`'s state dot. Hovering it names the state, as the header does
-/// beside its own dot, and for an idle agent says when its last message was
-/// (#582). The text is built when the tooltip opens rather than at render,
-/// so a "5m ago" read an hour later still says an hour.
+/// beside its own dot, for an idle agent says when its last message was
+/// (#582), and for one waiting on the user says why (#344). The text is
+/// built when the tooltip opens rather than at render, so a "5m ago" read an
+/// hour later still says an hour.
 pub(super) fn status_dot(id: Uuid, state: knot_agents::AgentState,
-                         idle_since: Option<SystemTime>,
+                         idle_since: Option<SystemTime>, input_reason: Option<String>,
                          palette: &crate::status_palette::StatusPalette)
                          -> Stateful<gpui_kit::Div> {
     div().id(gpui_kit::ElementId::from(format!("agent-status-dot-{id}")))
@@ -33,6 +34,7 @@ pub(super) fn status_dot(id: Uuid, state: knot_agents::AgentState,
          .rounded_full()
          .bg(state_color(state, palette))
          .tooltip(move |window, cx| {
-             Tooltip::new(state_tooltip(state, idle_since)).build(window, cx)
+             Tooltip::new(state_tooltip(state, idle_since, input_reason.as_deref())).build(window,
+                                                                                           cx)
          })
 }

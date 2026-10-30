@@ -387,6 +387,19 @@ async fn ordered_updates_stream_text_and_turn_end() {
     assert!(matches!(second, SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason }) if stop_reason == "end_turn"));
 }
 
+/// The next event, which has to be the report that the request with
+/// `rpc_id` is no longer pending (#344). It precedes the agent's own reply:
+/// the client says the request is resolved before it answers it.
+async fn expect_resolved(events: &mut tokio::sync::mpsc::UnboundedReceiver<SessionEvent>,
+                         rpc_id: &Value) {
+    let event = tokio::time::timeout(std::time::Duration::from_secs(5), events.recv())
+        .await
+        .expect("the resolution is reported")
+        .expect("an event");
+    assert!(matches!(&event, SessionEvent::PermissionResolved { rpc_id: resolved } if resolved == rpc_id),
+            "expected {rpc_id} resolved, got {event:?}");
+}
+
 #[tokio::test]
 async fn permission_deny_decision_is_delivered_to_the_agent() {
     let (client, mut events) = AcpClient::connect(permission_flow_agent()).await
@@ -403,6 +416,7 @@ async fn permission_deny_decision_is_delivered_to_the_agent() {
 
     client.answer_permission(&permission, PermissionDecision::Deny);
 
+    expect_resolved(&mut events, &permission.rpc_id).await;
     let confirmation = events.recv().await.expect("decision echoed back");
     assert!(matches!(confirmation, SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == "decision:deny"));
 }
@@ -421,22 +435,34 @@ async fn cancelling_answers_a_pending_permission_request_as_cancelled() {
           .expect("session id");
     let _text = events.recv().await.expect("text delta");
     let _turn_end = events.recv().await.expect("turn end");
-    assert!(matches!(events.recv().await.expect("permission request"),
-                     SessionEvent::PermissionRequest(_)));
+    let permission = match events.recv().await.expect("permission request") {
+        SessionEvent::PermissionRequest(request) => request,
+        other => panic!("expected a permission request, got {other:?}"),
+    };
 
     client.session_cancel("sess-1").await.expect("cancel sent");
 
-    for expected in ["cancel-received", "decision:cancelled"] {
-        // Bounded, so a client that never answers fails here instead of
-        // hanging the suite - which is the defect itself.
-        let echoed = tokio::time::timeout(std::time::Duration::from_secs(5), events.recv())
+    // Stop answers the request without the UI ever touching it, so this
+    // report is the only thing that can take it off screen (#344). It can
+    // land either side of the agent's acknowledgement of the cancel.
+    let mut seen = Vec::new();
+    while seen.len() < 3 {
+        seen.push(tokio::time::timeout(std::time::Duration::from_secs(5), events.recv())
             .await
-            .unwrap_or_else(|_| panic!("the agent never saw {expected}"))
-            .expect("the agent's acknowledgement");
-        assert!(matches!(&echoed,
-                         SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == expected),
-                "expected {expected}, got {echoed:?}");
+            .expect("the cancel's events arrive")
+            .expect("an event"));
     }
+    assert!(seen.iter().any(|event| matches!(event,
+                SessionEvent::PermissionResolved { rpc_id } if *rpc_id == permission.rpc_id)),
+            "the cancelled request is reported resolved: {seen:?}");
+    let texts: Vec<_> =
+        seen.iter()
+            .filter_map(|event| match event {
+                SessionEvent::Update(SessionUpdate::TextDelta { text }) => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+    assert_eq!(texts, ["cancel-received", "decision:cancelled"]);
 }
 
 /// Fake agent declaring one `select` Session Config Option ("mode") on
@@ -619,6 +645,7 @@ async fn allow_and_always_allow_answer_with_their_own_kinds() {
 
         client.answer_permission(&permission, decision);
 
+        expect_resolved(&mut events, &permission.rpc_id).await;
         let confirmation = events.recv().await.expect("decision echoed back");
         assert!(matches!(&confirmation,
                          SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == expected),

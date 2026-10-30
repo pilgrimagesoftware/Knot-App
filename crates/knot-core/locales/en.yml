@@ -50,6 +50,11 @@ sidebar:
   # in this run (#582). `state` is the header's status label, `when` the
   # panel's relative time ("5m ago"), `at` the absolute moment.
   status_idle_since: "%{state} · last message %{when} (%{at})"
+  # An agent waiting on the user, and why (#344): `reason` is a permission
+  # request's title or what Autopilot read in the agent's last reply.
+  status_awaiting_because: "%{state}: %{reason}"
+  # A Panel agent's pending ACP permission request, by its tool call's title.
+  awaiting_permission: "permission requested for %{title}"
 
 agent:
   companion: "Shell companion"
@@ -595,6 +600,11 @@ autopilot:
     replied: "Autopilot replied for you"
     mark: "Autopilot: this reply needs your input"
     ask: "Autopilot: asking you how to continue"
+  # Why an agent Autopilot stopped is waiting, shown on its cell (#344).
+  reason:
+    binary: "Autopilot: the last reply asks for a go-ahead"
+    open: "Autopilot: the last reply asks you a question"
+    unchecked: "Autopilot: the custom action could not check the last reply"
 
 broadcast:
   window_title: "Broadcast to All Agents"

@@ -40,7 +40,9 @@ Once classified (if not Custom), the configured action decides what happens:
 | Auto-continue | Sends "yes, continue" for a binary question. An open question cannot be auto-answered, so this falls back to Mark conversation instead. |
 | Custom | Skips classification; see below. |
 
-A `completed` classification never triggers anything, no matter what action is configured.
+A `completed` classification never triggers anything, no matter what action is configured. Autopilot only counts a reply as needing you when it asks you, the reader, a question or for a decision. A status report, a reply that says nothing is needed from you, a request addressed to another agent, or "let me know if you need anything else" after finished work is `completed`.
+
+When Mark conversation or Ask me marks an agent Awaiting input, its state dot's tooltip and its dashboard card say so, with the reason, for example `Autopilot: the last reply asks for a go-ahead`. The notification carries the same text. That way a wait Autopilot started can be told apart from one the agent asked for itself.
 
 A reply Autopilot sends goes in as a prompt: in the agent panel it's queued behind a running turn like any other, and in a terminal it's typed and submitted. Sending a reply doesn't mark the agent as Awaiting input, because the reply starts its next turn.
 

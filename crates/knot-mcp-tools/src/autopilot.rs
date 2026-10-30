@@ -26,10 +26,10 @@ use crate::{AwaitingInputQueue, McpToolCatalog};
 /// queued because there is nothing for a window to act on.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AutopilotEffect {
-    /// Mark the agent as needing input and notify, with no particular
-    /// message - `knot-desktop-notifications`'s generic awaiting-input
-    /// copy applies, same as an explicit `status: "input"` hook.
-    Mark,
+    /// Mark the agent as needing input and notify, with the
+    /// classification that flagged the reply - `None` for the custom
+    /// action's fallback, where nothing was classified.
+    Mark(Option<Classification>),
     /// Open the decision dialog, carrying the message that prompted it.
     Ask {
         last_message:   String,
@@ -43,7 +43,7 @@ impl AutopilotEffect {
     fn from_effect(effect: Effect) -> Option<Self> {
         match effect {
             Effect::None => None,
-            Effect::Mark => Some(Self::Mark),
+            Effect::Mark(classification) => Some(Self::Mark(classification)),
             Effect::Ask { last_message,
                           classification, } => Some(Self::Ask { last_message,
                                                                 classification }),
@@ -157,15 +157,41 @@ pub fn land(id: Uuid, effect: Effect, sinks: &AutopilotSinks) {
         return;
     };
     match &effect {
-        AutopilotEffect::Mark | AutopilotEffect::Ask { .. } => {
-            sinks.agents.lock().set_state(id, AgentState::Input);
-            if let Some(awaiting_input) = &sinks.awaiting_input {
-                awaiting_input.lock().push((id, None));
-            }
+        AutopilotEffect::Mark(classification) => wait_on_user(id, *classification, sinks),
+        AutopilotEffect::Ask { classification, .. } => {
+            wait_on_user(id, Some(*classification), sinks);
         }
         AutopilotEffect::InjectText(_) => {}
     }
     sinks.queue.lock().push((id, effect));
+}
+
+/// Puts `id` in Input with the reason Autopilot stopped it, on its cell and
+/// in the notification: without one, "Awaiting input" on a reply that asks
+/// nothing could not be told from a real request, or traced to Autopilot
+/// at all (#344).
+fn wait_on_user(id: Uuid, classification: Option<Classification>, sinks: &AutopilotSinks) {
+    let reason = awaiting_reason(classification);
+    {
+        let mut agents = sinks.agents.lock();
+        agents.set_state(id, AgentState::Input);
+        agents.set_awaiting_reason(id, Some(reason.clone()));
+    }
+    if let Some(awaiting_input) = &sinks.awaiting_input {
+        awaiting_input.lock().push((id, Some(reason)));
+    }
+}
+
+/// What the cell says about a wait Autopilot started.
+fn awaiting_reason(classification: Option<Classification>) -> String {
+    let key = match classification {
+        Some(Classification::Binary) => "autopilot.reason.binary",
+        Some(Classification::Open) => "autopilot.reason.open",
+        // A completed reply never lands here; `dispatch` returns nothing
+        // for it. Should one arrive, it is still Autopilot's call.
+        Some(Classification::Completed) | None => "autopilot.reason.unchecked",
+    };
+    knot_core::l10n::t(key).to_string()
 }
 
 /// The last assistant message to classify, per
@@ -273,10 +299,52 @@ mod tests {
     #[test]
     fn a_mark_waits_on_the_user_and_notifies() {
         let (sinks, id) = sinks();
-        land(id, Effect::Mark, &sinks);
+        land(id, Effect::Mark(Some(Classification::Open)), &sinks);
         assert_eq!(state(&sinks, id), AgentState::Input);
         assert_eq!(awaiting(&sinks), 1);
-        assert_eq!(*sinks.queue.lock(), vec![(id, AutopilotEffect::Mark)]);
+        assert_eq!(*sinks.queue.lock(),
+                   vec![(id, AutopilotEffect::Mark(Some(Classification::Open)))]);
+    }
+
+    fn reason(sinks: &AutopilotSinks, id: Uuid) -> Option<String> {
+        sinks.agents
+             .lock()
+             .agent(id)
+             .and_then(|agent| agent.awaiting_reason.clone())
+    }
+
+    /// #344: the cell and the notification both say Autopilot stopped the
+    /// agent, and what it read in the reply.
+    #[test]
+    fn a_wait_autopilot_starts_says_why_on_the_cell_and_in_the_notification() {
+        for (effect, key) in [(Effect::Mark(Some(Classification::Open)), "autopilot.reason.open"),
+                              (Effect::Mark(Some(Classification::Binary)),
+                               "autopilot.reason.binary"),
+                              (Effect::Mark(None), "autopilot.reason.unchecked"),
+                              (Effect::Ask { last_message:   "Shall I?".into(),
+                                             classification: Classification::Binary, },
+                               "autopilot.reason.binary")]
+        {
+            let (sinks, id) = sinks();
+            land(id, effect, &sinks);
+
+            let expected = knot_core::l10n::t(key).to_string();
+            assert_ne!(expected, key, "{key} resolves");
+            assert_eq!(reason(&sinks, id).as_deref(), Some(expected.as_str()));
+            let notified = sinks.awaiting_input.as_ref().unwrap().lock()[0].1.clone();
+            assert_eq!(notified.as_deref(), Some(expected.as_str()));
+        }
+    }
+
+    /// The reason belongs to the wait: once the agent moves on, it goes.
+    #[test]
+    fn the_reason_goes_when_the_agent_leaves_input() {
+        let (sinks, id) = sinks();
+        land(id, Effect::Mark(Some(Classification::Open)), &sinks);
+
+        sinks.agents.lock().set_state(id, AgentState::Running);
+
+        assert_eq!(reason(&sinks, id), None);
     }
 
     #[test]

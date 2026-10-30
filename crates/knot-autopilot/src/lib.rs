@@ -84,7 +84,7 @@ fn analyze_custom(last_message: &str, provider: AiProvider, api_key: &str, custo
     let system_prompt = format!("{CUSTOM_PROMPT_PREFIX}{custom_prompt}");
     match llm::complete(provider, api_key, &system_prompt, last_message, Some(1024)) {
         Ok(response) => dispatch_custom(&response),
-        Err(_) => Effect::Mark,
+        Err(_) => Effect::Mark(None),
     }
 }
 
@@ -121,6 +121,6 @@ mod tests {
                            "",
                            AutopilotAction::Custom,
                            "decide for me"),
-                   Effect::Mark);
+                   Effect::Mark(None));
     }
 }

@@ -220,14 +220,38 @@ impl AgentStore {
     /// [`Agent::idle_since`]. Only a transition counts: a repeated `Idle`
     /// keeps the time the agent actually finished, rather than moving it to
     /// whenever the state was last re-reported.
+    ///
+    /// Leaving [`AgentState::Input`] clears [`Agent::awaiting_reason`]: the
+    /// wait it explained is over, whichever path ended it.
     pub fn set_state(&mut self, id: Uuid, state: AgentState) {
         let changed = self.agent(id).is_some_and(|agent| agent.state != state);
         self.update(id, |agent| {
                 if state == AgentState::Idle && agent.state != AgentState::Idle {
                     agent.idle_since = Some(std::time::SystemTime::now());
                 }
+                if state != AgentState::Input {
+                    agent.awaiting_reason = None;
+                }
                 agent.state = state;
             });
+        if changed {
+            self.revise();
+        }
+    }
+
+    /// Records why `id` is waiting on the user; see
+    /// [`Agent::awaiting_reason`]. Set before or after the state moves to
+    /// Input - the two arrive from different sinks in either order - and
+    /// kept until the agent leaves Input. `None` leaves a reason already
+    /// given in place: a wait re-reported without one is the same wait.
+    pub fn set_awaiting_reason(&mut self, id: Uuid, reason: Option<String>) {
+        let Some(reason) = reason.filter(|reason| !reason.trim().is_empty())
+        else {
+            return;
+        };
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.awaiting_reason.as_deref() != Some(&reason));
+        self.update(id, |agent| agent.awaiting_reason = Some(reason));
         if changed {
             self.revise();
         }

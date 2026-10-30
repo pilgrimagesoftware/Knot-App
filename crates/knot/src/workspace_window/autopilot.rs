@@ -140,7 +140,7 @@ impl WorkspaceWindow {
             // raises the notification from that push. What only a window can
             // add is the line in the conversation saying it was Autopilot,
             // not the agent, that stopped here.
-            AutopilotEffect::Mark => self.autopilot_notice(id, "autopilot.notice.mark"),
+            AutopilotEffect::Mark(_) => self.autopilot_notice(id, "autopilot.notice.mark"),
             AutopilotEffect::Ask { last_message,
                                    classification, } => {
                 let Some(name) = self.store.lock().agent(id).map(|agent| agent.name.clone())

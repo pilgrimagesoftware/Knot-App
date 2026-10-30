@@ -126,7 +126,14 @@ sort the dashboard.
 
 Terminal output moves an agent to Working and back to Idle after a short quiet period; typing keeps
 it Working. A permission request moves it to Awaiting input immediately; Return moves it to Working
-and Escape to Idle. A shell agent stays Idle whatever its output. A session that exits non-zero, or
+and Escape to Idle. A permission answered any other way, such as cancelled by Stop or by the session
+ending, takes the agent out of Awaiting input as soon as it is answered. A shell agent stays Idle
+whatever its output.
+
+An agent in Awaiting input says why when it knows: hover its state dot, or read the line under its
+dashboard card. A pending permission request shows its title (`permission requested for Bash`); a
+wait Autopilot started says what it read in the agent's last reply (`Autopilot: the last reply asks
+you a question`). The reason goes as soon as the agent leaves Awaiting input. A session that exits non-zero, or
 a panel connection that ends with an error, moves the agent to Error. The dashboard's cards add a
 glanceable working/thinking indicator that reflects the same status and animates on each change; the
 sidebar row does not draw it.

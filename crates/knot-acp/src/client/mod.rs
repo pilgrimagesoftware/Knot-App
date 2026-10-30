@@ -148,9 +148,15 @@ impl AcpClient {
                             }));
                         let transport = Arc::clone(&transport_for_loop);
                         let options_for_answer = options;
+                        let resolved_tx = events_tx.clone();
                         tokio::spawn(async move {
                             let answer = decision_rx.await
                                                     .unwrap_or(PermissionAnswer::Decided(PermissionDecision::Deny));
+                            // Every way a request is answered ends here - the
+                            // user's decision, Stop's `cancelled`, the session
+                            // ending - so this is the one place that can say
+                            // it is no longer pending, whichever it was.
+                            let _ = resolved_tx.send(SessionEvent::PermissionResolved { rpc_id: id.clone() });
                             let outcome = permission_result(answer, &options_for_answer);
                             let _ = transport.respond(id, outcome).await;
                         });

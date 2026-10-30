@@ -18,6 +18,9 @@ pub(super) struct AgentRow {
     pub(super) state:        knot_agents::AgentState,
     /// When the agent last went idle, for its status dot's tooltip.
     pub(super) idle_since:   Option<std::time::SystemTime>,
+    /// Why the agent is waiting on the user, for the same tooltip; see
+    /// `knot_agents::Agent::input_reason`.
+    pub(super) input_reason: Option<String>,
     pub(super) is_shell:     bool,
     pub(super) is_companion: bool,
     /// Locked against agent messaging (#310), shown as its own detail line.
