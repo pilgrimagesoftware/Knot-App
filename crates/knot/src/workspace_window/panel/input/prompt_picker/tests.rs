@@ -195,6 +195,32 @@ impl Fixture {
             .update(|window, cx| input.read(cx).focus_handle(cx).is_focused(window))
     }
 
+    /// Clicks the element drawn under `selector`, then lets the deferred
+    /// editor open.
+    fn click(&mut self, selector: &'static str) {
+        let bounds = self.window
+                         .debug_bounds(selector)
+                         .unwrap_or_else(|| panic!("{selector} is drawn"));
+        self.window
+            .simulate_click(bounds.center(), gpui_kit::Modifiers::none());
+        self.window.run_until_parked();
+    }
+
+    /// Each open prompt editor's prompt: `Some` for an edit, `None` for a
+    /// new one.
+    fn editors(&mut self) -> Vec<Option<Uuid>> {
+        self.window.update(|_, cx| {
+                       cx.windows()
+                         .into_iter()
+                         .filter_map(|window| window.downcast::<gpui_kit::component::Root>())
+                         .filter_map(|root| root.read(cx).ok()?.view().clone().downcast().ok())
+                         .map(|editor: Entity<crate::library_window::PromptEditor>| {
+                             editor.read(cx).editing_id()
+                         })
+                         .collect()
+                   })
+    }
+
     fn nothing_sent(&mut self) -> bool {
         let agent = self.agent;
         self.view.read_with(&self.window, |view, _| {
@@ -337,4 +363,55 @@ fn the_shortcut_does_nothing_without_a_focused_composer(cx: &mut TestAppContext)
     fixture.window.run_until_parked();
 
     assert!(!fixture.is_open());
+}
+
+/// "Editing a prompt from the list" (#321): a row's pencil opens that
+/// prompt in the editor and closes the list. The pencil sits inside the
+/// row, whose own click inserts, so the composer must come out untouched.
+#[gpui_kit::test]
+fn a_rows_pencil_edits_that_prompt_and_inserts_nothing(cx: &mut TestAppContext) {
+    let gate = prompt("Run the gate", "make");
+    let mut fixture = window_with_library(cx, vec![prompt("Review", "review it"), gate.clone()]);
+    fixture.compose("keep me", 7..7);
+    fixture.open();
+
+    fixture.click("panel-prompt-picker-edit-1");
+
+    assert_eq!(fixture.editors(), [Some(gate.id)]);
+    assert!(!fixture.is_open());
+    assert_eq!(fixture.composer().0, "keep me");
+    assert!(fixture.nothing_sent());
+}
+
+/// "Adding a prompt from the list" (#317, #321): the "+" beside the search
+/// field and the "New Prompt…" row each open a blank editor and close the
+/// list, whether or not the library holds anything yet.
+#[gpui_kit::test]
+fn the_plus_and_the_new_prompt_row_open_a_blank_editor(cx: &mut TestAppContext) {
+    let mut fixture = window_with_library(cx, Vec::new());
+    fixture.compose("keep me", 7..7);
+
+    fixture.open();
+    fixture.click("panel-prompt-picker-add");
+    assert_eq!(fixture.editors(), [None]);
+    assert!(!fixture.is_open());
+
+    fixture.open();
+    fixture.click("panel-prompt-picker-new");
+    assert_eq!(fixture.editors(), [None, None]);
+    assert!(!fixture.is_open());
+    assert_eq!(fixture.composer().0, "keep me");
+    assert_eq!(fixture.opened_prompts.get(),
+               0,
+               "the Prompts window is not involved");
+}
+
+#[test]
+fn the_add_and_edit_copy_resolves() {
+    for key in ["panel.prompt_picker.new_prompt",
+                "panel.prompt_picker.add",
+                "panel.prompt_picker.edit"]
+    {
+        assert_ne!(knot_core::l10n::t(key), key, "{key} must resolve");
+    }
 }

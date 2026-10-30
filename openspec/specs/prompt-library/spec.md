@@ -281,3 +281,32 @@ after the inserted text.
 - **WHEN** `TODO` is selected in the composer and the user chooses a prompt
   whose text is `run the tests`
 - **THEN** `TODO` is replaced by `run the tests`
+
+### Requirement: Adding a prompt from the Insert Prompt list
+
+The Insert Prompt list SHALL offer to add a prompt in two places: an add
+button beside its search field, and a "New Prompt…" item at the foot of the
+list, shown whatever the list holds. Each SHALL close the list and open the
+prompt editor on a blank prompt with the caret in its name, leaving the
+composer unchanged.
+
+#### Scenario: Adding a prompt from the list
+
+- **WHEN** the user opens Insert Prompt and clicks the add button or the
+  "New Prompt…" item
+- **THEN** the prompt editor opens on a blank prompt with the caret in its
+  name, and the list is closed
+
+### Requirement: Editing a prompt from the Insert Prompt list
+
+Each prompt the Insert Prompt list shows SHALL carry an edit button that
+closes the list and opens the prompt editor on that prompt with the caret in
+its text. It SHALL NOT insert the prompt, change the composer, or send
+anything.
+
+#### Scenario: Editing a listed prompt
+
+- **WHEN** the composer holds `keep me` and the user opens Insert Prompt and
+  clicks the edit button on "Run the gate"
+- **THEN** the prompt editor opens on "Run the gate" with the caret in its
+  text, the list is closed, and the composer still holds `keep me`

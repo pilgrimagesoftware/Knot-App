@@ -10,6 +10,7 @@
 
 use gpui_kit::App;
 use gpui_kit::Context;
+use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
 use gpui_kit::Styled;
@@ -69,11 +70,8 @@ impl LibraryWindow {
                                                 "icons/pencil.svg",
                                                 knot_core::l10n::t("settings.prompts.edit"),
                                                 false).on_click({
-                       let parent = library_window.downgrade();
                        let prompt = prompt.clone();
-                       move |_, _, app| {
-                           open_prompt_editor(parent.clone(), Some(prompt.clone()), app);
-                       }
+                       move |_, _, app| open_prompt_editor(Some(prompt.clone()), app)
                    });
         let delete = crate::controls::icon_button(("prompt-delete", index),
                                                   "icons/trash.svg",
@@ -89,7 +87,8 @@ impl LibraryWindow {
                                                                               app);
                                                            }
                                                        });
-        h_flex().justify_between()
+        h_flex().debug_selector(move || format!("prompt-row-{index}"))
+                .justify_between()
                 .items_center()
                 .gap_2()
                 .child(v_flex().flex_1()
@@ -102,7 +101,6 @@ impl LibraryWindow {
     }
 
     pub(crate) fn render_prompts(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let library_window = cx.entity();
         let prompts = crate::settings_global::read(cx).prompts.clone();
         let list = if prompts.is_empty() {
             div().text_sm()
@@ -129,10 +127,7 @@ impl LibraryWindow {
                                                      "icons/plus.svg",
                                                      knot_core::l10n::t("settings.prompts.add"),
                                                      false)
-                            .on_click({
-                                let parent = library_window.downgrade();
-                                move |_, _, app| open_prompt_editor(parent.clone(), None, app)
-                            }),
+                            .on_click(|_, _, app| open_prompt_editor(None, app)),
                     )
                             .child(
                         crate::controls::icon_button("prompts-import-from-library",

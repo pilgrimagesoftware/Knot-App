@@ -311,6 +311,7 @@ impl WorkspaceWindow {
     }
 }
 
+mod edit;
 #[cfg(test)]
 mod tests;
 
@@ -367,11 +368,21 @@ impl RenderOnce for PickerContent {
                                                            el.text_color(muted)
                                                        })
                                                        .child(single_line(&prompt.text)))
+                                           .child(edit::edit_button(key,
+                                                                    index,
+                                                                    prompt.clone(),
+                                                                    &view))
                                            .into_any_element()
                        })
                        .collect()
             }
         };
+        let new_prompt = edit::new_prompt_row(key, &view, cx);
+        let search_row = h_flex().w_full()
+                                 .gap_1()
+                                 .items_center()
+                                 .child(div().flex_1().min_w_0().child(Input::new(&search).small()))
+                                 .child(edit::add_button(key, &view));
         v_flex().id(("panel-prompt-picker", key))
                 .w(px(360.))
                 .gap_1()
@@ -392,7 +403,7 @@ impl RenderOnce for PickerContent {
                             cx.stop_propagation();
                         });
                 })
-                .child(Input::new(&search).small())
+                .child(search_row)
                 .child(crate::capped_scroll::capped_scroll_list(("panel-prompt-picker-list", key),
                                                                 px(PICKER_MAX_VISIBLE as f32
                                                                    * 28.),
@@ -400,6 +411,7 @@ impl RenderOnce for PickerContent {
                                                                         .gap_0p5()
                                                                         .children(list))
                        .track(&scroll))
+                .child(new_prompt)
     }
 }
 
