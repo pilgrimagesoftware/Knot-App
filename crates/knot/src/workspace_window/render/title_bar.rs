@@ -136,7 +136,7 @@ impl WorkspaceWindow {
                                                .child(div().w(px(10.))
                                                            .h(px(10.))
                                                            .rounded_full()
-                                                           .bg(state_color(*state)))
+                                                           .bg(state_color(*state, crate::status_palette::status_palette(cx))))
                                                .child(div().font_family(title_font_name.clone())
                                                            .text_size(title_font_size)
                                                            .text_color(cx.theme().muted_foreground)

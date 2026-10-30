@@ -199,7 +199,9 @@ fn render_row(agent_ids: Vec<Uuid>, row: PullRequestRow, cx: &mut Context<Worksp
     let status = RowStatus::of(row.lookup.as_ref());
     let checks = state.and_then(|state| state.checks);
     let mergeable = state.map_or(Mergeability::Unknown, |state| state.mergeable);
-    let tint = state_color(status.known(), mergeable);
+    let tint = state_color(status.known(),
+                           mergeable,
+                           crate::status_palette::status_palette(cx));
 
     h_flex().id(gpui_kit::SharedString::from(format!("pull-request-{}", row.url)))
             .w_full()
@@ -328,16 +330,17 @@ fn row_context_menu(menu: PopupMenu, entity: &Entity<WorkspaceWindow>, agent_ids
 /// Orange covers both a conflict and every other block (draft, red CI, a
 /// required review): each needs a push or a decision before it can land,
 /// which is the one thing the colour has to say.
-fn state_color(status: Option<PullRequestStatus>, mergeable: Mergeability)
+fn state_color(status: Option<PullRequestStatus>, mergeable: Mergeability,
+               palette: &crate::status_palette::StatusPalette)
                -> Option<gpui_kit::Hsla> {
     let color = match status? {
-        PullRequestStatus::Merged => consts::COLOR_PULL_REQUEST_MERGED,
-        PullRequestStatus::Closed => consts::COLOR_ERROR,
+        PullRequestStatus::Merged => palette.pull_request_merged,
+        PullRequestStatus::Closed => palette.error,
         PullRequestStatus::Draft | PullRequestStatus::Open => match mergeable {
-            Mergeability::Mergeable => consts::COLOR_IDLE,
-            Mergeability::Conflicting | Mergeability::Blocked => consts::COLOR_RUNNING,
-            Mergeability::Behind => consts::COLOR_PULL_REQUEST_BEHIND,
-            Mergeability::ChecksRunning => consts::COLOR_INPUT,
+            Mergeability::Mergeable => palette.idle,
+            Mergeability::Conflicting | Mergeability::Blocked => palette.running,
+            Mergeability::Behind => palette.pull_request_behind,
+            Mergeability::ChecksRunning => palette.input,
             Mergeability::Unknown => return None,
         },
     };
