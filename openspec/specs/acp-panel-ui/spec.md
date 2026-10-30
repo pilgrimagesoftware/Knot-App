@@ -1497,3 +1497,30 @@ timestamp rather than the moment it was replayed.
   the agent's harness, or from before times were recorded
 - **THEN** it shows no timestamp, and the recorded entries after it keep
   theirs
+
+### Requirement: A link shows where it goes
+
+While the pointer rests on a link in rendered Markdown, in a panel response
+or the Markdown pane, the link's URL SHALL be shown beside the pointer. It
+SHALL be hidden once the pointer leaves the link, including onto plain text
+in the same paragraph. The label SHALL take no input: the link under it SHALL
+stay clickable, and pointing at a link inside a response SHALL still reveal
+that response's action bar.
+
+#### Scenario: Resting on a link
+
+- **WHEN** the pointer rests on a link to `https://example.com/docs`
+- **THEN** `https://example.com/docs` is shown beside the pointer
+
+#### Scenario: Leaving the link
+
+- **WHEN** the pointer moves from the link onto plain text or out of the
+  paragraph
+- **THEN** the URL is no longer shown
+
+#### Scenario: A link inside an earlier response
+
+- **WHEN** the pointer rests on a link inside a response that is not the
+  latest message
+- **THEN** the link's URL is shown and the response's action bar is revealed
+

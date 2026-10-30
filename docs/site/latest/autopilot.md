@@ -10,7 +10,7 @@ Autopilot watches your agents for a completed turn. When an agent goes idle and 
 
 ## How Autopilot works
 
-Autopilot runs on completed turns. It requires an AI provider and API key (OpenAI, Anthropic, or Google, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
+Autopilot runs on completed turns. It requires an AI provider and API key (OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter, each called with a fixed, cheap model per provider). With the toggle off or no API key configured, nothing is classified and agents behave exactly as they do without Autopilot.
 
 How Knot sees a turn end depends on how the agent runs:
 
@@ -100,7 +100,9 @@ Ask for 3 bullet points of requirements before proceeding.
 Open Settings from the application menu or with Cmd+,. The Autopilot tab carries these controls:
 
 - **Enable autopilot** — toggles the entire feature. When off, no classification runs and agents behave normally.
-- **AI Provider** — picker for OpenAI, Anthropic, or Google. Each is called with a fixed model chosen for cost and speed. The read-only model name is shown below the provider.
+- **AI Provider** — picker for OpenAI, Anthropic, Google, OpenCode Zen, or OpenRouter. Each is called with a fixed model chosen for cost and speed. The read-only model name is shown below the provider.
+  - **OpenCode Zen** uses an API key from the OpenCode Console and calls `deepseek-v4-flash`. It needs credits on your Zen account: OpenCode's free models answer only OpenCode itself.
+  - **OpenRouter** uses an OpenRouter API key and calls `openai/gpt-5-mini` through OpenRouter.
 - **API key** — your API key for the chosen provider. Blank or whitespace-only keys fail fast without making any network request.
 - **Action** — picker for Mark conversation, Ask me, Auto-continue, or Custom. The description of the selected action is shown below.
 - **Custom prompt** — a text area (shown only when Custom is selected). Your own prompt, appended after the system framing above. Leave it empty to disable the custom action without unchecking it.

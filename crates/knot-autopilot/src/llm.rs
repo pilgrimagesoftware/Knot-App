@@ -23,8 +23,20 @@ pub fn ai_model_for(provider: AiProvider) -> &'static str {
         AiProvider::OpenAi => "gpt-5-mini",
         AiProvider::Anthropic => "claude-haiku-4-5",
         AiProvider::Google => "gemini-flash-lite-latest",
+        // A paid model: OpenCode refuses its free ones (HTTP 403) to clients
+        // other than OpenCode itself. Served over Chat Completions, which
+        // the GPT and Claude models on Zen are not.
+        AiProvider::OpenCode => "deepseek-v4-flash",
+        AiProvider::OpenRouter => "openai/gpt-5-mini",
     }
 }
+
+/// The Chat Completions endpoint of each provider that speaks OpenAI's
+/// request shape. OpenCode Zen and OpenRouter both do, so they share
+/// `call_chat_completions` with OpenAI and differ only here (#254).
+const OPENAI_CHAT_COMPLETIONS: &str = "https://api.openai.com/v1/chat/completions";
+const OPENCODE_CHAT_COMPLETIONS: &str = "https://opencode.ai/zen/v1/chat/completions";
+const OPENROUTER_CHAT_COMPLETIONS: &str = "https://openrouter.ai/api/v1/chat/completions";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -43,7 +55,21 @@ pub fn complete(provider: AiProvider, api_key: &str, system_prompt: &str, user_m
     }
     let model = ai_model_for(provider);
     match provider {
-        AiProvider::OpenAi => call_openai(api_key, model, system_prompt, user_message),
+        AiProvider::OpenAi => call_chat_completions(OPENAI_CHAT_COMPLETIONS,
+                                                    api_key,
+                                                    model,
+                                                    system_prompt,
+                                                    user_message),
+        AiProvider::OpenCode => call_chat_completions(OPENCODE_CHAT_COMPLETIONS,
+                                                      api_key,
+                                                      model,
+                                                      system_prompt,
+                                                      user_message),
+        AiProvider::OpenRouter => call_chat_completions(OPENROUTER_CHAT_COMPLETIONS,
+                                                        api_key,
+                                                        model,
+                                                        system_prompt,
+                                                        user_message),
         AiProvider::Anthropic => call_anthropic(api_key,
                                                 model,
                                                 system_prompt,
@@ -57,8 +83,11 @@ fn request_failed(error: impl std::fmt::Display) -> AutopilotError {
     AutopilotError::Request(error.to_string())
 }
 
-fn call_openai(api_key: &str, model: &str, system_prompt: &str, user_message: &str)
-               -> Result<String, AutopilotError> {
+/// One OpenAI-style Chat Completions request to `url`, with the key as a
+/// bearer token.
+fn call_chat_completions(url: &str, api_key: &str, model: &str, system_prompt: &str,
+                         user_message: &str)
+                         -> Result<String, AutopilotError> {
     let body = json!({
         "model": model,
         "messages": [
@@ -66,16 +95,15 @@ fn call_openai(api_key: &str, model: &str, system_prompt: &str, user_message: &s
             {"role": "user", "content": user_message},
         ],
     });
-    let response: Value = ureq::post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {api_key}"))
-        .config()
-        .timeout_global(Some(REQUEST_TIMEOUT))
-        .build()
-        .send_json(&body)
-        .map_err(request_failed)?
-        .body_mut()
-        .read_json()
-        .map_err(request_failed)?;
+    let response: Value = ureq::post(url).header("Authorization", format!("Bearer {api_key}"))
+                                         .config()
+                                         .timeout_global(Some(REQUEST_TIMEOUT))
+                                         .build()
+                                         .send_json(&body)
+                                         .map_err(request_failed)?
+                                         .body_mut()
+                                         .read_json()
+                                         .map_err(request_failed)?;
     Ok(response.pointer("/choices/0/message/content")
                .and_then(Value::as_str)
                .unwrap_or_default()
@@ -148,6 +176,28 @@ mod tests {
         assert_eq!(ai_model_for(AiProvider::OpenAi), "gpt-5-mini");
         assert_eq!(ai_model_for(AiProvider::Anthropic), "claude-haiku-4-5");
         assert_eq!(ai_model_for(AiProvider::Google), "gemini-flash-lite-latest");
+        assert_eq!(ai_model_for(AiProvider::OpenCode), "deepseek-v4-flash");
+        assert_eq!(ai_model_for(AiProvider::OpenRouter), "openai/gpt-5-mini");
+    }
+
+    /// #254: OpenCode Zen and OpenRouter take OpenAI's request shape at their
+    /// own Chat Completions endpoints, from their providers' docs.
+    #[test]
+    fn the_gateways_chat_completions_endpoints() {
+        assert_eq!(OPENCODE_CHAT_COMPLETIONS,
+                   "https://opencode.ai/zen/v1/chat/completions");
+        assert_eq!(OPENROUTER_CHAT_COMPLETIONS,
+                   "https://openrouter.ai/api/v1/chat/completions");
+    }
+
+    /// A new provider is still refused without a key, before any request.
+    #[test]
+    fn the_gateways_fail_fast_without_a_key() {
+        for provider in [AiProvider::OpenCode, AiProvider::OpenRouter] {
+            assert!(matches!(complete(provider, " ", "system", "user", None),
+                             Err(AutopilotError::MissingApiKey)),
+                    "{provider}");
+        }
     }
 
     #[test]

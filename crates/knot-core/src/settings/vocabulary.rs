@@ -126,6 +126,9 @@ settings_vocabulary! {
         OpenAi = "openai",
         Anthropic = "anthropic",
         Google = "google",
+        // OpenCode Zen, OpenCode's model gateway, and OpenRouter (#254).
+        OpenCode = "opencode",
+        OpenRouter = "openrouter",
     }
 }
 
