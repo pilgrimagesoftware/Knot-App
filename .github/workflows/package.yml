@@ -59,7 +59,10 @@ jobs:
       - name: Install cargo-packager and cargo-cyclonedx
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-packager,cargo-cyclonedx
+          # cargo-cyclonedx is pinned: its output format and file naming
+          # (`--override-filename`, one file per member) are what the SBOM step
+          # below relies on.
+          tool: cargo-packager,cargo-cyclonedx@0.5.9
 
       # cargo-packager resolves `[package.metadata.packager]` from the manifest
       # in the current directory, not from a workspace root with `--packages`
@@ -132,8 +135,12 @@ jobs:
         run: |
           set -euo pipefail
           out=target/aarch64-apple-darwin/release
-          dmg=$(ls "$out"/*.dmg)
-          name=$(basename "$dmg" .dmg)
+          dmgs=("$out"/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ] || [ ! -f "${dmgs[0]}" ]; then
+            echo "::error::expected exactly one dmg in $out, found: ${dmgs[*]}"
+            exit 1
+          fi
+          name=$(basename "${dmgs[0]}" .dmg)
           # cargo-cyclonedx writes one file beside every workspace member's
           # manifest; only the app's is kept.
           cargo cyclonedx \
