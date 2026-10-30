@@ -225,3 +225,22 @@ This SHALL reuse the panel diagram surface agents already have
 
 - **WHEN** a task in a shown plan is reported `done`
 - **THEN** the panel's diagram shows that task as `done`
+
+#### Scenario: Edges stay attached as the diagram scrolls
+
+- **WHEN** the user scrolls a plan diagram larger than its pane
+- **THEN** each dependency line still runs from one task's card to the
+  next's, moving with the cards
+
+#### Scenario: A long task name is cut, and readable in full
+
+- **WHEN** a task's name is longer than its card holds
+- **THEN** the card shows the start of it ending in an ellipsis, without
+  clipping the state line, and hovering the card shows the whole name and
+  state
+
+#### Scenario: A plan card is read, not operated
+
+- **WHEN** the user clicks or drags a task's card
+- **THEN** nothing happens: the layout follows the plan's dependencies, so a
+  card is neither movable nor resizable, and a click has no action
