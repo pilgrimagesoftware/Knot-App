@@ -42,6 +42,8 @@ use crate::consts::{
     PROMPT_EDITOR_WINDOW_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_WIDTH,
     PROMPT_EDITOR_WINDOW_WIDTH,
 };
+use crate::window_registry::WindowKey;
+use crate::window_registry::WindowRegistry;
 
 /// The prompt editor's own window: larger than the persona and bench
 /// editors', whose options it used to share, and resizable down to a size
@@ -155,12 +157,14 @@ impl PromptEditor {
         if let Err(error) = result {
             eprintln!("failed to save the prompt: {error}");
         }
-        // The Prompts window draws from the settings just written. It is
-        // looked up now rather than handed over at open, since the editor
-        // also opens from the composer's Insert Prompt list (#341), and the
-        // Prompts window may have opened, or closed, since.
-        crate::window_registry::WindowRegistry::refresh(crate::window_registry::WindowKey::Prompts,
-                                                        cx);
+        // The Prompts window draws from the settings just written, and so
+        // does the Bench window, which names each entry's startup prompt.
+        // Each is looked up now rather than handed over at open, since the
+        // editor also opens from the composer's Insert Prompt list (#341),
+        // and either window may have opened, or closed, since.
+        for key in [WindowKey::Prompts, WindowKey::Bench] {
+            WindowRegistry::refresh(key, cx);
+        }
         window.remove_window();
     }
 }
