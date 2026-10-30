@@ -369,8 +369,35 @@ impl WorkspaceWindow {
                 // missing. See `panel_view::scroll`.
                 let scrolled_up = panel_view::scrolled_away_from_tail(&list, row_count);
                 let list_to_bottom = list.clone();
+                // Before the list draws: the rows read what to highlight
+                // from `panel` (#251).
+                let find_frame = {
+                    let state = state_arc.lock();
+                    self.sync_panel_find(id, &state, &panel, window, cx)
+                };
+                let find_bar = find_frame.and_then(|frame| {
+                                             if frame.revealed {
+                                                 self.stop_following(id);
+                                             }
+                                             self.render_panel_find(id, frame.status, cx)
+                                         });
                 v_flex()
                     .size_full()
+                    // ⌘F anywhere in the pane: the bound key when focus is
+                    // outside a text field, and the field's own `Search`
+                    // when it is in one - the composer and the find field
+                    // are not searchable, so they hand it up (#251).
+                    .on_action(cx.listener(move |view, _: &crate::app_bootstrap::PanelFind,
+                                                 window, cx| {
+                        view.open_panel_find(id, window, cx)
+                    }))
+                    .on_action(cx.listener(move |view,
+                                                 _: &gpui_kit::component::input::Search,
+                                                 window,
+                                                 cx| {
+                        view.open_panel_find(id, window, cx)
+                    }))
+                    .children(find_bar)
                     .child(
                         div()
                             .relative()

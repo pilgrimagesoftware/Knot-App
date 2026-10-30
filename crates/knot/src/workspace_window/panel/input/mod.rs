@@ -43,5 +43,7 @@ pub(in crate::workspace_window) use prompt_picker::PromptPicker;
 pub(in crate::workspace_window) const PERMISSION_SELECTOR_ID: &str =
     "panel-permission-mode-selector";
 
+// Widened for `find_bar`'s tests, which build their conversation on the same
+// connected fake session.
 #[cfg(test)]
-mod tests;
+pub(in crate::workspace_window::panel) mod tests;

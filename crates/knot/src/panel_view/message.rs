@@ -72,6 +72,9 @@ pub(super) struct Message<'a> {
     /// outlives the row scrolling away (#246). `None` for anything that is
     /// not an assistant reply.
     pub(super) reply:    Option<Entity<TextViewState>>,
+    /// The open find, whose matches a prompt's text is drawn with (#251). A
+    /// reply's are painted through its Markdown state instead.
+    pub(super) find:     Option<&'a super::find::FindHighlight>,
 }
 
 /// The small, subtitle-colored relative-time label for one message, with a
@@ -105,7 +108,8 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                   style,
                   list,
                   cmd_held,
-                  reply, } = ctx;
+                  reply,
+                  find, } = ctx;
     match message {
         // Right-aligned, tinted background - visually distinct from the
         // assistant's plain left-aligned text, per acp-panel-ui's
@@ -181,7 +185,9 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                                         .py_1p5()
                                         .rounded_md()
                                         .bg(style.prompt_color)
-                                        .child(text.clone()),
+                                        .child(super::find::highlighted_text(
+                                            text, index, find,
+                                        )),
                                 ),
                         ),
                 )

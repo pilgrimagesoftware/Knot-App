@@ -435,6 +435,18 @@ pub(crate) const PROMPT_EDITOR_WINDOW_HEIGHT: f32 = 560.;
 pub(crate) const PROMPT_EDITOR_WINDOW_MIN_WIDTH: f32 = 520.;
 pub(crate) const PROMPT_EDITOR_WINDOW_MIN_HEIGHT: f32 = 400.;
 
+/// The largest compiled program a conversation find's regular expression may
+/// build (#251), in bytes. A pattern past it is reported as invalid rather
+/// than stalling every keystroke.
+pub(crate) const FIND_REGEX_SIZE_LIMIT: usize = 1 << 20;
+/// A find match's background, painted under the text. Translucent so it
+/// reads on a light or a dark conversation alike.
+pub(crate) const FIND_MATCH_COLOR: u32 = 0xFACC15;
+pub(crate) const FIND_MATCH_ALPHA: f32 = 0.35;
+/// The current find match's background, stronger than the rest.
+pub(crate) const FIND_CURRENT_COLOR: u32 = 0xF97316;
+pub(crate) const FIND_CURRENT_ALPHA: f32 = 0.6;
+
 /// How far below and right of the pointer a link's URL label sits (#326),
 /// clear of the cursor.
 pub(crate) const LINK_TOOLTIP_OFFSET: f32 = 14.;
