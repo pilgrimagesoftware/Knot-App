@@ -34,7 +34,7 @@ use super::message_tests::panel_style;
 use crate::panel_state::PanelMessage;
 use crate::panel_state::PanelState;
 
-const RESPONSE: &str = "the answer";
+const RESPONSE: &str = "[the docs](https://example.com/docs) hold the answer";
 const BAR: &str = "panel-response-actions-0";
 
 /// A view whose body is one finished response, drawn as the latest message
@@ -68,6 +68,7 @@ fn response_window(is_last: bool, cx: &mut TestAppContext) -> VisualTestContext 
          .push(PanelMessage::Assistant(RESPONSE.to_owned()));
     let window = cx.update(|cx| {
                        gpui_kit::init(cx);
+                       crate::link_tooltip::install(cx);
                        cx.open_window(WindowOptions::default(), |window, cx| {
                              let list = ListState::new(1, ListAlignment::Top, px(LIST_OVERDRAW));
                              let view = cx.new(|_| ResponseProbe { state,
@@ -145,5 +146,18 @@ fn the_latest_responses_bar_needs_no_hover(cx: &mut TestAppContext) {
     let away = away(&mut cx);
     point_at(&mut cx, away);
 
+    assert_eq!(click_copy(&mut cx).as_deref(), Some(RESPONSE));
+}
+
+/// A link inside an earlier response shows its URL (#326) and the same
+/// pointer still reveals the response's bar (#313): neither hover takes the
+/// other's place, since the URL label takes no input.
+#[gpui_kit::test]
+fn a_link_in_a_response_shows_its_url_and_the_bar_still_appears(cx: &mut TestAppContext) {
+    let mut cx = response_window(false, cx);
+    point_at(&mut cx, point(px(10.), px(10.)));
+
+    assert!(cx.debug_bounds("link-url-tooltip").is_some(),
+            "the link's URL is shown");
     assert_eq!(click_copy(&mut cx).as_deref(), Some(RESPONSE));
 }

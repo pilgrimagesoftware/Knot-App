@@ -434,3 +434,12 @@ pub(crate) const PROMPT_EDITOR_WINDOW_HEIGHT: f32 = 560.;
 /// of text, the variables control and the button row all still fit.
 pub(crate) const PROMPT_EDITOR_WINDOW_MIN_WIDTH: f32 = 520.;
 pub(crate) const PROMPT_EDITOR_WINDOW_MIN_HEIGHT: f32 = 400.;
+
+/// How far below and right of the pointer a link's URL label sits (#326),
+/// clear of the cursor.
+pub(crate) const LINK_TOOLTIP_OFFSET: f32 = 14.;
+/// The widest a link's URL label grows before the URL is cut short with an
+/// ellipsis.
+pub(crate) const LINK_TOOLTIP_MAX_WIDTH: f32 = 480.;
+/// The least room a link's URL label keeps from the window's edges.
+pub(crate) const LINK_TOOLTIP_WINDOW_MARGIN: f32 = 8.;
