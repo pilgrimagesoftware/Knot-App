@@ -113,6 +113,11 @@ pub fn create_agent(store: &mut AgentStore, arguments: &serde_json::Value,
     if create_worktree && branch_name.is_none_or(str::is_empty) {
         return ToolCallResult::error("Missing required parameter: branchName");
     }
+    // A location with no worktree to put there would be dropped, and the
+    // caller would go on believing its agent sits where it asked (#342).
+    if worktree_path.is_some() && !create_worktree {
+        return ToolCallResult::error("worktreePath requires createWorktree: true");
+    }
     let companion = optional_bool(arguments, "companion").unwrap_or(false);
     if companion
        && !fields.agent_type

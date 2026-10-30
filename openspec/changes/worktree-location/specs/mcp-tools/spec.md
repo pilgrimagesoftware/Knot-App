@@ -9,7 +9,8 @@
 optional), or otherwise require `name`, `agentType`, and `repoPath`. Optional
 inputs: `icon`, `createWorktree` with `branchName` and `worktreePath`,
 `companion`, `command` (shell only), `personaId`. `worktreePath` SHALL place the
-new worktree as `create-worktree`'s `path` does. On success it SHALL create the
+new worktree as `create-worktree`'s `path` does; given without `createWorktree`
+it SHALL be an error, and no agent SHALL be created. On success it SHALL create the
 agent attributed to the caller and return the new agent id.
 
 #### Scenario: Create from explicit fields
@@ -29,6 +30,13 @@ agent attributed to the caller and return the new agent id.
   `worktreePath`
 - **THEN** the worktree is created at `worktreePath` and the new agent's folder
   is that path
+
+#### Scenario: A worktree location without a worktree
+
+- **WHEN** `create-agent` is called with a `worktreePath` but without
+  `createWorktree`
+- **THEN** the result is an error naming `createWorktree`, and no agent is
+  created
 
 ### Requirement: create-worktree
 

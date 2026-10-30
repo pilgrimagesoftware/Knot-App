@@ -95,7 +95,9 @@ instructions say worktrees go:
 
 The path must be absolute; a leading `~/` is the home folder. Missing parent
 folders are created, and a relative path is refused rather than resolved, since
-the tool runs in Knot, not in the agent's folder.
+the tool runs in Knot, not in the agent's folder. `create-agent` refuses
+`worktreePath` without `createWorktree`, rather than creating the agent in the
+repository and ignoring the location.
 
 ## Pull request tracking
 

@@ -123,7 +123,7 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                  "Branch name for new worktree (required if createWorktree is true)"),
                 ("worktreePath",
                  "string",
-                 "Absolute path for the new worktree (with createWorktree). Pass it whenever your instructions say where worktrees go; omitted, the worktree is created beside the repository as <repo>-<branch>."),
+                 "Absolute path for the new worktree; only with createWorktree, an error without it. Pass it whenever your instructions say where worktrees go; omitted, the worktree is created beside the repository as <repo>-<branch>."),
                 ("companion",
                  "boolean",
                  "If true, the new agent is a companion of the creator: it won't appear in the agent list, its visibility is linked to the creator, and it will be closed when the creator is closed. Only use this flag if the user has explicitly asked for a companion agent."),
