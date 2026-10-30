@@ -10,5 +10,12 @@ rust-version.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 
+[features]
+# Exposes `test_seams` for this crate's own integration tests; see lib.rs.
+# Never enabled by a dependent: a normal build does not compile the module.
+test-seams = []
+
 [dev-dependencies]
 tempfile.workspace = true
+# The crate itself, with its test seams, for tests/*.rs.
+knot-processes = { path = ".", features = ["test-seams"] }

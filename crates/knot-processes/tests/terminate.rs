@@ -8,8 +8,28 @@
 use std::process::{Child, Command};
 use std::time::Duration;
 
-use knot_processes::terminate::terminate_with_grace;
-use knot_processes::{ProcessError, Termination, TerminationTarget, sample, terminate};
+mod support;
+
+use knot_processes::consts::TERMINATE_GRACE;
+use knot_processes::{ProcessError, ProcessTable, Termination, TerminationTarget};
+use support::HANG_GUARD;
+
+/// The process table, through the test seam; see `support::HANG_GUARD`.
+fn sample() -> knot_processes::Result<ProcessTable> {
+    knot_processes::test_seams::sample(HANG_GUARD)
+}
+
+/// `terminate_with_grace` through the test seam: `grace` is the behaviour
+/// under test, and only the budget for each `ps` and `kill` is the guard's.
+fn terminate_with_grace(target: &TerminationTarget, grace: Duration)
+                        -> knot_processes::Result<Termination> {
+    knot_processes::test_seams::terminate_with_grace(target, grace, HANG_GUARD)
+}
+
+/// `terminate` - the default grace period - through the test seam.
+fn terminate(target: &TerminationTarget) -> knot_processes::Result<Termination> {
+    terminate_with_grace(target, TERMINATE_GRACE)
+}
 
 /// Short enough to keep the escalation test quick, long enough that a process
 /// that does exit on `TERM` is seen exiting rather than killed by the clock.
