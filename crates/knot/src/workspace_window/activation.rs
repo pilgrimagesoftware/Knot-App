@@ -67,8 +67,7 @@ impl WorkspaceWindow {
         };
         let start = agents_to_start(&agents, &mut self.start_requested);
         for id in &start {
-            self.ensure_session(*id, cx);
-            self.ensure_panel_session(*id, cx);
+            self.start_sessions(*id, cx);
         }
         !start.is_empty()
     }

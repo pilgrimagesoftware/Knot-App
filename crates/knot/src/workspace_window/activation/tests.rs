@@ -98,3 +98,30 @@ fn an_agent_created_active_into_an_open_workspace_is_started(cx: &mut gpui_kit::
                             "and it is started once, not on every tick");
                 });
 }
+
+/// #329 review: Restart removes the session without tearing the agent down,
+/// so the sweep's claim must go with it - or a restarted background agent
+/// stays lit with nothing running, which is #320 again.
+#[gpui_kit::test]
+fn a_restarted_agent_is_started_again(cx: &mut gpui_kit::TestAppContext) {
+    let mut fixture = crate::workspace_window::shortcuts_tests::window_with_agents(1, cx);
+
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    let id = view.store.lock().create("~/created",
+                                                      knot_agents::CreateOptions {
+                                                          agent_type: Some("keybindings-test-inert".into()),
+                                                          workspace_id: Some(view.workspace_id),
+                                                          activation_mode: knot_core::ActivationMode::Active,
+                                                          ..Default::default()
+                                                      });
+                    assert!(view.start_activated_agents(cx), "the sweep starts it");
+                    assert_ne!(view.selected_agent, Some(id), "it is a background agent");
+
+                    view.restart_agents(&[id], true, cx);
+
+                    assert!(view.store.lock().agent(id).unwrap().activated,
+                            "a restarted agent is still activated - lit in the sidebar");
+                    assert!(view.start_activated_agents(cx),
+                            "so the sweep must start it again rather than leave it lit and idle");
+                });
+}
