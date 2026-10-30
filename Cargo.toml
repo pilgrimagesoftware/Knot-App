@@ -47,6 +47,10 @@ plist = "1.10.1"
 # patterns - tokens, emails, session ids - that hand-written scanners would
 # each get subtly wrong. Already in the lock file through other crates.
 regex = "1.13"
+# Markdown to plain text, so find counts a reply's matches in the text it
+# renders rather than in its source (#251). The parser `gpui-base` renders
+# with, at the version it pins, so it adds nothing to the build.
+markdown = "1.0.0"
 # The terminal grid, `Transport` trait and GPUI `TerminalView`, shared with
 # Fernrohr. Its own repository because it is MIT, not AGPL, and its CI proves
 # the standalone build against crates.io with no `[patch]`. It pins

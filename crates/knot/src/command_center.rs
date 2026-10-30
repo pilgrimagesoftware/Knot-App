@@ -144,21 +144,10 @@ impl CommandCenterWindow {
                 return;
             };
             entity.update(app, |view, cx| {
-                      let Some(workspace_id) =
-                          view.store
-                              .lock()
-                              .workspaces()
-                              .iter()
-                              .find(|workspace| workspace.agent_ids.contains(&id))
-                              .map(|workspace| workspace.id)
-                      else {
-                          return;
-                      };
-                      WorkspaceWindow::open_with_selection(Arc::clone(&view.store),
-                                                           Arc::clone(&view.messages),
-                                                           workspace_id,
-                                                           Some(id),
-                                                           cx);
+                      WorkspaceWindow::open_agent(Arc::clone(&view.store),
+                                                  Arc::clone(&view.messages),
+                                                  id,
+                                                  cx);
                   });
         }
     }

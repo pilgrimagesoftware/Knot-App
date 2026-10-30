@@ -574,16 +574,8 @@ pub(crate) fn notification_body(message: &str) -> &str {
 }
 
 /// Parses a [`SystemNotificationResponse`]'s tag back into the agent id it
-/// was posted for, or `None` if the tag isn't a valid uuid.
-///
-/// The full "select this exact agent" click-to-navigate parity with the
-/// Swift reference needs a registry mapping agent id -> owning workspace
-/// window, which doesn't exist yet (each workspace is an independent
-/// `Shell` window/entity with its own `agent_selection`, and nothing
-/// currently tracks which window owns which agent across windows). Until
-/// that exists, a click only raises the app to the front
-/// (`App::activate(true)`, same as the existing `ShowAllWindows` action);
-/// it doesn't switch the front window's selection to the clicked agent.
+/// was posted for, or `None` if the tag isn't a valid uuid. A click routes
+/// to that agent through `notification_click`.
 pub(crate) fn notification_response_agent_id(response: &SystemNotificationResponse)
                                              -> Option<Uuid> {
     Uuid::parse_str(&response.tag).ok()

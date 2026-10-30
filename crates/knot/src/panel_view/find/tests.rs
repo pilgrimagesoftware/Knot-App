@@ -77,7 +77,9 @@ fn the_conversation_is_searched_in_order() {
                         PanelMessage::Assistant("the gate, and the gate again".into()),
                         PanelMessage::Error("gate error".into())];
 
-    let found = conversation_matches(&messages, &query("gate", FindMode::Substring));
+    let found = conversation_matches(&messages,
+                                     &query("gate", FindMode::Substring),
+                                     &mut super::PlainTexts::default());
 
     assert_eq!(found,
                [FindMatch { message: 0,
@@ -108,4 +110,21 @@ fn only_the_current_match_wears_the_current_colour() {
     assert_eq!(here, [(0..4, colors.matched), (9..13, colors.current)]);
     let elsewhere = find.ranges(5, "gate and gate");
     assert!(elsewhere.iter().all(|(_, color)| *color == colors.matched));
+}
+
+/// A reply's matches are counted in the text it shows: a match inside a
+/// link's address, ahead of a visible one, is not counted, so the visible
+/// one is the reply's first match - the one its rendered text paints first.
+#[test]
+fn a_match_inside_a_link_address_is_not_counted() {
+    let messages =
+        vec![PanelMessage::Assistant("see [the guide](https://example.com/docs) and the docs".into())];
+
+    let found = conversation_matches(&messages,
+                                     &query("docs", FindMode::Substring),
+                                     &mut super::PlainTexts::default());
+
+    assert_eq!(found,
+               [FindMatch { message: 0,
+                            nth:     0, }]);
 }

@@ -1504,7 +1504,8 @@ timestamp rather than the moment it was replayed.
 including while the composer has focus. It SHALL find what is typed in the
 prompts and replies, ignoring case, either as text or, with its toggle on, as
 a regular expression. Tool calls, shell runs, notices and errors SHALL NOT be
-searched.
+searched. A reply SHALL be searched as it reads, not as its Markdown is
+written: a link's address and Markdown syntax SHALL NOT match.
 
 #### Scenario: Matches are counted and highlighted
 
@@ -1512,6 +1513,13 @@ searched.
   across a prompt and a reply
 - **THEN** the bar reads 1 of 3, every match is highlighted and the current
   one is highlighted differently
+
+#### Scenario: A link's address is not searched
+
+- **WHEN** a reply reads "see the guide and the docs", where "the guide" links
+  to `https://example.com/docs`, and the user types `docs`
+- **THEN** the bar reads 1 of 1, and the highlighted match is the visible
+  "docs"
 
 #### Scenario: Stepping between matches
 

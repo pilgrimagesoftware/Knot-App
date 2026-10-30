@@ -96,26 +96,32 @@ status SHALL raise one.
   in the active workspace
 - **THEN** no desktop notification is raised
 
-### Requirement: Clicking a notification raises the app
+### Requirement: Clicking a notification navigates to its agent
 
-The system SHALL respond to a notification click carrying a valid agent id
-by bringing the application to the front. A click whose tag does not parse
-as an agent id SHALL be a no-op.
+A click on any Knot notification SHALL bring the application to the front.
+A click on an agent's notification SHALL also open the window of the
+workspace holding that agent, or raise it if it is already open, with that
+agent selected and shown. No second window SHALL open for a workspace that
+has one. A notification about no agent, such as the MCP server's failure
+notice, or about an agent removed since, SHALL only bring the application to
+the front.
 
-Selecting the specific clicked agent (in whichever workspace window owns it)
-is not yet implemented: no registry exists mapping an agent id to its owning
-window across the port's per-workspace `Shell` windows. That refinement is
-tracked as a follow-up and is not required by this version of the
-requirement.
+#### Scenario: Clicking an agent's notification opens its workspace
 
-#### Scenario: Click with a valid agent id raises the app
+- **WHEN** no window is open for workspace `W` and the user clicks a
+  notification for agent `X` in `W`
+- **THEN** the application comes to the front and `W`'s window opens with
+  `X` selected
 
-- **WHEN** the user clicks a delivered notification whose tag is agent `X`'s
-  id
-- **THEN** the application is brought to the front
+#### Scenario: Clicking switches an open window to the agent
 
-#### Scenario: Click with an unparseable tag is a no-op
+- **WHEN** `W`'s window is open with agent `Y` selected and the user clicks
+  a notification for agent `X` in `W`
+- **THEN** that window comes forward with `X` selected, and no other window
+  opens
 
-- **WHEN** the user clicks a notification whose tag does not parse as a
-  valid agent id
-- **THEN** nothing changes and no error is raised
+#### Scenario: A notification about no agent
+
+- **WHEN** the user clicks the MCP server's failure notice, or a
+  notification for an agent that has since been removed
+- **THEN** the application comes to the front and no window opens
