@@ -56,7 +56,8 @@ impl Render for ResponseProbe {
                                              style:    &style,
                                              list:     &self.list,
                                              cmd_held: false,
-                                             reply:    None, },
+                                             reply:    None,
+                                             find:     None, },
                                    &message,
                                    &PanelCallbacks::new(|_| {}, || {}, |_| {}, |_| {}, || {})))
     }

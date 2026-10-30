@@ -1,10 +1,14 @@
 //! A conversation's virtualized list, together with what its rows keep
 //! between frames.
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gpui_kit::ListAlignment;
 use gpui_kit::ListState;
 use gpui_kit::px;
 
+use super::find::FindHighlight;
 use super::markdown_rows::MarkdownRows;
 use super::render::LIST_OVERDRAW;
 
@@ -18,6 +22,10 @@ use super::render::LIST_OVERDRAW;
 pub(crate) struct PanelList {
     pub(crate) list:     ListState,
     pub(crate) markdown: MarkdownRows,
+    /// The open find's highlights (#251), set by the pane each frame before
+    /// the list draws, and read by the rows it lays out. `None` while no
+    /// find is open.
+    pub(crate) find:     Rc<RefCell<Option<FindHighlight>>>,
 }
 
 impl PanelList {
@@ -25,6 +33,7 @@ impl PanelList {
     /// frame (see [`super::sync_row_count`]).
     pub(crate) fn new() -> Self {
         Self { list:     ListState::new(0, ListAlignment::Top, px(LIST_OVERDRAW)),
-               markdown: MarkdownRows::default(), }
+               markdown: MarkdownRows::default(),
+               find:     Rc::default(), }
     }
 }

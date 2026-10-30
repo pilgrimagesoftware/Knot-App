@@ -132,6 +132,16 @@ panel:
     hours_ago: "%{hours}h ago"
     days_ago: "%{days}d ago"
   # The composer's Insert Prompt button and the list it opens.
+  # The conversation's find bar (#251).
+  find:
+    placeholder: "Find in conversation"
+    regex: "Regular expression"
+    count: "%{current} of %{total}"
+    no_matches: "No matches"
+    invalid: "Invalid pattern"
+    previous: "Previous match"
+    next: "Next match"
+    close: "Close"
   prompt_picker:
     tooltip: "Insert Prompt (%{shortcut})"
     search_placeholder: "Search prompts"
@@ -358,6 +368,7 @@ keymap:
     permission_allow_always: "Always allow permission"
     permission_deny: "Deny permission"
     permission_selector: "Permission mode selector"
+    find: "Find in conversation"
     undo: "Undo"
     redo: "Redo"
     cut: "Cut"

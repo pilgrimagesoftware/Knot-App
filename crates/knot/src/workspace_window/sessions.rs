@@ -289,6 +289,7 @@ impl WorkspaceWindow {
         self.panel_stopping.remove(&id);
         self.panel_lists.remove(&id);
         self.panel_list_row_counts.remove(&id);
+        self.panel_finds.remove(&id);
         self.panel_pending_context.remove(&id);
         self.panel_composer_styling.remove(&id);
         self.forget_panel_mentions(id);

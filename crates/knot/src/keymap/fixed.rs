@@ -21,6 +21,7 @@ use crate::app_bootstrap::NewAgent;
 use crate::app_bootstrap::NewWorkspace;
 use crate::app_bootstrap::OpenSettings;
 use crate::app_bootstrap::OpenWorkspaces;
+use crate::app_bootstrap::PanelFind;
 use crate::app_bootstrap::PanelOpenPermissionSelector;
 use crate::app_bootstrap::PanelPermissionAllow;
 use crate::app_bootstrap::PanelPermissionAllowAlways;
@@ -77,7 +78,12 @@ pub(crate) fn fixed_bindings() -> Vec<FixedBinding> {
                        fixed(KeyBinding::new("cmd-shift-d", PanelPermissionDeny, None),
                              "keymap.fixed.permission_deny"),
                        fixed(KeyBinding::new("cmd-shift-p", PanelOpenPermissionSelector, None),
-                             "keymap.fixed.permission_selector"),];
+                             "keymap.fixed.permission_selector"),
+                       // The platform's find key, which the app menu keeps
+                       // free for this (`app-menu`). The composer's own ⌘F
+                       // reaches the pane as the input's `Search` instead.
+                       fixed(KeyBinding::new("cmd-f", PanelFind, None),
+                             "keymap.fixed.find"),];
     // The Agents menu's keys keep their definition beside the menu; see
     // `agent_menu::agent_menu_key_bindings`.
     out.extend(agent_menu_key_bindings().into_iter().map(|binding| {
