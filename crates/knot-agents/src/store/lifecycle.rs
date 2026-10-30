@@ -24,6 +24,7 @@ impl AgentStore {
                             shell_command: opts.shell_command,
                             persona_id: opts.persona_id,
                             activation_mode: opts.activation_mode,
+                            locked: false,
                             description: opts.description,
                             capabilities: opts.capabilities,
                             cost_tier: opts.cost_tier,

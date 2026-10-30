@@ -69,7 +69,12 @@ pub fn dispatch_task(ctx: DispatchContext<'_>, arguments: &serde_json::Value) ->
             let query = RegistryQuery { capabilities:      tags.clone(),
                                         include_templates: false, };
             let view = RegistryView::new(ctx.agents, ctx.bench, &declared_tools);
-            match view.candidates(caller.id, &query).first() {
+            // A locked agent can't be messaged, so it can't be handed a
+            // task; the next match is (#310).
+            match view.candidates(caller.id, &query)
+                      .iter()
+                      .find(|candidate| !candidate.status.is_locked())
+            {
                 Some(candidate) => candidate.id,
                 None => {
                     return ToolCallResult::error(format!(

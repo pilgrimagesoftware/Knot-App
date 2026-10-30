@@ -29,6 +29,10 @@ impl AgentStore {
                     shell_command,
                     persona_id,
                     activation_mode,
+                    // Not copied: a lock shuts one agent out of messaging,
+                    // and is the user's decision about that agent, not part
+                    // of how it is set up.
+                    locked: _,
                     description,
                     capabilities,
                     cost_tier,

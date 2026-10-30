@@ -20,6 +20,8 @@ pub(super) struct AgentRow {
     pub(super) idle_since:   Option<std::time::SystemTime>,
     pub(super) is_shell:     bool,
     pub(super) is_companion: bool,
+    /// Locked against agent messaging (#310), shown as its own detail line.
+    pub(super) is_locked:    bool,
     pub(super) header_title: String,
     pub(super) persona_name: Option<String>,
     /// The agent's coding-agent type (`claude`, `opencode`, ...), shown

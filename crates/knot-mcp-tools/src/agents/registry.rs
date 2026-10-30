@@ -55,6 +55,7 @@ pub fn agent_info(entry: &RegistryEntry) -> AgentInfo {
                 folder: entry.folder.clone(),
                 status,
                 is_registered,
+                locked: entry.status.is_locked(),
                 description: entry.description.clone(),
                 capabilities: entry.capabilities.iter().cloned().collect(),
                 tools: entry.tools.clone(),

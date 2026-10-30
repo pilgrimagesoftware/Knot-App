@@ -19,6 +19,7 @@ use crate::agent_menu::AgentMenuDeactivate;
 use crate::agent_menu::AgentMenuDuplicateAgent;
 use crate::agent_menu::AgentMenuEditAgent;
 use crate::agent_menu::AgentMenuForkAgent;
+use crate::agent_menu::AgentMenuLockAgent;
 use crate::agent_menu::AgentMenuMarkdownFiles;
 use crate::agent_menu::AgentMenuMoveToWorkspace;
 use crate::agent_menu::AgentMenuMoveToWorkspaceTarget;
@@ -33,6 +34,7 @@ use crate::agent_menu::AgentMenuRestartWithNewConversation;
 use crate::agent_menu::AgentMenuSaveToBench;
 use crate::agent_menu::AgentMenuShowMarkdownFile;
 use crate::agent_menu::AgentMenuSnapshot;
+use crate::agent_menu::AgentMenuUnlockAgent;
 use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::agent_context_menu_entries;
 use crate::app_bootstrap;
@@ -218,6 +220,8 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
                                     MarkdownFiles => AgentMenuMarkdownFiles,
                                     AgentInfo => AgentMenuAgentInfo,
                                     RegisterAgent => AgentMenuRegisterAgent,
+                                    LockAgent => AgentMenuLockAgent,
+                                    UnlockAgent => AgentMenuUnlockAgent,
                                     Deactivate => AgentMenuDeactivate,
                                     RestartAgent => AgentMenuRestartAgent,
                                     RestartWithNewConversation => AgentMenuRestartWithNewConversation,

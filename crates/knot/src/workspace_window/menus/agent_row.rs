@@ -79,7 +79,9 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
                          has_move_targets:     own_workspace.is_some() && !move_targets.is_empty(),
                          has_markdown_history: !history.is_empty(),
                          is_running:           agent.activated,
-                         is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel, };
+                         is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel,
+                         can_lock:             !agent.locked,
+                         can_unlock:           agent.locked, };
     (facts, move_targets, history)
 }
 
@@ -285,6 +287,16 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
                                          is_companion: true,
                                          ..Default::default() };
             open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
+        }
+        // No confirmation: unlocking undoes it, and nothing is lost either
+        // way - messages refused while locked were never stored.
+        AgentMenuEntry::LockAgent | AgentMenuEntry::UnlockAgent => {
+            let locked = entry == AgentMenuEntry::LockAgent;
+            targets.store.lock().set_locked(targets.id, locked);
+            targets.window_entity.update(app, |view, cx| {
+                                     view.persist_agents(cx);
+                                     cx.notify();
+                                 });
         }
         AgentMenuEntry::Deactivate => {
             // No confirmation: nothing is lost that selecting the row will

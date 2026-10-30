@@ -89,6 +89,7 @@ impl WorkspaceWindow {
                                 idle_since,
                                 is_shell,
                                 is_companion,
+                                is_locked,
                                 header_title,
                                 persona_name,
                                 agent_type,
@@ -266,6 +267,21 @@ impl WorkspaceWindow {
                                         detail_line(
                                             gpui_kit::assets::IconName::CornerDownRight,
                                             knot_core::l10n::t("agent.companion"),
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // A locked agent is shut out of agent
+                                    // messaging (#310). Said on the row,
+                                    // because a message to it fails and the
+                                    // user should not have to open a menu to
+                                    // find out why.
+                                    .children(is_locked.then(|| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::Lock,
+                                            knot_core::l10n::t("agent.locked"),
                                             DetailLineSize::Small,
                                             title_font_name.clone(),
                                             title_font_size,

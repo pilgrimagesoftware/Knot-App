@@ -53,6 +53,7 @@ sidebar:
 
 agent:
   companion: "Shell companion"
+  locked: "Locked"
   # How a duplicated agent is named. The shape is the translator's:
   # where the number goes relative to the name, and what separates
   # them, are read back off this entry rather than assumed at the
@@ -404,6 +405,8 @@ menu:
     markdown_files: "Markdown Files"
     agent_info: "Agent Info…"
     register_agent: "Register Agent"
+    lock_agent: "Lock Agent"
+    unlock_agent: "Unlock Agent"
     deactivate: "Deactivate"
     restart_agent: "Restart Agent"
     restart_new_conversation: "Restart with New Conversation"
