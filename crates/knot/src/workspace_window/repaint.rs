@@ -44,15 +44,6 @@ pub(super) fn spawn_repaint_poll(view: Entity<WorkspaceWindow>,
       .detach();
 }
 
-/// Whether `current` is past the revision `drawn` last recorded, moving
-/// `drawn` up to it. Compared rather than cleared, so another window reading
-/// the same store has its own `drawn` and sees the change too.
-pub(super) fn revised(drawn: &mut u64, current: u64) -> bool {
-    let moved = *drawn != current;
-    *drawn = current;
-    moved
-}
-
 impl WorkspaceWindow {
     /// One tick of the poll, with the ids of any sessions whose process
     /// exited since the last one.
@@ -361,7 +352,7 @@ impl WorkspaceWindow {
     /// taking note of it - see `AgentStore::revision`.
     pub(super) fn store_revised(&mut self) -> bool {
         let current = self.store.lock().revision();
-        revised(&mut self.drawn_store_revision, current)
+        crate::store_revision::revised(&mut self.drawn_store_revision, current)
     }
 
     /// Sends the next queued prompt to every agent that has one, and says

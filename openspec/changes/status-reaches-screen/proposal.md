@@ -17,13 +17,16 @@ and the worst case was one agent setting another's status (#17).
   poll repaints when the store's has moved. It's a counter rather than a cleared
   flag, so every window over the shared store sees the change, not just the
   first to poll.
+- The Command Center, which had no poll of its own, gets a small one that
+  makes the same comparison, so its cards update too.
 
 ## Impact
 
 - `knot-agents`: `AgentStore::revision`, moved by `set_status_text` and
   `set_state`.
-- `knot`: `WorkspaceWindow::drawn_store_revision` and one term in
-  `repaint_poll_tick`.
+- `knot`: `store_revision::revised`, `WorkspaceWindow::drawn_store_revision`
+  and one term in `repaint_poll_tick`; `CommandCenterWindow`'s
+  `drawn_store_revision` and its store poll.
 - Spec: `mcp-tools`' `set-status` requires the new text to be drawn promptly.
 - The artifact panes keep their own per-agent comparison, because it also
   reconciles the panel's expanded state, which a store-wide counter can't do.

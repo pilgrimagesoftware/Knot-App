@@ -4,8 +4,8 @@
 
 use gpui_kit::TestAppContext;
 
-use super::repaint::revised;
 use super::shortcuts_tests::window_with_agents;
+use crate::store_revision::revised;
 
 /// The reason for a revision rather than a flag: two windows over the one
 /// store each see the change. A flag the first cleared would hide it from
