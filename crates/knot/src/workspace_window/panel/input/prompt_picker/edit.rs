@@ -17,7 +17,6 @@ use gpui_kit::InteractiveElement;
 use gpui_kit::ParentElement;
 use gpui_kit::StatefulInteractiveElement;
 use gpui_kit::Styled;
-use gpui_kit::WeakEntity;
 use gpui_kit::Window;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::h_flex;
@@ -40,11 +39,8 @@ impl WorkspaceWindow {
                                                                cx: &mut Context<Self>) {
         self.close_prompt_picker(false, window, cx);
         // Deferred: this runs inside the workspace window's update, and
-        // the editor opens a window of its own. No library window stands
-        // behind it to refresh on save, so its parent is left empty.
-        cx.defer(move |cx| {
-              crate::library_window::open_prompt_editor(WeakEntity::new_invalid(), prompt, cx)
-          });
+        // the editor opens a window of its own.
+        cx.defer(move |cx| crate::library_window::open_prompt_editor(prompt, cx));
     }
 }
 

@@ -16,7 +16,6 @@ use gpui_kit::ParentElement;
 use gpui_kit::Render;
 use gpui_kit::Styled;
 use gpui_kit::Subscription;
-use gpui_kit::WeakEntity;
 use gpui_kit::Window;
 use gpui_kit::WindowBounds;
 use gpui_kit::WindowOptions;
@@ -43,7 +42,6 @@ use crate::consts::{
     PROMPT_EDITOR_WINDOW_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_HEIGHT, PROMPT_EDITOR_WINDOW_MIN_WIDTH,
     PROMPT_EDITOR_WINDOW_WIDTH,
 };
-use crate::library_window::LibraryWindow;
 
 /// The prompt editor's own window: larger than the persona and bench
 /// editors', whose options it used to share, and resizable down to a size
@@ -67,8 +65,7 @@ fn prompt_editor_window_options(title: impl Into<gpui_kit::SharedString>, cx: &A
 /// for a row's edit action. A new prompt starts with the caret in its name;
 /// an existing one in its text, since the text is what an edit is for
 /// (#321).
-pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
-                                 prompt: Option<knot_core::Prompt>, cx: &mut App) {
+pub(crate) fn open_prompt_editor(prompt: Option<knot_core::Prompt>, cx: &mut App) {
     let editing_id = prompt.as_ref().map(|p| p.id);
     let title = if editing_id.is_some() {
         knot_core::l10n::t("settings.prompt_editor.title_edit")
@@ -103,8 +100,7 @@ pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
                                    let subscriptions =
                                        vec![cx.subscribe(&name_input, repaint_on_change),
                                             cx.subscribe(&text_input, repaint_on_change)];
-                                   PromptEditor { parent,
-                                                  editing_id,
+                                   PromptEditor {                                                   editing_id,
                                                   name_input,
                                                   text_input,
                                                   _subscriptions: subscriptions }
@@ -121,7 +117,6 @@ fn repaint_on_change<E>(_: &mut PromptEditor, _: Entity<E>, event: &InputEvent,
 }
 
 pub(crate) struct PromptEditor {
-    parent:         WeakEntity<LibraryWindow>,
     editing_id:     Option<Uuid>,
     name_input:     Entity<InputState>,
     text_input:     Entity<TextareaState>,
@@ -160,9 +155,12 @@ impl PromptEditor {
         if let Err(error) = result {
             eprintln!("failed to save the prompt: {error}");
         }
-        if let Some(parent) = self.parent.upgrade() {
-            parent.update(cx, |_, cx| cx.notify());
-        }
+        // The Prompts window draws from the settings just written. It is
+        // looked up now rather than handed over at open, since the editor
+        // also opens from the composer's Insert Prompt list (#341), and the
+        // Prompts window may have opened, or closed, since.
+        crate::window_registry::WindowRegistry::refresh(crate::window_registry::WindowKey::Prompts,
+                                                        cx);
         window.remove_window();
     }
 }
