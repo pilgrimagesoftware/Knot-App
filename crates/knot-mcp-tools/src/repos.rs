@@ -246,12 +246,16 @@ mod tests {
 
     #[test]
     fn a_requested_path_under_home_is_expanded() {
-        let home = Path::new("/Users/someone");
+        // Built from the temp dir, which is absolute on every platform: a
+        // literal like `/abs/x` is relative on Windows, where it has no drive
+        // (#342).
+        let home = std::env::temp_dir().join("someone");
+        let absolute = home.join("abs").join("x");
 
-        assert_eq!(requested_destination("~/Code/Worktrees/x", Some(home)).unwrap(),
+        assert_eq!(requested_destination("~/Code/Worktrees/x", Some(&home)).unwrap(),
                    home.join("Code/Worktrees/x"));
-        assert_eq!(requested_destination("/abs/x", Some(home)).unwrap(),
-                   PathBuf::from("/abs/x"));
+        assert_eq!(requested_destination(absolute.to_str().unwrap(), Some(&home)).unwrap(),
+                   absolute);
         assert!(matches!(requested_destination("~/x", None),
                          Err(crate::ToolError::RelativeWorktreePath { .. })),
                 "with no home to expand against, ~/ is a relative path");
