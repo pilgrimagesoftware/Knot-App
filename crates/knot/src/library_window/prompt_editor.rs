@@ -64,7 +64,9 @@ fn prompt_editor_window_options(title: impl Into<gpui_kit::SharedString>, cx: &A
 }
 
 /// Opens the prompt editor: `prompt` is `None` for "Add Prompt…" and `Some`
-/// for a row's edit action.
+/// for a row's edit action. A new prompt starts with the caret in its name;
+/// an existing one in its text, since the text is what an edit is for
+/// (#321).
 pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
                                  prompt: Option<knot_core::Prompt>, cx: &mut App) {
     let editing_id = prompt.as_ref().map(|p| p.id);
@@ -84,12 +86,17 @@ pub(crate) fn open_prompt_editor(parent: WeakEntity<LibraryWindow>,
                             .placeholder(knot_core::l10n::t("settings.prompt_editor.name_placeholder"))
                             .default_value(name)
                                      });
-                  name_input.update(cx, |state, cx| state.focus(window, cx));
                   let text_input = cx.new(|cx| {
                                          TextareaState::new(window, cx)
                             .placeholder(knot_core::l10n::t("settings.prompt_editor.text_placeholder"))
                             .default_value(text)
                                      });
+                  if editing_id.is_some() {
+                      text_input.update(cx, |state, cx| state.focus(window, cx));
+                  }
+                  else {
+                      name_input.update(cx, |state, cx| state.focus(window, cx));
+                  }
                   let view = cx.new(|cx| {
                                    // Both fields gate the save button and the text
                                    // drives the warning, so each edit re-renders.
@@ -122,6 +129,12 @@ pub(crate) struct PromptEditor {
 }
 
 impl PromptEditor {
+    /// The prompt being edited, or `None` for a new one.
+    #[cfg(test)]
+    pub(crate) fn editing_id(&self) -> Option<Uuid> {
+        self.editing_id
+    }
+
     fn fields(&self, cx: &App) -> (String, String) {
         (self.name_input.read(cx).value().to_string(), self.text_input.read(cx).value().to_string())
     }

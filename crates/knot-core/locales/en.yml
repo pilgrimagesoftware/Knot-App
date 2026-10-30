@@ -130,6 +130,9 @@ panel:
     tooltip: "Insert Prompt (%{shortcut})"
     search_placeholder: "Search prompts"
     empty_library: "No saved prompts - Open Prompts…"
+    new_prompt: "New Prompt…"
+    add: "Add Prompt…"
+    edit: "Edit Prompt…"
   # The input area's session-config dropdowns. One render path serves the
   # permission, model and effort axes, so the copy names no axis: only the
   # model list is long enough to need searching, but all three share it.
