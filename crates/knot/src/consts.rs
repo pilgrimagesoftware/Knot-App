@@ -419,3 +419,15 @@ pub(crate) const CHANGES_COUNT_OPENSPEC_CHANGES: CountNouns = CountNouns { long:
                                                                                    "changes_view.count.openspec_changes"),
                                                                            short: ("changes_view.count.change_short",
                                                                                    "changes_view.count.changes_short"), };
+
+/// The prompt editor's window, opened at a size that shows a prompt of a
+/// few paragraphs without scrolling (#322). It used to share the persona
+/// editor's 460 x 380, sized for a name and a short description; a prompt
+/// is the opposite - one line of name over a long text.
+pub(crate) const PROMPT_EDITOR_WINDOW_WIDTH: f32 = 720.;
+pub(crate) const PROMPT_EDITOR_WINDOW_HEIGHT: f32 = 560.;
+
+/// The smallest the prompt editor resizes to: the name row, several lines
+/// of text, the variables control and the button row all still fit.
+pub(crate) const PROMPT_EDITOR_WINDOW_MIN_WIDTH: f32 = 520.;
+pub(crate) const PROMPT_EDITOR_WINDOW_MIN_HEIGHT: f32 = 400.;
