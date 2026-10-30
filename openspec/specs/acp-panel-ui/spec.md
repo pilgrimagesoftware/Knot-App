@@ -474,9 +474,14 @@ for the status SHALL be carried by the icon's tooltip.
   matching the panel's existing pass-through behavior for unknown statuses
 
 ### Requirement: Response action bar
-Each completed agent response SHALL display an action bar with: copy
+Each completed agent response SHALL carry an action bar with: copy
 response, reply to the response, scroll to the user message that produced
 this response, and scroll to the top of the conversation history.
+
+The latest message's bar SHALL always be shown. On any earlier response the
+bar SHALL be shown only while the pointer is over that response, its bar
+included, and hidden otherwise; a hidden bar SHALL take no clicks. Its space
+SHALL be reserved whether shown or not, so revealing it moves nothing.
 
 Reply SHALL quote the response into the prompt input as a Markdown block
 quote - every line prefixed with `>`, blank lines as a bare `>` - followed by
@@ -508,6 +513,16 @@ caret at the end, on the line below the quote.
 #### Scenario: Scroll to top
 - **WHEN** the user activates "scroll to top" on an agent response
 - **THEN** the panel scrolls the history to its earliest message
+
+#### Scenario: An earlier response's controls appear on hover
+- **WHEN** the pointer rests on an agent response that is not the latest
+  message
+- **THEN** its action bar is shown, and when the pointer leaves the response
+  the bar is hidden again without the conversation moving
+
+#### Scenario: The latest response's controls need no hover
+- **WHEN** the latest message is a completed agent response
+- **THEN** its action bar is shown wherever the pointer is
 
 ### Requirement: Track response toggle
 
