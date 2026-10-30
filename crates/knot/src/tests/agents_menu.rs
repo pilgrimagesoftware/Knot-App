@@ -33,10 +33,12 @@ fn entry_ordinal(entry: AgentMenuEntry) -> usize {
         AgentMenuEntry::MarkdownFiles => 10,
         AgentMenuEntry::AgentInfo => 11,
         AgentMenuEntry::RegisterAgent => 12,
-        AgentMenuEntry::Deactivate => 13,
-        AgentMenuEntry::RestartAgent => 14,
-        AgentMenuEntry::RestartWithNewConversation => 15,
-        AgentMenuEntry::RemoveAgent => 16,
+        AgentMenuEntry::LockAgent => 13,
+        AgentMenuEntry::UnlockAgent => 14,
+        AgentMenuEntry::Deactivate => 15,
+        AgentMenuEntry::RestartAgent => 16,
+        AgentMenuEntry::RestartWithNewConversation => 17,
+        AgentMenuEntry::RemoveAgent => 18,
     }
 }
 

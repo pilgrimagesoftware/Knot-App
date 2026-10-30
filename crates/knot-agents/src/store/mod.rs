@@ -186,6 +186,16 @@ impl AgentStore {
         self.update(id, |agent| agent.activated = activated);
     }
 
+    /// Lock or unlock `id` against agent messaging; see [`Agent::locked`].
+    /// Moves the revision, so every window redraws the row's lock.
+    pub fn set_locked(&mut self, id: Uuid, locked: bool) {
+        let changed = self.agent(id).is_some_and(|agent| agent.locked != locked);
+        self.update(id, |agent| agent.locked = locked);
+        if changed {
+            self.revise();
+        }
+    }
+
     pub fn set_registered(&mut self, id: Uuid, registered: bool) {
         self.update(id, |agent| agent.is_registered = registered);
     }

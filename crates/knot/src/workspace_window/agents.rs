@@ -352,9 +352,13 @@ impl WorkspaceWindow {
     /// terminal.
     ///
     /// An agent with neither is skipped quietly - one unreachable agent is
-    /// not a reason to withhold the message from the rest.
+    /// not a reason to withhold the message from the rest. So is a locked
+    /// one, which takes no messages (#310).
     pub(super) fn broadcast_to_agents(&mut self, text: &str) {
-        for id in self.workspace_agent_ids() {
+        // The ids first: `workspace_agent_ids` takes the store lock itself.
+        let ids = self.workspace_agent_ids();
+        let recipients = broadcast_recipients(&self.store.lock(), ids);
+        for id in recipients {
             self.deliver_prompt(id, text);
         }
     }
@@ -406,6 +410,14 @@ fn claim_activations(queue: &crate::app_support::ActivationQueue, mine: &[Uuid])
     claimed
 }
 
+/// The agents among `ids` a broadcast reaches: every one but those locked
+/// against messaging (#310).
+fn broadcast_recipients(store: &knot_agents::AgentStore, ids: Vec<Uuid>) -> Vec<Uuid> {
+    ids.into_iter()
+       .filter(|id| !store.agent(*id).is_some_and(|agent| agent.locked))
+       .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -442,5 +454,17 @@ mod tests {
 
         assert_eq!(claim_activations(&queue, &[mine]), vec![mine, mine]);
         assert!(queue.lock().is_empty());
+    }
+
+    /// #310: the user's Broadcast to All Agents passes over a locked agent.
+    #[test]
+    fn a_broadcast_passes_over_a_locked_agent() {
+        let mut store = knot_agents::AgentStore::new();
+        let open = store.create("/tmp/open", knot_agents::CreateOptions::default());
+        let locked = store.create("/tmp/locked", knot_agents::CreateOptions::default());
+        store.set_locked(locked, true);
+
+        assert_eq!(super::broadcast_recipients(&store, vec![open, locked]),
+                   vec![open]);
     }
 }

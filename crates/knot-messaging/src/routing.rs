@@ -7,9 +7,12 @@ use crate::notify::DeliveryNotifier;
 use crate::store::MessageStore;
 
 /// The routing checks `send` and `broadcast` both apply per recipient:
-/// shell agents can't receive, and companion ownership must match in both
-/// directions.
+/// shell agents can't receive, a locked agent can't receive (#310), and
+/// companion ownership must match in both directions.
 fn eligible(sender: &Agent, recipient: &Agent) -> Result<()> {
+    if recipient.locked {
+        return Err(SendError::RecipientLocked);
+    }
     if recipient.is_shell() {
         return Err(SendError::ShellRecipient);
     }
@@ -38,6 +41,9 @@ pub fn send(store: &mut MessageStore, notifier: &dyn DeliveryNotifier, sender: &
     if !sender.is_registered {
         return Err(SendError::SenderNotRegistered);
     }
+    if sender.locked {
+        return Err(SendError::SenderLocked);
+    }
 
     let recipient = workspace_members.iter()
                                      .find(|a| a.id == recipient_id)
@@ -60,7 +66,7 @@ pub fn send(store: &mut MessageStore, notifier: &dyn DeliveryNotifier, sender: &
 pub fn broadcast(store: &mut MessageStore, notifier: &dyn DeliveryNotifier, sender: &Agent,
                  workspace_members: &[Agent], content: impl Into<String>)
                  -> usize {
-    if !sender.is_registered {
+    if !sender.is_registered || sender.locked {
         return 0;
     }
     let content = content.into();
@@ -122,6 +128,7 @@ mod tests {
                 persona_id:         None,
                 view_mode:          Default::default(),
                 activation_mode:    Default::default(),
+                locked:             false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),
@@ -331,5 +338,68 @@ mod tests {
         assert_eq!(count, 1);
         assert!(notifier.calls().is_empty());
         assert!(store.has_unread(peer.id));
+    }
+
+    /// #310: a locked agent cannot be messaged - and so stores nothing and
+    /// notifies no one.
+    #[test]
+    fn a_locked_recipient_is_rejected() {
+        let a = agent("a");
+        let mut b = agent("b");
+        b.locked = true;
+        let members = vec![a.clone(), b.clone()];
+        let mut store = MessageStore::new();
+        let notifier = RecordingNotifier::new();
+
+        let result = send(&mut store, &notifier, &a, &members, b.id, "hi");
+
+        assert_eq!(result, Err(SendError::RecipientLocked));
+        assert!(store.unread_for(b.id).is_empty());
+        assert!(notifier.calls().is_empty());
+    }
+
+    /// #310: a locked agent cannot message others.
+    #[test]
+    fn a_locked_sender_is_rejected() {
+        let mut a = agent("a");
+        a.locked = true;
+        let b = agent("b");
+        let members = vec![a.clone(), b.clone()];
+        let mut store = MessageStore::new();
+        let notifier = RecordingNotifier::new();
+
+        let result = send(&mut store, &notifier, &a, &members, b.id, "hi");
+
+        assert_eq!(result, Err(SendError::SenderLocked));
+        assert!(store.unread_for(b.id).is_empty());
+    }
+
+    #[test]
+    fn a_broadcast_skips_a_locked_recipient() {
+        let sender = agent("sender");
+        let open = agent("open");
+        let mut locked = agent("locked");
+        locked.locked = true;
+        let members = vec![sender.clone(), open.clone(), locked.clone()];
+        let mut store = MessageStore::new();
+        let notifier = RecordingNotifier::new();
+
+        let count = broadcast(&mut store, &notifier, &sender, &members, "hi");
+
+        assert_eq!(count, 1);
+        assert!(store.unread_for(locked.id).is_empty());
+    }
+
+    #[test]
+    fn a_locked_sender_broadcasts_nothing() {
+        let mut sender = agent("sender");
+        sender.locked = true;
+        let peer = agent("peer");
+        let members = vec![sender.clone(), peer.clone()];
+        let mut store = MessageStore::new();
+        let notifier = RecordingNotifier::new();
+
+        assert_eq!(broadcast(&mut store, &notifier, &sender, &members, "hi"), 0);
+        assert!(store.unread_for(peer.id).is_empty());
     }
 }

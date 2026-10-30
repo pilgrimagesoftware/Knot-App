@@ -25,6 +25,8 @@ pub(crate) enum AgentMenuEntry {
     MarkdownFiles,
     AgentInfo,
     RegisterAgent,
+    LockAgent,
+    UnlockAgent,
     Deactivate,
     RestartAgent,
     RestartWithNewConversation,
@@ -41,7 +43,7 @@ impl AgentMenuEntry {
     /// and `tests::every_agent_menu_entry_is_in_all` walks this list against
     /// an exhaustive match, so a variant added here without an action - or
     /// added to the enum without reaching this list - fails the build.
-    pub(crate) const ALL: [Self; 17] = [Self::Separator,
+    pub(crate) const ALL: [Self; 19] = [Self::Separator,
                                         Self::NewCompanion,
                                         Self::NewShellCompanion,
                                         Self::EditAgent,
@@ -54,6 +56,8 @@ impl AgentMenuEntry {
                                         Self::MarkdownFiles,
                                         Self::AgentInfo,
                                         Self::RegisterAgent,
+                                        Self::LockAgent,
+                                        Self::UnlockAgent,
                                         Self::Deactivate,
                                         Self::RestartAgent,
                                         Self::RestartWithNewConversation,
@@ -78,6 +82,8 @@ impl AgentMenuEntry {
             Self::MarkdownFiles => Some(knot_core::l10n::t("menu.agent.markdown_files")),
             Self::AgentInfo => Some(knot_core::l10n::t("menu.agent.agent_info")),
             Self::RegisterAgent => Some(knot_core::l10n::t("menu.agent.register_agent")),
+            Self::LockAgent => Some(knot_core::l10n::t("menu.agent.lock_agent")),
+            Self::UnlockAgent => Some(knot_core::l10n::t("menu.agent.unlock_agent")),
             Self::Deactivate => Some(knot_core::l10n::t("menu.agent.deactivate")),
             Self::RestartAgent => Some(knot_core::l10n::t("menu.agent.restart_agent")),
             Self::RestartWithNewConversation => {
@@ -110,6 +116,12 @@ pub(crate) struct AgentMenuFacts {
     /// session has an `initialize` response naming the agent and its
     /// version, so Agent Info is absent for a Terminal-mode agent.
     pub(crate) is_panel_mode:        bool,
+    /// Whether Lock Agent applies: the agent is unlocked (#310).
+    pub(crate) can_lock:             bool,
+    /// Whether Unlock Agent applies: the agent is locked. Two facts rather
+    /// than one `is_locked`, because the menu bar's every-item shape needs
+    /// both items in place at once.
+    pub(crate) can_unlock:           bool,
 }
 
 impl AgentMenuFacts {
@@ -125,7 +137,9 @@ impl AgentMenuFacts {
                                                has_move_targets:     true,
                                                has_markdown_history: true,
                                                is_running:           true,
-                                               is_panel_mode:        true, };
+                                               is_panel_mode:        true,
+                                               can_lock:             true,
+                                               can_unlock:           true, };
 }
 
 /// The agent-row context menu's entries, in order, with dividers.
@@ -167,6 +181,13 @@ pub(crate) fn agent_context_menu_entries(facts: AgentMenuFacts) -> Vec<AgentMenu
          [AgentInfo].into_iter()
                     .filter(|_| facts.is_panel_mode)
                     .chain([RegisterAgent].into_iter().filter(|_| !facts.is_shell))
+                    // Lock and Unlock sit with Register: all three are about
+                    // the agent's place in agent messaging. A shell agent
+                    // has none to lock it out of (#310).
+                    .chain([LockAgent].into_iter()
+                                      .filter(|_| !facts.is_shell && facts.can_lock))
+                    .chain([UnlockAgent].into_iter()
+                                        .filter(|_| !facts.is_shell && facts.can_unlock))
                     .chain([Deactivate].into_iter().filter(|_| facts.is_running))
                     .chain([RestartAgent].into_iter().filter(|_| owner_only))
                     .chain([RestartWithNewConversation].into_iter()

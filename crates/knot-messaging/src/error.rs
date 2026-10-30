@@ -14,6 +14,12 @@ pub enum SendError {
     NotCompanionOwner,
     #[error("Companion agents can only send messages to their owner")]
     CompanionNotOwner,
+    /// The sender is locked against messaging (#310).
+    #[error("Locked agents cannot send messages")]
+    SenderLocked,
+    /// The recipient is locked against messaging (#310).
+    #[error("Recipient is locked and cannot receive messages")]
+    RecipientLocked,
 }
 
 pub type Result<T> = std::result::Result<T, SendError>;

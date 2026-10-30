@@ -19,6 +19,9 @@ pub struct AgentInfo {
     /// which has no session and so no state to report.
     pub status:        String,
     pub is_registered: bool,
+    /// Locked against messaging (#310): a message to it, or from it, is
+    /// refused.
+    pub locked:        bool,
     pub description:   String,
     pub capabilities:  Vec<String>,
     pub tools:         Vec<String>,

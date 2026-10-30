@@ -130,6 +130,7 @@ impl WorkspaceWindow {
                                       input_reason: agent.input_reason().map(str::to_owned),
                                       is_shell: agent.is_shell(),
                                       is_companion: agent.is_companion,
+                                      is_locked: agent.locked,
                                       header_title: agent.header_title().to_string(),
                                       persona_name,
                                       agent_type: agent.agent_type.clone(),

@@ -108,6 +108,8 @@ the panel restores it with its answers.
 
 Routing is workspace-scoped: a recipient outside the sender's workspace is treated as not found. Shell agents cannot receive messages. A companion agent can only send to and receive from its owner, and broadcast applies the same filter per recipient.
 
+A locked agent is shut out of agent messaging. A direct send to it fails with "Recipient is locked and cannot receive messages", so the message never starts it; broadcast skips it; and `dispatch-task` passes over it when matching by capability, or fails when it is the named assignee. A locked agent's own sends fail with "Locked agents cannot send messages", and its broadcasts reach no one. `list-agents` and `describe-agents` report `locked` for each agent.
+
 A new message is unread. `check-messages` returns the caller's unread messages and, by default, marks them read; the caller can request a non-destructive read that leaves the flags alone. Unread queries report whether anything is unread and the most recent unread message id. Cleanup caps stored read messages at 100, dropping the oldest read messages and never an unread one.
 
 When a message is stored and the recipient is idle, Knot delivers a short "check your inbox" prompt. If the recipient is working, mid-turn, or has a permission request outstanding, the message waits and is surfaced at its next transition to idle. A recipient is nudged at most once per message. A direct send to a deactivated agent starts its session; a broadcast never starts one. A nudge queues behind the agent's active work rather than interrupting it, and its text tells the agent to continue its previous work if the inbox is empty.

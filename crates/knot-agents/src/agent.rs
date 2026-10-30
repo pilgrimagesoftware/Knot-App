@@ -59,6 +59,10 @@ pub struct Agent {
     /// When this agent's session starts on its own. Durable; distinct from
     /// [`Agent::activated`], which is runtime-only.
     pub activation_mode: ActivationMode,
+    /// Shut out of agent messaging (#310): no agent can message it, so no
+    /// message starts it, and it can message no agent. Durable. The routing
+    /// rules in `knot-messaging` enforce it.
+    pub locked:          bool,
     /// Registry metadata: what this agent is for, what it can be asked to
     /// do, and how expensive it is to ask. Durable, and deliberately
     /// restart-free to edit - none of it changes how the session runs, so
@@ -226,6 +230,7 @@ mod tests {
                 persona_id:         None,
                 view_mode:          ViewMode::Terminal,
                 activation_mode:    ActivationMode::Passive,
+                locked:             false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),

@@ -23,6 +23,9 @@ impl AgentPrefill {
                                  shell_command,
                                  persona_id,
                                  activation_mode,
+                                 // Not carried: a lock is the user's
+                                 // decision about one agent, not its setup.
+                                 locked: _,
                                  description,
                                  capabilities,
                                  cost_tier,

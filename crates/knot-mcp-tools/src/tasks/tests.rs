@@ -478,3 +478,40 @@ fn each_agent_has_its_own_plan() {
 
     assert!(body(&other)["tasks"].as_array().unwrap().is_empty());
 }
+
+/// #310: a locked agent can't be messaged, so it is passed over for a task
+/// matched by capability, and the next match takes it.
+#[test]
+fn a_capability_dispatch_passes_over_a_locked_agent() {
+    let mut f = fixture();
+    // Named to sort after "worker": candidates are ordered by availability,
+    // cost and then name, so the locked agent is the first match.
+    let other = agent(&mut f.agents, "zed", &["rust"], Some(f.worker));
+    f.agents.set_locked(f.worker, true);
+    f.plan(json!([{"id": "a", "goal": "x", "capabilities": ["rust"]}]));
+
+    let result = f.dispatch("a");
+
+    assert_eq!(result.is_error, None, "{}", result.content[0].text);
+    assert_eq!(&*f.activation.lock(),
+               &[other],
+               "the unlocked match is started");
+    assert!(f.messages.unread_for(f.worker).is_empty());
+}
+
+/// #310: a task assigned to a locked agent by name is refused, and starts
+/// nothing.
+#[test]
+fn a_dispatch_to_a_locked_assignee_is_refused_and_starts_nothing() {
+    let mut f = fixture();
+    f.agents.set_locked(f.worker, true);
+    f.plan(json!([{"id": "a", "goal": "x", "assignee": "worker"}]));
+
+    let result = f.dispatch("a");
+
+    assert_eq!(result.is_error, Some(true));
+    assert!(result.content[0].text.contains("locked"),
+            "{}",
+            result.content[0].text);
+    assert!(f.activation.lock().is_empty());
+}

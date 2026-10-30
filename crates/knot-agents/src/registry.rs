@@ -30,6 +30,9 @@ pub enum RegistryStatus {
         state:         AgentState,
         status_text:   String,
         is_registered: bool,
+        /// Shut out of agent messaging (#310): listed, so a caller knows why
+        /// a message to it fails, but never a task's assignee.
+        locked:        bool,
     },
     Template,
 }
@@ -37,6 +40,12 @@ pub enum RegistryStatus {
 impl RegistryStatus {
     /// Whether this entry is a live agent with nothing in flight - the
     /// first rank group, since it can start now.
+    /// Whether this is a live agent locked against messaging; a template is
+    /// never locked.
+    pub fn is_locked(&self) -> bool {
+        matches!(self, Self::Live { locked: true, .. })
+    }
+
     pub fn is_idle_agent(&self) -> bool {
         matches!(self,
                  Self::Live { state: AgentState::Idle,
@@ -168,7 +177,8 @@ impl<'a> RegistryView<'a> {
                         status:       RegistryStatus::Live { state:         agent.state,
                                                              status_text:   agent.status_text
                                                                                  .clone(),
-                                                             is_registered: agent.is_registered, }, }
+                                                             is_registered: agent.is_registered,
+                                                             locked:        agent.locked, }, }
     }
 
     fn entry_for_bench(&self, bench: &BenchAgent) -> RegistryEntry {

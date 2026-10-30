@@ -59,6 +59,7 @@ mod tests {
                 persona_id:         None,
                 view_mode:          Default::default(),
                 activation_mode:    Default::default(),
+                locked:             false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),

@@ -79,13 +79,19 @@ type, persona, status, and folder - each with a leading icon identifying what th
 status line shows the agent's own status text when it has one, otherwise its terminal title. A row
 that is not running is dimmed, whether it is passive and never started or was deactivated.
 
+Lock Agent shuts an agent out of agent messaging: no agent can message it, so a message cannot
+start it, and it cannot message other agents. Broadcast to All Agents skips it too. The row shows a
+**Locked** line while it lasts, and the lock is kept across a relaunch. Unlock Agent undoes it.
+Typing into the agent yourself is unaffected. Both items are also in the menu bar's Agents menu.
+
 Click a row to select its agent, drag a row up or down to reorder agents - with companions moving
 with their owner and the Dashboard and Pull Requests rows pinned at the top - or right-click a row
 for its context menu.
 
 The context menu offers companion creation (New Companion…, New Shell Companion), editing (Edit
 Agent…, Fork Agent, Duplicate Agent), placement (Move to Workspace, Save to Bench, Bench Agent…),
-opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Restart Agent,
+opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Lock Agent or
+Unlock Agent, Restart Agent,
 Restart with New Conversation, Remove Agent), showing the items that apply. A companion shows only
 Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
