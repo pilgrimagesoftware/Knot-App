@@ -1,4 +1,58 @@
 
+## 1.35.0 - 2026-10-30
+
+### Added
+- Add and edit prompts from the Insert Prompt list
+- Show an earlier response's controls on hover
+- Lock an agent out of agent messaging
+- Show a link's URL while the pointer rests on it
+- Show a session limit as its own red status
+- Mark a locked agent in the Send prompt to menu
+- Show which agents Autopilot reads, and turn it off per agent
+- Find text in an agent's conversation
+- Add OpenCode Zen and OpenRouter as Autopilot providers
+- Take a notification click to its agent
+
+
+### Documentation
+- Name the title-bar exception's reach and its window list
+- Note ADR-0004's assumption that on-screen text paints every frame
+- Say plainly that the passing stdin test exits at once
+
+
+### Fixed
+- Start an agent restarted from its row
+- Let an unfocused window keep the click that activates it
+- Open the prompt editor larger and resizable to fit the form
+- Start an activated agent that has no session
+- Forget the start claim when a restart removes the session
+- Repaint when an agent's status text or state changes off the UI thread
+- Repaint the Command Center when the agent store changes
+- Attach plan edges to their cards and fit card labels
+- List a submodule's files for the @-file lookup
+- List each conflicted path once
+- Redraw the Prompts window when a prompt is saved from anywhere
+- Let create-worktree put the worktree where asked
+- Redraw the Bench window too when a prompt is saved
+- Give the status palette a light and a dark shade set
+- Carry the source's whole setup into a forked agent
+- Fork the session only when the type is unchanged
+- Drop settings that nothing reads
+- Refuse worktreePath without createWorktree
+- Say why an agent awaits input, and stop flagging replies that ask nothing
+- Drop a link's URL once its link is no longer drawn
+- Refuse a locked sender's broadcast with the reason
+- Keep eligible's doc on eligible; restate the sender requirement
+- Drop an Autopilot result that lands after it was turned off
+- Count a reply's find matches in the text it shows
+- Count find matches in footnotes as they render
+
+
+### Performance
+- Skip a reply's highlight pass while no find is open
+
+
+
 ## 1.34.0 - 2026-10-17
 
 ### Added
