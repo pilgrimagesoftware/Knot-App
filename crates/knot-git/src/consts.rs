@@ -31,6 +31,14 @@ pub const LS_FILES: &[&str] = &["ls-files",
                                 "--exclude-standard",
                                 "-z"];
 
+/// The index with each entry's mode, NUL-separated: how [`LS_FILES`]'s caller
+/// finds the submodules in a listing, which `ls-files` reports as a single
+/// entry - the submodule's directory - with mode [`GITLINK_MODE`].
+pub const LS_FILES_STAGE: &[&str] = &["ls-files", "--stage", "-z"];
+
+/// The index mode of a submodule (a "gitlink").
+pub const GITLINK_MODE: &str = "160000";
+
 pub const DIFF: &[&str] = &["diff", "--no-color"];
 pub const DIFF_STAGED_FLAG: &str = "--staged";
 /// Separates revisions from paths. Not optional on a path-scoped diff: a path
