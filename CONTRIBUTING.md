@@ -82,7 +82,8 @@ calling the reusable `pilgrimagesoftware/github-actions` `rust-*-release` workfl
 3. **Release** (`release.yml`) - fires on that tag push; runs the workspace
    test suite, cuts a GitHub Release with `git-cliff`-generated notes, and
    merges `main` back into `develop` so the two branches stay in sync. It then
-   calls **Package** for the tag and attaches the build to the release.
+   calls **Package** for the tag and attaches the build, its SBOM and
+   `SHA256SUMS` to the release.
 
 These need `PSW_CI_APP_ID` / `PSW_CI_PRIVATE_KEY`, organization secrets on
 `pilgrimagesoftware` and available to this repo (a GitHub App
@@ -100,6 +101,12 @@ arrangement the other pilgrimagesoftware Rust apps use. It runs:
   artifact for 30 days;
 - from `release.yml` for a tag, which also attaches
   `Knot_<version>_aarch64.dmg` to the GitHub Release.
+
+Next to the DMG, each run writes `Knot_<version>_aarch64.cdx.json`, a
+CycloneDX 1.5 SBOM of the `knot` crate and everything it links (from
+[`cargo-cyclonedx`](https://github.com/CycloneDX/cyclonedx-rust-cargo),
+build dependencies excluded), and `SHA256SUMS`, covering the DMG and the SBOM.
+Both go into the workflow artifact and onto the release.
 
 macOS on Apple Silicon is the only target: the app links AppKit through
 `objc2`. Signing and notarization happen when the Apple secrets are set -
