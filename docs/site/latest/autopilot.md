@@ -29,6 +29,12 @@ Unless the configured action is Custom (which bypasses classification entirely),
 
 A classification request that fails (no network, expired key, unsupported provider) returns no classification. The agent is treated as if it had nothing to ask, so a transient outage does not interrupt you on every idle turn.
 
+### Per agent
+
+Autopilot is on or off for the whole app in Settings. While it's on, you can turn it off for one agent: choose **Turn Off Autopilot** from the agent's context menu or the Agents menu, and **Turn On Autopilot** to undo it. That agent's replies are then never classified, whatever Settings says. The choice is kept across a relaunch. A duplicate or fork of the agent starts out following Settings again.
+
+An agent Autopilot is reading shows an **Autopilot** line with a propeller icon on its sidebar row, and the same icon beside its status in the window's title bar. Shell agents never show it: Autopilot has no replies of theirs to read.
+
 ### Decision loop
 
 Once classified (if not Custom), the configured action decides what happens:

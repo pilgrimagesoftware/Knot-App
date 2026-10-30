@@ -104,6 +104,7 @@ impl WorkspaceWindow {
     /// two are read from the same lock scope, and so the title bar cannot
     /// disagree with the rows about which workspace this window is.
     fn frame_snapshot(&self, cx: &App) -> Option<(String, Vec<AgentRow>)> {
+        let autopilot_enabled = crate::settings_global::read(cx).autopilot_enabled;
         let store = self.store.lock();
         let title = workspace_title(&store, self.workspace_id)?;
         let workspace = store.workspaces()
@@ -132,6 +133,7 @@ impl WorkspaceWindow {
                                       is_shell: agent.is_shell(),
                                       is_companion: agent.is_companion,
                                       is_locked: agent.locked,
+                                      autopilot: agent.autopilot_applies(autopilot_enabled),
                                       header_title: agent.header_title().to_string(),
                                       persona_name,
                                       agent_type: agent.agent_type.clone(),

@@ -196,6 +196,18 @@ impl AgentStore {
         }
     }
 
+    /// Turn Autopilot off, or back on, for `id` alone; see
+    /// [`Agent::autopilot_off`]. Moves the revision, so every window redraws
+    /// the agent's indicator.
+    pub fn set_autopilot_off(&mut self, id: Uuid, off: bool) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.autopilot_off != off);
+        self.update(id, |agent| agent.autopilot_off = off);
+        if changed {
+            self.revise();
+        }
+    }
+
     pub fn set_registered(&mut self, id: Uuid, registered: bool) {
         self.update(id, |agent| agent.is_registered = registered);
     }

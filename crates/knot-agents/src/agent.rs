@@ -63,6 +63,9 @@ pub struct Agent {
     /// message starts it, and it can message no agent. Durable. The routing
     /// rules in `knot-messaging` enforce it.
     pub locked:          bool,
+    /// Autopilot turned off for this agent alone (#323): no reply of its is
+    /// classified, whatever the global setting. Durable.
+    pub autopilot_off:   bool,
     /// Registry metadata: what this agent is for, what it can be asked to
     /// do, and how expensive it is to ask. Durable, and deliberately
     /// restart-free to edit - none of it changes how the session runs, so
@@ -136,6 +139,14 @@ pub struct Agent {
 }
 
 impl Agent {
+    /// Whether Autopilot reads this agent's replies: on in Settings, not
+    /// turned off for this agent (#323), and a coding agent rather than a
+    /// shell. What the indicator on its row and the title bar shows.
+    #[must_use]
+    pub fn autopilot_applies(&self, enabled_in_settings: bool) -> bool {
+        enabled_in_settings && !self.autopilot_off && !self.is_shell()
+    }
+
     /// The usage limit that stopped this agent, while it is stopped by one:
     /// `None` outside [`AgentState::Error`]. What every surface showing
     /// "Session limit" reads (#318).
@@ -249,6 +260,7 @@ mod tests {
                 view_mode:          ViewMode::Terminal,
                 activation_mode:    ActivationMode::Passive,
                 locked:             false,
+                autopilot_off:      false,
                 description:        String::new(),
                 capabilities:       Default::default(),
                 cost_tier:          Default::default(),

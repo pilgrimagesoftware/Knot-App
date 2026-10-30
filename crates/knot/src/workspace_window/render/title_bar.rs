@@ -3,13 +3,18 @@
 //! and its sort picker.
 
 use gpui_kit::Context;
+use gpui_kit::InteractiveElement;
 use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
+use gpui_kit::StatefulInteractiveElement;
 use gpui_kit::Styled;
 use gpui_kit::base::StyledExt;
 use gpui_kit::base::h_flex;
 use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::Icon;
+use gpui_kit::component::Sizable;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::div;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::px;
@@ -127,11 +132,29 @@ impl WorkspaceWindow {
                     // (#591). Only a connected Panel-mode agent has one.
                     let info = self.selected_agent
                                    .and_then(|id| self.agent_info_button(id));
+                    // The header's state is `None` for a shell, which
+                    // Autopilot never reads (#323).
+                    let autopilot = crate::settings_global::read(cx).autopilot_enabled
+                                    && selected_header.as_ref()
+                                                      .is_some_and(|header| !header.autopilot_off);
                     let status =
                         v_flex().items_end()
                                 .gap_0p5()
                                 .child(h_flex().items_center()
                                                .gap_2()
+                                               .when(autopilot, |row| {
+                                                   row.child(
+                    div().id("title-bar-autopilot")
+                         .debug_selector(|| "title-bar-autopilot".into())
+                         .child(Icon::new(gpui_kit::assets::IconName::Fan)
+                                    .xsmall()
+                                    .text_color(cx.theme().muted_foreground))
+                         .tooltip(|window, cx| {
+                             Tooltip::new(knot_core::l10n::t("agent.autopilot_active"))
+                                 .build(window, cx)
+                         }),
+                )
+                                               })
                                                .child(div().w(px(10.))
                                                            .h(px(10.))
                                                            .rounded_full()

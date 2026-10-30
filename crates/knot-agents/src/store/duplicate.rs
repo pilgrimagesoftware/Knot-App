@@ -33,6 +33,9 @@ impl AgentStore {
                     // and is the user's decision about that agent, not part
                     // of how it is set up.
                     locked: _,
+                    // Not copied either: turning Autopilot off is about one
+                    // session, and the copy is a new one (#323).
+                    autopilot_off: _,
                     description,
                     capabilities,
                     cost_tier,
