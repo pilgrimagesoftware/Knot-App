@@ -5,7 +5,8 @@ use super::*;
 fn target(name: &str, running: bool) -> SendTarget {
     SendTarget { id: Uuid::new_v4(),
                  name: name.to_owned(),
-                 running }
+                 running,
+                 locked: false }
 }
 
 #[test]
@@ -50,4 +51,26 @@ fn each_prompt_names_its_item() {
     let change = WorkItemRef::Change("add-login".to_owned()).prompt_text();
     assert!(change.contains("add-login"), "{change}");
     assert!(!change.contains("%{"), "{change}");
+}
+
+/// #310: a locked agent stays in the list and can be chosen - the user is
+/// prompting it, not another agent messaging it - but its label says it is
+/// locked, running or not.
+#[test]
+fn a_locked_agent_is_listed_and_marked_locked() {
+    for (running, key) in [(true, "changes_view.send_target_locked"),
+                           (false, "changes_view.send_target_inactive_locked")]
+    {
+        let locked = SendTarget { locked: true,
+                                  ..target("Ada", running) };
+
+        let label = locked.label();
+
+        assert_eq!(label, knot_core::l10n::t_with(key, &[("name", "Ada")]));
+        assert!(label.contains("Ada") && !label.contains("%{"), "{label}");
+        assert_ne!(label, key, "the key must resolve");
+        assert_ne!(label,
+                   target("Ada", running).label(),
+                   "locked reads differently from unlocked");
+    }
 }

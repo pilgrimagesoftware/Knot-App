@@ -84,3 +84,32 @@ fn choosing_an_inactive_agent_activates_it(cx: &mut TestAppContext) {
                                "activating does not leave the Changes view");
                 });
 }
+
+/// #310: the menu reads each agent's lock from the store and marks it, and
+/// choosing a locked agent still sends - the user prompting an agent is not
+/// agent messaging, which is all a lock shuts out.
+#[gpui_kit::test]
+fn a_locked_agent_is_marked_and_still_receives_the_prompt(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let (locked, open) = (fixture.agents[0], fixture.agents[1]);
+    let url = "https://github.com/acme/widget/issues/7";
+
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.store.lock().set_locked(locked, true);
+                    let targets = view.prompt_targets();
+                    let marked = |id| {
+                        targets.iter()
+                               .find(|target| target.id == id)
+                               .map(|target| target.locked)
+                    };
+                    assert_eq!(marked(locked), Some(true));
+                    assert_eq!(marked(open), Some(false));
+
+                    let (connecting, _progress) = PanelSessionSlot::connecting();
+                    view.panel_sessions
+                        .insert(locked, Arc::new(Mutex::new(connecting)));
+                    assert!(view.send_work_item(locked, &WorkItemRef::Issue(url.to_owned()), cx),
+                            "a locked agent still takes the user's prompt");
+                    assert_eq!(view.panel_prompt_queues[&locked].len(), 1);
+                });
+}

@@ -8,3 +8,4 @@
 - [x] 1.3 Lock/Unlock in the context menu and the Agents menu
 - [x] 1.4 Show Locked on the sidebar row; skip locked agents in the user's
       Broadcast to All Agents
+- [x] 1.5 Mark a locked agent in "Send prompt to", which still sends to it
