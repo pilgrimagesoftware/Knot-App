@@ -137,6 +137,7 @@ impl WorkspaceWindow {
                     store,
                     messages,
                     nudged_messages: BTreeMap::new(),
+                    start_requested: std::collections::BTreeSet::new(),
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
                     selected_agent,
