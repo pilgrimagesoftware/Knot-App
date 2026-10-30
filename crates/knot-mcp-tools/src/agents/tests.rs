@@ -181,6 +181,26 @@ fn create_agent_uses_new_worktree_path() {
     assert!(Path::new(&created.folder).is_dir());
 }
 
+/// #342: a `worktreePath` with no worktree to create is refused rather than
+/// dropped - the caller would otherwise believe its agent sits where it asked.
+#[test]
+fn create_agent_refuses_a_worktree_path_without_create_worktree() {
+    let dir = tempfile::tempdir().unwrap();
+    let requested = dir.path().join("Worktrees").join("worker");
+    let mut store = AgentStore::new();
+    let caller = store.create("/tmp/caller", CreateOptions::default());
+    let result = create_agent(&mut store,
+                              &json!({"agentId": caller.to_string(), "name": "worker", "agentType": "claude", "repoPath": dir.path(), "worktreePath": requested}),
+                              &[]);
+    assert_eq!(result.is_error, Some(true));
+    assert!(result.content[0].text.contains("createWorktree"),
+            "{}",
+            result.content[0].text);
+    assert!(!store.agents().iter().any(|agent| agent.name == "worker"),
+            "no agent is created");
+    assert!(!requested.exists(), "nothing is made at the requested path");
+}
+
 /// #37: `worktreePath` places the new agent's worktree where the caller's
 /// instructions say.
 #[test]

@@ -7,3 +7,5 @@
       default
 - [x] 1.2 Refuse a relative path without creating anything; expand `~/`
 - [x] 1.3 Describe the parameter in the tool catalog and the user docs
+- [x] 1.4 Refuse `worktreePath` on `create-agent` without `createWorktree`,
+      creating no agent (#342)
