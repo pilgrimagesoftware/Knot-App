@@ -58,6 +58,12 @@ fn window_with(cx: &mut TestAppContext, conversation: Vec<PanelMessage>) -> Fixt
     let settings = knot_core::Settings::with_store_root(settings_dir.path());
     let view = cx.update(|cx| {
                      gpui_kit::init(cx);
+                     // The app's fixed keys, ⌘F among them. On macOS the
+                     // composer's own ⌘F (the input's `Search`) gets there
+                     // first and is handed up; elsewhere the input's find key
+                     // is Ctrl-F, and ⌘F is this binding alone.
+                     cx.bind_keys(crate::keymap::fixed_bindings().into_iter()
+                                                                 .map(|fixed| fixed.binding));
                      WindowRegistry::install(cx);
                      crate::settings_global::install(settings, cx);
                      WorkspaceWindow::open(store, messages, workspace_id, cx);
@@ -155,6 +161,20 @@ fn command_f_in_the_composer_opens_the_find_bar(cx: &mut TestAppContext) {
 
     assert!(fixture.bar_shown());
     assert!(!fixture.composer_focused(), "focus moves to the find field");
+}
+
+/// A text field's own find key - the input's `Search`, ⌘F on macOS and
+/// Ctrl-F elsewhere - opens the bar too: the composer is not searchable, so
+/// it hands the action up to the pane.
+#[gpui_kit::test]
+fn the_composers_own_find_key_opens_the_find_bar(cx: &mut TestAppContext) {
+    let mut fixture = window_with(cx, conversation());
+
+    fixture.window
+           .dispatch_action(gpui_kit::component::input::Search);
+    fixture.window.run_until_parked();
+
+    assert!(fixture.bar_shown());
 }
 
 /// "Matches are counted and stepped through": prompts and replies are
