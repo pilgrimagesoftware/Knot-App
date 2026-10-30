@@ -57,6 +57,8 @@ mod sidebar_drag;
 mod sidebar_layout;
 #[cfg(test)]
 mod status_dot_tests;
+#[cfg(test)]
+mod status_repaint_tests;
 pub(crate) mod terminal_font;
 mod terminal_pane;
 mod title;
