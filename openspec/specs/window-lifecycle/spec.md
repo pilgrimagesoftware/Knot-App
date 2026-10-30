@@ -169,3 +169,22 @@ another.
 
 - **WHEN** the user closes the Bench window and opens it again
 - **THEN** a Bench window opens
+
+### Requirement: An unfocused window keeps its activating click
+
+The click that brings an unfocused Knot window to the front SHALL only
+activate it, as a standard macOS window's does: it SHALL NOT also reach the
+control, row or field under the pointer. A window that draws its own title
+bar SHALL still be draggable from that bar by the activating click.
+
+#### Scenario: The first click raises the window without pressing a button
+
+- **WHEN** the user clicks a button in a Knot window that is not focused
+- **THEN** the window comes to the front and the button is not pressed
+
+#### Scenario: An inactive window drags from its drawn title bar
+
+- **WHEN** the user presses on the drawn title bar of an unfocused workspace
+  window and drags
+- **THEN** the window moves
+
