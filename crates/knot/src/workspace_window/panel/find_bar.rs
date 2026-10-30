@@ -44,7 +44,8 @@ use uuid::Uuid;
 use crate::consts::{FIND_CURRENT_ALPHA, FIND_CURRENT_COLOR, FIND_MATCH_ALPHA, FIND_MATCH_COLOR};
 use crate::panel_state::PanelState;
 use crate::panel_view::{
-    FindColors, FindHighlight, FindMatch, FindMode, FindQuery, PanelList, conversation_matches,
+    FindColors, FindHighlight, FindMatch, FindMode, FindQuery, PanelList, PlainTexts,
+    conversation_matches,
 };
 use crate::workspace_window::WorkspaceWindow;
 use crate::workspace_window::element_key;
@@ -64,6 +65,9 @@ pub(in crate::workspace_window) struct PanelFind {
     /// What `matches` was searched over, so an unchanged conversation is
     /// not searched again every frame.
     searched:   Option<Searched>,
+    /// The text each reply renders, which its matches are counted in, kept
+    /// so a streamed chunk works out only the reply it grew.
+    texts:      PlainTexts,
     /// Set by a new query or a step: the next frame takes the conversation
     /// to the current match.
     reveal:     bool,
@@ -139,6 +143,7 @@ impl WorkspaceWindow {
                                     matches: Vec::new(),
                                     current: None,
                                     searched: None,
+                                    texts: PlainTexts::default(),
                                     reveal: false,
                                     _changes: changes });
         }
@@ -241,7 +246,7 @@ impl WorkspaceWindow {
         };
         let searched = Searched::of(state, find.generation);
         if find.searched != Some(searched) {
-            find.matches = conversation_matches(&state.messages, query);
+            find.matches = conversation_matches(&state.messages, query, &mut find.texts);
             find.searched = Some(searched);
         }
         if find.current.is_none() && !find.matches.is_empty() {

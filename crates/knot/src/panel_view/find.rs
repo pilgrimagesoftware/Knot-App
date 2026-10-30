@@ -13,13 +13,14 @@
 //! The prompts and replies a user reads are searched. Tool calls, shell runs
 //! and notices are not: they are cards, not conversation text.
 //!
-//! A match is counted in the message text as the agent sent it. A reply is
-//! Markdown, and painting a highlight needs offsets into the text it renders,
-//! which exists only for the replies laid out near the viewport (see
-//! `markdown_rows`). So a reply's highlights come from running the same query
-//! over its rendered text, and its *n*th counted match is painted as its *n*th
-//! rendered one. The two agree except where the query matches Markdown syntax
-//! itself - `**` counts a match that has nothing to paint.
+//! A prompt is plain text, searched as typed. A reply is Markdown, and a
+//! highlight indexes the text it renders, which exists only for the replies
+//! laid out near the viewport (see `markdown_rows`). So a reply's matches are
+//! counted in that same text, worked out from its Markdown without laying it
+//! out (`find_text`), and painted by running the query over the laid-out
+//! view's rendered text: the *n*th counted match is the *n*th painted one,
+//! including where the source has a match the reader never sees, such as a
+//! link's address.
 
 use std::ops::Range;
 use std::rc::Rc;
@@ -32,6 +33,7 @@ use gpui_kit::StyledText;
 use regex::Regex;
 use regex::RegexBuilder;
 
+pub(crate) use super::find_text::PlainTexts;
 use crate::consts::FIND_REGEX_SIZE_LIMIT;
 use crate::panel_state::PanelMessage;
 
@@ -101,15 +103,24 @@ pub(crate) fn searched_text(message: &PanelMessage) -> Option<&str> {
     }
 }
 
-/// Every match of `query` across `messages`, in conversation order.
-pub(crate) fn conversation_matches(messages: &[PanelMessage], query: &FindQuery) -> Vec<FindMatch> {
-    messages.iter()
-            .enumerate()
-            .filter_map(|(message, item)| searched_text(item).map(|text| (message, text)))
-            .flat_map(|(message, text)| {
-                (0..query.find_all(text).len()).map(move |nth| FindMatch { message, nth })
-            })
-            .collect()
+/// Every match of `query` across `messages`, in conversation order: in a
+/// prompt's text, and in the text a reply renders, which `texts` keeps.
+pub(crate) fn conversation_matches(messages: &[PanelMessage], query: &FindQuery,
+                                   texts: &mut PlainTexts)
+                                   -> Vec<FindMatch> {
+    texts.truncate(messages.len());
+    let mut found = Vec::new();
+    for (message, item) in messages.iter().enumerate() {
+        let text = match item {
+            PanelMessage::Assistant(source) => texts.get(message, source),
+            other => match searched_text(other) {
+                Some(text) => text,
+                None => continue,
+            },
+        };
+        found.extend((0..query.find_all(text).len()).map(|nth| FindMatch { message, nth }));
+    }
+    found
 }
 
 /// What the rows paint for an open find: every match, and the current one
