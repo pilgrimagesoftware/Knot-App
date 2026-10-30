@@ -283,6 +283,7 @@ impl CommandCenterWindow {
 impl Render for CommandCenterWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let muted = cx.theme().muted_foreground;
+        let palette = crate::status_palette::status_palette(cx);
         self.refresh_diff_stats(cx);
         let diff_stats = self.diff_stats.snapshot();
         let dashboard_workspaces = self.dashboard_workspaces(&diff_stats);
@@ -299,6 +300,7 @@ impl Render for CommandCenterWindow {
                     workspace,
                     true,
                     muted,
+                    palette,
                     dashboard::WorkspaceSectionCallbacks { on_agent_tap:     on_agent_tap.clone(),
                                                            on_workspace_nav:
                                                                on_workspace_nav.clone(),

@@ -9,6 +9,7 @@ use super::{
     EmptyList, REMOVE_ICON, RowStatus, detail_line, empty_message, forge_notice_text, state_color,
     status_icon,
 };
+use crate::consts::{DARK_STATUS_PALETTE, LIGHT_STATUS_PALETTE};
 
 fn state(status: PullRequestStatus, checks: Option<CheckRollup>) -> PullRequestState {
     PullRequestState { number: Some(42),
@@ -186,21 +187,34 @@ fn each_state_has_its_own_icon() {
 /// Each reason an open pull request can or cannot land, and merged and
 /// closed: states that must never collide, since the colour is the first
 /// thing a row is read by. Conflicting and blocked share orange on purpose.
+/// Held in both appearances, since each has its own shades (#12).
 #[test]
 fn each_state_wears_its_own_colour() {
-    let all = [state_color(Some(PullRequestStatus::Open), Mergeability::Mergeable),
-               state_color(Some(PullRequestStatus::Open), Mergeability::Conflicting),
-               state_color(Some(PullRequestStatus::Open), Mergeability::Behind),
-               state_color(Some(PullRequestStatus::Open), Mergeability::ChecksRunning),
-               state_color(Some(PullRequestStatus::Merged), Mergeability::Unknown),
-               state_color(Some(PullRequestStatus::Closed), Mergeability::Unknown)];
+    for palette in [&DARK_STATUS_PALETTE, &LIGHT_STATUS_PALETTE] {
+        let all = [state_color(Some(PullRequestStatus::Open),
+                               Mergeability::Mergeable,
+                               palette),
+                   state_color(Some(PullRequestStatus::Open),
+                               Mergeability::Conflicting,
+                               palette),
+                   state_color(Some(PullRequestStatus::Open), Mergeability::Behind, palette),
+                   state_color(Some(PullRequestStatus::Open),
+                               Mergeability::ChecksRunning,
+                               palette),
+                   state_color(Some(PullRequestStatus::Merged),
+                               Mergeability::Unknown,
+                               palette),
+                   state_color(Some(PullRequestStatus::Closed),
+                               Mergeability::Unknown,
+                               palette)];
 
-    for colour in all {
-        assert!(colour.is_some(), "a fetched state earns a colour");
-    }
-    for (index, left) in all.iter().enumerate() {
-        for right in &all[index + 1..] {
-            assert_ne!(left, right, "two states share a colour");
+        for colour in all {
+            assert!(colour.is_some(), "a fetched state earns a colour");
+        }
+        for (index, left) in all.iter().enumerate() {
+            for right in &all[index + 1..] {
+                assert_ne!(left, right, "two states share a colour");
+            }
         }
     }
 }
@@ -209,26 +223,29 @@ fn each_state_wears_its_own_colour() {
 /// conflicting, yellow behind, blue checks running.
 #[test]
 fn open_rows_wear_the_named_colours() {
-    let colour = |mergeable| state_color(Some(PullRequestStatus::Open), mergeable);
-    let rgb = |value| Some(gpui_kit::Hsla::from(gpui_kit::rgb(value)));
+    for palette in [&DARK_STATUS_PALETTE, &LIGHT_STATUS_PALETTE] {
+        let colour = |mergeable| state_color(Some(PullRequestStatus::Open), mergeable, palette);
+        let rgb = |value| Some(gpui_kit::Hsla::from(gpui_kit::rgb(value)));
 
-    assert_eq!(colour(Mergeability::Mergeable),
-               rgb(crate::consts::COLOR_IDLE));
-    assert_eq!(colour(Mergeability::Conflicting),
-               rgb(crate::consts::COLOR_RUNNING));
-    assert_eq!(colour(Mergeability::Behind),
-               rgb(crate::consts::COLOR_PULL_REQUEST_BEHIND));
-    assert_eq!(colour(Mergeability::ChecksRunning),
-               rgb(crate::consts::COLOR_INPUT));
+        assert_eq!(colour(Mergeability::Mergeable), rgb(palette.idle));
+        assert_eq!(colour(Mergeability::Conflicting), rgb(palette.running));
+        assert_eq!(colour(Mergeability::Behind),
+                   rgb(palette.pull_request_behind));
+        assert_eq!(colour(Mergeability::ChecksRunning), rgb(palette.input));
+    }
 }
 
 /// A row must not claim a colour it has not earned: no state fetched, or an
 /// open pull request whose mergeability GitHub has not computed yet.
 #[test]
 fn an_unearned_colour_is_not_claimed() {
-    assert_eq!(state_color(None, Mergeability::Unknown), None);
-    assert_eq!(state_color(None, Mergeability::Mergeable), None);
-    assert_eq!(state_color(Some(PullRequestStatus::Open), Mergeability::Unknown),
+    assert_eq!(state_color(None, Mergeability::Unknown, &DARK_STATUS_PALETTE),
+               None);
+    assert_eq!(state_color(None, Mergeability::Mergeable, &DARK_STATUS_PALETTE),
+               None);
+    assert_eq!(state_color(Some(PullRequestStatus::Open),
+                           Mergeability::Unknown,
+                           &DARK_STATUS_PALETTE),
                None);
 }
 
@@ -237,10 +254,18 @@ fn an_unearned_colour_is_not_claimed() {
 /// work before they can land.
 #[test]
 fn a_draft_wears_the_blocked_colour() {
-    assert_eq!(state_color(Some(PullRequestStatus::Draft), Mergeability::Blocked),
-               state_color(Some(PullRequestStatus::Open), Mergeability::Blocked));
-    assert_eq!(state_color(Some(PullRequestStatus::Open), Mergeability::Blocked),
-               state_color(Some(PullRequestStatus::Open), Mergeability::Conflicting));
+    assert_eq!(state_color(Some(PullRequestStatus::Draft),
+                           Mergeability::Blocked,
+                           &DARK_STATUS_PALETTE),
+               state_color(Some(PullRequestStatus::Open),
+                           Mergeability::Blocked,
+                           &DARK_STATUS_PALETTE));
+    assert_eq!(state_color(Some(PullRequestStatus::Open),
+                           Mergeability::Blocked,
+                           &DARK_STATUS_PALETTE),
+               state_color(Some(PullRequestStatus::Open),
+                           Mergeability::Conflicting,
+                           &DARK_STATUS_PALETTE));
 }
 
 /// The tint is a state marker behind the row's text, not a fill competing
