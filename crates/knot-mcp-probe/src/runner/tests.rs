@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use tempfile::TempDir;
 
-use super::{CommandRunner, McpRunner, ProbeCommand};
+use super::{CommandRunner, McpRunner, ProbeCommand, outcome};
 use crate::error::ProbeError;
 
 fn sh(script: &str, cwd: &std::path::Path) -> ProbeCommand {
@@ -20,11 +20,22 @@ fn runner_with(timeout: Duration) -> CommandRunner {
     CommandRunner::new().with_timeout(timeout)
 }
 
+/// The budget for a test that is not about the timeout. It only stops a
+/// genuinely stuck test; nothing is decided by it running out, so it is far
+/// past any spawn delay - a fixed 10 s raced `/bin/sh` starting under load
+/// and failed a correct runner. The timeout tests set their own, short one:
+/// killing on time is what they test.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
+fn runner() -> CommandRunner {
+    runner_with(HANG_GUARD)
+}
+
 #[test]
 fn stdout_comes_back_on_success() {
     let dir = TempDir::new().unwrap();
-    let out = runner_with(Duration::from_secs(10)).run(&sh("echo hello", dir.path()))
-                                                  .expect("a successful command");
+    let out = runner().run(&sh("echo hello", dir.path()))
+                      .expect("a successful command");
 
     assert_eq!(out.trim(), "hello");
 }
@@ -47,18 +58,17 @@ fn a_hanging_command_is_killed_at_the_timeout() {
 }
 
 /// A CLI that would prompt must fail rather than wait. With stdin inherited
-/// this reads from the test harness's own stdin and hangs to the timeout.
+/// `cat` reads from the test harness's own stdin and waits there, so this
+/// ends as `TimedOut` at the guard; exiting at all is the proof. No clock is
+/// asserted: under load, a correct run can take longer than any fixed bound.
 #[test]
 fn stdin_is_closed_so_a_prompting_command_does_not_wait() {
     let dir = TempDir::new().unwrap();
-    let started = Instant::now();
 
-    let out = runner_with(Duration::from_secs(10)).run(&sh("cat", dir.path()))
-                                                  .expect("cat on a closed stdin exits cleanly");
+    let out = runner().run(&sh("cat", dir.path()))
+                      .expect("cat on a closed stdin exits cleanly");
 
     assert_eq!(out.trim(), "");
-    assert!(started.elapsed() < Duration::from_secs(5),
-            "cat waited for input, so stdin was not closed");
 }
 
 /// Project-scoped MCP configuration resolves against the agent's working
@@ -68,8 +78,7 @@ fn the_command_runs_in_the_given_working_directory() {
     let dir = TempDir::new().unwrap();
     let expected = dir.path().file_name().unwrap().to_str().unwrap().to_owned();
 
-    let out = runner_with(Duration::from_secs(10)).run(&sh("pwd", dir.path()))
-                                                  .expect("pwd");
+    let out = runner().run(&sh("pwd", dir.path())).expect("pwd");
 
     assert!(out.trim().ends_with(&expected),
             "ran in {out:?}, expected a directory ending {expected:?}");
@@ -84,8 +93,7 @@ fn the_agents_environment_reaches_the_child() {
         sh("echo $KNOT_PROBE_MARKER", dir.path()).with_env(vec![("KNOT_PROBE_MARKER".to_owned(),
                                                                  "carried".to_owned())]);
 
-    let out = runner_with(Duration::from_secs(10)).run(&command)
-                                                  .expect("echo");
+    let out = runner().run(&command).expect("echo");
 
     assert_eq!(out.trim(), "carried");
 }
@@ -95,8 +103,8 @@ fn a_missing_program_is_reported_as_missing() {
     let dir = TempDir::new().unwrap();
     let command = ProbeCommand::new("knot-no-such-agent-cli", vec!["mcp".to_owned()], dir.path());
 
-    let err = runner_with(Duration::from_secs(10)).run(&command)
-                                                  .expect_err("a program that is not installed");
+    let err = runner().run(&command)
+                      .expect_err("a program that is not installed");
 
     assert!(matches!(&err, ProbeError::Missing { program } if program == "knot-no-such-agent-cli"),
             "got {err:?}");
@@ -110,9 +118,8 @@ fn a_missing_program_is_reported_as_missing() {
 #[test]
 fn a_nonzero_exit_that_still_listed_is_not_a_failure() {
     let dir = TempDir::new().unwrap();
-    let out = runner_with(Duration::from_secs(10))
-        .run(&sh("echo 'github: https://x - connected'; exit 1", dir.path()))
-        .expect("output survives a non-zero exit");
+    let out = runner().run(&sh("echo 'github: https://x - connected'; exit 1", dir.path()))
+                      .expect("output survives a non-zero exit");
 
     assert!(out.contains("github"));
 }
@@ -120,9 +127,8 @@ fn a_nonzero_exit_that_still_listed_is_not_a_failure() {
 #[test]
 fn a_nonzero_exit_with_nothing_on_stdout_is_a_failure() {
     let dir = TempDir::new().unwrap();
-    let err = runner_with(Duration::from_secs(10)).run(&sh("echo 'not logged in' >&2; exit 3",
-                                                           dir.path()))
-                                                  .expect_err("a command that only failed");
+    let err = runner().run(&sh("echo 'not logged in' >&2; exit 3", dir.path()))
+                      .expect_err("a command that only failed");
 
     match err {
         ProbeError::Command { output, code, .. } => {
@@ -140,10 +146,8 @@ fn a_nonzero_exit_with_nothing_on_stdout_is_a_failure() {
 #[test]
 fn a_listing_written_to_stderr_is_still_read() {
     let dir = TempDir::new().unwrap();
-    let out =
-        runner_with(Duration::from_secs(10)).run(&sh("echo 'github: https://x - Connected' >&2",
-                                                     dir.path()))
-                                            .expect("a successful command");
+    let out = runner().run(&sh("echo 'github: https://x - Connected' >&2", dir.path()))
+                      .expect("a successful command");
 
     assert!(out.contains("github"),
             "the listing on stderr was discarded");
@@ -155,7 +159,7 @@ fn a_listing_written_to_stderr_is_still_read() {
 #[test]
 fn stdout_wins_when_both_streams_have_something() {
     let dir = TempDir::new().unwrap();
-    let out = runner_with(Duration::from_secs(10))
+    let out = runner()
         .run(&sh("echo 'warning: untrusted folder' >&2; echo 'github: https://x - Connected'",
                  dir.path()))
         .expect("a successful command");
@@ -193,4 +197,70 @@ fn a_server_holding_the_output_does_not_outlast_the_timeout() {
             "waited {:?} on a pipe the server held",
             started.elapsed());
     assert!(matches!(err, ProbeError::TimedOut { .. }), "got {err:?}");
+}
+
+/// The decision behind the stderr test, without a subprocess: a successful
+/// run that wrote nothing to stdout is read from stderr (`gemini mcp list`).
+#[test]
+fn a_successful_run_with_an_empty_stdout_is_read_from_stderr() {
+    let listing = "github: https://x - Connected\n".to_owned();
+
+    assert_eq!(outcome("gemini mcp list",
+                       true,
+                       Some(0),
+                       "  \n".to_owned(),
+                       listing.clone()).expect("a successful run"),
+               listing);
+}
+
+#[test]
+fn a_successful_run_is_read_from_stdout_when_it_has_anything() {
+    let out = outcome("claude mcp list",
+                      true,
+                      Some(0),
+                      "github: https://x - Connected".to_owned(),
+                      "warning: untrusted folder".to_owned()).expect("a successful run");
+
+    assert!(out.contains("github") && !out.contains("untrusted"),
+            "{out}");
+}
+
+#[test]
+fn a_failed_run_that_still_listed_on_stdout_is_the_listing() {
+    let out = outcome("claude mcp list",
+                      false,
+                      Some(1),
+                      "github: https://x - connected".to_owned(),
+                      "1 server failed".to_owned()).expect("output survives a non-zero exit");
+
+    assert!(out.contains("github"));
+}
+
+#[test]
+fn a_failed_run_with_an_empty_stdout_reports_stderr_and_its_code() {
+    let err = outcome("claude mcp list",
+                      false,
+                      Some(3),
+                      String::new(),
+                      "not logged in\n".to_owned()).expect_err("a run that only failed");
+
+    match err {
+        ProbeError::Command { program,
+                              output,
+                              code, } => {
+            assert_eq!(program, "claude mcp list");
+            assert_eq!(output, "not logged in");
+            assert_eq!(code, 3);
+        }
+        other => panic!("got {other:?}"),
+    }
+}
+
+/// A child killed by a signal has no exit code; the error still has one.
+#[test]
+fn a_failed_run_without_an_exit_code_reports_minus_one() {
+    let err = outcome("x", false, None, String::new(), String::new()).unwrap_err();
+
+    assert!(matches!(err, ProbeError::Command { code: -1, .. }),
+            "got {err:?}");
 }

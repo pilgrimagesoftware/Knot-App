@@ -18,6 +18,7 @@
 //! not by type.
 
 mod attachments;
+pub(super) mod find_bar;
 pub(crate) mod input;
 pub(crate) mod lookup;
 pub(crate) mod mentions;

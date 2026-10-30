@@ -47,7 +47,7 @@ fn declaring_adapter() -> AdapterConfig {
 /// A slot driven to `Ready` against [`declaring_adapter`], on `runtime` so
 /// the session's event drain outlives the connect. Shared with the Insert
 /// Prompt picker's tests, whose composer is drawn only for a `Ready` slot.
-pub(in crate::workspace_window::panel::input) fn ready_slot(
+pub(in crate::workspace_window::panel) fn ready_slot(
     runtime: &tokio::runtime::Runtime)
     -> Arc<Mutex<panel_session::PanelSessionSlot>> {
     let (connecting, progress) = panel_session::PanelSessionSlot::connecting();

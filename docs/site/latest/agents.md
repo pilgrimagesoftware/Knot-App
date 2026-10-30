@@ -179,6 +179,16 @@ The composer grows with your draft and does not scroll past its last line, so a 
 scrolled out of view. The control bar's model and effort pickers open at a fixed width, so long
 model names fit whichever one is selected.
 
+### Finding text in a conversation
+
+Press ⌘F in an agent's panel, even while typing in the composer, to open a find bar above the
+conversation. What you type is found in your prompts and the agent's replies, ignoring case, and
+every match is highlighted; the bar shows which match you are on, like `2 of 5`. Return and
+Shift-Return, or the arrow buttons, step to the next and previous match and scroll the
+conversation to it. The `.*` button switches to regular expressions (for example `v\d+\.\d+`);
+add `(?-i)` to a pattern to match case. Tool calls, shell output and notices are not searched.
+Escape closes the bar and puts you back in the composer.
+
 ### Inserting a saved prompt
 
 To start a message from a [library prompt]({{ '/latest/personas-prompts/' | relative_url }}),
