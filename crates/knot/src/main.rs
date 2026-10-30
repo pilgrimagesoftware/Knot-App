@@ -33,6 +33,7 @@ mod git_panel;
 mod import_window;
 mod keymap;
 mod library_window;
+mod link_tooltip;
 mod macos;
 mod markdown_view;
 mod mcp_lifetime;
