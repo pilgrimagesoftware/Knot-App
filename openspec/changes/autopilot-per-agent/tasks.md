@@ -7,3 +7,5 @@
 - [x] 1.3 Turn Off / Turn On Autopilot in the context menu and Agents menu,
       only while Autopilot is on in Settings and never for a shell
 - [x] 1.4 Show the indicator on the sidebar row and in the title bar
+- [x] 1.5 Drop a classification still in flight when Autopilot is turned off
+      for the agent

@@ -160,7 +160,19 @@ pub fn spawn_autopilot(id: Uuid, last_message: String, settings: &knot_core::Set
 /// turn, and marking the agent as waiting on the user would leave it showing
 /// "Awaiting input" while it works - or for good, when nothing reports the
 /// turn starting.
+///
+/// Nothing lands for an agent with Autopilot turned off (#323), checked here
+/// as well as before classifying: the classification is an HTTP round trip,
+/// and the user can turn Autopilot off while it is in flight. Its late
+/// result is dropped whole - no wait, no notification, no injected reply.
 pub fn land(id: Uuid, effect: Effect, sinks: &AutopilotSinks) {
+    if sinks.agents
+            .lock()
+            .agent(id)
+            .is_some_and(|agent| agent.autopilot_off)
+    {
+        return;
+    }
     let Some(effect) = AutopilotEffect::from_effect(effect)
     else {
         return;
@@ -429,5 +441,28 @@ mod tests {
 
         assert!(!spawn_autopilot(id, "Should I proceed?".into(), &enabled(), sinks.clone()));
         assert!(sinks.queue.lock().is_empty());
+    }
+
+    /// #323: Autopilot turned off for an agent while its classification is
+    /// in flight. `land` is what runs when the result comes back, so turning
+    /// it off and then landing is that race, decided the late way: whatever
+    /// the result, nothing reaches the agent.
+    #[test]
+    fn a_result_landing_after_autopilot_is_turned_off_is_dropped() {
+        for effect in [Effect::Mark(Some(Classification::Open)),
+                       Effect::Ask { last_message:   "Shall I?".into(),
+                                     classification: Classification::Binary, },
+                       Effect::InjectText("yes, continue".into())]
+        {
+            let (sinks, id) = sinks();
+            let before = state(&sinks, id);
+            sinks.agents.lock().set_autopilot_off(id, true);
+
+            land(id, effect.clone(), &sinks);
+
+            assert_eq!(state(&sinks, id), before, "{effect:?} left the state alone");
+            assert_eq!(awaiting(&sinks), 0, "{effect:?} raised no notification");
+            assert!(sinks.queue.lock().is_empty(), "{effect:?} queued nothing");
+        }
     }
 }
