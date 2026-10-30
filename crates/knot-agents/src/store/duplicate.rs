@@ -50,6 +50,7 @@ impl AgentStore {
                     state: _,
                     idle_since: _,
                     awaiting_reason: _,
+                    session_limit: _,
                     status_text: _,
                     is_registered: _,
                     is_pending_start: _,

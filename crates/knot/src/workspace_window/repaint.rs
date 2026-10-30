@@ -304,19 +304,34 @@ impl WorkspaceWindow {
     /// through `panel_status_landed`. Both reach the `if` chain, because they
     /// are two different repaints.
     fn sync_panel_agent_states(&mut self, cx: &mut gpui_kit::Context<Self>) -> bool {
-        let panel_states = self.panel_sessions
-                               .iter()
-                               .filter_map(|(id, slot)| {
-                                   let slot = slot.lock();
-                                   let panel_session::PanelSessionSlot::Ready(handle) = &*slot
-                                   else {
-                                       return None;
-                                   };
-                                   let state_arc = handle.state();
-                                   let state = state_arc.lock();
-                                   Some((*id, panel_activity::acp_status(&state)))
-                               })
-                               .collect::<Vec<_>>();
+        let panel_states =
+            self.panel_sessions
+                .iter()
+                .filter_map(|(id, slot)| {
+                    let slot = slot.lock();
+                    let panel_session::PanelSessionSlot::Ready(handle) = &*slot
+                    else {
+                        return None;
+                    };
+                    let state_arc = handle.state();
+                    let state = state_arc.lock();
+                    Some((*id, panel_activity::acp_status(&state), state.session_limit.clone()))
+                })
+                .collect::<Vec<_>>();
+        // What stopped a session goes on the agent before its status moves,
+        // so the frame that turns the dot red already says why (#318).
+        // `set_state` clears it again as the agent leaves Error.
+        {
+            let mut store = self.store.lock();
+            for (id, _, limit) in &panel_states {
+                if limit.is_some() {
+                    store.set_session_limit(*id, limit.clone());
+                }
+            }
+        }
+        let panel_states = panel_states.into_iter()
+                                       .map(|(id, status, _)| (id, status))
+                                       .collect::<Vec<_>>();
         let moved = panel_activity::transitions(panel_states, |id| {
             self.panel_reported_states.get(&id).copied()
         });

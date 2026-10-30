@@ -31,6 +31,7 @@ use gpui_kit::px;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::sidebar_compact::{CompactAgentRow, compact_agent_row_body};
+use super::status_dot::DotDetail;
 use super::status_dot::status_dot;
 use crate::app_support::single_line;
 use crate::consts;
@@ -88,6 +89,7 @@ impl WorkspaceWindow {
                                 state,
                                 idle_since,
                                 input_reason,
+                                session_limit,
                                 is_shell,
                                 is_companion,
                                 is_locked,
@@ -218,6 +220,7 @@ impl WorkspaceWindow {
                                                                          state,
                                                                          idle_since,
                                                                          input_reason: input_reason.clone(),
+                                                                         session_limit: session_limit.clone(),
                                                                          is_shell,
                                                                          hint: hint.clone() },
                                                        cx).into_any_element()
@@ -346,7 +349,12 @@ impl WorkspaceWindow {
                             // stopped agent's row is dimmed as a whole
                             // (see `agent-list-ui`).
                             .children((!is_shell).then(|| {
-                                status_dot(id, state, idle_since, input_reason.clone(), crate::status_palette::status_palette(cx)).mt_1()
+                                status_dot(id,
+                                           state,
+                                           DotDetail { idle_since,
+                                                       input_reason: input_reason.clone(),
+                                                       session_limit: session_limit.clone() },
+                                           crate::status_palette::status_palette(cx)).mt_1()
                             }))
                             .into_any_element()
                             })
