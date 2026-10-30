@@ -4,8 +4,8 @@ name: Package
 # other pilgrimagesoftware Rust apps do it (see dtrpg-app.rs package.yaml).
 #
 # Runs on every merge into develop, keeping the result as a workflow artifact,
-# and is called by release.yml with a tag, which also attaches the DMG to the
-# GitHub Release.
+# and is called by release.yml with a tag, which also attaches the DMG, its
+# CycloneDX SBOM and a SHA256SUMS file to the GitHub Release.
 
 on:
   push:
@@ -56,10 +56,13 @@ jobs:
           target: aarch64-apple-darwin
           cache-key: package
 
-      - name: Install cargo-packager
+      - name: Install cargo-packager and cargo-cyclonedx
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-packager
+          # cargo-cyclonedx is pinned: its output format and file naming
+          # (`--override-filename`, one file per member) are what the SBOM step
+          # below relies on.
+          tool: cargo-packager,cargo-cyclonedx@0.5.9
 
       # cargo-packager resolves `[package.metadata.packager]` from the manifest
       # in the current directory, not from a workspace root with `--packages`
@@ -124,12 +127,43 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$mnt/Knot.app"
           codesign -dv "$mnt/Knot.app"
 
+      # The SBOM describes the `knot` crate, which depends on every other
+      # workspace crate, so it lists everything compiled into the app. It is
+      # named after the dmg, and SHA256SUMS covers both, in the format
+      # `shasum -a 256 -c SHA256SUMS` checks.
+      - name: SBOM and checksums
+        run: |
+          set -euo pipefail
+          out=target/aarch64-apple-darwin/release
+          dmgs=("$out"/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ] || [ ! -f "${dmgs[0]}" ]; then
+            echo "::error::expected exactly one dmg in $out, found: ${dmgs[*]}"
+            exit 1
+          fi
+          name=$(basename "${dmgs[0]}" .dmg)
+          # cargo-cyclonedx writes one file beside every workspace member's
+          # manifest; only the app's is kept.
+          cargo cyclonedx \
+            --manifest-path crates/knot/Cargo.toml \
+            --format json \
+            --spec-version 1.5 \
+            --target aarch64-apple-darwin \
+            --no-build-deps \
+            --override-filename sbom
+          mv crates/knot/sbom.json "$out/$name.cdx.json"
+          find crates -name sbom.json -delete
+          cd "$out"
+          shasum -a 256 "$name.dmg" "$name.cdx.json" > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Upload package artifact
         uses: actions/upload-artifact@v7
         with:
           name: Knot-macOS-${{ github.run_number }}
           path: |
             target/aarch64-apple-darwin/release/*.dmg
+            target/aarch64-apple-darwin/release/*.cdx.json
+            target/aarch64-apple-darwin/release/SHA256SUMS
             target/aarch64-apple-darwin/release/*.app
           if-no-files-found: error
           retention-days: 30
@@ -140,4 +174,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "${{ inputs.tag }}" \
-            target/aarch64-apple-darwin/release/*.dmg --clobber
+            target/aarch64-apple-darwin/release/*.dmg \
+            target/aarch64-apple-darwin/release/*.cdx.json \
+            target/aarch64-apple-darwin/release/SHA256SUMS \
+            --clobber
