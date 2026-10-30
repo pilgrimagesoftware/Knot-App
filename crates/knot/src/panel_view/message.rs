@@ -50,6 +50,12 @@ use crate::timestamp::relative_timestamp;
 /// suggest the name is an identity when it is a lookup.
 const PROMPT_HOVER_GROUP: &str = "panel-prompt";
 
+/// The hover group that reveals an earlier response's action bar (#313):
+/// the whole response, so pointing anywhere on it shows its controls. One
+/// name serves every response for the reason given on
+/// [`PROMPT_HOVER_GROUP`].
+const RESPONSE_HOVER_GROUP: &str = "panel-response";
+
 /// One message's render inputs, grouped so `render_message` keeps a short
 /// parameter list as the panel gains styling.
 pub(super) struct Message<'a> {
@@ -186,6 +192,7 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .w_full()
                 .min_w_0()
                 .gap_1()
+                .group(RESPONSE_HOVER_GROUP)
                 .children(
                     state
                         .sent_at
@@ -227,9 +234,15 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                 .children((!(is_last && state.turn_active)).then(|| {
                     let user_index = preceding_user_message(state, index);
                     render_response_actions(
-                        text.clone(),
-                        user_index,
-                        index,
+                        ResponseActions {
+                            text: text.clone(),
+                            user_index,
+                            index,
+                            // The latest response keeps its bar in view: it is
+                            // the one most often copied or replied to, and the
+                            // controls should not vanish the moment a turn ends.
+                            reveal_on_hover: !is_last,
+                        },
                         list,
                         callbacks,
                     )
@@ -309,8 +322,26 @@ pub(super) fn render_track_toggle(tracking: bool, on_toggle: Rc<dyn Fn()>) -> im
                                                     }))
 }
 
+/// What one response's action bar acts on.
+pub(super) struct ResponseActions {
+    /// The response's text, for copy and reply.
+    pub(super) text:            String,
+    /// The user message that prompted it, if any, for "scroll to user input".
+    pub(super) user_index:      Option<usize>,
+    /// The response's own index, which keys its buttons.
+    pub(super) index:           usize,
+    /// Whether the bar shows only while the response is hovered (#313).
+    pub(super) reveal_on_hover: bool,
+}
+
 /// A finalized response's action bar: copy, reply, scroll to the user message
 /// that prompted it, and scroll to the top of the conversation.
+///
+/// On an earlier response the bar appears only while the response is
+/// hovered, as a prompt's copy control does. It is `Visibility::Hidden`, not
+/// absent, so its row is reserved and revealing it moves nothing; a hidden
+/// element paints none of its children and registers none of their
+/// listeners, so the hidden buttons cannot be clicked either.
 ///
 /// The two scroll buttons drive the `ListState` directly (rather than a
 /// `ScrollHandle`) so they also stop tail-following - `scroll_to` on an
@@ -318,9 +349,13 @@ pub(super) fn render_track_toggle(tracking: bool, on_toggle: Rc<dyn Fn()>) -> im
 /// the caller clears its own tracking flag, keeping the reconciler from
 /// pulling the view straight back to the tail. Button ids carry `index` so
 /// each response's bar is a distinct hit target under virtualization.
-pub(super) fn render_response_actions(text: String, user_index: Option<usize>, index: usize,
-                                      list: &ListState, callbacks: &PanelCallbacks)
+pub(super) fn render_response_actions(actions: ResponseActions, list: &ListState,
+                                      callbacks: &PanelCallbacks)
                                       -> impl IntoElement {
+    let ResponseActions { text,
+                          user_index,
+                          index,
+                          reveal_on_hover, } = actions;
     let scroll_to_user = list.clone();
     let scroll_to_top = list.clone();
     let manual_to_user = callbacks.on_manual_scroll.clone();
@@ -328,7 +363,13 @@ pub(super) fn render_response_actions(text: String, user_index: Option<usize>, i
     let on_reply = callbacks.on_reply.clone();
     let reply_text = text.clone();
     h_flex()
+        .id(("panel-response-actions", index as u64))
+        .debug_selector(move || format!("panel-response-actions-{index}"))
         .gap_1()
+        .when(reveal_on_hover, |bar| {
+            bar.invisible()
+               .group_hover(RESPONSE_HOVER_GROUP, |style| style.visible())
+        })
         .child(
             Button::new(("panel-copy-response", index as u64))
                 .icon(IconName::Copy)
