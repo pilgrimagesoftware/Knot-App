@@ -5,6 +5,7 @@ mod lifecycle;
 mod persistence;
 mod pull_requests;
 mod revision;
+mod session_limit;
 mod startup_prompt;
 mod workspace;
 

@@ -53,16 +53,49 @@ pub(crate) fn state_label(state: knot_agents::AgentState) -> &'static str {
     }
 }
 
+/// What a status surface calls the agent's state: [`state_label`], except
+/// that an agent stopped by its session's usage limit says so instead of
+/// "Error" (#318), with when it lifts when `with_reset` and the provider
+/// said. `limit` is [`knot_agents::Agent::active_session_limit`].
+pub(crate) fn status_label(state: knot_agents::AgentState,
+                           limit: Option<&knot_agents::SessionLimit>, with_reset: bool)
+                           -> String {
+    match (state, limit) {
+        (knot_agents::AgentState::Error, Some(limit)) => {
+            match limit.resets.as_deref().filter(|_| with_reset) {
+                Some(resets) => knot_core::l10n::t_with("sidebar.status_session_limit_resets",
+                                                        &[("resets", resets)]),
+                None => knot_core::l10n::t("sidebar.status_session_limit").to_string(),
+            }
+        }
+        _ => state_label(state).to_string(),
+    }
+}
+
+/// "Resets <when>", for a line beside a short "Session limit" label.
+pub(crate) fn session_limit_resets(limit: &knot_agents::SessionLimit) -> Option<String> {
+    limit.resets
+         .as_deref()
+         .map(|resets| {
+             knot_core::l10n::t_with("sidebar.session_limit_resets", &[("resets", resets)])
+         })
+}
+
 /// The sidebar status dot's tooltip (#582): the header's label for `state`,
 /// and for an idle agent that has finished a message in this run, when it
 /// did. Called when the tooltip opens, so "5m ago" is never stale.
 ///
 /// An agent waiting on the user says why, when something said (#344):
-/// `input_reason` is [`knot_agents::Agent::input_reason`].
+/// `input_reason` is [`knot_agents::Agent::input_reason`]. One stopped by a
+/// usage limit says so, and when it lifts (#318).
 pub(crate) fn state_tooltip(state: knot_agents::AgentState,
                             idle_since: Option<std::time::SystemTime>,
-                            input_reason: Option<&str>)
+                            input_reason: Option<&str>,
+                            session_limit: Option<&knot_agents::SessionLimit>)
                             -> String {
+    if let (knot_agents::AgentState::Error, Some(_)) = (state, session_limit) {
+        return status_label(state, session_limit, true);
+    }
     let label = state_label(state);
     if let (knot_agents::AgentState::Input, Some(reason)) = (state, input_reason) {
         return awaiting_because(label, reason);
