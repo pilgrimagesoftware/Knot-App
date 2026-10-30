@@ -2408,7 +2408,7 @@ dependencies = [
 [[package]]
 name = "gpui-base"
 version = "0.7.0"
-source = "git+https://github.com/pilgrimagesoftware/gpui-kit?branch=knot%2Fauto-grow-0.7.0#24ca2075014c54b31b4bde262dcd0a1333574f31"
+source = "git+https://github.com/pilgrimagesoftware/gpui-kit?branch=knot%2Flink-hover-0.7.0#6b2b346525a885f43ec4df0bcd54f9d54b5d2606"
 dependencies = [
  "aho-corasick",
  "anyhow",
