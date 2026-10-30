@@ -14,6 +14,8 @@ use gpui_kit::InteractiveElement;
 
 use super::agent_row::{move_agent_to_workspace, run_agent_menu_action, show_agent_markdown_file};
 use crate::agent_menu::AgentMenuAgentInfo;
+use crate::agent_menu::AgentMenuAutopilotOff;
+use crate::agent_menu::AgentMenuAutopilotOn;
 use crate::agent_menu::AgentMenuBenchAgent;
 use crate::agent_menu::AgentMenuDeactivate;
 use crate::agent_menu::AgentMenuDuplicateAgent;
@@ -160,6 +162,7 @@ impl WorkspaceWindow {
         };
         let (facts, move_targets, markdown_history) = agent_menu_facts(&store, id);
         drop(store);
+        let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
         Some(SelectedAgentMenu { targets:  AgentMenuTargets { store: Arc::clone(&self.store),
                                                               window_entity: cx.entity(),
                                                               workspace_id: self.workspace_id,
@@ -184,7 +187,8 @@ impl WorkspaceWindow {
                                    header_title: agent.header_title().to_string(),
                                    agent_type: agent.agent_type.clone(),
                                    state,
-                                   session_limit: agent.active_session_limit().cloned() })
+                                   session_limit: agent.active_session_limit().cloned(),
+                                   autopilot_off: agent.autopilot_off })
     }
 }
 
@@ -223,6 +227,8 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
                                     RegisterAgent => AgentMenuRegisterAgent,
                                     LockAgent => AgentMenuLockAgent,
                                     UnlockAgent => AgentMenuUnlockAgent,
+                                    AutopilotOff => AgentMenuAutopilotOff,
+                                    AutopilotOn => AgentMenuAutopilotOn,
                                     Deactivate => AgentMenuDeactivate,
                                     RestartAgent => AgentMenuRestartAgent,
                                     RestartWithNewConversation => AgentMenuRestartWithNewConversation,

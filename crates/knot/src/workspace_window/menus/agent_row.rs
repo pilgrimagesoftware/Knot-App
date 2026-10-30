@@ -81,7 +81,9 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
                          is_running:           agent.activated,
                          is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel,
                          can_lock:             !agent.locked,
-                         can_unlock:           agent.locked, };
+                         can_unlock:           agent.locked,
+                         can_autopilot_off:    !agent.autopilot_off,
+                         can_autopilot_on:     agent.autopilot_off, };
     (facts, move_targets, history)
 }
 
@@ -123,6 +125,7 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
                                      -> PopupMenu {
     let (facts, move_targets, markdown_history) =
         agent_menu_facts(&targets.store.lock(), targets.id);
+    let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
     let mut menu = menu;
     for entry in agent_context_menu_entries(facts) {
         menu = match entry {
@@ -290,6 +293,15 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
         }
         // No confirmation: unlocking undoes it, and nothing is lost either
         // way - messages refused while locked were never stored.
+        // Reversible from the same menu, so no confirmation.
+        AgentMenuEntry::AutopilotOff | AgentMenuEntry::AutopilotOn => {
+            let off = entry == AgentMenuEntry::AutopilotOff;
+            targets.store.lock().set_autopilot_off(targets.id, off);
+            targets.window_entity.update(app, |view, cx| {
+                                     view.persist_agents(cx);
+                                     cx.notify();
+                                 });
+        }
         AgentMenuEntry::LockAgent | AgentMenuEntry::UnlockAgent => {
             let locked = entry == AgentMenuEntry::LockAgent;
             targets.store.lock().set_locked(targets.id, locked);

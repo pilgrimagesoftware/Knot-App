@@ -79,6 +79,9 @@ type, persona, status, and folder - each with a leading icon identifying what th
 status line shows the agent's own status text when it has one, otherwise its terminal title. A row
 that is not running is dimmed, whether it is passive and never started or was deactivated.
 
+Turn Off Autopilot / Turn On Autopilot sit beside Lock Agent while Autopilot is on in Settings; see
+[Autopilot]({{ '/latest/autopilot/' | relative_url }}).
+
 Lock Agent shuts an agent out of agent messaging: no agent can message it, so a message cannot
 start it, and it cannot message other agents. Broadcast to All Agents skips it too. The row shows a
 **Locked** line while it lasts, and the lock is kept across a relaunch. Unlock Agent undoes it.
