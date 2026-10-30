@@ -29,18 +29,65 @@ impl Repository {
     }
 
     /// Every file in the working tree a picker should offer: tracked
-    /// files plus untracked ones that are not ignored.
+    /// files plus untracked ones that are not ignored - submodules' included
+    /// (#312).
     ///
     /// Paths are relative to the repository root and NUL-separated on the
     /// wire, so one containing a space, a quote or a newline survives. A
     /// deleted-but-still-tracked file is included - `ls-files` lists the
     /// index, and a caller wanting only what exists on disk should check.
+    ///
+    /// `ls-files` stops at a submodule, listing only its directory, and its
+    /// own `--recurse-submodules` cannot be combined with `--others`, which
+    /// would lose a submodule's untracked files. So each submodule is listed
+    /// the same way, in its own directory, and its paths prefixed with where
+    /// it sits - nested ones by the same recursion. The submodule's own entry
+    /// is dropped: it is a directory, not a file. One that is not checked out
+    /// is skipped: it has nothing to offer.
     pub fn list_files(&self) -> Result<Vec<String>> {
+        let mut files = self.list_own_files()?;
+        let submodules = self.submodule_paths()?;
+        if submodules.is_empty() {
+            return Ok(files);
+        }
+        files.retain(|path| !submodules.contains(path));
+        for submodule in submodules {
+            let dir = self.runner.cwd().join(&submodule);
+            // Only a checked-out submodule, which has its own `.git` (a file
+            // or a directory). One that is not is an empty directory, and git
+            // run inside it falls back to the superproject - which reports
+            // that same gitlink again, as `./`, and the recursion would list
+            // the same directory under an ever longer path.
+            if !dir.join(".git").exists() {
+                continue;
+            }
+            let inner = Self::with_runner(self.runner.in_dir(dir));
+            // Best-effort per submodule: one git cannot read must not take
+            // the rest of the listing with it.
+            if let Ok(nested) = inner.list_files() {
+                files.extend(nested.into_iter().map(|path| format!("{submodule}/{path}")));
+            }
+        }
+        Ok(files)
+    }
+
+    /// This repository's own files, stopping at submodules.
+    fn list_own_files(&self) -> Result<Vec<String>> {
         let output = self.runner.run_raw(consts::LS_FILES)?;
-        Ok(output.split('\0')
-                 .filter(|path| !path.is_empty())
-                 .map(str::to_owned)
-                 .collect())
+        Ok(nul_separated(&output))
+    }
+
+    /// The paths of the submodules in the index.
+    fn submodule_paths(&self) -> Result<Vec<String>> {
+        let output = self.runner.run_raw(consts::LS_FILES_STAGE)?;
+        Ok(nul_separated(&output).into_iter()
+                                 .filter_map(|entry| {
+                                     // `<mode> <object> <stage>\t<path>`
+                                     let (meta, path) = entry.split_once('\t')?;
+                                     meta.starts_with(consts::GITLINK_MODE)
+                                         .then(|| path.to_owned())
+                                 })
+                                 .collect())
     }
 
     /// Parsed `git status --porcelain=v2 --branch`.
@@ -247,6 +294,14 @@ impl Repository {
         let argv = [base, paths].concat();
         self.runner.run(&argv).map(drop)
     }
+}
+
+/// The non-empty entries of a NUL-separated listing.
+fn nul_separated(output: &str) -> Vec<String> {
+    output.split('\0')
+          .filter(|entry| !entry.is_empty())
+          .map(str::to_owned)
+          .collect()
 }
 
 #[cfg(test)]
