@@ -140,6 +140,12 @@ and delivered when the turn ends; a stop control interrupts the active turn. You
 agent between the panel and the raw terminal without interrupting its turn or terminal process, and
 each agent remembers the mode you last chose.
 
+Point at a message to act on it. A prompt you sent shows a copy button; an agent's response shows
+its controls - Copy, Reply (quotes it into the composer), Scroll to your message, and Scroll to
+top. The latest response keeps its controls in view, so you can copy or reply to the answer you
+just got without hunting for them; earlier ones show theirs only while you point at them, and
+showing them moves nothing.
+
 Scrolled back to read earlier messages, you stay where you are: replies streaming in and long
 replies finishing their layout do not move the conversation. Only a prompt you send yourself
 scrolls to the bottom to show its answer. One Knot sends for you - an inbox check or a startup
