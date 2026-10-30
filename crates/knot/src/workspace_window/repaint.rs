@@ -79,6 +79,11 @@ impl WorkspaceWindow {
         // Before the repaint checks below, so an agent started here has its
         // slot in place when they run.
         let activated = self.activate_messaged_agents(cx);
+        // After the queue: an agent activated anywhere else - created over
+        // MCP, a companion, a selection - but not started is started here,
+        // so a lit row is always a running agent (#316, #320). A local, so
+        // it runs every tick whatever the chain below decides.
+        let started = self.start_activated_agents(cx);
         // Every agent's taps, not just the selected one's: an agent working
         // in an unselected pane is the case this feature exists for.
         let pull_requests_recorded = self.drain_pull_requests(cx);
@@ -178,6 +183,7 @@ impl WorkspaceWindow {
            || panel_dirty
            || spinner_dirty
            || activated
+           || started
            || processes_sampled
            || mcp_probed
            || prompts_completed
