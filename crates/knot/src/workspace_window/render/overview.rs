@@ -161,6 +161,7 @@ impl WorkspaceWindow {
                         dashboard_workspace,
                         false,
                         cx.theme().muted_foreground,
+                        crate::status_palette::status_palette(cx),
                         dashboard::WorkspaceSectionCallbacks { on_agent_tap,
                                                                on_workspace_nav,
                                                                on_add_agent },

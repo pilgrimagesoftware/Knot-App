@@ -328,7 +328,7 @@ impl WorkspaceWindow {
                             // stopped agent's row is dimmed as a whole
                             // (see `agent-list-ui`).
                             .children((!is_shell).then(|| {
-                                status_dot(id, state, idle_since).mt_1()
+                                status_dot(id, state, idle_since, crate::status_palette::status_palette(cx)).mt_1()
                             }))
                             .into_any_element()
                             })

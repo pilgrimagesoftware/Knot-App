@@ -12,7 +12,7 @@ use knot_messaging::DeliveryEvent;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
-use crate::consts;
+use crate::status_palette::StatusPalette;
 
 // UNWIRED: ported from the Swift reference, no view reads it yet.
 // Reached only from tests; kept as the port's staging area rather than
@@ -71,20 +71,11 @@ pub(crate) fn state_tooltip(state: knot_agents::AgentState,
     }
 }
 
-/// Status-dot color for the agent's automatic state. Diverges from the
-/// Swift reference (which uses red for both input and error) by giving
-/// "awaiting input" its own blue, since it isn't a failure state.
-/// Diff-stat colors, drawn from the same palette as [`state_color`]:
-/// additions green, deletions red, the changed-file count blue. Only the
-/// numbers take these - the words around them stay muted, so the figures
-/// are what the eye lands on.
-pub(crate) const DIFF_ADDED_COLOR: u32 = consts::COLOR_IDLE;
-pub(crate) const DIFF_REMOVED_COLOR: u32 = consts::COLOR_ERROR;
-pub(crate) const DIFF_FILES_COLOR: u32 = consts::COLOR_INPUT;
-
 /// A diff stat with only its figures colored - additions green, deletions
 /// red, the changed-file count blue - and the words and brackets muted, so
-/// the numbers are what the eye lands on. Shared by the workspace header
+/// the numbers are what the eye lands on. The figures take `palette`'s
+/// idle, error and input colours, the same as [`state_color`]'s, in the
+/// shade for the active appearance (#12). Shared by the workspace header
 /// and the dashboard cards so the two can't drift apart; the caller styles
 /// the row's font and size.
 ///
@@ -96,30 +87,37 @@ pub(crate) const DIFF_FILES_COLOR: u32 = consts::COLOR_INPUT;
 /// through [`crate::app_support::single_line`], and it needs no such pass:
 /// every string here is formatted from integers Knot holds, so none can
 /// arrive carrying a line break.
-pub(crate) fn diff_stats_row(stats: &knot_git::DiffStats, muted: gpui_kit::Hsla) -> gpui_kit::Div {
+pub(crate) fn diff_stats_row(stats: &knot_git::DiffStats, muted: gpui_kit::Hsla,
+                             palette: &StatusPalette)
+                             -> gpui_kit::Div {
     let files = knot_core::l10n::plural_noun(stats.files_changed, "count.file", "count.files");
     h_flex().flex_shrink_0()
             .whitespace_nowrap()
             .text_color(muted)
             .gap_1()
             .items_baseline()
-            .child(div().text_color(rgb(DIFF_ADDED_COLOR))
+            .child(div().text_color(rgb(palette.idle))
                         .child(format!("+{}", stats.insertions)))
-            .child(div().text_color(rgb(DIFF_REMOVED_COLOR))
+            .child(div().text_color(rgb(palette.error))
                         .child(format!("-{}", stats.deletions)))
             .child(h_flex().items_baseline()
                            .child(div().child("("))
-                           .child(div().text_color(rgb(DIFF_FILES_COLOR))
+                           .child(div().text_color(rgb(palette.input))
                                        .child(stats.files_changed.to_string()))
                            .child(div().ml_1().child(format!("{files})"))))
 }
 
-pub(crate) fn state_color(state: knot_agents::AgentState) -> gpui_kit::Hsla {
+/// Status-dot color for the agent's automatic state. Diverges from the
+/// Swift reference (which uses red for both input and error) by giving
+/// "awaiting input" its own blue, since it isn't a failure state.
+/// The shade is `palette`'s, for the active appearance (#12).
+pub(crate) fn state_color(state: knot_agents::AgentState, palette: &StatusPalette)
+                          -> gpui_kit::Hsla {
     match state {
-        knot_agents::AgentState::Idle => rgb(consts::COLOR_IDLE).into(),
-        knot_agents::AgentState::Running => rgb(consts::COLOR_RUNNING).into(),
-        knot_agents::AgentState::Input => rgb(consts::COLOR_INPUT).into(),
-        knot_agents::AgentState::Error => rgb(consts::COLOR_ERROR).into(),
+        knot_agents::AgentState::Idle => rgb(palette.idle).into(),
+        knot_agents::AgentState::Running => rgb(palette.running).into(),
+        knot_agents::AgentState::Input => rgb(palette.input).into(),
+        knot_agents::AgentState::Error => rgb(palette.error).into(),
     }
 }
 

@@ -114,7 +114,9 @@ impl WorkspaceWindow {
     pub(super) fn render_diff_stats_button(stats: &knot_git::DiffStats, font_family: String,
                                            font_size: gpui_kit::Pixels, cx: &mut Context<Self>)
                                            -> gpui_kit::AnyElement {
-        let row = app_state::diff_stats_row(stats, cx.theme().muted_foreground);
+        let row = app_state::diff_stats_row(stats,
+                                            cx.theme().muted_foreground,
+                                            crate::status_palette::status_palette(cx));
 
         gpui_kit::div()
             .id("agent-git-stats")
