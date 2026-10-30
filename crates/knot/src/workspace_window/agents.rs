@@ -257,7 +257,14 @@ impl WorkspaceWindow {
     /// The panel state goes either way. A kept conversation is loaded again
     /// with `session/load`, which replays its history into a fresh state;
     /// keeping the old one would show every message twice.
-    pub(super) fn restart_agents(&mut self, ids: &[Uuid], keep_conversation: bool, cx: &App) {
+    ///
+    /// Each restarted agent that is activated is started again at once,
+    /// whether or not it is on screen - a restart is a stop and a start, and
+    /// nothing else would start one the user is not looking at. An agent
+    /// that is not activated is only reset: Restart All restarts what is
+    /// running, and does not start every agent the user had stopped.
+    pub(super) fn restart_agents(&mut self, ids: &[Uuid], keep_conversation: bool,
+                                 cx: &mut Context<Self>) {
         {
             // One lock for the whole batch rather than one per agent: the
             // restarts are independent, and reacquiring between them lets
@@ -283,13 +290,30 @@ impl WorkspaceWindow {
         // resumed by a relaunch, and a kept conversation's resume-session id
         // has just changed.
         self.persist_agents(cx);
+        for id in ids {
+            self.start_sessions(*id, cx);
+        }
+    }
+
+    /// Restarts `id` from its own row - Restart Agent or Restart with New
+    /// Conversation - and starts it, activating it first if it was stopped.
+    ///
+    /// The user chose this agent, so an inactive one is started rather than
+    /// only reset, which left it as stopped as before and looked like the
+    /// menu item did nothing (#311). The same rule as selecting a row:
+    /// `agent-lifecycle`, "Deactivating an agent".
+    pub(in crate::workspace_window) fn restart_agent(&mut self, id: Uuid,
+                                                     keep_conversation: bool,
+                                                     cx: &mut Context<Self>) {
+        self.store.lock().set_activated(id, true);
+        self.restart_agents(&[id], keep_conversation, cx);
     }
 
     /// Restarts every agent in the workspace, per `agent-list-ui`'s "Restart
     /// All" requirement - the row menu's Restart Agent applied once per
     /// agent. `keep_conversation` is what the confirmation said would
     /// happen, decided when it opened.
-    pub(super) fn restart_all_agents(&mut self, keep_conversation: bool, cx: &App) {
+    pub(super) fn restart_all_agents(&mut self, keep_conversation: bool, cx: &mut Context<Self>) {
         let ids = self.workspace_agent_ids();
         self.restart_agents(&ids, keep_conversation, cx);
     }
