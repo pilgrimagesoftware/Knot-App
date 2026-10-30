@@ -115,8 +115,6 @@ pub const SETTINGS_VERSION_CURRENT: u32 = 1;
 
 pub const APPEARANCE_MODE_DEFAULT: &str = "auto";
 
-pub const MERMAID_THEME_DEFAULT: &str = "auto";
-
 pub const MARKDOWN_FONT_SIZE_DEFAULT: i32 = 14;
 
 /// The workspace sidebar's width when nothing has been persisted, matching the
