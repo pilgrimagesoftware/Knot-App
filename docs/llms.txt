@@ -1,0 +1,12 @@
+# Knot
+
+> Native macOS & iOS application and documentation by Pilgrimage Software.
+
+## Documentation & Resources
+
+- [Repository Overview](https://github.com/pilgrimagesoftware/Knot-App): Official source repository and issue tracker.
+- [Documentation](https://github.com/pilgrimagesoftware/Knot-App/tree/main/docs): User guides, architecture notes, and reference documentation.
+
+## AI Agent Indexing Notes
+
+- Follows the standard `/llms.txt` specification for structured LLM and RAG ingestion.
