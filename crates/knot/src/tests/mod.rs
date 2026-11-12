@@ -23,6 +23,7 @@ mod l10n_catalog_checklist;
 mod l10n_catalog_library_import;
 mod layout_model;
 mod library_windows;
+mod markdown_tables;
 mod markdown_view;
 mod mcp_lifetime;
 mod mcp_state_row;
