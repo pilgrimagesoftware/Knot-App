@@ -1,4 +1,9 @@
 
+## [Unreleased]
+
+### Fixed
+- Show the working turn's time without zero-padding or zero units (`1m 5s`, `4m`)
+
 ## 1.36.0 - 2026-11-05
 
 ### Added
