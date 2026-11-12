@@ -5,8 +5,10 @@
 ### Requirement: Slash and mention tokens are styled
 
 A command token, a skill token, or an `@` reference in the buffer SHALL be
-drawn distinctly from surrounding prose, whether the lookup inserted it or the
-user typed it. The token characters SHALL be the agent's own: `/` for
+drawn distinctly from surrounding prose, so a token the lookup inserted is
+visibly a token. The treatment SHALL apply to a token the user typed by hand
+exactly as it applies to one the lookup inserted — the composer SHALL NOT track
+provenance. The token characters SHALL be the agent's own: `/` for
 commands, and a skill character where the agent type has one of its own.
 
 A token SHALL be styled only where it is a token: a `/` mid-word, an `@` inside
@@ -42,6 +44,12 @@ skill SHALL be left as prose.
 
 - **WHEN** a Codex agent's buffer contains `it costs $5`
 - **THEN** no part of it carries the token treatment
+
+#### Scenario: A lone skill character is prose
+
+- **WHEN** a Codex agent's buffer contains `pay $ 5`
+- **THEN** no part of it carries the token treatment, while a `$` typed at the
+  end of a line is drawn as a token as it is being typed
 
 #### Scenario: A dollar is prose where skills share the slash
 
