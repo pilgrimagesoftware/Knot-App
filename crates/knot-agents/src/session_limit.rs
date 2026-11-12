@@ -1,15 +1,41 @@
 //! A session stopped by its provider's usage limit (#318).
 //!
 //! The agent CLIs report it as the error that answers a prompt - Claude's
-//! "You've hit your session limit · resets 5:20pm (America/Los_Angeles)",
+//! "You've hit your 5-hour limit · resets 5:20pm (America/Los_Angeles)",
 //! Codex's "You've hit your usage limit" - so it is recognised from that
 //! text. Nothing else distinguishes it from any other failed turn, and it is
 //! the one failure the user can do nothing about but wait.
+//!
+//! Claude names the limit it hit, and the names change: "session limit"
+//! became "5-hour limit", beside "weekly limit", "Opus limit" and others
+//! (#397). So a notice is recognised by the lead the Claude Agent SDK
+//! exports as stable (`USAGE_LIMIT_ERROR_PREFIXES`: "You've hit your",
+//! "You've reached your") and a short name ending in "limit", never by a
+//! list of names that the next release outgrows.
 
 use std::time::{Duration, SystemTime};
 
-/// Phrases, lower-case, that mark an error as a usage limit.
+/// Phrases, lower-case, that mark an error as a usage limit wherever they
+/// appear: Codex's wording, Claude's before #397, and the wrap-up notice.
 const LIMIT_PHRASES: [&str; 2] = ["session limit", "usage limit"];
+
+/// How a limit notice opens, lower-case with a plain apostrophe - the
+/// stable prefixes of the SDK's `USAGE_LIMIT_ERROR_PREFIXES` that go on to
+/// name a limit.
+const LIMIT_LEADS: [&str; 2] = ["you've hit your ", "you've reached your "];
+
+/// Where the limit's name ends after a lead: the "·" before the reset time,
+/// or the sentence's end. Not "-", which is inside "5-hour limit".
+const NAME_ENDS: &[char] = &['\u{b7}', '.', ',', '!', ';', '(', '\u{2014}', '\n'];
+
+/// The longest limit name accepted after a lead. "usage credit limit" is
+/// the longest Claude prints; this leaves room for one it adds, and keeps
+/// a sentence that merely ends in "limit" from passing as a name.
+const MAX_LIMIT_NAME: usize = 32;
+
+/// Limits Claude announces with the same lead that do not stop the session:
+/// fast mode's cooldown drops the agent to normal speed and it carries on.
+const NOT_A_STOP: [&str; 1] = ["fast limit"];
 
 /// Where the reset time starts, lower-case.
 const RESETS: &str = "resets ";
@@ -44,7 +70,7 @@ impl SessionLimit {
         // ASCII-only lowering keeps every byte offset where it was, so an
         // index found in `lower` slices `error` at the same place.
         let lower = error.to_ascii_lowercase();
-        if !LIMIT_PHRASES.iter().any(|phrase| lower.contains(phrase)) {
+        if !LIMIT_PHRASES.iter().any(|phrase| lower.contains(phrase)) && !names_a_limit(&lower) {
             return None;
         }
         let resets = lower.find(RESETS)
@@ -52,6 +78,18 @@ impl SessionLimit {
                           .filter(|resets| !resets.is_empty())
                           .map(str::to_owned);
         Some(Self { resets })
+    }
+
+    /// Whether `lower` - a line, lower-cased - opens with a notice naming
+    /// the limit that stopped the session: "you've hit your 5-hour limit ·
+    /// resets 5:20pm", "you've reached your fable limit." For the terminal
+    /// scan, which reads only a line's start so that an agent writing about
+    /// limits mid-sentence does not stop itself.
+    #[must_use]
+    pub fn opens_with_named_limit(lower: &str) -> bool {
+        let plain = lower.replace('\u{2019}', "'");
+        LIMIT_LEADS.iter()
+                   .any(|lead| plain.strip_prefix(lead).is_some_and(is_limit_name))
     }
 
     /// When the limit lifts, for one reported at `refused_at` (#368): the
@@ -92,6 +130,26 @@ impl SessionLimit {
                               .ok()?;
         Some(tomorrow.timestamp().into())
     }
+}
+
+/// Whether a lead naming a stopping limit appears anywhere in `lower`. An
+/// error wraps the notice in its own prefix ("acp error response ...:
+/// You've hit your 5-hour limit"), so it is searched for, not anchored.
+fn names_a_limit(lower: &str) -> bool {
+    let plain = lower.replace('\u{2019}', "'");
+    LIMIT_LEADS.iter().any(|lead| {
+                          plain.match_indices(lead)
+                               .any(|(at, _)| is_limit_name(&plain[at + lead.len()..]))
+                      })
+}
+
+/// Whether `rest` - what follows a lead - opens with the name of a limit
+/// that stops the session: a short name ending in "limit", up to the "·"
+/// or the sentence's end. "your team's shared budget" is not one, and
+/// neither is a sentence that only happens to end in "limit".
+fn is_limit_name(rest: &str) -> bool {
+    let name = rest.split(NAME_ENDS).next().unwrap_or_default().trim();
+    name.len() <= MAX_LIMIT_NAME && name.ends_with("limit") && !NOT_A_STOP.contains(&name)
 }
 
 /// A 12-hour clock time - "5:20pm", "9am", "12:05 AM" - as a 24-hour hour

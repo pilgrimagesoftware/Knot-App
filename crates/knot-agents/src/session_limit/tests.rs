@@ -18,6 +18,54 @@ fn a_usage_limit_without_a_reset_time_is_still_a_limit() {
                Some(SessionLimit { resets: None }));
 }
 
+/// #397: Claude now names the limit it hit. The wording the SDK builds is
+/// "You've hit your {name}" with the name from its own table, so each name
+/// it prints today is a limit, and so is the older "session limit" above.
+#[test]
+fn every_limit_claude_names_is_recognised_with_its_reset_time() {
+    for name in ["5-hour limit",
+                 "weekly limit",
+                 "Opus limit",
+                 "Sonnet limit",
+                 "usage credit limit"]
+    {
+        let error = format!("acp error response (code -32603): Internal error: You've hit your \
+                             {name} · resets 5:20pm (America/Los_Angeles)");
+        assert_eq!(SessionLimit::from_error(&error),
+                   Some(SessionLimit { resets: Some("5:20pm (America/Los_Angeles)".to_owned()), }),
+                   "{name}");
+    }
+}
+
+/// The SDK's other stable lead, with a typographic apostrophe and no reset.
+#[test]
+fn a_limit_reached_rather_than_hit_is_a_limit() {
+    assert_eq!(SessionLimit::from_error("You\u{2019}ve reached your Fable limit."),
+               Some(SessionLimit { resets: None }));
+}
+
+/// The same lead on something that does not stop the session: fast mode's
+/// cooldown falls back to normal speed, and a spend budget is not a limit
+/// that lifts on its own.
+#[test]
+fn a_lead_that_names_no_stopping_limit_is_not_a_limit() {
+    for error in ["You've hit your fast limit · resets in 4m",
+                  "You've hit your team's shared budget. /model to switch models.",
+                  "You've hit your stride, and the tests now pass the rate check"]
+    {
+        assert_eq!(SessionLimit::from_error(error), None, "{error}");
+    }
+}
+
+#[test]
+fn a_line_opening_with_a_named_limit_is_a_notice() {
+    assert!(SessionLimit::opens_with_named_limit("you've hit your 5-hour limit · resets 5pm"));
+    assert!(SessionLimit::opens_with_named_limit("you\u{2019}ve hit your weekly limit"));
+    assert!(!SessionLimit::opens_with_named_limit("note: you've hit your 5-hour limit"),
+            "only a line's start is a notice");
+    assert!(!SessionLimit::opens_with_named_limit("you've hit your fast limit · resets in 4m"));
+}
+
 #[test]
 fn any_other_error_is_not_a_limit() {
     for error in ["quota exhausted",
