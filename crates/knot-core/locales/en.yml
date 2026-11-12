@@ -969,6 +969,13 @@ mcp:
   # pick the server in its own UI, so the tooltip says what to type.
   action_manage_hint: "Fix in %{agent} — then type %{send}"
   action_copy_target: "Copy address"
+  # A server the user does not use (#402) - a connector their account offers
+  # but they never set up. Dismissing it stops it counting as needing
+  # attention; it is listed under the heading below until it connects.
+  action_dismiss: "Not using this server — stop listing it as needing attention"
+  action_restore: "List this server as needing attention again"
+  group_dismissed: "Not connected — dismissed"
+  dismiss_failed: "Couldn't save that MCP server choice: %{error}"
   # A row's tools (#40): the disclosure control, and what the list says
   # while it is being fetched or when it cannot be.
   tools_show: "Show tools"

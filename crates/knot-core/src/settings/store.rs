@@ -45,7 +45,7 @@
 //! before the two proportional fonts swapped roles has them exchanged once,
 //! gated on the `settingsVersion` marker - see [`migrate_font_roles`].
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use directories::BaseDirs;
@@ -142,6 +142,12 @@ pub struct Settings {
     /// The user's customizations of the navigation shortcuts; empty until
     /// one is changed. See `openspec/specs/keybindings/spec.md`.
     pub keybindings:                    super::KeybindingSettings,
+    /// MCP servers the user has said they do not use (#402), by name - a
+    /// connector offered by the agent's account but never set up, say. Until
+    /// such a server connects, it is listed apart as not connected and left
+    /// out of what needs attention. See
+    /// `openspec/specs/agent-mcp-status/spec.md`.
+    pub dismissed_mcp_servers:          BTreeSet<String>,
 
     /// The durable collections, each persisted as its own document rather
     /// than as a key of the preferences document - hence `skip`, which also
@@ -211,6 +217,7 @@ impl Default for Settings {
                agent_panel_shift_enter_sends:  false,
                agent_panel_compact_tool_calls: false,
                keybindings:                    super::KeybindingSettings::default(),
+               dismissed_mcp_servers:          BTreeSet::new(),
                saved_agents:                   Vec::new(),
                saved_workspaces:               Vec::new(),
                workspace_ui:                   BTreeMap::new(),

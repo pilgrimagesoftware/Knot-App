@@ -14,7 +14,11 @@
 //! "here is what I last knew" and "and here is why I could not check again"
 //! tells the truth that showing either alone would not.
 
+use std::collections::BTreeSet;
+
 use knot_mcp_probe::{Inventory, ServerRow, ServerState};
+
+use super::rows::is_dismissed;
 
 /// How many names the collapsed header lists before summarizing the rest as
 /// a remainder. Three fits beside the label at the narrowest pane width.
@@ -38,6 +42,8 @@ pub(crate) struct SectionStatus<'a> {
     /// How many rows the expanded section lists - Knot's own included, since
     /// the header counts what is below it and Knot's row is one of them.
     pub(crate) row_count:  usize,
+    /// The servers the user has dismissed (#402); see [`is_dismissed`].
+    pub(crate) dismissed:  &'a BTreeSet<String>,
 }
 
 /// The header's summary.
@@ -73,13 +79,19 @@ pub(crate) fn summary_text(status: &SectionStatus<'_>) -> String {
                                           "mcp.count_many");
     }
 
-    collapsed_text(inventory)
+    collapsed_text(inventory, status.dismissed)
 }
 
 /// The collapsed header: what needs attention, or that nothing does.
-fn collapsed_text(inventory: &Inventory) -> String {
-    if inventory.attention_count() > 0 {
-        return attention_text(inventory);
+///
+/// A server the user has dismissed never needs attention: they have said they
+/// do not use it.
+fn collapsed_text(inventory: &Inventory, dismissed: &BTreeSet<String>) -> String {
+    let needing: Vec<&ServerRow> = inventory.needing_attention()
+                                            .filter(|row| !is_dismissed(row, dismissed))
+                                            .collect();
+    if !needing.is_empty() {
+        return attention_text(&needing);
     }
 
     if inventory.found_none() {
@@ -101,8 +113,7 @@ fn collapsed_text(inventory: &Inventory) -> String {
 
 /// The names of the servers needing attention, capped, with a remainder
 /// counting the ones the names do not cover.
-fn attention_text(inventory: &Inventory) -> String {
-    let needing: Vec<&ServerRow> = inventory.needing_attention().collect();
+fn attention_text(needing: &[&ServerRow]) -> String {
     let shown: Vec<&str> = needing.iter()
                                   .take(MAX_NAMES)
                                   .map(|row| row.name.as_str())
