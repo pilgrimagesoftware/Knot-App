@@ -1,9 +1,4 @@
 
-## [Unreleased]
-
-### Fixed
-- Recognise Claude's renamed usage limits (5-hour, weekly, per-model) as a session limit
-
 ## 1.36.0 - 2026-11-05
 
 ### Added
