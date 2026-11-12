@@ -13,6 +13,13 @@ pub struct Message {
     pub content:   String,
     pub timestamp: SystemTime,
     pub is_read:   bool,
+    /// When the recipient read it, or `None` while unread. What a reply
+    /// is measured against: a message answered is one the recipient wrote
+    /// back to its sender after reading it (#405).
+    pub read_at:   Option<SystemTime>,
+    /// One of a broadcast's copies. A broadcast tells, it does not ask, so
+    /// it is never left unanswered.
+    pub broadcast: bool,
 }
 
 impl Message {
@@ -23,7 +30,15 @@ impl Message {
                to,
                content: content.into(),
                timestamp: SystemTime::now(),
-               is_read: false }
+               is_read: false,
+               read_at: None,
+               broadcast: false }
+    }
+
+    /// One recipient's copy of a broadcast: unread, and never owed a reply.
+    pub fn broadcast(from: Uuid, to: Uuid, content: impl Into<String>) -> Self {
+        Self { broadcast: true,
+               ..Self::new(from, to, content) }
     }
 }
 

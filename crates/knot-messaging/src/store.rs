@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use uuid::Uuid;
 
 use crate::consts::READ_RETENTION_LIMIT;
@@ -43,13 +45,93 @@ impl MessageStore {
             .count()
     }
 
-    /// Marks every message for `agent_id` read, then prunes - marking is
-    /// the other way the prunable set grows. See [`MessageStore::add`].
+    /// Marks every message for `agent_id` read, stamping when, then prunes -
+    /// marking is the other way the prunable set grows. See
+    /// [`MessageStore::add`].
     pub fn mark_read(&mut self, agent_id: Uuid) {
-        for m in self.messages.iter_mut().filter(|m| m.to == agent_id) {
+        let now = SystemTime::now();
+        for m in self.messages
+                     .iter_mut()
+                     .filter(|m| m.to == agent_id && !m.is_read)
+        {
             m.is_read = true;
+            m.read_at = Some(now);
         }
         self.cleanup();
+    }
+
+    /// Marks the messages `ids` names read, stamping when, then prunes. For
+    /// a check that returned only some of an agent's unread messages: one
+    /// it filtered out was never shown, so it stays unread (#405).
+    pub fn mark_read_ids(&mut self, ids: &[Uuid]) {
+        let now = SystemTime::now();
+        for m in self.messages
+                     .iter_mut()
+                     .filter(|m| !m.is_read && ids.contains(&m.id))
+        {
+            m.is_read = true;
+            m.read_at = Some(now);
+        }
+        self.cleanup();
+    }
+
+    /// `agent_id`'s messages, oldest first: the unread ones, and the read
+    /// ones too when `include_read`, each sent at or after `since` when it
+    /// is given. What `check-messages` returns, so a conversation that
+    /// started after a brief was read can still find it (#405).
+    pub fn for_agent(&self, agent_id: Uuid, include_read: bool, since: Option<SystemTime>)
+                     -> Vec<&Message> {
+        self.messages
+            .iter()
+            .filter(|m| m.to == agent_id && (include_read || !m.is_read))
+            .filter(|m| since.is_none_or(|since| m.timestamp >= since))
+            .collect()
+    }
+
+    /// The messages `agent_id` has read and not answered, oldest first: sent
+    /// to it directly by another agent, not a broadcast, with no message
+    /// from it back to that sender since it read them (#405).
+    ///
+    /// A reply is any message to the sender, not one that quotes the brief:
+    /// messages carry no thread, and an agent reports back to whoever
+    /// briefed it. So one reply settles every earlier message from that
+    /// sender.
+    pub fn unanswered_for(&self, agent_id: Uuid) -> Vec<&Message> {
+        self.messages
+            .iter()
+            .filter(|m| m.to == agent_id && m.is_read && !m.broadcast && m.from != agent_id)
+            .filter(|m| !self.answered(m))
+            .collect()
+    }
+
+    /// Whether `agent_id` holds a message it has read and not answered.
+    pub fn has_unanswered(&self, agent_id: Uuid) -> bool {
+        !self.unanswered_for(agent_id).is_empty()
+    }
+
+    /// Marks `agent_id`'s unanswered messages unread again and hands them
+    /// back, for a conversation that is about to be replaced: the new one
+    /// finds them in its inbox, whole, rather than not at all (#405).
+    pub fn reopen_unanswered(&mut self, agent_id: Uuid) -> Vec<Message> {
+        let ids: Vec<Uuid> = self.unanswered_for(agent_id).iter().map(|m| m.id).collect();
+        let mut reopened = Vec::with_capacity(ids.len());
+        for m in self.messages.iter_mut().filter(|m| ids.contains(&m.id)) {
+            m.is_read = false;
+            m.read_at = None;
+            reopened.push(m.clone());
+        }
+        reopened
+    }
+
+    /// Whether `message`'s recipient has written to its sender since reading
+    /// it.
+    fn answered(&self, message: &Message) -> bool {
+        let since = message.read_at.unwrap_or(message.timestamp);
+        self.messages.iter().any(|reply| {
+                                reply.from == message.to
+                                && reply.to == message.from
+                                && reply.timestamp >= since
+                            })
     }
 
     pub fn has_unread(&self, agent_id: Uuid) -> bool {
@@ -85,113 +167,4 @@ impl MessageStore {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn msg(to: Uuid) -> Message {
-        Message::new(Uuid::new_v4(), to, "hi")
-    }
-
-    #[test]
-    fn unread_filters_by_recipient_and_read_flag() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        let other = Uuid::new_v4();
-        store.add(msg(agent));
-        store.add(msg(other));
-
-        let unread = store.unread_for(agent);
-
-        assert_eq!(unread.len(), 1);
-        assert_eq!(unread[0].to, agent);
-    }
-
-    #[test]
-    fn mark_read_clears_has_unread() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        store.add(msg(agent));
-
-        assert!(store.has_unread(agent));
-        store.mark_read(agent);
-        assert!(!store.has_unread(agent));
-    }
-
-    #[test]
-    fn unread_count_tracks_only_unread_messages_for_recipient() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        let other = Uuid::new_v4();
-        store.add(msg(agent));
-        store.add(msg(agent));
-        store.add(msg(other));
-
-        assert_eq!(store.unread_count(agent), 2);
-        store.mark_read(agent);
-        assert_eq!(store.unread_count(agent), 0);
-    }
-
-    #[test]
-    fn latest_unread_id_is_the_most_recent() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        store.add(msg(agent));
-        let second = msg(agent);
-        let second_id = second.id;
-        store.add(second);
-
-        assert_eq!(store.latest_unread_id(agent), Some(second_id));
-    }
-
-    #[test]
-    fn cleanup_prunes_oldest_read_messages_keeping_unread() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        let mut unread_ids = Vec::new();
-        for _ in 0..5 {
-            let m = msg(agent);
-            unread_ids.push(m.id);
-            store.add(m);
-        }
-        for _ in 0..150 {
-            let mut m = msg(agent);
-            m.is_read = true;
-            store.add(m);
-        }
-
-        store.cleanup();
-
-        let read_count = store.messages.iter().filter(|m| m.is_read).count();
-        assert_eq!(read_count, READ_RETENTION_LIMIT);
-        for id in unread_ids {
-            assert!(store.messages.iter().any(|m| m.id == id));
-        }
-    }
-
-    #[test]
-    fn read_history_is_bounded_without_an_explicit_cleanup_call() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        for _ in 0..(READ_RETENTION_LIMIT * 3) {
-            let mut message = msg(agent);
-            message.is_read = true;
-            store.add(message);
-        }
-
-        assert_eq!(store.messages.len(), READ_RETENTION_LIMIT);
-    }
-
-    #[test]
-    fn marking_read_prunes_the_history_it_just_created() {
-        let mut store = MessageStore::new();
-        let agent = Uuid::new_v4();
-        for _ in 0..(READ_RETENTION_LIMIT * 2) {
-            store.add(msg(agent));
-        }
-        assert_eq!(store.messages.len(), READ_RETENTION_LIMIT * 2);
-
-        store.mark_read(agent);
-
-        assert_eq!(store.messages.len(), READ_RETENTION_LIMIT);
-    }
-}
+mod tests;

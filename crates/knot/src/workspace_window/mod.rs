@@ -26,6 +26,9 @@ mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;
 mod git_panel;
+mod handoff;
+#[cfg(test)]
+mod handoff_tests;
 #[cfg(test)]
 mod inbox_nudge_tests;
 mod issue_filter;
