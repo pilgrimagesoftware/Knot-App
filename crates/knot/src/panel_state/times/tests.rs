@@ -29,7 +29,7 @@ fn tool_call(id: &str) -> SessionEvent {
 }
 
 fn turn_end() -> SessionEvent {
-    SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: "end_turn".to_string(), })
+    SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: knot_acp::StopReason::EndTurn, })
 }
 
 /// A time as the log keeps it: to the millisecond.

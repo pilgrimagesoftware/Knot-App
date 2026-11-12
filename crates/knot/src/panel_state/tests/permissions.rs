@@ -50,7 +50,8 @@ fn the_end_of_a_turn_clears_every_request() {
     state.apply(SessionEvent::PermissionRequest(request(100, "tc1")));
     state.apply(SessionEvent::PermissionRequest(request(101, "tc2")));
 
-    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: "cancelled".to_string(), }));
+    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason:
+                                                             knot_acp::StopReason::Cancelled, }));
 
     assert!(!state.turn_active);
     assert_eq!(state.pending_permission, None);

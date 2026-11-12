@@ -34,7 +34,7 @@ fn the_count_is_per_turn_and_ends_with_it() {
 
     state.push_user_message("first".to_string());
     streamed(&mut state, &"x".repeat(400));
-    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: "end_turn".into(), }));
+    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: knot_acp::StopReason::EndTurn, }));
     assert_eq!(state.turn_progress(SystemTime::now()),
                None,
                "the turn has ended");
