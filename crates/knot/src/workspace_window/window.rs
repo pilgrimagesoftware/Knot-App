@@ -101,6 +101,11 @@ pub(crate) struct WorkspaceWindow {
     /// The last message each agent has been nudged about, so an unread
     /// inbox produces one prompt rather than one per idle poll.
     pub(super) nudged_messages:                  BTreeMap<Uuid, Uuid>,
+    /// The handoff note a restart into a new conversation left for each
+    /// agent, taken by the next panel connect and appended to its first
+    /// turn (#405). Written and read by this window only, so it lives here
+    /// rather than on the shared `Agent`.
+    pub(super) panel_handoffs:                   BTreeMap<Uuid, String>,
     /// The `AgentStore::revision` this window last drew, so a status text or
     /// state written where no notify can reach - the MCP server's thread -
     /// still repaints it (#17). Per window: every window polls the one store.

@@ -271,6 +271,15 @@ impl WorkspaceWindow {
     /// running, and does not start every agent the user had stopped.
     pub(super) fn restart_agents(&mut self, ids: &[Uuid], keep_conversation: bool,
                                  cx: &mut Context<Self>) {
+        // Before the store forgets the old conversation: what it was doing
+        // and what it owed replies to go to the new one (#405).
+        if !keep_conversation {
+            for id in ids {
+                if let Some(note) = self.hand_off(*id) {
+                    self.panel_handoffs.insert(*id, note);
+                }
+            }
+        }
         {
             // One lock for the whole batch rather than one per agent: the
             // restarts are independent, and reacquiring between them lets

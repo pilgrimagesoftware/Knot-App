@@ -18,5 +18,5 @@ pub use message::Message;
 pub use notify::{
     DeliveryEvent, DeliveryNotifier, NoopNotifier, QueuedNotifier, RecordingNotifier,
 };
-pub use routing::{broadcast, check, send};
+pub use routing::{CheckOptions, broadcast, check, send};
 pub use store::MessageStore;
