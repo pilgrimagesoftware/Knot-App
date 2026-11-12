@@ -81,8 +81,8 @@ gpui-terminal = { git = "https://github.com/pilgrimagesoftware/gpui-terminal", t
 # that publish the link under the pointer (`text::hovered_link`), which the
 # link URL tooltip reads (#326; `docs/adr/0004-gpui-base-link-hover.md`).
 #
-# Branch `knot/table-columns-0.7.0` is `knot/link-hover-0.7.0` plus one commit
-# that sizes Markdown table columns like CSS auto table layout, so a column of
+# Branch `knot/table-columns-0.7.0` is `knot/link-hover-0.7.0` plus two commits
+# that size Markdown table columns like CSS auto table layout, so a column of
 # short words is not squeezed below its widest word (#400;
 # `docs/adr/0006-gpui-base-table-columns.md`).
 #

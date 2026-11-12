@@ -25,15 +25,24 @@ proportion to how much wider. Every row SHALL use the same column widths.
 
 ### Requirement: Markdown table cells break words only as a last resort
 
-Table cell text SHALL wrap at whitespace and after a hyphen that joins two
-words. A word SHALL break only when the columns' min-content widths together
-do not fit the table's width.
+Table cell text SHALL wrap where the panel's other text wraps: at spaces, and
+before characters the text engine does not keep inside a word, such as `/`. A
+column's min-content width SHALL be measured to those same break points, so a
+hyphenated word such as "Short-term" counts as one word. A word SHALL break
+only when the columns' min-content widths together do not fit the table's
+width.
 
-#### Scenario: Wrapping prefers spaces and hyphens
+#### Scenario: Wrapping prefers spaces
 
 - **WHEN** a cell's text is wider than its column
-- **THEN** it wraps at a space or after a hyphen joining two words, not inside
-  a word
+- **THEN** it wraps at a space, not inside a word
+
+#### Scenario: A hyphenated word stays whole
+
+- **WHEN** a column's widest word is hyphenated, such as "Short-term", and the
+  column beside it has room to give
+- **THEN** the column is wide enough for the whole word, and the word does not
+  break at or after its hyphen
 
 #### Scenario: A table too narrow for its words
 

@@ -15,14 +15,16 @@ of prose got a few percent of the table, less than its own widest word.
   that cannot wrap) and its max-content width (its widest line). Every column
   gets at least its min-content width, and the room beyond that goes to the
   columns that would be wider in proportion to how much wider.
-- Cell text wraps at whitespace and after a hyphen joining two words. A word
-  breaks only when the columns' min-content widths do not fit the table's
-  width.
+- Cell text wraps where the panel's other text wraps (gpui's line wrapper):
+  at spaces, and before characters it does not keep inside a word, such as
+  `/`. Min-content is measured to those same break points, so a hyphenated
+  word counts as one word. A word breaks only when the columns' min-content
+  widths do not fit the table's width.
 - Every row resolves to the same column widths, so the columns stay aligned.
 
 ## Impact
 
-- `gpui-base` fork: one commit on a new branch, `knot/table-columns-0.7.0`,
+- `gpui-base` fork: two commits on a new branch, `knot/table-columns-0.7.0`,
   cut from `knot/link-hover-0.7.0`, changes the default table layout
   (`text/table_columns.rs`, `text/node.rs`). Knot's `[patch.crates-io]` points
   at it. `docs/adr/0006-gpui-base-table-columns.md` records the decision.

@@ -33,16 +33,20 @@ Knot already consumes a forked `gpui-base` (ADR-0003, ADR-0004).
 
 ## Decision
 
-Add one commit to the fork, on a new branch `knot/table-columns-0.7.0` cut
+Add two commits to the fork, on a new branch `knot/table-columns-0.7.0` cut
 from `knot/link-hover-0.7.0`. Knot's `[patch.crates-io]` points at the new
-branch.
+branch. The second, `f5afb17d`, came out of review: the first let a line
+break after a hyphen, which gpui's line wrapper never does.
 
-The commit sizes the default table layout like CSS auto table layout:
+The commits size the default table layout like CSS auto table layout:
 
 - Each column is measured across all rows, from shaped text, for its
-  min-content width (the widest piece of a line that cannot wrap; lines wrap
-  at whitespace and after a hyphen joining two words) and its max-content
-  width (its widest line). An inline object cannot wrap, so both are its
+  min-content width (the widest piece of a line that cannot wrap) and its
+  max-content width (its widest line). The pieces are cut where gpui's
+  `LineWrapper` breaks when it draws the text - before a word that follows a
+  space, and before a character it does not keep inside a word, such as `/` -
+  so a hyphenated word is one piece. `LineWrapper::is_word_char` is
+  `pub(crate)` in gpui, so the fork carries a copy of it. An inline object cannot wrap, so both are its
   intrinsic width.
 - A cell's `flex-basis` is its column's min-content width, its `flex-grow` is
   `max - min` (or `max` when no column has slack), and it shrinks down to
@@ -62,8 +66,11 @@ measure them.
 ## Options considered
 
 - **Fix the wrapping layout in the fork** (chosen). It is the layout every
-  Knot Markdown surface already uses, and the fix is one commit in the table
-  code, not in the text engine.
+  Knot Markdown surface already uses, and the fix is in the table code, not
+  in the text engine.
+- **Teach gpui's line wrapper to break after a joining hyphen.** That would let
+  a column narrow past a hyphenated word, but gpui is not forked here, and the
+  wrapper's rules apply to every text Knot draws, not only tables.
 - **Opt Knot into the scroll layout.** No fork change, and its measured widths
   would stop the label column from breaking. But its 160-480px floors make a
   table with a prose column scroll sideways in a normal-width panel, which
@@ -75,9 +82,13 @@ measure them.
 
 ## Consequences
 
-- The fork now carries seven commits. Its exit condition gains a third item:
+- The fork now carries eight commits. Its exit condition gains a third item:
   an upstream table layout that sizes columns from content. Until all three
-  land, every gpui-kit bump rebases seven commits.
+  land, every gpui-kit bump rebases eight commits.
+- The copied `is_word_char` has to follow gpui's. A gpui bump that changes
+  where lines wrap needs the copy updated, or min-content drifts from what is
+  drawn and a word can break mid-word again; the fork's segment tests pin the
+  cases a table depends on.
 - Measuring min-content shapes every unbreakable piece of every cell once per
   render, as the scroll layout already did for whole lines. Tables in
   responses are small; a very large table would show this first.

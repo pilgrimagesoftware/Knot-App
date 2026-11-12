@@ -32,6 +32,15 @@ const TABLE: &str = "\
 | Observability | Ship the dashboards and alerts for the new pipeline, with runbooks linked from every alert. |
 | Watson | Retire the old reporting job once the replacement has run cleanly for a full week. |
 ";
+/// The #411 review case: a column whose widest word carries a hyphen. gpui
+/// never wraps at a hyphen, so the column has to fit the whole word.
+const HYPHENATED: &str = "\
+| When | Notes |
+| --- | --- |
+| Short-term | Tear down the stale runners and move the remaining jobs onto the shared pool before the freeze. |
+| Long-term | Ship the dashboards and alerts for the new pipeline, with runbooks linked from every alert. |
+| Near-term | Retire the old reporting job once the replacement has run cleanly for a full week. |
+";
 const ROWS: usize = 4;
 const WIDE: f32 = 1200.;
 const NARROW: f32 = 360.;
@@ -39,25 +48,26 @@ const NARROW: f32 = 360.;
 const CRAMPED: f32 = 120.;
 
 struct TableProbe {
-    width: f32,
+    width:  f32,
+    source: &'static str,
 }
 
 impl Render for TableProbe {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div().w(px(self.width)).child(markdown_view("table-probe",
-                                                    TABLE,
+                                                    self.source,
                                                     "Helvetica".into(),
                                                     "Helvetica".into(),
                                                     px(14.)))
     }
 }
 
-/// Every cell's bounds, by row and column, with the table drawn `width` wide.
-fn cells(width: f32, cx: &mut TestAppContext) -> Vec<[Bounds<Pixels>; 2]> {
+/// Every cell's bounds, by row and column, with `source` drawn `width` wide.
+fn cells(source: &'static str, width: f32, cx: &mut TestAppContext) -> Vec<[Bounds<Pixels>; 2]> {
     let window = cx.update(|cx| {
                        gpui_kit::init(cx);
                        cx.open_window(WindowOptions::default(), |window, cx| {
-                             let view = cx.new(|_| TableProbe { width });
+                             let view = cx.new(|_| TableProbe { width, source });
                              cx.new(|cx| Root::new(view, window, cx))
                          })
                          .expect("the probe window should open")
@@ -96,8 +106,8 @@ fn assert_columns_line_up(table: &[[Bounds<Pixels>; 2]]) {
 
 #[gpui_kit::test]
 fn a_word_column_keeps_its_width_while_the_prose_column_wraps(cx: &mut TestAppContext) {
-    let wide = cells(WIDE, cx);
-    let narrow = cells(NARROW, cx);
+    let wide = cells(TABLE, WIDE, cx);
+    let narrow = cells(TABLE, NARROW, cx);
     assert_columns_line_up(&wide);
     assert_columns_line_up(&narrow);
 
@@ -113,12 +123,26 @@ fn a_word_column_keeps_its_width_while_the_prose_column_wraps(cx: &mut TestAppCo
 
 #[gpui_kit::test]
 fn words_break_only_when_the_table_cannot_fit_them(cx: &mut TestAppContext) {
-    let wide = cells(WIDE, cx);
-    let cramped = cells(CRAMPED, cx);
+    let wide = cells(TABLE, WIDE, cx);
+    let cramped = cells(TABLE, CRAMPED, cx);
     assert_columns_line_up(&cramped);
 
     assert!(width(cramped[0][0]) < width(wide[0][0]),
             "with no room left anywhere, the word column gives way too");
     assert!(width(cramped[0][0]) + width(cramped[0][1]) <= CRAMPED,
             "and the table still fits its frame");
+}
+
+/// A hyphenated word is one word to the renderer, so its column keeps room
+/// for all of it rather than for the part before the hyphen.
+#[gpui_kit::test]
+fn a_hyphenated_word_keeps_its_column_wide_enough(cx: &mut TestAppContext) {
+    let wide = cells(HYPHENATED, WIDE, cx);
+    let narrow = cells(HYPHENATED, NARROW, cx);
+    assert_columns_line_up(&narrow);
+
+    let (wide_words, narrow_words) = (width(wide[0][0]), width(narrow[0][0]));
+    assert!((narrow_words - wide_words).abs() <= 0.5,
+            "the hyphenated column keeps its width ({narrow_words} narrow, {wide_words} wide): \
+             \"Short-term\" does not break while the prose column has room to give");
 }
