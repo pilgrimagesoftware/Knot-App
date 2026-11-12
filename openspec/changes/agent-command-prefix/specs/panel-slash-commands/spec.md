@@ -9,11 +9,20 @@ Knot runs - at the head of a line in the panel prompt input, the system SHALL
 show a lookup popup listing the commands the registry offers, and the agent's
 skills too when they share that character. An agent type whose skills have a
 character of their own SHALL have its skills offered behind that character
-instead. Each list SHALL filter to entries matching the text typed after its
-character.
+instead. Each list SHALL filter to entries whose token or description matches
+the text typed after its character.
+
+The command lookup SHALL NOT be the popup's only occupant. The popup is shared
+with the `@` file lookup and with a skill character's lookup, and the token
+under the caret decides which one is active; the command lookup SHALL yield
+when the caret sits in an `@` token or a skill token, and SHALL resume when the
+caret returns to a command token. The token the lookup inserts SHALL be one the
+composer's styling recognises, written with the character that opened it, so
+an inserted command or skill is drawn as a token rather than as prose.
 
 #### Scenario: Slash opens the lookup
-- **WHEN** the user types `/` at the start of a line in the prompt input
+- **WHEN** the user types `/` at the start of a line in the prompt input of an
+  agent whose skills share the command character
 - **THEN** a popup listing the available commands and skills appears above
   the input
 
