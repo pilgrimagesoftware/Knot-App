@@ -1,7 +1,7 @@
 ---
 id: ADR-0006
 title: Size Markdown table columns in the gpui-base fork
-status: proposed
+status: accepted
 date: 2026-11-12
 tags: [ui, dependencies, gpui-kit, markdown]
 ---
