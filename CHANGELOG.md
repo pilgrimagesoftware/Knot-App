@@ -1,4 +1,9 @@
 
+## [Unreleased]
+
+### Fixed
+- Mask the Autopilot API key in Settings, with a toggle to reveal it
+
 ## 1.36.0 - 2026-11-05
 
 ### Added
