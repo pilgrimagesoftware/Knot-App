@@ -8,6 +8,7 @@
 mod agent_info;
 mod json_rpc;
 mod permission;
+mod stop_reason;
 
 pub use agent_info::AgentInfo;
 pub use json_rpc::{
@@ -18,6 +19,7 @@ pub use permission::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+pub use stop_reason::StopReason;
 
 /// The ACP protocol major version this client speaks. Per `acp-client`'s
 /// capability-negotiation requirement, a mismatched agent version fails the
@@ -239,8 +241,10 @@ pub enum SessionUpdate {
         path: String,
         diff: String,
     },
+    /// Synthesized by the client from the `session/prompt` response: ACP
+    /// has no turn-end update.
     TurnEnd {
-        stop_reason: String,
+        stop_reason: StopReason,
     },
     /// A `config_option_update` push - the full current set of Session
     /// Config Options, e.g. after `session/set_config_option` changes one
@@ -301,8 +305,11 @@ impl SessionUpdate {
                 path: field_str(&update, "path"),
                 diff: field_str(&update, "diff"),
             },
+            // Not ACP: a turn ends with the `session/prompt` response. Kept
+            // because the panel's replay tests drive a turn end through it;
+            // removing it is task 3.1 of `openspec/changes/show-turn-stop-reason`.
             Some("turn_end") => SessionUpdate::TurnEnd {
-                stop_reason: field_str(&update, "stopReason"),
+                stop_reason: StopReason::parse(update.get("stopReason").and_then(Value::as_str)),
             },
             Some("config_option_update") => {
                 let config_options = update

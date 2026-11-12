@@ -12,7 +12,7 @@ use crate::error::{AcpError, Result};
 use crate::protocol::{
     AgentCapabilities, AgentInfo, ConfigOption, InitializeParams, InitializeResult,
     JsonRpcErrorPayload, MCP_SERVER_NAME, PROTOCOL_VERSION, PermissionDecision, PermissionOption,
-    PermissionRequest, SessionUpdate,
+    PermissionRequest, SessionUpdate, StopReason,
 };
 use crate::transport::{Transport, TransportEvent};
 
@@ -319,12 +319,13 @@ impl AcpClient {
                          .request("session/prompt", Some(json!({ "sessionId": session_id, "prompt": [{ "type": "text", "text": text }] })))
                          .await;
         let stop_reason = match &result {
-            Ok(raw) => raw.get("stopReason")
-                          .and_then(Value::as_str)
-                          .unwrap_or("end_turn")
-                          .to_owned(),
-            Err(_) => "error".to_owned(),
+            Ok(raw) => StopReason::parse(raw.get("stopReason").and_then(Value::as_str)),
+            Err(_) => StopReason::Error,
         };
+        // Beside the transport's `<- session/prompt (id N) ok`: whether the
+        // agent finished or stopped early is otherwise not in the log (#22).
+        // No session id: CodeQL treats it as a secret.
+        eprintln!("knot-acp: session/prompt ended: stopReason {stop_reason}");
         let _ = self.events
                     .send(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason }));
         result.map(|_| ())

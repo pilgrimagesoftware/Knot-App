@@ -4,6 +4,7 @@ mod permissions;
 mod pull_requests;
 mod replay;
 mod shell;
+mod stop_reason;
 
 use knot_acp::ConfigOption;
 use knot_acp::PermissionRequest;
@@ -279,7 +280,7 @@ fn turn_end_mid_tool_call_keeps_the_cards_last_known_state() {
     state.apply(tool_call_update("tc1", Some("in_progress"), Vec::new()));
 
     state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason:
-                                                                  "end_turn".to_string(), }));
+                                                                  knot_acp::StopReason::EndTurn, }));
 
     let PanelMessage::ToolCall(card) = &state.messages[0]
     else {
@@ -324,7 +325,7 @@ fn user_message_starts_a_tracked_turn_and_turn_end_ends_it() {
     assert!(state.tracking);
 
     state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason:
-                                                                  "end_turn".to_string(), }));
+                                                                  knot_acp::StopReason::EndTurn, }));
     assert!(!state.turn_active);
 }
 
