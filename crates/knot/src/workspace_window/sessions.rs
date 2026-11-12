@@ -278,6 +278,7 @@ impl WorkspaceWindow {
         // states are entries nothing will ever ask for again.
         self.prune_pull_request_states();
         self.nudged_messages.remove(&id);
+        self.panel_handoffs.remove(&id);
         self.forget_awaiting_notification(id);
         self.panel_states.remove(&id);
         self.panel_prompt_inputs.remove(&id);

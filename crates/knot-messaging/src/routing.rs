@@ -86,7 +86,7 @@ pub fn broadcast(store: &mut MessageStore, notifier: &dyn DeliveryNotifier, send
             continue;
         }
 
-        let message = Message::new(sender.id, recipient.id, content.clone());
+        let message = Message::broadcast(sender.id, recipient.id, content.clone());
         notify_if_idle(notifier, recipient, message.id);
         store.add(message);
         count += 1;
@@ -95,14 +95,41 @@ pub fn broadcast(store: &mut MessageStore, notifier: &dyn DeliveryNotifier, send
     Ok(count)
 }
 
-/// Returns `agent_id`'s unread messages, marking them read unless
-/// `mark_as_read` is false.
-pub fn check(store: &mut MessageStore, agent_id: Uuid, mark_as_read: bool) -> Vec<Message> {
-    let unread: Vec<Message> = store.unread_for(agent_id).into_iter().cloned().collect();
-    if mark_as_read {
-        store.mark_read(agent_id);
+/// What `check-messages` asks for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CheckOptions {
+    /// Mark the unread messages returned as read.
+    pub mark_as_read: bool,
+    /// Return messages already read as well as unread ones (#405).
+    pub include_read: bool,
+    /// Only messages sent at or after this time.
+    pub since:        Option<std::time::SystemTime>,
+}
+
+impl Default for CheckOptions {
+    /// Unread messages, marked read - what `check-messages` has always done.
+    fn default() -> Self {
+        Self { mark_as_read: true,
+               include_read: false,
+               since:        None, }
     }
-    unread
+}
+
+/// Returns `agent_id`'s messages as `options` ask, oldest first, marking
+/// the unread ones *it returns* read unless `options.mark_as_read` is
+/// false - one that `since` left out was never shown, so it stays unread.
+/// Each comes back as it was before this call, so a caller can tell the
+/// newly read from the already read.
+pub fn check(store: &mut MessageStore, agent_id: Uuid, options: CheckOptions) -> Vec<Message> {
+    let found: Vec<Message> = store.for_agent(agent_id, options.include_read, options.since)
+                                   .into_iter()
+                                   .cloned()
+                                   .collect();
+    if options.mark_as_read {
+        let shown: Vec<Uuid> = found.iter().filter(|m| !m.is_read).map(|m| m.id).collect();
+        store.mark_read_ids(&shown);
+    }
+    found
 }
 
 #[cfg(test)]
@@ -299,7 +326,7 @@ mod tests {
         let notifier = RecordingNotifier::new();
         send(&mut store, &notifier, &a, &members, b.id, "hi").unwrap();
 
-        let unread = check(&mut store, b.id, true);
+        let unread = check(&mut store, b.id, CheckOptions::default());
 
         assert_eq!(unread.len(), 1);
         assert!(!store.has_unread(b.id));
@@ -314,7 +341,10 @@ mod tests {
         let notifier = RecordingNotifier::new();
         send(&mut store, &notifier, &a, &members, b.id, "hi").unwrap();
 
-        check(&mut store, b.id, false);
+        check(&mut store,
+              b.id,
+              CheckOptions { mark_as_read: false,
+                             ..CheckOptions::default() });
 
         assert!(store.has_unread(b.id));
     }

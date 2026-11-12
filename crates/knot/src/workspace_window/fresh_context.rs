@@ -23,10 +23,16 @@ impl WorkspaceWindow {
             // The free function, under this one lock: the method takes the
             // store lock itself, and `parking_lot` locks are not reentrant.
             let store = self.store.lock();
+            let messages = self.messages.lock();
             workspace_agent_ids(&store, self.workspace_id).into_iter()
                                                           .filter(|id| {
                                                               store.agent(*id)
                                                                    .is_some_and(ready_for_fresh_context)
+                                                              // A brief read and not answered is work
+                                                              // in hand: wait for the reply (#405).
+                                                              && !messages.has_unanswered(*id, |sender| {
+                                                                  store.agent(sender).is_some()
+                                                              })
                                                           })
                                                           .collect::<Vec<Uuid>>()
         };
