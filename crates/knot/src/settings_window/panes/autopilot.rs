@@ -138,6 +138,7 @@ impl SettingsWindow {
                         knot_core::l10n::t("settings.autopilot.api_key"),
                         Input::new(&self.ai_api_key_input)
                             .font_family(cx.theme().mono_font_family.clone())
+                            .mask_toggle()
                             .flex_1(),
                     ))
                     .child(Self::text_row(
@@ -177,3 +178,6 @@ impl SettingsWindow {
             )
     }
 }
+
+#[cfg(test)]
+mod tests;
