@@ -7,6 +7,9 @@
 - [x] 1.2 `unanswered_for` / `has_unanswered`: read, direct, from another
       agent, and no message back to its sender since it was read
 - [x] 1.3 `reopen_unanswered`: mark them unread again and hand them back
+- [x] 1.4 A dispatched task's goal and a brief from an agent that is gone are
+      never owed (#412 review: `complete-task` writes no message back, so a
+      goal counted as owed held every later `resetContext` restart)
 
 ## 2. check-messages returns read messages on request
 
@@ -34,6 +37,9 @@
       the conversation hands nothing off; an answered brief stays read; a
       fresh context waits for the reply
 - [x] 4.4 Mutation-check the deferral and the handoff
+- [x] 4.5 A task completed with `complete-task` alone holds no later
+      `resetContext` dispatch; a task's goal or a removed sender's brief holds
+      no fresh-context restart; mutation-checked
 
 ## 5. Follow-ups
 

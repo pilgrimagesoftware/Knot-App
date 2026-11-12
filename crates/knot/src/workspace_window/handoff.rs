@@ -17,8 +17,12 @@ impl WorkspaceWindow {
     /// the old one; a brief read there and not yet answered would otherwise
     /// be lost with it (#405).
     pub(super) fn hand_off(&mut self, id: Uuid) -> Option<String> {
-        let reopened = self.messages.lock().reopen_unanswered(id);
+        // The store first, as everywhere both are held: briefs from an agent
+        // that is gone can never be answered, so they are not reopened.
         let store = self.store.lock();
+        let reopened = self.messages
+                           .lock()
+                           .reopen_unanswered(id, |sender| store.agent(sender).is_some());
         let status = store.agent(id)
                           .map(|agent| agent.status_text.clone())
                           .unwrap_or_default();

@@ -15,7 +15,9 @@ with `dispatch-task`, so a plain brief had no protection from a reset.
 1. **A reset Knot starts waits for open threads** (issue item 1). A plan step's
    fresh-context restart waits while the agent holds a message it has read and
    not answered. "Answered" means the agent has written to that message's
-   sender since reading it. A broadcast is never owed a reply.
+   sender since reading it. A broadcast is never owed a reply, nor is a
+   dispatched task's goal (the task graph tracks that work and `complete-task`
+   writes no message back), nor a brief whose sender is gone.
 2. **A new conversation gets a handoff note** (item 2). Restarting into a new
    conversation, whoever asks for it, saves the agent's last status and the
    senders it owed replies to. That note is added to the new conversation's
@@ -36,7 +38,8 @@ read the brief is still there.
 ## Impact
 
 - `knot-messaging`:
-  - `Message` gains `read_at` and `broadcast`.
+  - `Message` gains `read_at`, `broadcast` and `task`.
+  - `dispatch-task` marks the goal it delivers as a task's.
   - `MessageStore` gains `for_agent`, `unanswered_for`, `has_unanswered`,
     `reopen_unanswered` and `mark_read_ids`.
   - `check` takes `CheckOptions`.

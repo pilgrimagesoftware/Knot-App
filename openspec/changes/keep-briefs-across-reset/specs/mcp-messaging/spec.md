@@ -6,7 +6,8 @@
 
 A message SHALL carry a unique id, sender id, recipient id (both stored as
 agent uuids), content, a timestamp, a read flag defaulting to false, the time
-it was read (none while unread), and whether it is one copy of a broadcast.
+it was read (none while unread), whether it is one copy of a broadcast, and
+whether it is a dispatched task's goal.
 Messages SHALL be held in memory only and SHALL NOT persist across app
 restarts.
 
@@ -47,10 +48,10 @@ message id.
 ### Requirement: A read message is owed a reply
 
 A message SHALL be unanswered when its recipient has read it, it was sent
-directly by another agent rather than as a broadcast, and the recipient has
-sent no message to its sender since reading it. Any message from the
-recipient to that sender SHALL settle every message from that sender read
-before it.
+directly by another agent that still exists, it is neither a broadcast nor a
+dispatched task's goal, and the recipient has sent no message to its sender
+since reading it. Any message from the recipient to that sender SHALL settle
+every message from that sender read before it.
 
 #### Scenario: A reply settles the brief
 
@@ -61,6 +62,17 @@ before it.
 
 - **WHEN** an agent reads a brief and then messages a third agent only
 - **THEN** the brief is still unanswered
+
+#### Scenario: A dispatched task's goal is never owed
+
+- **WHEN** an agent reads the goal `dispatch-task` delivered and reports the
+  task with `complete-task` alone
+- **THEN** it holds no unanswered message
+
+#### Scenario: A brief from an agent that is gone
+
+- **WHEN** an agent reads a brief and its sender is then removed
+- **THEN** the brief is not unanswered
 
 #### Scenario: A broadcast is never owed
 

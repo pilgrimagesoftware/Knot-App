@@ -20,6 +20,10 @@ pub struct Message {
     /// One of a broadcast's copies. A broadcast tells, it does not ask, so
     /// it is never left unanswered.
     pub broadcast: bool,
+    /// A dispatched task's goal, delivered by `dispatch-task`. Never owed a
+    /// reply either: the task graph tracks that work, and the worker reports
+    /// it with `complete-task`, which writes no message back.
+    pub task:      bool,
 }
 
 impl Message {
@@ -32,7 +36,8 @@ impl Message {
                timestamp: SystemTime::now(),
                is_read: false,
                read_at: None,
-               broadcast: false }
+               broadcast: false,
+               task: false }
     }
 
     /// One recipient's copy of a broadcast: unread, and never owed a reply.

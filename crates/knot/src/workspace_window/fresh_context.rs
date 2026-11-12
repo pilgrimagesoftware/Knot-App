@@ -30,7 +30,9 @@ impl WorkspaceWindow {
                                                                    .is_some_and(ready_for_fresh_context)
                                                               // A brief read and not answered is work
                                                               // in hand: wait for the reply (#405).
-                                                              && !messages.has_unanswered(*id)
+                                                              && !messages.has_unanswered(*id, |sender| {
+                                                                  store.agent(sender).is_some()
+                                                              })
                                                           })
                                                           .collect::<Vec<Uuid>>()
         };

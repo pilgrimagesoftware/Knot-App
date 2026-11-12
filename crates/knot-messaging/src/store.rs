@@ -88,32 +88,51 @@ impl MessageStore {
             .collect()
     }
 
+    /// Marks message `id` as a dispatched task's goal, which is never owed
+    /// a reply (see [`Message::task`]).
+    pub fn mark_task(&mut self, id: Uuid) {
+        if let Some(message) = self.messages.iter_mut().find(|m| m.id == id) {
+            message.task = true;
+        }
+    }
+
     /// The messages `agent_id` has read and not answered, oldest first: sent
-    /// to it directly by another agent, not a broadcast, with no message
+    /// to it directly by another agent that `sender_present` says still
+    /// exists, not a broadcast or a dispatched task's goal, with no message
     /// from it back to that sender since it read them (#405).
     ///
     /// A reply is any message to the sender, not one that quotes the brief:
     /// messages carry no thread, and an agent reports back to whoever
     /// briefed it. So one reply settles every earlier message from that
-    /// sender.
-    pub fn unanswered_for(&self, agent_id: Uuid) -> Vec<&Message> {
+    /// sender. A sender that is gone can never be answered, so its briefs
+    /// are not owed - holding a reset for them would hold it forever.
+    pub fn unanswered_for(&self, agent_id: Uuid, sender_present: impl Fn(Uuid) -> bool)
+                          -> Vec<&Message> {
         self.messages
             .iter()
-            .filter(|m| m.to == agent_id && m.is_read && !m.broadcast && m.from != agent_id)
+            .filter(|m| {
+                m.to == agent_id && m.is_read && !m.broadcast && !m.task && m.from != agent_id
+            })
+            .filter(|m| sender_present(m.from))
             .filter(|m| !self.answered(m))
             .collect()
     }
 
-    /// Whether `agent_id` holds a message it has read and not answered.
-    pub fn has_unanswered(&self, agent_id: Uuid) -> bool {
-        !self.unanswered_for(agent_id).is_empty()
+    /// Whether `agent_id` holds a message it has read and not answered; see
+    /// [`Self::unanswered_for`].
+    pub fn has_unanswered(&self, agent_id: Uuid, sender_present: impl Fn(Uuid) -> bool) -> bool {
+        !self.unanswered_for(agent_id, sender_present).is_empty()
     }
 
     /// Marks `agent_id`'s unanswered messages unread again and hands them
     /// back, for a conversation that is about to be replaced: the new one
     /// finds them in its inbox, whole, rather than not at all (#405).
-    pub fn reopen_unanswered(&mut self, agent_id: Uuid) -> Vec<Message> {
-        let ids: Vec<Uuid> = self.unanswered_for(agent_id).iter().map(|m| m.id).collect();
+    pub fn reopen_unanswered(&mut self, agent_id: Uuid, sender_present: impl Fn(Uuid) -> bool)
+                             -> Vec<Message> {
+        let ids: Vec<Uuid> = self.unanswered_for(agent_id, sender_present)
+                                 .iter()
+                                 .map(|m| m.id)
+                                 .collect();
         let mut reopened = Vec::with_capacity(ids.len());
         for m in self.messages.iter_mut().filter(|m| ids.contains(&m.id)) {
             m.is_read = false;

@@ -92,3 +92,37 @@ fn a_fresh_context_waits_for_the_reply(cx: &mut TestAppContext) {
                             "answered, so the reset goes ahead");
                 });
 }
+
+/// #405 review: a dispatched task's goal, finished with `complete-task`
+/// and no message back, must not hold a later fresh-context restart.
+#[gpui_kit::test]
+fn a_completed_tasks_goal_does_not_hold_a_fresh_context(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let (lead, agent) = (fixture.agents[0], fixture.agents[1]);
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    {
+                        let mut messages = view.messages.lock();
+                        let goal = Message::new(lead, agent, "the task's goal");
+                        let goal_id = goal.id;
+                        messages.add(goal);
+                        messages.mark_task(goal_id);
+                        messages.mark_read(agent);
+                    }
+                    view.store.lock().request_fresh_context(agent);
+                    assert!(view.restart_for_fresh_context(cx));
+                });
+}
+
+/// A brief from an agent that has since been removed can never be answered,
+/// so it holds nothing either.
+#[gpui_kit::test]
+fn a_brief_from_a_removed_agent_does_not_hold_a_fresh_context(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let agent = fixture.agents[1];
+    let gone = Uuid::new_v4();
+    read_brief(&mut fixture, gone, agent);
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.store.lock().request_fresh_context(agent);
+                    assert!(view.restart_for_fresh_context(cx));
+                });
+}

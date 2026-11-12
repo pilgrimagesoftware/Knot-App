@@ -34,3 +34,9 @@ for SHALL NOT wait.
 - **WHEN** a `resetContext` restart is due for an idle agent that holds an
   unanswered brief
 - **THEN** it is not restarted until it has answered the brief's sender
+
+#### Scenario: A completed task holds no later reset
+
+- **WHEN** an agent finished its previous dispatched task with `complete-task`
+  and no message, and a `resetContext` task is then dispatched to it
+- **THEN** it is restarted on a new conversation as soon as it is idle

@@ -124,7 +124,7 @@ mod unanswered {
     #[test]
     fn an_unread_brief_is_not_yet_owed_a_reply() {
         let (store, _, agent) = store_with_brief();
-        assert!(!store.has_unanswered(agent),
+        assert!(!store.has_unanswered(agent, |_| true),
                 "unread is the inbox's job, not this");
     }
 
@@ -132,10 +132,10 @@ mod unanswered {
     fn a_read_brief_is_unanswered_until_its_sender_hears_back() {
         let (mut store, sender, agent) = store_with_brief();
         store.mark_read(agent);
-        assert_eq!(store.unanswered_for(agent).len(), 1);
+        assert_eq!(store.unanswered_for(agent, |_| true).len(), 1);
 
         store.add(Message::new(agent, sender, "done"));
-        assert!(!store.has_unanswered(agent));
+        assert!(!store.has_unanswered(agent, |_| true));
     }
 
     #[test]
@@ -143,7 +143,7 @@ mod unanswered {
         let (mut store, _, agent) = store_with_brief();
         store.mark_read(agent);
         store.add(Message::new(agent, Uuid::new_v4(), "to a third agent"));
-        assert!(store.has_unanswered(agent));
+        assert!(store.has_unanswered(agent, |_| true));
     }
 
     #[test]
@@ -152,7 +152,7 @@ mod unanswered {
         let agent = Uuid::new_v4();
         store.add(Message::broadcast(Uuid::new_v4(), agent, "fyi"));
         store.mark_read(agent);
-        assert!(!store.has_unanswered(agent));
+        assert!(!store.has_unanswered(agent, |_| true));
     }
 
     #[test]
@@ -160,13 +160,13 @@ mod unanswered {
         let (mut store, _, agent) = store_with_brief();
         store.mark_read(agent);
 
-        let reopened = store.reopen_unanswered(agent);
+        let reopened = store.reopen_unanswered(agent, |_| true);
 
         assert_eq!(reopened.len(), 1);
         assert_eq!(reopened[0].content, "the brief");
         assert_eq!(store.unread_count(agent), 1);
         assert_eq!(store.unread_for(agent)[0].read_at, None);
-        assert!(!store.has_unanswered(agent),
+        assert!(!store.has_unanswered(agent, |_| true),
                 "unread again, so not owed yet");
     }
 
@@ -179,5 +179,32 @@ mod unanswered {
         let later = SystemTime::now() + std::time::Duration::from_secs(60);
         assert!(store.for_agent(agent, true, Some(later)).is_empty(),
                 "`since` drops what was sent before it");
+    }
+
+    /// #405 review: `dispatch-task` delivers its goal as a message, and the
+    /// worker reports the task with `complete-task`, which writes nothing
+    /// back. A goal that was owed a reply would hold every later reset.
+    #[test]
+    fn a_dispatched_tasks_goal_is_never_owed_a_reply() {
+        let (mut store, sender, agent) = store_with_brief();
+        let goal = Message::new(sender, agent, "the task's goal");
+        let goal_id = goal.id;
+        store.add(goal);
+        store.mark_task(goal_id);
+        store.mark_read(agent);
+
+        let owed = store.unanswered_for(agent, |_| true);
+        assert_eq!(owed.len(), 1, "only the plain brief is owed");
+        assert_eq!(owed[0].content, "the brief");
+    }
+
+    /// A sender that is gone can never be answered.
+    #[test]
+    fn a_brief_from_an_agent_that_is_gone_is_not_owed() {
+        let (mut store, sender, agent) = store_with_brief();
+        store.mark_read(agent);
+
+        assert!(!store.has_unanswered(agent, |id| id != sender));
+        assert!(store.reopen_unanswered(agent, |id| id != sender).is_empty());
     }
 }
