@@ -5,6 +5,7 @@ use gpui_kit::App;
 use gpui_kit::Entity;
 use gpui_kit::component::input::TextDecoration;
 use gpui_kit::component::input::TextDecorationCollection;
+use knot_core::agent_type::Invocation;
 
 use crate::composer_scan::Edit;
 use crate::composer_scan::Span;
@@ -28,6 +29,10 @@ pub(crate) struct ComposerStyling {
     text:        String,
     spans:       Vec<Span>,
     palette:     Palette,
+    /// The agent's command and skill characters, which decide what a
+    /// token is. Fixed for the composer's life: an agent's type does not
+    /// change under an open composer.
+    invocation:  Invocation,
 }
 
 impl ComposerStyling {
@@ -38,10 +43,10 @@ impl ComposerStyling {
     /// edit required to trigger it (`panel-rich-input`, "A restored draft
     /// is styled").
     pub(crate) fn new(input: &Entity<PanelInputState>, attachments: &[&str], palette: Palette,
-                      cx: &mut App)
+                      invocation: Invocation, cx: &mut App)
                       -> Self {
         let text = input.read(cx).value().to_string();
-        let spans = scan(&text, attachments);
+        let spans = scan(&text, attachments, invocation);
         // Creation order is precedence, so this loop is load-bearing and
         // `Layer::ALL` is what defines it.
         let collections = Layer::ALL.iter()
@@ -56,7 +61,8 @@ impl ComposerStyling {
         Self { collections,
                text,
                spans,
-               palette }
+               palette,
+               invocation }
     }
 
     /// Restyles after the buffer changed, rescanning only what the change
@@ -79,7 +85,7 @@ impl ComposerStyling {
         // parse: it costs a memcmp of the common prefix and suffix, and
         // buys the scanner the bound it could not otherwise have.
         let edit = edit_between(&self.text, &text);
-        self.spans = rescan(&text, attachments, &self.spans, &edit);
+        self.spans = rescan(&text, attachments, &self.spans, &edit, self.invocation);
         self.text = text;
         self.paint(cx);
         true
@@ -105,7 +111,7 @@ impl ComposerStyling {
     pub(crate) fn reset(&mut self, input: &Entity<PanelInputState>, attachments: &[&str],
                         cx: &mut App) {
         self.text = input.read(cx).value().to_string();
-        self.spans = scan(&self.text, attachments);
+        self.spans = scan(&self.text, attachments, self.invocation);
         self.paint(cx);
     }
 

@@ -3,6 +3,8 @@
 
 use std::ops::Range;
 
+use knot_core::agent_type::Invocation;
+
 use crate::composer_scan::dirty;
 use crate::composer_scan::markdown;
 use crate::composer_scan::tokens;
@@ -22,8 +24,11 @@ use crate::composer_scan::tokens;
 pub(crate) enum Construct {
     /// A reference to attached context, drawn as a chip.
     Attachment,
-    /// A `/command` token at the head of its line.
+    /// A command token - `/command` - at the head of its line.
     SlashToken,
+    /// A skill token - Codex's `$skill` - at a word boundary, for an agent
+    /// whose skills have a trigger of their own (#272).
+    SkillToken,
     /// An `@path` mention at a word boundary.
     Mention,
     /// `*text*` or `_text_`.
@@ -87,11 +92,11 @@ impl Edit {
 /// The lookup asks this to decide which trigger the caret is in, so that
 /// what opens the popup and what gets the token treatment are one answer
 /// rather than two rules that can drift apart.
-pub(crate) fn tokens_on_line(text: &str, offset: usize) -> Vec<Span> {
+pub(crate) fn tokens_on_line(text: &str, offset: usize, invocation: Invocation) -> Vec<Span> {
     if offset > text.len() || !text.is_char_boundary(offset) {
         return Vec::new();
     }
-    let mut spans = tokens::scan(text, offset..offset);
+    let mut spans = tokens::scan(text, offset..offset, invocation);
     sort(&mut spans);
     spans
 }
@@ -102,9 +107,11 @@ pub(crate) fn tokens_on_line(text: &str, offset: usize) -> Vec<Span> {
 /// Spans come back sorted by start offset, then by construct, so two scans
 /// of equal buffers are equal - which is what makes the incremental path
 /// checkable against this one.
-pub(crate) fn scan(text: &str, attachments: &[&str]) -> Vec<Span> {
+/// `invocation` is the agent's command and skill characters, which decide
+/// what a token is.
+pub(crate) fn scan(text: &str, attachments: &[&str], invocation: Invocation) -> Vec<Span> {
     let mut spans = markdown::scan(text, 0..text.len());
-    spans.extend(tokens::scan(text, 0..text.len()));
+    spans.extend(tokens::scan(text, 0..text.len(), invocation));
     spans.extend(attachment_spans(text, attachments));
     sort(&mut spans);
     spans
@@ -115,7 +122,8 @@ pub(crate) fn scan(text: &str, attachments: &[&str]) -> Vec<Span> {
 ///
 /// Equivalent to [`scan`] on the new text, and only worth having because
 /// it does not read all of it.
-pub(crate) fn rescan(text: &str, attachments: &[&str], previous: &[Span], edit: &Edit)
+pub(crate) fn rescan(text: &str, attachments: &[&str], previous: &[Span], edit: &Edit,
+                     invocation: Invocation)
                      -> Vec<Span> {
     let dirty = dirty::dirty_range(text, edit);
 
@@ -130,7 +138,7 @@ pub(crate) fn rescan(text: &str, attachments: &[&str], previous: &[Span], edit: 
                                        .collect();
 
     spans.extend(markdown::scan(text, dirty.clone()));
-    spans.extend(tokens::scan(text, dirty));
+    spans.extend(tokens::scan(text, dirty, invocation));
     spans.extend(attachment_spans(text, attachments));
     sort(&mut spans);
     spans

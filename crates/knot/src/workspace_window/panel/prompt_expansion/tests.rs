@@ -83,8 +83,10 @@ fn the_expansion_replaces_the_token_in_place(cx: &mut TestAppContext) {
     let (mut cx, input) = composer(cx, "note:\n/gat");
     let (snapshot, range) = cx.update(|_, cx| {
                                   let state = input.read(cx);
-                                  let token = active_token(&state.value(), state.cursor())
-                                      .expect("an active token");
+                                  let token =
+                  active_token(&state.value(),
+                               state.cursor(),
+                               knot_core::agent_type::Invocation::SLASH).expect("an active token");
                                   (state.value().to_string(), token.range)
                               });
 
@@ -102,8 +104,10 @@ fn a_stale_expansion_is_dropped(cx: &mut TestAppContext) {
     let (mut cx, input) = composer(cx, "/gat");
     let (snapshot, range) = cx.update(|_, cx| {
                                   let state = input.read(cx);
-                                  let token = active_token(&state.value(), state.cursor())
-                                      .expect("an active token");
+                                  let token =
+                  active_token(&state.value(),
+                               state.cursor(),
+                               knot_core::agent_type::Invocation::SLASH).expect("an active token");
                                   (state.value().to_string(), token.range)
                               });
     input.update_in(&mut cx, |state, window, cx| {

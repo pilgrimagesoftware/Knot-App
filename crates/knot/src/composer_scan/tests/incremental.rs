@@ -29,13 +29,19 @@ fn apply(text: &str, replaced: Range<usize>, inserted: &str) -> (String, Edit) {
 /// incremental result is exactly the whole-buffer one.
 fn agree(start: &str, edits: &[(Range<usize>, &str)]) {
     let mut text = start.to_string();
-    let mut spans = scan(&text, &[]);
-    assert_eq!(spans, scan(&text, &[]), "scan must be deterministic");
+    let mut spans = scan(&text, &[], knot_core::agent_type::Invocation::SLASH);
+    assert_eq!(spans,
+               scan(&text, &[], knot_core::agent_type::Invocation::SLASH),
+               "scan must be deterministic");
 
     for (step, (replaced, inserted)) in edits.iter().enumerate() {
         let (next, edit) = apply(&text, replaced.clone(), inserted);
-        let incremental = rescan(&next, &[], &spans, &edit);
-        let whole = scan(&next, &[]);
+        let incremental = rescan(&next,
+                                 &[],
+                                 &spans,
+                                 &edit,
+                                 knot_core::agent_type::Invocation::SLASH);
+        let whole = scan(&next, &[], knot_core::agent_type::Invocation::SLASH);
         assert_eq!(incremental, whole,
                    "step {step}: rescan disagreed with a full scan of {next:?}");
         text = next;

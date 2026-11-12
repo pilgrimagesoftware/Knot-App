@@ -2,6 +2,8 @@
 
 use std::path::Path;
 
+use knot_core::agent_type::Invocation;
+
 use crate::panel_commands::builtin;
 use crate::panel_commands::entry::LookupEntry;
 use crate::panel_commands::entry::LookupMatch;
@@ -50,12 +52,23 @@ impl LookupRegistry {
         Self { entries, matcher }
     }
 
-    /// The registry for the agent whose folder is `folder`: knot's
-    /// built-in commands plus whatever skills that agent's roots hold.
-    pub(crate) fn for_agent(folder: Option<&Path>) -> Self {
+    /// What the command character opens for the agent whose folder is
+    /// `folder`: knot's built-in commands, plus whatever skills that agent's
+    /// roots hold when its skills share the command character. An agent
+    /// with a skill character of its own - Codex (#272) - gets its skills
+    /// from [`Self::skills_for`] instead.
+    pub(crate) fn for_agent(folder: Option<&Path>, invocation: Invocation) -> Self {
         let builtin = builtin::BuiltinCommands;
+        if invocation.separate_skills() {
+            return Self::from_sources(&[&builtin]);
+        }
         let skills = skills::SkillRoots::for_agent(folder);
         Self::from_sources(&[&builtin, &skills])
+    }
+
+    /// The skills alone, for an agent whose skill character is its own.
+    pub(crate) fn skills_for(folder: Option<&Path>) -> Self {
+        Self::from_sources(&[&skills::SkillRoots::for_agent(folder)])
     }
 
     /// The entries `filter` selects, in the matcher's order.

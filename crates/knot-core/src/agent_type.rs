@@ -105,6 +105,39 @@ impl McpManage {
     }
 }
 
+/// The characters an agent's prompt opens a command and a skill with (#272).
+///
+/// Every harness Knot runs opens its commands with `/`, but they do not
+/// agree on skills: Codex invokes one as `$name` and rejects `/name` "by
+/// design" (openai/codex#11817), while Claude Code, Copilot CLI and
+/// OpenCode take `/name`. Gemini CLI has no user prefix for a skill - the
+/// model activates them - so it keeps `/`, where its commands live.
+///
+/// Read by the panel composer, which styles and completes whatever these
+/// characters open, so the lookup offers what the agent will actually
+/// accept rather than a Claude spelling it rejects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Invocation {
+    /// Opens a command: `/compact`.
+    pub command: char,
+    /// Opens a skill: `/review` for most harnesses, `$review` for Codex.
+    pub skill:   char,
+}
+
+impl Invocation {
+    /// Commands and skills alike behind `/`: Claude Code's convention, and
+    /// the default for a type Knot does not know.
+    pub const SLASH: Self = Self { command: '/',
+                                   skill:   '/', };
+
+    /// Whether skills have a character of their own, so the composer has a
+    /// second trigger to recognise and the two lists are offered apart.
+    #[must_use]
+    pub const fn separate_skills(self) -> bool {
+        self.command != self.skill
+    }
+}
+
 /// One known agent type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AgentTypeInfo {
@@ -162,6 +195,8 @@ pub struct AgentTypeInfo {
     /// truth is that nothing is sending the events. Flipping this to
     /// `Either` is the one-line follow-up once that plugin ships.
     pub subagents:           SubagentReporting,
+    /// How its prompt opens a command and a skill.
+    pub invocation:          Invocation,
 }
 
 /// Every known type, in the order a picker offers them.
@@ -177,7 +212,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_list_args:       &["mcp", "list"],
                       mcp_manage:          McpManage::Interactive { args: &[],
                                                                     send: "/mcp", },
-                      subagents:           SubagentReporting::ToolCalls, },
+                      subagents:           SubagentReporting::ToolCalls,
+                      invocation:          Invocation::SLASH, },
       // `codex mcp list --json` lists configured servers, not their live
       // connection state (see `knot_mcp_probe::parse::codex`), so the only
       // row Knot can classify beyond `Unknown` is a disabled one.
@@ -194,7 +230,9 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_program:         "codex",
                       mcp_list_args:       &["mcp", "list", "--json"],
                       mcp_manage:          McpManage::PerServer(&["mcp", "login", "%{server}"]),
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation { command: '/',
+                                                        skill:   '$', }, },
       // `opencode mcp auth <name>` is the only per-server command any agent
       // offers, so the handover is exact here. Its *listing* shape is still
       // unobserved - the machine this was built on had no OpenCode servers
@@ -209,7 +247,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_program:         "opencode",
                       mcp_list_args:       &[],
                       mcp_manage:          McpManage::PerServer(&["mcp", "auth", "%{server}"]),
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       AgentTypeInfo { id:                  "gemini",
                       label:               "Gemini",
                       is_shell:            false,
@@ -221,7 +260,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_list_args:       &["mcp", "list"],
                       mcp_manage:          McpManage::Interactive { args: &[],
                                                                     send: "/mcp", },
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       AgentTypeInfo { id:                  "copilot",
                       label:               "Copilot",
                       is_shell:            false,
@@ -232,7 +272,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_program:         "copilot",
                       mcp_list_args:       &[],
                       mcp_manage:          McpManage::None,
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       // The custom types are a user-configured command, not a vendor CLI:
       // there is no `mcp` subcommand to assume.
       AgentTypeInfo { id:                  "custom1",
@@ -245,7 +286,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_program:         "",
                       mcp_list_args:       &[],
                       mcp_manage:          McpManage::None,
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       AgentTypeInfo { id:                  "custom2",
                       label:               "Custom 2",
                       is_shell:            false,
@@ -256,7 +298,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_program:         "",
                       mcp_list_args:       &[],
                       mcp_manage:          McpManage::None,
-                      subagents:           SubagentReporting::None, },
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       // A bare shell runs no MCP client at all.
       AgentTypeInfo { id:                  "shell",
                       label:               "Shell",
@@ -268,7 +311,8 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_list_args:       &[],
                       mcp_manage:          McpManage::None,
                       hook_activity:       false,
-                      subagents:           SubagentReporting::None, }];
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, }];
 
 /// Claude Code's type id.
 pub const CLAUDE: &str = "claude";
@@ -368,6 +412,13 @@ pub fn mcp_program(id: &str) -> Option<&'static str> {
 #[must_use]
 pub fn mcp_manage(id: &str) -> McpManage {
     info(id).map_or(McpManage::None, |agent_type| agent_type.mcp_manage)
+}
+
+/// How an agent of type `id`'s prompt opens a command and a skill; `/` for
+/// both when the type is not a known one.
+#[must_use]
+pub fn invocation(id: &str) -> Invocation {
+    info(id).map_or(Invocation::SLASH, |info| info.invocation)
 }
 
 #[cfg(test)]

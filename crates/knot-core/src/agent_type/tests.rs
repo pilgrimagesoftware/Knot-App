@@ -206,3 +206,27 @@ fn an_unknown_type_cannot_be_probed_or_managed() {
     assert_eq!(mcp_list_args("nothing-by-that-name"), None);
     assert!(!mcp_manage("nothing-by-that-name").is_available());
 }
+
+/// #272: Codex invokes a skill as `$name` and rejects `/name`; every other
+/// harness Knot runs takes both commands and skills behind `/`.
+#[test]
+fn only_codex_gives_its_skills_a_character_of_their_own() {
+    assert_eq!(invocation("codex"),
+               Invocation { command: '/',
+                            skill:   '$', });
+    assert!(invocation("codex").separate_skills());
+    for agent_type in ALL.iter().filter(|agent_type| agent_type.id != "codex") {
+        assert_eq!(agent_type.invocation,
+                   Invocation::SLASH,
+                   "{}",
+                   agent_type.id);
+    }
+}
+
+/// An unknown type keeps Claude Code's convention, so a custom command's
+/// composer behaves as it always has.
+#[test]
+fn an_unknown_type_invokes_everything_with_a_slash() {
+    assert_eq!(invocation("nothing-by-that-name"), Invocation::SLASH);
+    assert!(!Invocation::SLASH.separate_skills());
+}

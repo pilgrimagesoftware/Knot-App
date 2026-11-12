@@ -330,7 +330,11 @@ fn styled(cx: &mut TestAppContext, text: &str)
     cx.run_until_parked();
     let styling = cx.update(|_, cx| {
                         let palette = Palette::of(cx);
-                        ComposerStyling::new(&input, &[], palette, cx)
+                        ComposerStyling::new(&input,
+                                             &[],
+                                             palette,
+                                             knot_core::agent_type::Invocation::SLASH,
+                                             cx)
                     });
     (cx, input, styling)
 }
