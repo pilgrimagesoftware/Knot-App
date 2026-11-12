@@ -14,8 +14,8 @@
 //!   `paul@example.com` is part of an address.
 //! - A skill trigger of its own - Codex's `$` (#272) - follows the `@` rule,
 //!   since Codex reads `$name` anywhere in a prompt, and must open a name: the
-//!   trigger alone while it is being typed, or one followed by a letter, so
-//!   `costs $5` stays prose.
+//!   trigger alone at the end of its line, while it is being typed, or one
+//!   followed by a letter, so `costs $5` and `pay $ 5` stay prose.
 //!
 //! The characters are the agent's, from `knot_core::agent_type::Invocation`;
 //! nothing here assumes `/`.
@@ -64,10 +64,7 @@ fn scan_skills(line: &str, start: usize, trigger: char, spans: &mut Vec<Span>) {
         }
         let opens_a_name = line[offset + trigger.len_utf8()..].chars()
                                                               .next()
-                                                              .is_none_or(|next| {
-                                                                  next.is_alphabetic()
-                                                                  || next.is_whitespace()
-                                                              });
+                                                              .is_none_or(char::is_alphabetic);
         if !opens_a_name {
             continue;
         }
