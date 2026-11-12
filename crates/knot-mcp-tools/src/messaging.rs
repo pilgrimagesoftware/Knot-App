@@ -1,9 +1,9 @@
 use knot_agents::AgentStore;
 use knot_mcp::ToolCallResult;
-use knot_messaging::{DeliveryNotifier, MessageStore, broadcast, check, send};
+use knot_messaging::{CheckOptions, DeliveryNotifier, MessageStore, broadcast, check, send};
 
 use crate::ActivationQueue;
-use crate::args::{optional_bool, require_str};
+use crate::args::{optional_bool, optional_str, require_str};
 use crate::lookup::{agent_not_found, find_in_workspace, workspace_members};
 use crate::responses::{
     BroadcastResponse, CheckMessagesResponse, MessageInfo, SendMessageResponse, success,
@@ -73,20 +73,33 @@ pub fn check_messages(agents: &AgentStore, messages: &mut MessageStore,
     else {
         return agent_not_found(agents, agent_id_str);
     };
-    let mark_as_read = optional_bool(arguments, "markAsRead").unwrap_or(true);
+    let since = match optional_str(arguments, "since").map(parse_rfc3339)
+                                                      .transpose()
+    {
+        Ok(since) => since,
+        Err(()) => {
+            return ToolCallResult::error("`since` must be an RFC 3339 time, as `timestamp` is \
+                                          reported (2026-11-12T20:00:00Z)");
+        }
+    };
+    let options =
+        CheckOptions { mark_as_read: optional_bool(arguments, "markAsRead").unwrap_or(true),
+                       include_read: optional_bool(arguments, "includeRead").unwrap_or(false),
+                       since };
 
-    let unread = check(messages, agent.id, mark_as_read);
-    let infos = unread.into_iter()
-                      .map(|m| {
-                          let sender_name = agents.agent(m.from)
-                                                  .map(|a| a.name.clone())
-                                                  .unwrap_or_else(|| m.from.to_string());
-                          MessageInfo { id:        m.id.to_string(),
-                                        from:      sender_name,
-                                        content:   m.content,
-                                        timestamp: rfc3339(m.timestamp), }
-                      })
-                      .collect();
+    let found = check(messages, agent.id, options);
+    let infos = found.into_iter()
+                     .map(|m| {
+                         let sender_name = agents.agent(m.from)
+                                                 .map(|a| a.name.clone())
+                                                 .unwrap_or_else(|| m.from.to_string());
+                         MessageInfo { id:        m.id.to_string(),
+                                       from:      sender_name,
+                                       content:   m.content,
+                                       timestamp: rfc3339(m.timestamp),
+                                       read:      m.is_read, }
+                     })
+                     .collect();
 
     success(&CheckMessagesResponse { messages: infos })
 }
@@ -120,291 +133,17 @@ pub fn broadcast_message(agents: &AgentStore, messages: &mut MessageStore,
 }
 
 /// RFC 3339, matching the Swift reference's `ISO8601DateFormatter`.
+/// `text` as an instant, in the format [`rfc3339`] writes.
+fn parse_rfc3339(text: &str) -> Result<std::time::SystemTime, ()> {
+    time::OffsetDateTime::parse(text, &time::format_description::well_known::Rfc3339)
+        .map(std::time::SystemTime::from)
+        .map_err(|_| ())
+}
+
 fn rfc3339(time: std::time::SystemTime) -> String {
     time::OffsetDateTime::from(time).format(&time::format_description::well_known::Rfc3339)
                                     .unwrap_or_default()
 }
 
 #[cfg(test)]
-mod tests {
-    use knot_agents::CreateOptions;
-    use knot_messaging::NoopNotifier;
-    use serde_json::json;
-
-    use super::*;
-
-    fn registered(store: &mut AgentStore, folder: &str) -> uuid::Uuid {
-        let id = store.create(folder, CreateOptions::default());
-        store.set_registered(id, true);
-        id
-    }
-
-    fn activation_queue() -> ActivationQueue {
-        std::sync::Arc::new(parking_lot::Mutex::new(Vec::new()))
-    }
-
-    #[test]
-    fn send_message_succeeds_between_registered_workspace_members() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        let mut messages = MessageStore::new();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  None,
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, None);
-        assert!(messages.has_unread(to));
-    }
-
-    #[test]
-    fn send_message_to_shell_agent_surfaces_rejection_text() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = agents.create("/tmp/shell",
-                               CreateOptions { agent_type: Some("shell".to_string()),
-                                               insert_after: Some(from),
-                                               ..Default::default() });
-        agents.set_registered(to, true);
-        let mut messages = MessageStore::new();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  None,
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert_eq!(result.content[0].text,
-                   "Cannot send messages to shell agents");
-    }
-
-    #[test]
-    fn check_messages_marks_read_by_default() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        let mut messages = MessageStore::new();
-        send_message(&agents,
-                     &mut messages,
-                     &NoopNotifier,
-                     None,
-                     &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        let result = check_messages(&agents, &mut messages, &json!({"agentId": to.to_string()}));
-
-        assert_eq!(result.is_error, None);
-        assert!(!messages.has_unread(to));
-    }
-
-    #[test]
-    fn check_messages_without_mark_as_read_leaves_unread() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        let mut messages = MessageStore::new();
-        send_message(&agents,
-                     &mut messages,
-                     &NoopNotifier,
-                     None,
-                     &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        check_messages(&agents,
-                       &mut messages,
-                       &json!({"agentId": to.to_string(), "markAsRead": false}));
-
-        assert!(messages.has_unread(to));
-    }
-
-    #[test]
-    fn direct_send_queues_a_deactivated_recipient_for_activation() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        // `create` leaves an agent deactivated until something starts it,
-        // which is the state this queues on.
-        assert!(!agents.agent(to).unwrap().activated);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, None);
-        assert_eq!(&*activation.lock(), &[to]);
-    }
-
-    #[test]
-    fn direct_send_to_an_activated_recipient_queues_nothing() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        agents.set_activated(to, true);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, None);
-        assert!(activation.lock().is_empty());
-    }
-
-    #[test]
-    fn a_send_rejected_by_a_routing_rule_queues_nothing() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        // Shell recipient: rejected by `send`'s shell-agent rule, after the
-        // recipient resolves - the case where a queue push would be easiest
-        // to misplace.
-        let shell = agents.create("/tmp/shell",
-                                  CreateOptions { agent_type: Some("shell".to_string()),
-                                                  insert_after: Some(from),
-                                                  ..Default::default() });
-        agents.set_registered(shell, true);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": shell.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert!(activation.lock().is_empty());
-    }
-
-    #[test]
-    fn a_send_to_an_unresolvable_recipient_queues_nothing() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": uuid::Uuid::new_v4().to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert!(activation.lock().is_empty());
-    }
-
-    #[test]
-    fn broadcast_never_queues_a_deactivated_recipient() {
-        let mut agents = AgentStore::new();
-        let sender = registered(&mut agents, "/tmp/a");
-        let deactivated = registered(&mut agents, "/tmp/b");
-        assert!(!agents.agent(deactivated).unwrap().activated);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = broadcast_message(&agents,
-                                       &mut messages,
-                                       &NoopNotifier,
-                                       &json!({"from": sender.to_string(), "content": "hi all"}));
-
-        assert_eq!(result.is_error, None);
-        assert!(messages.has_unread(deactivated));
-        // `broadcast_message` takes no queue at all - the strongest form of
-        // "a broadcast activates nobody" this layer can assert.
-        assert!(activation.lock().is_empty());
-    }
-
-    #[test]
-    fn broadcast_reports_recipient_count() {
-        let mut agents = AgentStore::new();
-        let sender = registered(&mut agents, "/tmp/a");
-        registered(&mut agents, "/tmp/b");
-        registered(&mut agents, "/tmp/c");
-        let mut messages = MessageStore::new();
-
-        let result = broadcast_message(&agents,
-                                       &mut messages,
-                                       &NoopNotifier,
-                                       &json!({"from": sender.to_string(), "content": "hi all"}));
-
-        assert_eq!(result.is_error, None);
-        assert!(result.content[0].text.contains("\"recipientCount\": 2"));
-    }
-
-    /// #310: a locked agent cannot be messaged, and so is not started by a
-    /// message either.
-    #[test]
-    fn a_locked_recipient_is_refused_and_not_started() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        agents.set_locked(to, true);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert_eq!(result.content[0].text,
-                   knot_messaging::SendError::RecipientLocked.to_string());
-        assert!(activation.lock().is_empty(),
-                "a refused message starts nothing");
-        assert!(messages.unread_for(to).is_empty());
-    }
-
-    /// #310: a locked agent cannot message others.
-    #[test]
-    fn a_locked_sender_is_refused() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        agents.set_locked(from, true);
-        let mut messages = MessageStore::new();
-        let activation = activation_queue();
-
-        let result = send_message(&agents,
-                                  &mut messages,
-                                  &NoopNotifier,
-                                  Some(&activation),
-                                  &json!({"from": from.to_string(), "to": to.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert_eq!(result.content[0].text,
-                   knot_messaging::SendError::SenderLocked.to_string());
-        assert!(activation.lock().is_empty());
-    }
-
-    /// #349: a locked agent's broadcast is refused with the reason, as its
-    /// send is - not answered `success: false` with a count of zero, which
-    /// reads the same as a workspace with nobody else in it.
-    #[test]
-    fn a_locked_sender_broadcast_is_refused_with_the_reason() {
-        let mut agents = AgentStore::new();
-        let from = registered(&mut agents, "/tmp/a");
-        let to = registered(&mut agents, "/tmp/b");
-        agents.set_locked(from, true);
-        let mut messages = MessageStore::new();
-
-        let result = broadcast_message(&agents,
-                                       &mut messages,
-                                       &NoopNotifier,
-                                       &json!({"from": from.to_string(), "content": "hi"}));
-
-        assert_eq!(result.is_error, Some(true));
-        assert_eq!(result.content[0].text,
-                   knot_messaging::SendError::SenderLocked.to_string());
-        assert!(messages.unread_for(to).is_empty());
-    }
-}
+mod tests;

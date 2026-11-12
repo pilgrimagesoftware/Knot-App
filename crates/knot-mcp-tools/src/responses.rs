@@ -107,6 +107,9 @@ pub struct MessageInfo {
     pub from:      String,
     pub content:   String,
     pub timestamp: String,
+    /// Already read before this call - only ever true when `includeRead`
+    /// asked for read messages too (#405).
+    pub read:      bool,
 }
 
 #[derive(Debug, Serialize)]

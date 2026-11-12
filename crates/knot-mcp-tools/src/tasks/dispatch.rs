@@ -123,14 +123,17 @@ pub fn dispatch_task(ctx: DispatchContext<'_>, arguments: &serde_json::Value) ->
     // the same way (#563). `None` for an unknown recipient, which `send`
     // rejects below.
     let recipient_activated = ctx.agents.agent(recipient).map(|agent| agent.activated);
-    if let Err(error) = send(ctx.messages,
-                             ctx.notifier,
-                             &caller,
-                             &members,
-                             recipient,
-                             &dispatchable.goal)
+    match send(ctx.messages,
+               ctx.notifier,
+               &caller,
+               &members,
+               recipient,
+               &dispatchable.goal)
     {
-        return ToolCallResult::error(error.to_string());
+        // The graph tracks this work and `complete-task` reports it with no
+        // message back, so the goal is never owed a reply (#405 review).
+        Ok(message_id) => ctx.messages.mark_task(message_id),
+        Err(error) => return ToolCallResult::error(error.to_string()),
     }
     // Only after delivery succeeded - a dispatch the messaging rules reject
     // starts nobody, per `mcp-messaging`'s "Direct send activates a
