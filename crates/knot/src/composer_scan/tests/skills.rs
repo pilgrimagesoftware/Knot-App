@@ -27,11 +27,16 @@ fn a_skill_token_is_found_anywhere_a_word_starts() {
 #[test]
 fn a_bare_skill_trigger_is_already_a_token() {
     assert_eq!(found("$", CODEX, Construct::SkillToken), vec!["$"]);
+    assert_eq!(found("use $", CODEX, Construct::SkillToken),
+               vec!["$"],
+               "a trigger typed at the end of a line");
 }
 
+/// A `$` that opens no name is prose, including one followed by a space: only
+/// a `$` at the end of its line is still being typed.
 #[test]
 fn a_price_or_a_variable_inside_a_word_stays_prose() {
-    for text in ["it costs $5", "echo a$b", "100$"] {
+    for text in ["it costs $5", "echo a$b", "100$", "pay $ 5", "$ alone"] {
         assert!(found(text, CODEX, Construct::SkillToken).is_empty(),
                 "{text}");
     }

@@ -27,3 +27,5 @@
       from `/` to `$`
 - [x] 3.4 Mutation-check: with skill tokens never scanned, the skill-token
       tests fail
+- [x] 3.5 Scan: a `$` followed by a space (`pay $ 5`) is prose; only a `$` at
+      the end of its line is a token while it is typed
