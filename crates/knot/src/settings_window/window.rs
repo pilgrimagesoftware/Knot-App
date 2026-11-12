@@ -61,6 +61,8 @@ pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>
                                              InputState::new(window, cx)
                 .placeholder(knot_core::l10n::t("settings.input.api_key"))
                 .default_value(settings.ai_api_key.clone())
+                // A secret (#392): drawn as bullets, stored as typed.
+                .masked(true)
                                          });
                 let autopilot_custom_prompt_input = cx.new(|cx| {
                                                           InputState::new(window, cx)
