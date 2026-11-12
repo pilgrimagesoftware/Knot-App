@@ -47,13 +47,19 @@ impl TurnProgress {
     }
 }
 
-/// "42s", "3m 05s", "1h 02m" - the CLI's own shape.
+/// "42s", "3m 5s", "4m", "1h 2m" - the CLI's units, without zero-padding and
+/// without a zero minor unit (#396). The label is in a proportional font, so
+/// padding never kept its width steady anyway.
 fn format_elapsed(elapsed: Duration) -> String {
     let seconds = elapsed.as_secs();
-    match (seconds / 3600, (seconds % 3600) / 60, seconds % 60) {
-        (0, 0, s) => format!("{s}s"),
-        (0, m, s) => format!("{m}m {s:02}s"),
-        (h, m, _) => format!("{h}h {m:02}m"),
+    let (major, minor) = match (seconds / 3600, (seconds % 3600) / 60, seconds % 60) {
+        (0, 0, s) => return format!("{s}s"),
+        (0, m, s) => (format!("{m}m"), (s > 0).then(|| format!("{s}s"))),
+        (h, m, _) => (format!("{h}h"), (m > 0).then(|| format!("{m}m"))),
+    };
+    match minor {
+        Some(minor) => format!("{major} {minor}"),
+        None => major,
     }
 }
 
