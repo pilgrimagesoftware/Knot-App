@@ -53,7 +53,8 @@ impl WorkspaceWindow {
         };
         let refs = self.panel_attachment_refs(id);
         let borrowed: Vec<&str> = refs.iter().map(String::as_str).collect();
-        let styling = ComposerStyling::new(&input, &borrowed, palette, cx);
+        let invocation = self.agent_invocation(id);
+        let styling = ComposerStyling::new(&input, &borrowed, palette, invocation, cx);
         self.panel_composer_styling.insert(id, styling);
     }
 

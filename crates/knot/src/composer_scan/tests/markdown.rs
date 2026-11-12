@@ -134,6 +134,6 @@ fn an_unclosed_link_is_prose() {
 #[test]
 fn ordinary_prose_yields_nothing() {
     let text = "Please look at the failing test and tell me what you think is wrong.";
-    assert!(crate::composer_scan::scan(text, &[]).is_empty(),
+    assert!(crate::composer_scan::scan(text, &[], knot_core::agent_type::Invocation::SLASH).is_empty(),
             "nothing here is a construct");
 }

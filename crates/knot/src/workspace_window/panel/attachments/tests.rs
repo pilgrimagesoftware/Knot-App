@@ -46,12 +46,15 @@ fn a_reference_scans_as_one_attachment() {
         let buffer = format!("look at {reference} please");
 
         let chips: Vec<&str> =
-            scan(&buffer, &[reference.as_str()]).into_iter()
-                                                .filter(|span| {
-                                                    span.construct == Construct::Attachment
-                                                })
-                                                .map(|span| &buffer[span.range])
-                                                .collect();
+            scan(&buffer,
+                 &[reference.as_str()],
+                 knot_core::agent_type::Invocation::SLASH).into_iter()
+                                                          .filter(|span| {
+                                                              span.construct
+                                                              == Construct::Attachment
+                                                          })
+                                                          .map(|span| &buffer[span.range])
+                                                          .collect();
 
         assert_eq!(chips,
                    vec![reference.as_str()],

@@ -68,16 +68,11 @@ fn inserting_replaces_the_token_in_place(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
-    cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Slash,
-                               "send",
-                               window,
-                               cx)
-      });
+    cx.update(|window, cx| replace_lookup_token(&input, &token, "send", window, cx));
 
     let (value, cursor) = cx.update(|_, cx| {
                                 let state = input.read(cx);
@@ -95,16 +90,11 @@ fn inserting_over_a_lone_token_leaves_only_the_token(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
-    cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Slash,
-                               "worktree",
-                               window,
-                               cx)
-      });
+    cx.update(|window, cx| replace_lookup_token(&input, &token, "worktree", window, cx));
 
     let value = cx.update(|_, cx| input.read(cx).value().to_string());
     assert_eq!(value, "/worktree");
@@ -117,16 +107,11 @@ fn inserting_leaves_the_rest_of_the_buffer_untouched(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
-    cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Slash,
-                               "check",
-                               window,
-                               cx)
-      });
+    cx.update(|window, cx| replace_lookup_token(&input, &token, "check", window, cx));
 
     let value = cx.update(|_, cx| input.read(cx).value().to_string());
     assert_eq!(value, "first line\n/check");
@@ -140,17 +125,14 @@ fn inserting_a_mention_replaces_only_the_typed_token(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
     assert_eq!(token.trigger, Trigger::Mention);
 
     cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Mention,
-                               "crates/knot-git/src/lib.rs",
-                               window,
-                               cx)
+          replace_lookup_token(&input, &token, "crates/knot-git/src/lib.rs", window, cx)
       });
 
     let value = cx.update(|_, cx| input.read(cx).value().to_string());
@@ -166,15 +148,12 @@ fn inserting_an_image_path_attaches_nothing(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
     cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Mention,
-                               "images/screenshot.png",
-                               window,
-                               cx)
+          replace_lookup_token(&input, &token, "images/screenshot.png", window, cx)
       });
 
     let value = cx.update(|_, cx| input.read(cx).value().to_string());
@@ -189,23 +168,20 @@ fn inserting_a_path_with_a_space_keeps_it_one_token(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
-    cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Mention,
-                               "my notes/today.md",
-                               window,
-                               cx)
-      });
+    cx.update(|window, cx| replace_lookup_token(&input, &token, "my notes/today.md", window, cx));
 
     let value = cx.update(|_, cx| input.read(cx).value().to_string());
     assert_eq!(value, r"@my\ notes/today.md");
 
     let reparsed = cx.update(|_, cx| {
                          let state = input.read(cx);
-                         active_token(&state.value(), state.value().len())
+                         active_token(&state.value(),
+                                      state.value().len(),
+                                      knot_core::agent_type::Invocation::SLASH)
                      });
     assert_eq!(reparsed.map(|token| token.range),
                Some(0..value.len()),
@@ -221,16 +197,11 @@ fn inserting_a_command_does_not_escape_it(cx: &mut TestAppContext) {
 
     let token = cx.update(|_, cx| {
                       let state = input.read(cx);
-                      active_token(&state.value(), state.cursor()).expect("an active token")
+                      active_token(&state.value(),
+                                 state.cursor(),
+                                 knot_core::agent_type::Invocation::SLASH).expect("an active token")
                   });
-    cx.update(|window, cx| {
-          replace_lookup_token(&input,
-                               token.range.clone(),
-                               Trigger::Slash,
-                               "review",
-                               window,
-                               cx)
-      });
+    cx.update(|window, cx| replace_lookup_token(&input, &token, "review", window, cx));
 
     assert_eq!(cx.update(|_, cx| input.read(cx).value().to_string()),
                "/review");

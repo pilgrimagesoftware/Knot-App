@@ -11,6 +11,7 @@
 
 mod incremental;
 mod markdown;
+mod skills;
 mod tokens;
 
 use crate::composer_scan::Construct;
@@ -23,7 +24,9 @@ use crate::composer_scan::scan;
 /// says `["**ship it**"]` survives an edit to the fixture above it, and a
 /// test that says `[12..23]` does not.
 fn found(text: &str, construct: Construct) -> Vec<&str> {
-    slices(text, &scan(text, &[]), construct)
+    slices(text,
+           &scan(text, &[], knot_core::agent_type::Invocation::SLASH),
+           construct)
 }
 
 /// As [`found`], over spans already in hand.
