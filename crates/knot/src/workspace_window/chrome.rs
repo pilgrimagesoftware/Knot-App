@@ -36,10 +36,14 @@ use crate::app_support::single_line;
 /// from its content, which fails exactly when it matters - a status that
 /// mentions a path, a folder named after a person.
 ///
-/// `items_start`, not `items_center`: the persona line has no
+/// The icon is centred on the line's *first text line* (#403), not on the
+/// whole block and not on its top edge. It sits in a box styled like the
+/// text that holds a zero-width space, so the box is exactly one line tall
+/// whatever the font and size, and `items_center` centres the icon in it.
+/// The row itself stays `items_start`: the persona line has no
 /// `whitespace_nowrap`, so a name like "DevOps Troubleshooter" wraps onto a
-/// second line, and a centred icon floats into the gap between the two. On a
-/// single-line row the two are indistinguishable.
+/// second line, and centring against the block would float the icon into the
+/// gap between the two.
 pub(crate) fn detail_line(icon: gpui_kit::assets::IconName, text: String, size: DetailLineSize,
                           font_family: String, font_size: gpui_kit::Pixels, cx: &App)
                           -> gpui_kit::AnyElement {
@@ -54,11 +58,24 @@ pub(crate) fn detail_line(icon: gpui_kit::assets::IconName, text: String, size: 
         DetailLineSize::Small => Icon::new(icon).xsmall(),
         DetailLineSize::Body => Icon::new(icon).small(),
     };
-    let line = div().font_family(font_family)
-                    .text_size(font_size)
-                    .text_color(muted);
+    let text_style = |element: gpui_kit::Div| {
+        let element = element.font_family(font_family.clone())
+                             .text_size(font_size)
+                             .text_color(muted);
+        match size {
+            DetailLineSize::Small => element.text_xs(),
+            DetailLineSize::Body => element,
+        }
+    };
+    let icon_box =
+        text_style(h_flex()).flex_shrink_0()
+                            .items_center()
+                            .child(div().debug_selector(|| format!("detail-line-icon-{text}"))
+                                        .child(icon.text_color(muted)))
+                            .child(ONE_LINE_STRUT);
+    let line = text_style(div()).debug_selector(|| format!("detail-line-text-{text}"));
     let line = match size {
-        DetailLineSize::Small => line.text_xs(),
+        DetailLineSize::Small => line,
         // The status and folder lines truncate rather than wrap, which is
         // what keeps a long path from growing the row.
         DetailLineSize::Body => line.overflow_hidden().whitespace_nowrap().text_ellipsis(),
@@ -67,10 +84,14 @@ pub(crate) fn detail_line(icon: gpui_kit::assets::IconName, text: String, size: 
             .min_w_0()
             .gap_1()
             .items_start()
-            .child(icon.text_color(muted).flex_shrink_0())
+            .child(icon_box)
             .child(line.min_w_0().child(text))
             .into_any_element()
 }
+
+/// A zero-width space: text with no width that still lays out one line of
+/// its style's height, which is what sizes a detail line's icon box.
+const ONE_LINE_STRUT: &str = "\u{200B}";
 
 /// Whether an agent of this type runs a terminal process of its own.
 ///
@@ -192,6 +213,9 @@ pub(crate) fn context_usage_indicator(used: u64, size: u64, cx: &App) -> impl In
                            }
                        }).size(px(16.)))
 }
+
+#[cfg(test)]
+mod detail_line_tests;
 
 #[cfg(test)]
 mod context_usage_tests {
