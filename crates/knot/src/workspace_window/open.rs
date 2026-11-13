@@ -199,6 +199,7 @@ impl WorkspaceWindow {
                     panel_status_landed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
                     panel_stopping: BTreeSet::new(),
                     panel_prompt_results: Arc::new(Mutex::new(Vec::new())),
+                    panel_steer_results: Arc::new(Mutex::new(Vec::new())),
                     panel_lists: BTreeMap::new(),
                     panel_list_row_counts: BTreeMap::new(),
                     panel_finds: BTreeMap::new(),

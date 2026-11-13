@@ -265,6 +265,10 @@ pub(crate) struct WorkspaceWindow {
     pub(super) panel_status_landed:              Arc<AtomicBool>,
     pub(super) panel_stopping:                   BTreeSet<Uuid>,
     pub(super) panel_prompt_results:             Arc<Mutex<Vec<PanelPromptResult>>>,
+    /// Steers' answers, landed off the main thread and drained by the
+    /// repaint poll (#26).
+    pub(super) panel_steer_results:
+        Arc<Mutex<Vec<crate::workspace_window::panel::steer::PanelSteerResult>>>,
     /// One virtualized conversation list per Panel-mode agent that has
     /// been viewed, created lazily - the `ListState` backing
     /// `render_panel`'s virtualization, and the target of the response

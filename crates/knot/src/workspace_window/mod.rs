@@ -69,6 +69,8 @@ mod single_adapter_tests;
 mod status_dot_tests;
 #[cfg(test)]
 mod status_repaint_tests;
+#[cfg(test)]
+mod steer_tests;
 pub(crate) mod terminal_font;
 mod terminal_pane;
 mod title;

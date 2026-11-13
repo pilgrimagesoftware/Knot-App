@@ -8,6 +8,7 @@
 mod agent_info;
 mod json_rpc;
 mod permission;
+pub(crate) mod steering;
 mod stop_reason;
 
 pub use agent_info::AgentInfo;
@@ -66,16 +67,26 @@ pub struct InitializeResult {
             rename = "agentInfo",
             deserialize_with = "agent_info::lenient")]
     pub agent_info:       Option<AgentInfo>,
+    /// The response's top-level `_meta`, where extensions such as steering
+    /// advertise themselves.
+    #[serde(default, rename = "_meta")]
+    pub meta:             Option<Value>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct AgentCapabilities {
     #[serde(default, rename = "loadSession")]
-    pub supports_resume:  bool,
+    pub supports_resume:   bool,
     #[serde(default, rename = "permissionModes")]
-    pub permission_modes: Vec<String>,
+    pub permission_modes:  Vec<String>,
     #[serde(default, rename = "mcpCapabilities")]
-    pub mcp_capabilities: McpCapabilities,
+    pub mcp_capabilities:  McpCapabilities,
+    /// Whether the agent accepts `_session/steering` (#26). Not a
+    /// capability field: it is read from the `initialize` response's
+    /// top-level `_meta` when the client connects - see
+    /// [`steering::advertises_steering`].
+    #[serde(skip)]
+    pub supports_steering: bool,
 }
 
 /// Which MCP server transports the agent accepts in `session/new`'s

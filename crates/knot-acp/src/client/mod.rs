@@ -17,6 +17,7 @@ use crate::protocol::{
 use crate::transport::{Transport, TransportEvent};
 
 mod events;
+mod steer;
 pub use events::{NewSession, SessionEvent};
 
 /// How a pending `session/request_permission` gets answered: with the
@@ -191,8 +192,11 @@ impl AcpClient {
             }
         });
 
+        let mut capabilities = init_result.capabilities;
+        capabilities.supports_steering =
+            crate::protocol::steering::advertises_steering(init_result.meta.as_ref());
         Ok((Self { transport,
-                   capabilities: init_result.capabilities,
+                   capabilities,
                    agent_info: init_result.agent_info.map(Arc::new),
                    init_config_options: init_result.config_options,
                    permission_pending,

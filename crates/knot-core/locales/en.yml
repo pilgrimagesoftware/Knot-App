@@ -132,6 +132,8 @@ panel:
   # its own when the limit lifts, or now if the user says so.
   queued_session_limit: "Waiting for the session limit to reset"
   send_queued_now: "Send now"
+  steer_queued_now: "Steer now: give this to the agent in the turn it is running"
+  queued_steering: "Steering into the running turn"
   failed: "Failed"
   retry: "Retry"
   retry_queued: "Retry this message"

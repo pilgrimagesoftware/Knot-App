@@ -214,6 +214,14 @@ impl PanelState {
         self.push_prompt(text, true);
     }
 
+    /// Records a prompt the agent took into the turn it is already running
+    /// (#26). Unlike [`Self::push_prompt`] it starts nothing: the turn's
+    /// start time, its streamed-text count and whether the reader follows
+    /// all belong to the turn, which goes on.
+    pub fn push_steered_prompt(&mut self, text: String) {
+        self.push_message(PanelMessage::User(text));
+    }
+
     /// Records a prompt and starts its turn, like
     /// [`Self::push_user_message`], with `follow` deciding whether the
     /// response tracks. A prompt Knot sent of its own accord passes whether
