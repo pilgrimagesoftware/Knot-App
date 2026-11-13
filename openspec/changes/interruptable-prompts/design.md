@@ -31,6 +31,12 @@ Request, sent only when `initialize` advertised `_meta.steering.supported`:
 
 Result: `{"outcome":"injected"}` while a turn runs, or
 `{"outcome":"promptRequired","reason":"noRunningTurn"}` when none does.
+`codex-acp` 2.5.0 honours `idleBehavior: "promptRequired"` too (it parses
+and forwards it in its steering params), and answers `{"outcome":"failed"}`
+when its `turn/steer` errors; Knot maps that to `SteerOutcome::Failed`, so
+the entry is marked failed like any failed delivery. Older `codex-acp`
+releases (1.13.1) ignore `promptRequired` and answer `startedNewTurn` or
+`failed`; both are handled, the first as delivered.
 `startedNewTurn` is what an adapter sends a client that does not opt in; Knot
 always opts in, so it treats `startedNewTurn` as delivered too. Knot cannot
 stop the adapter from starting that turn, and sending the prompt again would
@@ -56,6 +62,14 @@ which the queue already handles. So Send keeps queueing, and steering is an
 explicit action on a queued entry: Steer now, beside Send now
 (`prompt_queue::send_now`), which is a different thing - it moves an entry to
 the head past a usage-limit hold.
+
+## Permissions
+
+`acp-panel-ui`'s "Permission gate is independent of the queue" holds for a
+steer too: Steer now is offered only while no permission request is
+pending, so nothing reaches an agent waiting on the user. `claude-agent-acp`
+would defer such a steer itself (priority `later`), but `codex-acp` and
+opencode make no such promise, so the gate is Knot's.
 
 ## States
 

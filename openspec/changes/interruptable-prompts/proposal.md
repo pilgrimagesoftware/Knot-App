@@ -65,8 +65,9 @@ can't do is hand the agent a prompt while the turn is still running.
   (`workspace_window/prompt_queue.rs`, `workspace_window/panel/prompt.rs`
   `deliver_panel_prompt` / `drain_panel_prompt`).
 - Specs: ADDED `acp-client` "Steering a running turn" and `acp-panel-ui`
-  "Steer a queued prompt into the running turn". "Prompt queue" is not
-  modified: a steered prompt leaves the queue, and the queue keeps its
-  behaviour for everything still in it.
+  "Steer a queued prompt into the running turn" and "Steering waits for a pending permission"; MODIFIED `acp-panel-ui`
+  "Prompt queue" with the steered prompt as the one exception to its
+  one-turn-at-a-time order. "Permission gate is independent of the queue"
+  is unchanged: Steer now is not offered while a permission is pending.
 - Size: medium. The protocol part is small; most of the work is the queue
   action, its states, and tests against a fake adapter.

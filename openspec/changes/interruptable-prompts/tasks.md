@@ -19,6 +19,10 @@
       running turn and removes the entry; promptRequired returns it to the
       head; an error marks it failed
 
+- [x] 2.4 Offer Steer now only while no permission request is pending, per
+      "Permission gate is independent of the queue" (#419 review)
+- [x] 2.5 Map `codex-acp`'s `{"outcome": "failed"}` to a failed entry
+
 ## 3. Tests
 
 - [x] 3.1 `initialize` with and without `_meta.steering.supported`, using the
@@ -26,6 +30,8 @@
 - [x] 3.2 A fake adapter answering `injected`, `promptRequired` and an error;
       the queue state after each
 - [x] 3.3 Steer now is absent for an agent that does not advertise steering
+- [x] 3.4 A pending permission offers no Steer now and sends nothing; a
+      `failed` outcome leaves the entry queued and marked; mutation-checked
 
 ## 4. Docs
 

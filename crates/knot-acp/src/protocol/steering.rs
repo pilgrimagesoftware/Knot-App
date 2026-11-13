@@ -45,6 +45,9 @@ pub enum SteerOutcome {
     StartedNewTurn,
     /// No turn was running: the client must send the prompt itself.
     PromptRequired,
+    /// The adapter could not steer (`codex-acp` answers `{"outcome":
+    /// "failed"}` when its `turn/steer` errors). The prompt did not arrive.
+    Failed,
 }
 
 impl SteerOutcome {
@@ -55,6 +58,7 @@ impl SteerOutcome {
             "injected" => Some(Self::Injected),
             "startedNewTurn" => Some(Self::StartedNewTurn),
             "promptRequired" => Some(Self::PromptRequired),
+            "failed" => Some(Self::Failed),
             _ => None,
         }
     }
@@ -63,7 +67,7 @@ impl SteerOutcome {
     pub fn delivered(self) -> bool {
         match self {
             Self::Injected | Self::StartedNewTurn => true,
-            Self::PromptRequired => false,
+            Self::PromptRequired | Self::Failed => false,
         }
     }
 }
@@ -100,6 +104,9 @@ mod tests {
         assert_eq!(SteerOutcome::from_response(&json!({"outcome": "promptRequired",
                                                        "reason": "noRunningTurn"})),
                    Some(SteerOutcome::PromptRequired));
+        assert_eq!(SteerOutcome::from_response(&json!({"outcome": "failed"})),
+                   Some(SteerOutcome::Failed));
+        assert!(!SteerOutcome::Failed.delivered());
         assert_eq!(SteerOutcome::from_response(&json!({"outcome": "later"})),
                    None);
         assert!(SteerOutcome::Injected.delivered());

@@ -215,3 +215,36 @@ fn an_agent_without_steering_is_not_steered(cx: &mut TestAppContext) {
     assert_eq!(fixture.queue_texts(cx),
                vec![("also the tests".into(), false, false)]);
 }
+
+/// `acp-panel-ui`'s "Permission gate is independent of the queue": while
+/// the agent waits on a permission, no Steer now is offered and nothing is
+/// sent.
+#[gpui_kit::test]
+fn a_pending_permission_holds_steering(cx: &mut TestAppContext) {
+    let fixture = queued_behind_a_turn(true, "injected", cx);
+    let agent = fixture.agent;
+    if let PanelSessionSlot::Ready(handle) = &*fixture.slot.lock() {
+        handle.state().lock().pending_permission =
+            Some(knot_acp::PermissionRequest { rpc_id:          serde_json::json!(9),
+                                               tool_call_id:    "tc1".to_string(),
+                                               tool_call_title: None,
+                                               options:         Vec::new(), });
+    }
+
+    assert!(!cx.update(|cx| fixture.view.read(cx).can_steer(agent)));
+    assert!(!fixture.steer(cx));
+    assert_eq!(fixture.queue_texts(cx),
+               vec![("also the tests".into(), false, false)]);
+}
+
+/// `codex-acp` answers `{"outcome": "failed"}` when it cannot steer: the
+/// prompt stays queued, marked failed.
+#[gpui_kit::test]
+fn a_failed_steer_stays_queued(cx: &mut TestAppContext) {
+    let fixture = queued_behind_a_turn(true, "failed", cx);
+
+    assert!(fixture.steer(cx));
+
+    assert_eq!(fixture.queue_texts(cx),
+               vec![("also the tests".into(), false, true)]);
+}

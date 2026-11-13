@@ -20,7 +20,10 @@ pub(crate) type PanelSteerResult = (Uuid, Uuid, Result<SteerOutcome, String>);
 
 impl WorkspaceWindow {
     /// Whether `id`'s queued prompts can be steered right now: its session
-    /// is connected, its agent advertised steering, and a turn is running.
+    /// is connected, its agent advertised steering, a turn is running, and
+    /// no permission request is waiting. That last is `acp-panel-ui`'s
+    /// "Permission gate is independent of the queue": nothing reaches the
+    /// agent while it waits on the user, steered or not.
     pub(in crate::workspace_window) fn can_steer(&self, id: Uuid) -> bool {
         let Some(slot) = self.panel_sessions.get(&id)
         else {
@@ -31,7 +34,11 @@ impl WorkspaceWindow {
         else {
             return false;
         };
-        handle.session().supports_steering() && handle.state().lock().turn_active
+        let state = handle.state();
+        let state = state.lock();
+        handle.session().supports_steering()
+        && state.turn_active
+        && state.pending_permission.is_none()
     }
 
     /// Steers queued entry `entry` of agent `id` into its running turn.
@@ -77,8 +84,12 @@ impl WorkspaceWindow {
         let drained = !results.is_empty();
         for (id, entry, result) in results {
             let settled = match &result {
-                Ok(outcome) if outcome.delivered() => SteerResult::Delivered,
-                Ok(_) => SteerResult::Returned,
+                Ok(SteerOutcome::Injected | SteerOutcome::StartedNewTurn) => SteerResult::Delivered,
+                Ok(SteerOutcome::PromptRequired) => SteerResult::Returned,
+                Ok(SteerOutcome::Failed) => {
+                    eprintln!("agent {id}'s adapter could not steer the prompt");
+                    SteerResult::Failed
+                }
                 Err(error) => {
                     eprintln!("failed to steer agent {id}'s prompt: {error}");
                     SteerResult::Failed
