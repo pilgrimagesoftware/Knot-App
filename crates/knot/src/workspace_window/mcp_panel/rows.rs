@@ -63,6 +63,24 @@ pub(crate) fn is_dismissed(row: &ServerRow, dismissed: &BTreeSet<String>) -> boo
     row.state != ServerState::Connected && dismissed.contains(&row.name)
 }
 
+/// Remove from `dismissed` every server `inventory` reports connected,
+/// answering whether anything was removed (#417).
+///
+/// A dismissal lasts until the server connects: connecting it means the user
+/// set it up after all. Without this the name would outlive that, and a later
+/// sign-in lapse or failure would be filed under "dismissed" instead of
+/// counting as needing attention. A connection seen from any agent clears it,
+/// since dismissals are kept by name across agents.
+pub(crate) fn clear_connected(dismissed: &mut BTreeSet<String>, inventory: &Inventory) -> bool {
+    let before = dismissed.len();
+    for row in inventory.rows() {
+        if row.state == ServerState::Connected {
+            dismissed.remove(&row.name);
+        }
+    }
+    dismissed.len() != before
+}
+
 /// The section's rows: Knot's own first, then the agent's own, with the ones
 /// the user has dismissed ([`is_dismissed`]) last.
 ///

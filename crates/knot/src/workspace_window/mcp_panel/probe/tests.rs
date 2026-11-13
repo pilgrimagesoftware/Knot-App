@@ -133,3 +133,20 @@ fn nothing_under_render_starts_a_probe() {
         }
     }
 }
+
+/// #417: the clearing rule is only as good as its caller. The drain - the one
+/// place a probe's inventory lands - must hand each landed inventory to it, or
+/// a dismissal outlives the server connecting and nothing fails.
+#[test]
+fn a_landed_probe_clears_dismissals_of_connected_servers() {
+    let probe = read("mcp_panel/probe.rs");
+    let drain = probe.split("fn drain_mcp_probes")
+                     .nth(1)
+                     .expect("the drain exists");
+    let body = drain.split("\n    }\n")
+                    .next()
+                    .expect("the drain has a body");
+
+    assert!(body.contains("self.clear_connected_dismissals("),
+            "the drain must clear dismissals of servers a probe reports connected");
+}
