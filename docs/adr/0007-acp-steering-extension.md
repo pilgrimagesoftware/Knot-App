@@ -1,7 +1,7 @@
 ---
 id: ADR-0007
 title: Steer mid-turn prompts through the `_session/steering` ACP extension
-status: proposed
+status: accepted
 date: 2026-11-13
 tags: [acp, protocol, panel]
 ---
