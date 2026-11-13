@@ -13,6 +13,11 @@ pub enum AcpError {
     #[error("agent does not support session/load (resume)")]
     ResumeNotSupported,
 
+    /// The agent did not advertise `_session/steering` on `initialize`, so a
+    /// steer was not sent (#26).
+    #[error("agent does not support steering a running turn")]
+    SteeringNotSupported,
+
     #[error("acp error response (code {code}): {message}")]
     Rpc { code: i64, message: String },
 
