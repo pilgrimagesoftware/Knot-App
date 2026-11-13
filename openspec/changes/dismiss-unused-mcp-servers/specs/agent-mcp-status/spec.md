@@ -57,13 +57,25 @@ server SHALL NOT be dismissable.
 - **THEN** it is listed with the others again, and counts as needing
   attention if its state does
 
-#### Scenario: A dismissed server that connects
-
-- **WHEN** a server the user dismissed is reported as connected
-- **THEN** it is listed with the others, as connected, rather than under the
-  not-connected heading
-
 #### Scenario: Dismissal outlives the window
 
 - **WHEN** the user dismisses a server and Knot is restarted
 - **THEN** that server is still dismissed, in every agent that reports it
+
+### Requirement: A dismissal ends when the server connects
+
+A dismissal SHALL last only until the server is reported connected, by any
+agent's probe. Then it SHALL be cleared and saved, so a server that later
+lapses or fails needs attention again.
+
+#### Scenario: A dismissed server that connects
+
+- **WHEN** a server the user dismissed is reported as connected
+- **THEN** it is listed with the others, as connected, rather than under the
+  not-connected heading, and it is no longer dismissed
+
+#### Scenario: A dismissed server that connects and later fails needs attention again
+
+- **WHEN** a server the user dismissed is reported connected, and a later probe
+  reports it needing authentication or failed
+- **THEN** it is listed with the others and counts as needing attention

@@ -239,3 +239,19 @@ fn dismissing_everything_that_wanted_attention_quiets_the_header() {
             "the count still covers every server: {quiet}");
     assert_ne!(quiet, loud);
 }
+
+/// #417: a dismissed server that connects, and later needs authentication
+/// again, is named as needing attention once more.
+#[test]
+fn a_dismissed_server_that_connected_and_lapsed_needs_attention_again() {
+    let mut dismissed: BTreeSet<String> = ["notion".to_owned()].into();
+    crate::workspace_window::mcp_panel::rows::clear_connected(&mut dismissed,
+        &Inventory::probed(vec![row("notion", ServerState::Connected)]));
+
+    let lapsed = Inventory::probed(vec![row("notion", ServerState::NeedsAuthentication)]);
+    let text = summary_text(&SectionStatus { dismissed: &dismissed,
+                                             ..status(Some(&lapsed)) });
+
+    assert!(text.contains("notion"),
+            "the lapsed server needs attention again: {text}");
+}

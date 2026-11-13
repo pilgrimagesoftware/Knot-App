@@ -10,3 +10,5 @@
 - [x] 1.4 Dismiss and restore controls on the agent's own rows
 - [x] 1.5 Tests for row order, the header, and persistence across a restart
       and from an older preferences document
+- [x] 1.6 Clear a dismissal when a probe reports the server connected, so a
+      later lapse needs attention again (#417)

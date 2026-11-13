@@ -20,7 +20,9 @@ unused would hide the second. So the user decides.
 - Dismissal is kept by server name as a preference, across agents and
   launches.
 - A dismissed server that connects rejoins the list as connected, so
-  dismissing can never hide a server that is in use.
+  dismissing can never hide a server that is in use. Connecting also clears
+  the dismissal (#417), so a server that later lapses or fails needs
+  attention again rather than sinking back under "dismissed".
 - Knot's own server cannot be dismissed.
 
 ## Impact

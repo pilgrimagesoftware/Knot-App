@@ -273,8 +273,9 @@ claude.ai connector, and each one you haven't connected reads as "Needs authenti
 one counting as needing attention, click the crossed-out eye at the end of its row. It moves to
 the bottom of the list under "Not connected — dismissed", and the collapsed section stops naming
 it. Click the eye on a dismissed row to bring it back. Knot remembers dismissed servers by name,
-for every agent and across launches. A dismissed server that connects is listed with the others
-again.
+for every agent and across launches. A dismissed server that connects is no longer dismissed: it
+is listed with the others again, and if it later needs authentication or fails, it is named as
+needing attention like any other.
 
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that

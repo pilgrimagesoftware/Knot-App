@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use knot_mcp_probe::{Inventory, ServerRow, ServerState, Target};
 
-use super::{SectionRow, compose, is_dismissed};
+use super::{SectionRow, clear_connected, compose, is_dismissed};
 
 const KNOT_URL: &str = "http://127.0.0.1:8767/mcp";
 
@@ -227,4 +227,50 @@ fn a_dismissed_server_that_connects_rejoins_the_list() {
     assert_eq!(agent_names(&rows),
                ["Sheets", "Linear"],
                "a connected server keeps its place");
+}
+
+/// #417: a dismissal lasts until the server connects, then it is gone.
+#[test]
+fn a_connected_server_clears_its_dismissal() {
+    let mut dismissed = dismissing(&["Sheets", "Notion"]);
+    let inventory =
+        Inventory::probed(vec![http("Sheets", "https://sheets.example", ServerState::Connected),
+                               http("Notion",
+                                    "https://mcp.notion.com",
+                                    ServerState::NeedsAuthentication)]);
+
+    assert!(clear_connected(&mut dismissed, &inventory),
+            "a name was cleared");
+    assert_eq!(dismissed,
+               dismissing(&["Notion"]),
+               "only the connected one is cleared");
+    assert!(!clear_connected(&mut dismissed, &inventory),
+            "nothing left to clear, so nothing to save");
+}
+
+/// The case #417 reported: connected once, then failing again, the server
+/// is listed with the others rather than under "dismissed".
+#[test]
+fn a_server_that_connected_and_then_lapsed_is_not_dismissed() {
+    let mut dismissed = dismissing(&["Sheets"]);
+    clear_connected(&mut dismissed,
+                    &Inventory::probed(vec![http("Sheets",
+                                                 "https://sheets.example",
+                                                 ServerState::Connected)]));
+
+    let lapsed =
+        Inventory::probed(vec![http("Sheets",
+                                    "https://sheets.example",
+                                    ServerState::NeedsAuthentication),
+                               http("Linear", "https://mcp.linear.app", ServerState::Connected)]);
+    let rows = compose(running(), KNOT_URL, Some(&lapsed), &dismissed);
+
+    assert_eq!(agent_names(&rows),
+               ["Sheets", "Linear"],
+               "listed in place, not sunk");
+    let SectionRow::Agent(sheets) = &rows[1]
+    else {
+        panic!("expected Sheets' row");
+    };
+    assert!(!is_dismissed(sheets, &dismissed));
 }
