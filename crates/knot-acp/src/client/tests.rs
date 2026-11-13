@@ -65,7 +65,7 @@ async fn a_finished_prompt_emits_a_turn_end_with_the_responses_stop_reason() {
     let event = events.recv().await.expect("a turn-end event");
     assert!(matches!(&event,
                      SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason })
-                     if stop_reason == "end_turn"),
+                     if stop_reason.as_str() == "end_turn"),
             "expected a turn end, got {event:?}");
 }
 
@@ -384,7 +384,7 @@ async fn ordered_updates_stream_text_and_turn_end() {
     let second = events.recv().await.expect("second update");
 
     assert!(matches!(first, SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == "hello"));
-    assert!(matches!(second, SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason }) if stop_reason == "end_turn"));
+    assert!(matches!(second, SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason }) if stop_reason.as_str() == "end_turn"));
 }
 
 /// The next event, which has to be the report that the request with

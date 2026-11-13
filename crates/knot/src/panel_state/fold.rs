@@ -129,13 +129,17 @@ impl PanelState {
                                                               new_text: diff });
                 }
             }
-            // A turn-end carries only a stop reason; the tool call/message
-            // list already reflects the turn's last known state and needs
-            // no change beyond ending the turn (which flips the last
-            // response from "track toggle" to "response action bar").
-            SessionUpdate::TurnEnd { .. } => {
+            // The tool call/message list already reflects the turn's last
+            // known state; ending the turn flips the last response from
+            // "track toggle" to "response action bar". A turn the agent
+            // stopped early also says why (#22): otherwise it reads as an
+            // agent that announced work and went idle.
+            SessionUpdate::TurnEnd { stop_reason } => {
                 self.turn_active = false;
                 self.clear_permissions();
+                if let Some(notice) = stop_notice(&stop_reason) {
+                    self.push_notice(notice);
+                }
             }
             SessionUpdate::ConfigOptionUpdate { config_options } => {
                 self.config_options = config_options;
@@ -192,4 +196,24 @@ impl PanelState {
             self.push_message(PanelMessage::Assistant(text));
         }
     }
+}
+
+/// The notice a turn that ended for `reason` adds to the conversation, or
+/// `None` when there is nothing to say: the agent finished, the user's own
+/// Stop cancelled it, or the prompt failed - which the conversation already
+/// shows as the error itself.
+pub(super) fn stop_notice(reason: &knot_acp::StopReason) -> Option<String> {
+    use knot_acp::StopReason;
+    let key = match reason {
+        StopReason::EndTurn | StopReason::Cancelled | StopReason::Error => return None,
+        StopReason::MaxTokens => "panel.turn_stopped_max_tokens",
+        StopReason::MaxTurnRequests => "panel.turn_stopped_max_turn_requests",
+        StopReason::Refusal => "panel.turn_stopped_refusal",
+        StopReason::Other(other) => {
+            return Some(knot_core::l10n::t_with("panel.turn_stopped_other",
+                                                &[("reason", other)])
+                                                .to_string());
+        }
+    };
+    Some(knot_core::l10n::t(key).to_string())
 }
