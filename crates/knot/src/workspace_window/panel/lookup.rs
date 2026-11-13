@@ -33,6 +33,7 @@ use gpui_kit::component::input::MoveUp;
 use gpui_kit::div;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::px;
+use knot_core::agent_type::Invocation;
 use uuid::Uuid;
 
 use crate::app_support::single_line;
@@ -54,12 +55,18 @@ const LOOKUP_MAX_VISIBLE: usize = 8;
 
 /// One agent's lookup state.
 ///
-/// `registry` is the memoized scan: building it reads skill roots off disk,
+/// `registry` and `skills` are the memoized scan: building them reads skill
+/// roots off disk,
 /// which must not happen per keystroke (see the crate's "no I/O on the
 /// render path" rule), so it is built on the first lookup for an agent and
 /// dropped with the rest of that agent's state in `teardown_session`.
 pub(in crate::workspace_window) struct PanelLookup {
+    /// What the agent's command character opens: knot's commands, and its
+    /// skills too when they share the character.
     registry:  LookupRegistry,
+    /// What a skill character of its own opens - Codex's `$` (#272). Empty
+    /// for an agent whose skills share the command character.
+    skills:    LookupRegistry,
     /// Index into the *filtered* list, clamped on use - the filter narrows
     /// under the selection as the user types.
     selected:  usize,
@@ -72,8 +79,9 @@ pub(in crate::workspace_window) struct PanelLookup {
 }
 
 impl PanelLookup {
-    fn new(registry: LookupRegistry) -> Self {
+    fn new(registry: LookupRegistry, skills: LookupRegistry) -> Self {
         Self { registry,
+               skills,
                selected: 0,
                dismissed: None,
                scroll: ScrollHandle::new() }
@@ -92,19 +100,37 @@ impl WorkspaceWindow {
                 store.agent(id)
                      .map(|agent| std::path::PathBuf::from(&agent.folder))
             };
-            let registry = LookupRegistry::for_agent(folder.as_deref());
-            self.panel_lookups.insert(id, PanelLookup::new(registry));
+            let invocation = self.agent_invocation(id);
+            let registry = LookupRegistry::for_agent(folder.as_deref(), invocation);
+            let skills = if invocation.separate_skills() {
+                LookupRegistry::skills_for(folder.as_deref())
+            }
+            else {
+                LookupRegistry::default()
+            };
+            self.panel_lookups
+                .insert(id, PanelLookup::new(registry, skills));
         }
         self.panel_lookups
             .get_mut(&id)
             .expect("just inserted the lookup state")
     }
 
-    /// The token under the caret in `input`, or `None` when there is none.
-    fn panel_lookup_token(input: &Entity<PanelInputState>, cx: &gpui_kit::App)
+    /// How `id`'s prompt opens a command and a skill, from its type's row in
+    /// the roster (#272). An in-memory read of the store, no I/O.
+    pub(in crate::workspace_window::panel) fn agent_invocation(&self, id: Uuid) -> Invocation {
+        let store = self.store.lock();
+        store.agent(id).map_or(Invocation::SLASH, |agent| {
+                           knot_core::agent_type::invocation(&agent.agent_type)
+                       })
+    }
+
+    /// The token under the caret in `id`'s `input`, or `None` when there is
+    /// none.
+    fn panel_lookup_token(&self, id: Uuid, input: &Entity<PanelInputState>, cx: &gpui_kit::App)
                           -> Option<ActiveToken> {
         let state = input.read(cx);
-        active_token(&state.value(), state.cursor())
+        active_token(&state.value(), state.cursor(), self.agent_invocation(id))
     }
 
     /// The entries the open lookup would list for `id`, or `None` when the
@@ -115,11 +141,13 @@ impl WorkspaceWindow {
     fn panel_lookup_matches(&mut self, id: Uuid, input: &Entity<PanelInputState>,
                             cx: &gpui_kit::App)
                             -> Option<(ActiveToken, Vec<LookupMatch>)> {
-        let token = Self::panel_lookup_token(input, cx)?;
+        let token = self.panel_lookup_token(id, input, cx)?;
         // The trigger under the caret decides which list this is, so the
-        // two lookups cannot both be open: there is one caret.
-        if token.trigger == Trigger::Mention {
-            return self.panel_mention_matches(id, token);
+        // lookups cannot be open together: there is one caret.
+        match token.trigger {
+            Trigger::Mention => return self.panel_mention_matches(id, token),
+            Trigger::Skill => return self.panel_skill_matches(id, token),
+            Trigger::Command => {}
         }
         let lookup = self.panel_lookup(id);
         // Typing past what Esc closed reopens the popup; retyping the same
@@ -138,6 +166,25 @@ impl WorkspaceWindow {
                                                       .map(LookupEntry::library_prompt)
                                                       .collect::<Vec<_>>();
         matches.extend(Matcher::Substring.matching(&prompts, &token.filter));
+        if matches.is_empty() {
+            return None;
+        }
+        lookup.selected = lookup.selected.min(matches.len() - 1);
+        Some((token, matches))
+    }
+
+    /// The skill lookup's matches for `id` - the agent's own skill
+    /// character, Codex's `$` - or `None` when it is closed. Skills alone:
+    /// knot's commands and library prompts are behind the command
+    /// character, which is where the agent accepts them.
+    fn panel_skill_matches(&mut self, id: Uuid, token: ActiveToken)
+                           -> Option<(ActiveToken, Vec<LookupMatch>)> {
+        let lookup = self.panel_lookup(id);
+        if lookup.dismissed.as_deref() == Some(token.filter.as_str()) {
+            return None;
+        }
+        lookup.dismissed = None;
+        let matches = lookup.skills.matching(&token.filter);
         if matches.is_empty() {
             return None;
         }
@@ -190,7 +237,7 @@ impl WorkspaceWindow {
                                                            cx: &mut Context<Self>)
                                                            -> Option<impl IntoElement + use<>> {
         let (token, matches) = self.panel_lookup_matches(id, input, cx)?;
-        let trigger = token.trigger;
+        let opener = token.opener;
         let selected = self.panel_lookup(id).selected;
         let scroll = self.panel_lookup(id).scroll.clone();
         let input = input.clone();
@@ -213,7 +260,7 @@ impl WorkspaceWindow {
                                     entry.entry.token.clone()
                                 }
                                 else {
-                                    format!("{}{}", trigger.char(), entry.entry.token)
+                                    format!("{opener}{}", entry.entry.token)
                                 }))
                     .child(div().flex_1()
                                 .min_w_0()
@@ -286,7 +333,8 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn dismiss_panel_lookup(&mut self, id: Uuid,
                                                             input: &Entity<PanelInputState>,
                                                             cx: &gpui_kit::App) {
-        let filter = Self::panel_lookup_token(input, cx).map(|token| token.filter);
+        let filter = self.panel_lookup_token(id, input, cx)
+                         .map(|token| token.filter);
         self.panel_lookup(id).dismissed = filter.or(Some(String::new()));
     }
 
@@ -311,12 +359,7 @@ impl WorkspaceWindow {
             self.expand_library_prompt(id, prompt, token.range.clone(), input, window, cx);
             return;
         }
-        replace_lookup_token(input,
-                             token.range.clone(),
-                             token.trigger,
-                             &matches[selected].entry.token,
-                             window,
-                             cx);
+        replace_lookup_token(input, &token, &matches[selected].entry.token, window, cx);
         // The token now reads as the inserted entry; marking that dismissed
         // keeps the popup shut over the completed token instead of
         // reopening on the exact match the user just chose.
@@ -403,7 +446,8 @@ impl WorkspaceWindow {
     }
 }
 
-/// Writes `/<token>` over the buffer span `range` holds, leaving the caret
+/// Writes `entry` behind `active`'s own trigger character - `/entry`,
+/// `$entry`, `@entry` - over the span `active` covers, leaving the caret
 /// just after it and the rest of the buffer untouched.
 ///
 /// This is what makes the insertion surgical. The textarea exposes no
@@ -411,21 +455,21 @@ impl WorkspaceWindow {
 /// selection does exactly that, and `replace` documents the caret landing
 /// at the end of what it wrote - so the two calls together are the spec's
 /// "token is replaced in place" with no whole-buffer fallback needed.
-pub(crate) fn replace_lookup_token(input: &Entity<PanelInputState>,
-                                   range: std::ops::Range<usize>, trigger: Trigger, token: &str,
-                                   window: &mut Window, cx: &mut gpui_kit::App) {
+pub(crate) fn replace_lookup_token(input: &Entity<PanelInputState>, active: &ActiveToken,
+                                   entry: &str, window: &mut Window, cx: &mut gpui_kit::App) {
     // The trigger comes from the token being replaced, not from the entry:
-    // an `@` completion writes an `@` back, and a `/` completion a `/`.
+    // an `@` completion writes an `@` back, a `/` completion a `/`, and a
+    // Codex skill completion the `$` it was opened with (#272).
     //
     // A mention is escaped so a path containing a space stays one token.
     // A command token has no whitespace to protect, and escaping it would
     // only make the buffer harder to read.
-    let text = match trigger {
-        Trigger::Slash => format!("/{token}"),
-        Trigger::Mention => format!("@{}", escape_token(token)),
+    let text = match active.trigger {
+        Trigger::Command | Trigger::Skill => format!("{}{entry}", active.opener),
+        Trigger::Mention => format!("{}{}", active.opener, escape_token(entry)),
     };
     input.update(cx, |state, cx| {
-             state.set_selected_range(range, cx);
+             state.set_selected_range(active.range.clone(), cx);
              state.replace(&text, window, cx);
          });
 }

@@ -37,14 +37,15 @@ pub(crate) const AGENT_TERM: &str = "xterm-256color";
 pub(crate) const AGENT_COLORTERM: &str = "truecolor";
 
 /// The notices, lower-case, that open a line of Claude Code's output when
-/// its session hits a usage limit (#36): the hard stop, and the wrap-up
-/// allowance it may grant first ("Usage limit reached · wrapping up").
-/// Matched at the start of a line and followed by nothing or by
+/// its session hits a usage limit (#36) without naming the limit: the
+/// wrap-up allowance it may grant first ("Usage limit reached · wrapping
+/// up"). Matched at the start of a line and followed by nothing or by
 /// [`SESSION_LIMIT_SEPARATORS`], so an agent writing about limits does not
-/// stop itself.
-pub(crate) const SESSION_LIMIT_NOTICES: &[&str] = &["usage limit reached",
-                                                    "you've hit your session limit",
-                                                    "you've hit your usage limit"];
+/// stop itself. The hard stop names its limit - "You've hit your 5-hour
+/// limit" - and is recognised by
+/// `knot_agents::SessionLimit::opens_with_named_limit` instead, whatever
+/// the limit is called (#397).
+pub(crate) const SESSION_LIMIT_NOTICES: &[&str] = &["usage limit reached"];
 
 /// Longest line the session-limit scan reads, in bytes. The notices are a
 /// short status line; a longer line is prose and is skipped unread, which

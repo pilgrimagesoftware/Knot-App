@@ -26,6 +26,9 @@ mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;
 mod git_panel;
+mod handoff;
+#[cfg(test)]
+mod handoff_tests;
 #[cfg(test)]
 mod inbox_nudge_tests;
 mod issue_filter;
@@ -66,6 +69,8 @@ mod single_adapter_tests;
 mod status_dot_tests;
 #[cfg(test)]
 mod status_repaint_tests;
+#[cfg(test)]
+mod steer_tests;
 pub(crate) mod terminal_font;
 mod terminal_pane;
 mod title;

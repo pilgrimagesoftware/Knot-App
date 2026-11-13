@@ -143,7 +143,7 @@ dependencies = [
  "libc",
  "log",
  "miow",
- "parking_lot",
+ "parking_lot 0.12.5",
  "piper",
  "polling",
  "regex-automata",
@@ -2439,7 +2439,7 @@ dependencies = [
 [[package]]
 name = "gpui-base"
 version = "0.7.0"
-source = "git+https://github.com/pilgrimagesoftware/gpui-kit?branch=knot%2Flink-hover-0.7.0#270145a61418d8f898d4ebdc7b0960a99ec5d2a6"
+source = "git+https://github.com/pilgrimagesoftware/gpui-kit?branch=knot%2Ftable-columns-0.7.0#f5afb17da948860e3239807bda3f947a5f24a9f3"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -2601,7 +2601,7 @@ dependencies = [
  "objc2-core-foundation",
  "objc2-core-video",
  "parking",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-project",
  "pollster 0.4.0",
  "postage",
@@ -2653,7 +2653,7 @@ dependencies = [
  "metal",
  "objc",
  "objc2 0.6.5",
- "parking_lot",
+ "parking_lot 0.12.5",
 ]
 
 [[package]]
@@ -2692,7 +2692,7 @@ dependencies = [
  "http",
  "http-body",
  "log",
- "parking_lot",
+ "parking_lot 0.12.5",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -2726,7 +2726,7 @@ dependencies = [
  "notify-rust",
  "oo7",
  "open",
- "parking_lot",
+ "parking_lot 0.12.5",
  "raw-window-handle",
  "smallvec",
  "smol",
@@ -2783,7 +2783,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "objc2-screen-capture-kit",
  "objc2-user-notifications",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pathfinder_geometry",
  "raw-window-handle",
  "semver",
@@ -2903,7 +2903,7 @@ dependencies = [
  "chrono",
  "flume",
  "futures",
- "parking_lot",
+ "parking_lot 0.12.5",
  "rand 0.9.5",
  "wasm_thread",
  "web-time",
@@ -2970,7 +2970,7 @@ dependencies = [
  "gpui-pre-wgpu",
  "js-sys",
  "log",
- "parking_lot",
+ "parking_lot 0.12.5",
  "raw-window-handle",
  "smallvec",
  "unicode-properties",
@@ -3000,7 +3000,7 @@ dependencies = [
  "image",
  "itertools 0.14.0",
  "log",
- "parking_lot",
+ "parking_lot 0.12.5",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -3030,7 +3030,7 @@ dependencies = [
  "image",
  "itertools 0.14.0",
  "log",
- "parking_lot",
+ "parking_lot 0.12.5",
  "rand 0.9.5",
  "raw-window-handle",
  "smallvec",
@@ -3080,7 +3080,7 @@ dependencies = [
  "async-channel",
  "gpui-kit",
  "libc",
- "parking_lot",
+ "parking_lot 0.12.5",
  "portable-pty",
  "thiserror 2.0.21",
 ]
@@ -3872,7 +3872,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "knot"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "gpui-kit",
  "gpui-terminal",
@@ -3904,7 +3904,7 @@ dependencies = [
  "objc2-core-foundation",
  "objc2-core-text",
  "objc2-foundation 0.3.2",
- "parking_lot",
+ "parking_lot 0.13.0",
  "regex",
  "serde",
  "serde_json",
@@ -3917,9 +3917,9 @@ dependencies = [
 
 [[package]]
 name = "knot-acp"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
- "parking_lot",
+ "parking_lot 0.13.0",
  "serde",
  "serde_json",
  "tempfile",
@@ -3929,18 +3929,18 @@ dependencies = [
 
 [[package]]
 name = "knot-activity"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-agents",
  "knot-core",
- "parking_lot",
+ "parking_lot 0.13.0",
  "thiserror 2.0.21",
  "tokio",
 ]
 
 [[package]]
 name = "knot-agent-launch"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-acp",
  "knot-core",
@@ -3954,7 +3954,7 @@ dependencies = [
 
 [[package]]
 name = "knot-agents"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "jiff",
  "knot-core",
@@ -3966,7 +3966,7 @@ dependencies = [
 
 [[package]]
 name = "knot-autopilot"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -3976,7 +3976,7 @@ dependencies = [
 
 [[package]]
 name = "knot-core"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "arc-swap",
  "directories",
@@ -3992,10 +3992,10 @@ dependencies = [
 
 [[package]]
 name = "knot-discovery"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "notify 8.2.1",
- "parking_lot",
+ "parking_lot 0.13.0",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -4003,7 +4003,7 @@ dependencies = [
 
 [[package]]
 name = "knot-forge"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -4015,7 +4015,7 @@ dependencies = [
 
 [[package]]
 name = "knot-git"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "insta",
  "tempfile",
@@ -4024,10 +4024,10 @@ dependencies = [
 
 [[package]]
 name = "knot-history"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "directories",
- "parking_lot",
+ "parking_lot 0.13.0",
  "rusqlite",
  "serde",
  "serde_json",
@@ -4038,7 +4038,7 @@ dependencies = [
 
 [[package]]
 name = "knot-library"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4051,13 +4051,13 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "async-trait",
  "axum",
  "knot-agents",
  "knot-core",
- "parking_lot",
+ "parking_lot 0.13.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -4071,7 +4071,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-client"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-processes",
  "serde",
@@ -4082,7 +4082,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-probe"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-core",
  "knot-mcp-client",
@@ -4094,7 +4094,7 @@ dependencies = [
 
 [[package]]
 name = "knot-mcp-tools"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "async-trait",
  "knot-activity",
@@ -4108,7 +4108,7 @@ dependencies = [
  "knot-messaging",
  "knot-subagents",
  "knot-tasks",
- "parking_lot",
+ "parking_lot 0.13.0",
  "serde",
  "serde_json",
  "tempfile",
@@ -4120,10 +4120,10 @@ dependencies = [
 
 [[package]]
 name = "knot-messaging"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-agents",
- "parking_lot",
+ "parking_lot 0.13.0",
  "serde",
  "thiserror 2.0.21",
  "uuid",
@@ -4131,17 +4131,17 @@ dependencies = [
 
 [[package]]
 name = "knot-processes"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-processes",
- "parking_lot",
+ "parking_lot 0.13.0",
  "tempfile",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "knot-subagents"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "serde_json",
  "thiserror 2.0.21",
@@ -4150,7 +4150,7 @@ dependencies = [
 
 [[package]]
 name = "knot-tasks"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "knot-core",
  "serde",
@@ -4161,7 +4161,7 @@ dependencies = [
 
 [[package]]
 name = "knot-terminal"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "gpui-terminal",
  "knot-acp",
@@ -4169,7 +4169,7 @@ dependencies = [
  "knot-agent-launch",
  "knot-agents",
  "knot-core",
- "parking_lot",
+ "parking_lot 0.13.0",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
@@ -4179,10 +4179,10 @@ dependencies = [
 
 [[package]]
 name = "knot-watch"
-version = "1.36.0"
+version = "1.37.0"
 dependencies = [
  "notify 8.2.1",
- "parking_lot",
+ "parking_lot 0.13.0",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -4307,9 +4307,9 @@ dependencies = [
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.38.2"
+version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8"
+checksum = "14a5f01b87b92705d07b433c06f96cbc764637d81a0bffb5734ce17cf0f9a2b3"
 dependencies = [
  "cc",
  "pkg-config",
@@ -4357,6 +4357,15 @@ name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
+dependencies = [
+ "scopeguard",
+]
+
+[[package]]
+name = "lock_api"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65d91b22da179613dcf4d6ec8349563f52a363f6849e03b00dd0a185ec4a59af"
 dependencies = [
  "scopeguard",
 ]
@@ -5469,8 +5478,18 @@ version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
 dependencies = [
- "lock_api",
- "parking_lot_core",
+ "lock_api 0.4.14",
+ "parking_lot_core 0.9.12",
+]
+
+[[package]]
+name = "parking_lot"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9cf937ca4e1d0b7578784559063422fc39ae7c5a00f02471f2614d5486fd226"
+dependencies = [
+ "lock_api 0.5.0",
+ "parking_lot_core 0.10.0",
 ]
 
 [[package]]
@@ -5481,7 +5500,19 @@ checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall",
+ "redox_syscall 0.5.18",
+ "smallvec",
+ "windows-link 0.2.1",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cfff060068cc18aa7815010fcaf80c68c7fb9e85fc7f5c0f9bf142c21d19826"
+dependencies = [
+ "libc",
+ "redox_syscall 0.9.5",
  "smallvec",
  "windows-link 0.2.1",
 ]
@@ -5783,7 +5814,7 @@ dependencies = [
  "crossbeam-queue",
  "futures",
  "log",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-project",
  "pollster 0.2.5",
  "static_assertions",
@@ -6291,6 +6322,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "580c875845b41ecb1564ad1ae4703044cef774145e3d7a94dc2b3fa7c97868fd"
+dependencies = [
+ "bitflags 2.13.1",
+]
+
+[[package]]
 name = "redox_users"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6491,9 +6531,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.40.2"
+version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23f2a97da3e3873c73cb2a2e71b35c40ff95e0b1eefa8d72d8499a6928c3b5b3"
+checksum = "da9bba6f3506135e120a6586df05be18b48d18896600646a4bec8f993d91a594"
 dependencies = [
  "bitflags 2.13.1",
  "fallible-iterator",
@@ -6880,7 +6920,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3afb591f9cdb6223c88ba39269aff895620c7f0716dc42b705b5733d5c7c0823"
 dependencies = [
  "annotate-snippets",
- "base64 0.23.1",
+ "base64 0.22.1",
  "encoding_rs_io",
  "granit-parser",
  "nohash-hasher",
@@ -7232,7 +7272,7 @@ version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
 dependencies = [
- "lock_api",
+ "lock_api 0.4.14",
 ]
 
 [[package]]
@@ -7241,7 +7281,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "023a211cb3138dbc438680b32560ad89f699977624c9f8dbb95a47d5b4c07dd3"
 dependencies = [
- "lock_api",
+ "lock_api 0.4.14",
 ]
 
 [[package]]
@@ -7299,7 +7339,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf776ba3fa74f83bf4b63c3dcbbf82173db2632ed8452cb2d891d33f459de70f"
 dependencies = [
  "new_debug_unreachable",
- "parking_lot",
+ "parking_lot 0.12.5",
  "phf_shared 0.11.3",
  "precomputed-hash",
  "serde",
@@ -7588,7 +7628,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -8180,9 +8220,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "ureq"
-version = "3.5.0"
+version = "3.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde93ff05758a36a851a398a772b0b79a82fbe3c186a46f2696baaeaf84c966b"
+checksum = "e7be76686bdf7198002062423ca0d8cf9b75a27c8e1de804513b97e97b555d9d"
 dependencies = [
  "base64 0.23.1",
  "cookie_store",
@@ -8199,9 +8239,9 @@ dependencies = [
 
 [[package]]
 name = "ureq-proto"
-version = "0.6.5"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "841583fc36089d7d59419568ae157f43a5a03a2e5a81ba87c77d1596ef46e922"
+checksum = "622dce33c252115466d83f63e9744a18f12b4406aae51a01c15ad8fcf1185eb3"
 dependencies = [
  "base64 0.23.1",
  "http",
@@ -8684,7 +8724,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot",
+ "parking_lot 0.12.5",
  "portable-atomic",
  "profiling",
  "raw-window-handle",
@@ -8716,7 +8756,7 @@ dependencies = [
  "log",
  "naga",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.5",
  "portable-atomic",
  "profiling",
  "raw-window-handle",
@@ -8802,7 +8842,7 @@ dependencies = [
  "objc2-quartz-core 0.3.2",
  "once_cell",
  "ordered-float",
- "parking_lot",
+ "parking_lot 0.12.5",
  "portable-atomic",
  "portable-atomic-util",
  "profiling",
@@ -8937,7 +8977,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a4df73e95feddb9ec1a7e9c2ca6323b8c97d5eeeff78d28f1eccdf19c882b24"
 dependencies = [
- "parking_lot",
+ "parking_lot 0.12.5",
  "rayon",
  "thiserror 2.0.21",
  "windows 0.61.3",

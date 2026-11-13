@@ -96,7 +96,9 @@ fn a_buffer_can_hold_both_kinds_of_token() {
 #[test]
 fn an_attachment_reference_is_found_wherever_it_sits() {
     let text = "see @shot.png and @shot.png again";
-    let spans = scan(text, &["@shot.png"]);
+    let spans = scan(text,
+                     &["@shot.png"],
+                     knot_core::agent_type::Invocation::SLASH);
     assert_eq!(slices(text, &spans, Construct::Attachment),
                vec!["@shot.png", "@shot.png"],
                "the same file attached twice is two chips, not one");

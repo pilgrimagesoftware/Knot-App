@@ -86,6 +86,9 @@ impl WorkspaceWindow {
         // (#36). A local: the take clears as it reads.
         let session_limits_landed = self.drain_session_limits();
         let prompts_completed = self.drain_prompt_results();
+        // A local, like the line above: a steer's answer lands off the main
+        // thread, and nothing else repaints the row it settles (#26).
+        let steers_settled = self.drain_steer_results();
         let panel_states_moved = self.sync_panel_agent_states(cx);
         // The other half of that sync. `sync_panel_agent_states` says a
         // transition was sent to a tracker; this says one the tracker already
@@ -189,6 +192,7 @@ impl WorkspaceWindow {
            || processes_sampled
            || mcp_probed
            || prompts_completed
+           || steers_settled
            || prompts_sent
            || nudges_dropped
            || pull_requests_recorded

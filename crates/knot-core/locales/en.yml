@@ -98,6 +98,10 @@ panel:
     automated: "Automated message"
   error_registration: "The agent could not be registered: %{error}"
   error_answer: "The agent could not answer: %{error}"
+  turn_stopped_max_tokens: "Turn stopped: the model reached its output token limit."
+  turn_stopped_max_turn_requests: "Turn stopped: the turn reached its limit of model requests."
+  turn_stopped_refusal: "Turn stopped: the agent refused to continue."
+  turn_stopped_other: "Turn stopped: %{reason}"
   allow: "Allow"
   deny: "Deny"
   close: "Close"
@@ -128,6 +132,8 @@ panel:
   # its own when the limit lifts, or now if the user says so.
   queued_session_limit: "Waiting for the session limit to reset"
   send_queued_now: "Send now"
+  steer_queued_now: "Steer now: give this to the agent in the turn it is running"
+  queued_steering: "Steering into the running turn"
   failed: "Failed"
   retry: "Retry"
   retry_queued: "Retry this message"
@@ -969,6 +975,13 @@ mcp:
   # pick the server in its own UI, so the tooltip says what to type.
   action_manage_hint: "Fix in %{agent} — then type %{send}"
   action_copy_target: "Copy address"
+  # A server the user does not use (#402) - a connector their account offers
+  # but they never set up. Dismissing it stops it counting as needing
+  # attention; it is listed under the heading below until it connects.
+  action_dismiss: "Not using this server — stop listing it as needing attention"
+  action_restore: "List this server as needing attention again"
+  group_dismissed: "Not connected — dismissed"
+  dismiss_failed: "Couldn't save that MCP server choice: %{error}"
   # A row's tools (#40): the disclosure control, and what the list says
   # while it is being fetched or when it cannot be.
   tools_show: "Show tools"

@@ -55,6 +55,9 @@ impl WorkspaceWindow {
                                                            agent.id)
                       });
 
+        // Taken only once a session is actually starting, so a restart of
+        // an agent left stopped keeps its note for whenever it does (#405).
+        let handoff = self.panel_handoffs.remove(&id);
         let (connecting, progress) = panel_session::PanelSessionSlot::connecting();
         let slot = Arc::new(Mutex::new(connecting));
         self.panel_sessions.insert(id, Arc::clone(&slot));
@@ -146,10 +149,18 @@ impl WorkspaceWindow {
                             }
                             None => delivery,
                         };
+                        // The handoff note rides on the first turn, so the
+                        // new conversation reads it before anything else.
+                        // A fresh session only: `connect_into` sends this
+                        // prompt only when nothing was resumed (#405).
                         let registration_prompt =
                             knot_agent_launch::acp_registration_prompt(false,
                                                                        delivery.first_turn
-                                                                               .as_deref());
+                                                                               .as_deref())
+                                .map(|prompt| match &handoff {
+                                    Some(note) => format!("{prompt} {note}"),
+                                    None => prompt,
+                                });
                         let session_meta =
                             knot_agent_launch::merge_session_meta(options.session_meta,
                                                                   delivery.session_meta);

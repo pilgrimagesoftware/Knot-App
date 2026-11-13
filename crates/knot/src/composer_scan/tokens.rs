@@ -12,8 +12,17 @@
 //!   `crates/knot/src` is a path and not three tokens.
 //! - `@` has to follow whitespace or begin the buffer, so the `@` in
 //!   `paul@example.com` is part of an address.
+//! - A skill trigger of its own - Codex's `$` (#272) - follows the `@` rule,
+//!   since Codex reads `$name` anywhere in a prompt, and must open a name: the
+//!   trigger alone at the end of its line, while it is being typed, or one
+//!   followed by a letter, so `costs $5` and `pay $ 5` stay prose.
+//!
+//! The characters are the agent's, from `knot_core::agent_type::Invocation`;
+//! nothing here assumes `/`.
 
 use std::ops::Range;
+
+use knot_core::agent_type::Invocation;
 
 use crate::composer_scan::scan::Construct;
 use crate::composer_scan::scan::Span;
@@ -23,24 +32,45 @@ use crate::composer_scan::scan::Span;
 /// Scanning by line rather than by byte is what makes the incremental path
 /// safe: a token cannot span a newline, so a line's tokens depend on that
 /// line alone.
-pub(super) fn scan(text: &str, range: Range<usize>) -> Vec<Span> {
+pub(super) fn scan(text: &str, range: Range<usize>, invocation: Invocation) -> Vec<Span> {
     let mut spans = Vec::new();
     for (start, line) in super::markdown::lines_in(text, range) {
-        scan_slash(line, start, &mut spans);
+        scan_command(line, start, invocation.command, &mut spans);
+        if invocation.separate_skills() {
+            scan_skills(line, start, invocation.skill, &mut spans);
+        }
         scan_mentions(line, start, &mut spans);
     }
     spans
 }
 
-/// The leading `/command`, if this line has one.
-fn scan_slash(line: &str, start: usize, spans: &mut Vec<Span>) {
+/// The leading command - `/command` - if this line has one.
+fn scan_command(line: &str, start: usize, trigger: char, spans: &mut Vec<Span>) {
     let indent = line.len() - line.trim_start().len();
-    if !line[indent..].starts_with('/') {
+    if !line[indent..].starts_with(trigger) {
         return;
     }
     let slash = start + indent;
     let end = token_end(line, indent, start);
     spans.push(Span::new(slash..end, Construct::SlashToken));
+}
+
+/// Every skill token - `$skill` - on this line, for an agent whose skills
+/// have a trigger of their own.
+fn scan_skills(line: &str, start: usize, trigger: char, spans: &mut Vec<Span>) {
+    for (offset, _) in line.match_indices(trigger) {
+        if !at_word_boundary(line, offset) {
+            continue;
+        }
+        let opens_a_name = line[offset + trigger.len_utf8()..].chars()
+                                                              .next()
+                                                              .is_none_or(char::is_alphabetic);
+        if !opens_a_name {
+            continue;
+        }
+        let end = token_end(line, offset, start);
+        spans.push(Span::new(start + offset..end, Construct::SkillToken));
+    }
 }
 
 /// Every `@mention` on this line.
@@ -65,7 +95,8 @@ fn at_word_boundary(line: &str, offset: usize) -> bool {
 }
 
 /// The buffer offset one past the token that starts at `offset` in
-/// `line`.
+/// `line`. Every trigger is one ASCII byte - `/`, `$`, `@` - which is what
+/// lets the token's text start one byte after it.
 ///
 /// A token ends at the first **unescaped** whitespace. A path containing a
 /// space is a real path, and a mention of one has to stay one token or the

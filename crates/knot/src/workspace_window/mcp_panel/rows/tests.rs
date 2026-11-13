@@ -1,6 +1,8 @@
+use std::collections::BTreeSet;
+
 use knot_mcp_probe::{Inventory, ServerRow, ServerState, Target};
 
-use super::{SectionRow, compose};
+use super::{SectionRow, clear_connected, compose, is_dismissed};
 
 const KNOT_URL: &str = "http://127.0.0.1:8767/mcp";
 
@@ -28,6 +30,9 @@ fn knot_row(rows: &[SectionRow]) -> &super::KnotRow {
     }
 }
 
+/// No server dismissed: what every test before #402 assumed.
+static NONE_DISMISSED: BTreeSet<String> = BTreeSet::new();
+
 #[test]
 fn knots_row_comes_first_and_the_agents_follow() {
     let inventory =
@@ -36,7 +41,7 @@ fn knots_row_comes_first_and_the_agents_follow() {
                                     ServerState::Connected),
                                http("sentry", "https://sentry.example/mcp", ServerState::Failed)]);
 
-    let rows = compose(running(), KNOT_URL, Some(&inventory));
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &NONE_DISMISSED);
 
     assert_eq!(rows.len(), 3);
     assert_eq!(knot_row(&rows).state, running());
@@ -47,7 +52,7 @@ fn knots_row_comes_first_and_the_agents_follow() {
 /// supervisor, so it draws before any probe has completed.
 #[test]
 fn knots_row_is_present_before_any_probe() {
-    let rows = compose(running(), KNOT_URL, None);
+    let rows = compose(running(), KNOT_URL, None, &NONE_DISMISSED);
 
     assert_eq!(rows.len(), 1);
     assert_eq!(knot_row(&rows).state, running());
@@ -63,7 +68,10 @@ fn knots_row_is_present_when_disabled_or_stopped() {
                   knot_mcp::ServerState::Stopped,
                   knot_mcp::ServerState::Starting]
     {
-        let rows = compose(state.clone(), KNOT_URL, Some(&Inventory::probed(vec![])));
+        let rows = compose(state.clone(),
+                           KNOT_URL,
+                           Some(&Inventory::probed(vec![])),
+                           &NONE_DISMISSED);
 
         assert_eq!(rows.len(), 1, "{state:?} lost Knot's row");
         assert_eq!(knot_row(&rows).state, state);
@@ -84,7 +92,7 @@ fn knots_server_registered_by_hand_merges_into_one_row() {
                                                 "http://localhost:8767/mcp/",
                                                 ServerState::Connected)]);
 
-    let rows = compose(running(), KNOT_URL, Some(&inventory));
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &NONE_DISMISSED);
 
     assert_eq!(rows.len(),
                2,
@@ -101,7 +109,7 @@ fn knots_server_registered_by_hand_merges_into_one_row() {
 fn the_merged_row_keeps_knots_own_state() {
     let inventory = Inventory::probed(vec![http("knot", KNOT_URL, ServerState::Failed)]);
 
-    let rows = compose(running(), KNOT_URL, Some(&inventory));
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &NONE_DISMISSED);
 
     assert_eq!(rows.len(), 1);
     assert_eq!(knot_row(&rows).state,
@@ -116,7 +124,7 @@ fn a_server_named_like_knots_but_pointing_elsewhere_is_not_merged() {
     let inventory =
         Inventory::probed(vec![http("knot", "http://127.0.0.1:9999/mcp", ServerState::Connected)]);
 
-    let rows = compose(running(), KNOT_URL, Some(&inventory));
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &NONE_DISMISSED);
 
     assert_eq!(rows.len(), 2);
     assert!(!knot_row(&rows).also_configured);
@@ -136,7 +144,7 @@ fn knots_row_never_offers_the_delegated_action() {
                                                     next_delay: std::time::Duration::from_secs(2),
                                                     error:      "connection refused".to_owned(), }]
     {
-        let rows = compose(state.clone(), KNOT_URL, None);
+        let rows = compose(state.clone(), KNOT_URL, None, &NONE_DISMISSED);
 
         assert!(!rows[0].offers_action(),
                 "{state:?} offered an action on Knot's own row");
@@ -153,7 +161,7 @@ fn an_agent_row_offers_the_action_exactly_when_its_state_does() {
                                http("c", "https://c.example/mcp", ServerState::Disabled),
                                http("d", "https://d.example/mcp", ServerState::Unknown)]);
 
-    let rows = compose(running(), KNOT_URL, Some(&inventory));
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &NONE_DISMISSED);
 
     assert!(!rows[1].offers_action(), "connected");
     assert!(rows[2].offers_action(), "needs authentication");
@@ -166,8 +174,103 @@ fn an_agent_row_offers_the_action_exactly_when_its_state_does() {
 /// knows that one regardless.
 #[test]
 fn an_unprobeable_agent_still_shows_knots_row() {
-    let rows = compose(running(), KNOT_URL, Some(&Inventory::Unprobeable));
+    let rows = compose(running(),
+                       KNOT_URL,
+                       Some(&Inventory::Unprobeable),
+                       &NONE_DISMISSED);
 
     assert_eq!(rows.len(), 1);
     assert_eq!(knot_row(&rows).state, running());
+}
+
+fn dismissing(names: &[&str]) -> BTreeSet<String> {
+    names.iter().map(|name| (*name).to_owned()).collect()
+}
+
+/// #402: a connector the user never set up sinks below the servers in use.
+#[test]
+fn dismissed_servers_are_listed_last() {
+    let inventory =
+        Inventory::probed(vec![http("Notion",
+                                    "https://mcp.notion.com",
+                                    ServerState::NeedsAuthentication),
+                               http("Sheets", "https://sheets.example", ServerState::Connected),
+                               http("Linear",
+                                    "https://mcp.linear.app",
+                                    ServerState::NeedsAuthentication)]);
+
+    let rows = compose(running(),
+                       KNOT_URL,
+                       Some(&inventory),
+                       &dismissing(&["Notion"]));
+
+    assert_eq!(agent_names(&rows), ["Sheets", "Linear", "Notion"]);
+}
+
+/// Dismissing quiets a server the user does not use, never one that works.
+#[test]
+fn a_dismissed_server_that_connects_rejoins_the_list() {
+    let dismissed = dismissing(&["Sheets"]);
+    let connected = http("Sheets", "https://sheets.example", ServerState::Connected);
+    let unauthenticated = http("Sheets",
+                               "https://sheets.example",
+                               ServerState::NeedsAuthentication);
+
+    assert!(!is_dismissed(&connected, &dismissed));
+    assert!(is_dismissed(&unauthenticated, &dismissed));
+    assert!(!is_dismissed(&unauthenticated, &NONE_DISMISSED));
+
+    let inventory =
+        Inventory::probed(vec![connected,
+                               http("Linear", "https://mcp.linear.app", ServerState::Failed)]);
+    let rows = compose(running(), KNOT_URL, Some(&inventory), &dismissed);
+    assert_eq!(agent_names(&rows),
+               ["Sheets", "Linear"],
+               "a connected server keeps its place");
+}
+
+/// #417: a dismissal lasts until the server connects, then it is gone.
+#[test]
+fn a_connected_server_clears_its_dismissal() {
+    let mut dismissed = dismissing(&["Sheets", "Notion"]);
+    let inventory =
+        Inventory::probed(vec![http("Sheets", "https://sheets.example", ServerState::Connected),
+                               http("Notion",
+                                    "https://mcp.notion.com",
+                                    ServerState::NeedsAuthentication)]);
+
+    assert!(clear_connected(&mut dismissed, &inventory),
+            "a name was cleared");
+    assert_eq!(dismissed,
+               dismissing(&["Notion"]),
+               "only the connected one is cleared");
+    assert!(!clear_connected(&mut dismissed, &inventory),
+            "nothing left to clear, so nothing to save");
+}
+
+/// The case #417 reported: connected once, then failing again, the server
+/// is listed with the others rather than under "dismissed".
+#[test]
+fn a_server_that_connected_and_then_lapsed_is_not_dismissed() {
+    let mut dismissed = dismissing(&["Sheets"]);
+    clear_connected(&mut dismissed,
+                    &Inventory::probed(vec![http("Sheets",
+                                                 "https://sheets.example",
+                                                 ServerState::Connected)]));
+
+    let lapsed =
+        Inventory::probed(vec![http("Sheets",
+                                    "https://sheets.example",
+                                    ServerState::NeedsAuthentication),
+                               http("Linear", "https://mcp.linear.app", ServerState::Connected)]);
+    let rows = compose(running(), KNOT_URL, Some(&lapsed), &dismissed);
+
+    assert_eq!(agent_names(&rows),
+               ["Sheets", "Linear"],
+               "listed in place, not sunk");
+    let SectionRow::Agent(sheets) = &rows[1]
+    else {
+        panic!("expected Sheets' row");
+    };
+    assert!(!is_dismissed(sheets, &dismissed));
 }

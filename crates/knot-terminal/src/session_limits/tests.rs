@@ -114,3 +114,24 @@ fn an_osc_title_is_not_read_as_text() {
     assert_eq!(scan(&[b"\x1b]0;Usage limit reached\x07plain output\n"]),
                None);
 }
+
+/// #397: the hard stop as Claude Code prints it now, naming its limit, drawn
+/// the way it draws the older one.
+#[test]
+fn the_renamed_hard_stop_is_read_with_its_reset_time() {
+    for name in ["5-hour limit", "weekly limit", "Opus limit"] {
+        let line = format!("\x1b[31m  \u{23bf}  You\u{2019}ve hit your {name} \u{b7} resets 9am \
+                            (Europe/Paris)\x1b[39m\r\n");
+        assert_eq!(scan(&[line.as_bytes()]),
+                   resets("9am (Europe/Paris)"),
+                   "{name}");
+    }
+}
+
+/// Fast mode's cooldown uses the same lead and the agent carries on at
+/// normal speed, so it is not a stop.
+#[test]
+fn the_fast_mode_cooldown_is_not_a_limit() {
+    assert_eq!(scan(&[b"You've hit your fast limit \xc2\xb7 resets in 4m\r\n"]),
+               None);
+}

@@ -12,6 +12,7 @@
 //! enforces over this directory - a probe on the render path would run an
 //! agent's CLI per keystroke.
 
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use gpui_kit::assets::IconName;
@@ -30,7 +31,7 @@ use uuid::Uuid;
 use super::agent_sections::SectionLayout;
 use crate::app_support::single_line;
 use crate::workspace_window::WorkspaceWindow;
-use crate::workspace_window::mcp_panel::rows::{SectionRow, compose};
+use crate::workspace_window::mcp_panel::rows::{SectionRow, compose, is_dismissed};
 use crate::workspace_window::mcp_panel::summary::{SectionStatus, state_label, summary_text};
 
 #[cfg(test)]
@@ -118,7 +119,9 @@ impl WorkspaceWindow {
 
         let expanded = self.mcp_section(agent_id)
                            .is_some_and(|section| section.expanded);
-        let rows = self.mcp_rows(agent_id, cx);
+        let settings = crate::settings_global::read(cx);
+        let dismissed = &settings.dismissed_mcp_servers;
+        let rows = self.mcp_rows(agent_id, dismissed, cx);
         let status = SectionStatus { is_running: self.agent_session_root(agent_id).is_some(),
                                      expanded,
                                      probing: self.mcp_probing(agent_id),
@@ -126,7 +129,8 @@ impl WorkspaceWindow {
                                                     .and_then(|section| section.inventory()),
                                      failure: self.mcp_section(agent_id)
                                                   .and_then(|section| section.failure()),
-                                     row_count: rows.len() };
+                                     row_count: rows.len(),
+                                     dismissed };
         let summary = summary_text(&status);
 
         // Sharing a row needs `flex_1` *and* `min_w_0`: `flex_1` alone keeps
@@ -143,7 +147,7 @@ impl WorkspaceWindow {
                      })
                      .bg(cx.theme().background)
                      .child(self.mcp_header(agent_id, expanded, summary, cx))
-                     .children(expanded.then(|| self.mcp_body(agent_id, rows, cx)))
+                     .children(expanded.then(|| self.mcp_body(agent_id, rows, dismissed, cx)))
                      .into_any_element())
     }
 
@@ -194,7 +198,8 @@ impl WorkspaceWindow {
     /// from any probe - it is authoritative and available before a probe has
     /// run. A build with no supervisor running (a test window) reads as
     /// disabled rather than panicking on the missing global.
-    fn mcp_rows(&self, agent_id: Uuid, cx: &Context<Self>) -> Vec<SectionRow> {
+    fn mcp_rows(&self, agent_id: Uuid, dismissed: &BTreeSet<String>, cx: &Context<Self>)
+                -> Vec<SectionRow> {
         let port = crate::settings_global::read(cx).mcp_server_port;
         let knot_state = if cx.has_global::<crate::mcp_status::McpServerStatus>() {
             cx.global::<crate::mcp_status::McpServerStatus>().state()
@@ -206,7 +211,8 @@ impl WorkspaceWindow {
         compose(knot_state,
                 &crate::settings_window::SettingsWindow::mcp_server_url(port),
                 self.mcp_section(agent_id)
-                    .and_then(|section| section.inventory()))
+                    .and_then(|section| section.inventory()),
+                dismissed)
     }
 
     /// The always-visible header: a disclosure triangle, the label, the
@@ -263,18 +269,35 @@ impl WorkspaceWindow {
                 .into_any_element()
     }
 
-    /// The expanded body: one line per server, and the age of the rows.
-    fn mcp_body(&mut self, agent_id: Uuid, rows: Vec<SectionRow>, cx: &mut Context<Self>)
+    /// The expanded body: one line per server, the servers the user has
+    /// dismissed under a heading of their own, and the age of the rows.
+    fn mcp_body(&mut self, agent_id: Uuid, rows: Vec<SectionRow>, dismissed: &BTreeSet<String>,
+                cx: &mut Context<Self>)
                 -> gpui_kit::AnyElement {
         let taken = self.mcp_section(agent_id)
                         .and_then(|section| section.inventory())
                         .and_then(knot_mcp_probe::Inventory::taken_at)
                         .map(|at| taken_ago_text(Instant::now().saturating_duration_since(at)));
 
+        // `compose` puts the dismissed rows last, so one heading before the
+        // first of them groups them all.
+        let is_row_dismissed = |row: &SectionRow| matches!(row, SectionRow::Agent(server) if is_dismissed(server, dismissed));
+        let first_dismissed = rows.iter().position(is_row_dismissed);
+        let mut lines = Vec::with_capacity(rows.len() + 1);
+        for (index, row) in rows.into_iter().enumerate() {
+            if Some(index) == first_dismissed {
+                lines.push(div().px_5()
+                                .pt_2()
+                                .text_xs()
+                                .text_color(cx.theme().muted_foreground)
+                                .child(knot_core::l10n::t("mcp.group_dismissed"))
+                                .into_any_element());
+            }
+            let row_dismissed = is_row_dismissed(&row);
+            lines.push(self.mcp_row(index, &row, row_dismissed, cx));
+        }
         let body = v_flex().w_full()
-                           .children(rows.into_iter()
-                                         .enumerate()
-                                         .map(|(index, row)| self.mcp_row(index, &row, cx)))
+                           .children(lines)
                            .children(taken.map(|text| {
                                               div().px_5()
                                                    .py_1()
@@ -293,7 +316,11 @@ impl WorkspaceWindow {
     /// server's command line is unbounded, and this list is virtualized: a
     /// row taller than it declared corrupts the scroll position of everything
     /// below it.
-    fn mcp_row(&self, index: usize, row: &SectionRow, cx: &mut Context<Self>)
+    ///
+    /// A dismissed row (#402) is drawn muted, offers no fix, and carries the
+    /// control that brings it back; a row needing attention carries the one
+    /// that dismisses it.
+    fn mcp_row(&self, index: usize, row: &SectionRow, dismissed: bool, cx: &mut Context<Self>)
                -> gpui_kit::AnyElement {
         let (label, transport, state_text, color, detail, full) = match row {
             SectionRow::Knot(knot) => {
@@ -308,14 +335,25 @@ impl WorkspaceWindow {
             SectionRow::Agent(server) => (server.name.clone(),
                                           server.target.token(),
                                           state_label(server.state),
-                                          state_color(server.state, cx),
+                                          if dismissed {
+                                              cx.theme().muted_foreground
+                                          }
+                                          else {
+                                              state_color(server.state, cx)
+                                          },
                                           server.detail.clone(),
                                           server.target.full().to_owned()),
         };
 
         let copy_tooltip = knot_core::l10n::t("mcp.action_copy_target");
         let address = row.short_label();
-        let action = self.mcp_row_action(row, cx);
+        let action = if dismissed {
+            None
+        }
+        else {
+            self.mcp_row_action(row, cx)
+        };
+        let dismiss = self.mcp_dismiss_toggle(index, row, dismissed, cx);
         let tools_toggle = self.mcp_tools_toggle(index, row, cx);
         let tools = self.mcp_tools_block(index, row, cx);
 
@@ -375,7 +413,8 @@ impl WorkspaceWindow {
                          .child(Icon::new(IconName::ExternalLink)
                              .size_3()
                              .text_color(cx.theme().warning))
-                })))
+                }))
+                .children(dismiss))
             .children(detail.map(|text| {
                           div().text_xs()
                                .whitespace_nowrap()
@@ -386,6 +425,41 @@ impl WorkspaceWindow {
                       }))
             .children(tools)
             .into_any_element()
+    }
+}
+
+impl WorkspaceWindow {
+    /// The control that dismisses a row needing attention, or brings back a
+    /// dismissed one (#402). Only the agent's own servers carry it: Knot's is
+    /// Knot's to run, never the user's to disown.
+    fn mcp_dismiss_toggle(&self, index: usize, row: &SectionRow, dismissed: bool,
+                          cx: &mut Context<Self>)
+                          -> Option<gpui_kit::AnyElement> {
+        let SectionRow::Agent(server) = row
+        else {
+            return None;
+        };
+        if !dismissed && !server.state.needs_attention() {
+            return None;
+        }
+        let (icon, tooltip) = if dismissed {
+            (IconName::Eye, knot_core::l10n::t("mcp.action_restore"))
+        }
+        else {
+            (IconName::EyeOff, knot_core::l10n::t("mcp.action_dismiss"))
+        };
+        let name = server.name.clone();
+        Some(div().id(("mcp-dismiss", index as u64))
+                  .p_1()
+                  .rounded_sm()
+                  .cursor_pointer()
+                  .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+                  .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
+                                  view.set_mcp_dismissed(&name, !dismissed, cx);
+                              }))
+                  .child(Icon::new(icon).size_3()
+                                        .text_color(cx.theme().muted_foreground))
+                  .into_any_element())
     }
 }
 

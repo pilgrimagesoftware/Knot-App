@@ -20,7 +20,7 @@
 //! process sampler uses would be a different change with a different cost.
 
 use knot_core::ViewMode;
-use knot_mcp_probe::{CommandRunner, ProbePlan};
+use knot_mcp_probe::{CommandRunner, Inventory, ProbePlan};
 use uuid::Uuid;
 
 use super::state::{McpSection, ProbeClaim};
@@ -47,7 +47,7 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn mcp_probe_tick(&mut self, cx: &gpui_kit::App) -> bool {
         // Both drains run every tick: locals, not an `||`, so one landing
         // cannot skip the other.
-        let landed = self.drain_mcp_probes();
+        let landed = self.drain_mcp_probes(cx);
         let tools_landed = self.drain_mcp_tools();
         self.request_first_mcp_probe();
         self.claim_mcp_probe(cx);
@@ -227,18 +227,26 @@ impl WorkspaceWindow {
     /// The only drain of `mcp_results`. A second reader would consume a
     /// result this one then reports as absent - the "flag read and then
     /// discarded" shape that has broken this chain before.
-    fn drain_mcp_probes(&mut self) -> bool {
+    ///
+    /// Each inventory that lands also clears the dismissal of any server it
+    /// reports connected (#417), in one save for the tick.
+    fn drain_mcp_probes(&mut self, cx: &gpui_kit::App) -> bool {
         let finished = std::mem::take(&mut *self.mcp_results.lock());
         if finished.is_empty() {
             return false;
         }
 
+        let landed: Vec<Inventory> =
+            finished.iter()
+                    .filter_map(|(_, outcome)| outcome.as_ref().ok().cloned())
+                    .collect();
         for (agent_id, outcome) in finished {
             self.mcp_sections
                 .entry(agent_id)
                 .or_default()
                 .publish(outcome);
         }
+        self.clear_connected_dismissals(&landed, cx);
 
         true
     }

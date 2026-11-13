@@ -177,6 +177,14 @@ A permission request appears inline with its options as buttons, names the tool 
 blocks further prompts until you answer. A message sent while a response is in progress is queued
 and delivered when the turn ends; a stop control interrupts the active turn.
 
+For an agent that can take a message mid-turn - Claude, Codex and opencode advertise it - a queued
+message's row also offers **Steer now**: the agent gets it inside the turn it is running, the way a
+message typed into its own terminal mid-turn is picked up, rather than after the turn ends. Use it to
+correct course; the agent breaks off what it was generating to read it, and a long-running command
+it was waiting on may carry on in the background. Send still queues. If the turn ends just before the
+message arrives, it goes back to the front of the queue and is sent as the next turn. Agents that
+cannot take a message mid-turn, such as Gemini, show no Steer now.
+
 A message sent to an agent stopped by its session limit is queued too, and goes on its own when the
 limit resets - "resets 5:20pm (America/Los_Angeles)" is read as the next 5:20 pm in that zone. Its
 row says it is waiting for the session limit and offers **Send now**, which sends it next without
@@ -267,6 +275,15 @@ when it reproduces that line exactly and every matching entry agrees. A matching
 `${VAR}` placeholders, or a same-named entry Knot can't read, stops the server being started.
 Servers that come only from managed or enterprise MCP configuration, or from Claude Code plugins or
 Gemini extensions, aren't found this way.
+
+Your agent's account may offer servers you never set up. Claude, for example, lists every
+claude.ai connector, and each one you haven't connected reads as "Needs authentication". To stop
+one counting as needing attention, click the crossed-out eye at the end of its row. It moves to
+the bottom of the list under "Not connected — dismissed", and the collapsed section stops naming
+it. Click the eye on a dismissed row to bring it back. Knot remembers dismissed servers by name,
+for every agent and across launches. A dismissed server that connects is no longer dismissed: it
+is listed with the others again, and if it later needs authentication or fails, it is named as
+needing attention like any other.
 
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that

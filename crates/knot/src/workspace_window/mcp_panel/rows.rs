@@ -14,7 +14,9 @@
 //! no delegated action" a property of the type rather than a runtime check
 //! someone can forget.
 
-use knot_mcp_probe::{Inventory, ServerRow, same_endpoint};
+use std::collections::BTreeSet;
+
+use knot_mcp_probe::{Inventory, ServerRow, ServerState, same_endpoint};
 
 /// Knot's own MCP server as the section shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,19 +53,49 @@ impl SectionRow {
     }
 }
 
-/// The section's rows: Knot's own first, then the agent's own.
+/// Whether `row` is one the user has dismissed (#402): named in `dismissed`
+/// and not connected.
+///
+/// A dismissed server that connects is in use after all, so it rejoins the
+/// list rather than staying hidden: dismissing can quiet a server the user
+/// never set up, never one that is working.
+pub(crate) fn is_dismissed(row: &ServerRow, dismissed: &BTreeSet<String>) -> bool {
+    row.state != ServerState::Connected && dismissed.contains(&row.name)
+}
+
+/// Remove from `dismissed` every server `inventory` reports connected,
+/// answering whether anything was removed (#417).
+///
+/// A dismissal lasts until the server connects: connecting it means the user
+/// set it up after all. Without this the name would outlive that, and a later
+/// sign-in lapse or failure would be filed under "dismissed" instead of
+/// counting as needing attention. A connection seen from any agent clears it,
+/// since dismissals are kept by name across agents.
+pub(crate) fn clear_connected(dismissed: &mut BTreeSet<String>, inventory: &Inventory) -> bool {
+    let before = dismissed.len();
+    for row in inventory.rows() {
+        if row.state == ServerState::Connected {
+            dismissed.remove(&row.name);
+        }
+    }
+    dismissed.len() != before
+}
+
+/// The section's rows: Knot's own first, then the agent's own, with the ones
+/// the user has dismissed ([`is_dismissed`]) last.
 ///
 /// `inventory` is `None` when no probe has completed - which is not the same
 /// as an empty one, and neither is the same as [`Inventory::Unprobeable`].
 /// All three show Knot's row; they differ in what the header says beneath it.
 pub(crate) fn compose(knot_state: knot_mcp::ServerState, knot_url: &str,
-                      inventory: Option<&Inventory>)
+                      inventory: Option<&Inventory>, dismissed: &BTreeSet<String>)
                       -> Vec<SectionRow> {
     let mut knot = KnotRow { state:           knot_state,
                              url:             knot_url.to_owned(),
                              also_configured: false, };
 
     let mut rows = Vec::new();
+    let mut dismissed_rows = Vec::new();
 
     for row in inventory.map(Inventory::rows).unwrap_or_default() {
         // Identity is the endpoint, not the name. `MCP_SERVER_NAME` is only
@@ -75,10 +107,16 @@ pub(crate) fn compose(knot_state: knot_mcp::ServerState, knot_url: &str,
             continue;
         }
 
-        rows.push(SectionRow::Agent(row.clone()));
+        if is_dismissed(row, dismissed) {
+            dismissed_rows.push(SectionRow::Agent(row.clone()));
+        }
+        else {
+            rows.push(SectionRow::Agent(row.clone()));
+        }
     }
 
     rows.insert(0, SectionRow::Knot(knot));
+    rows.extend(dismissed_rows);
 
     rows
 }

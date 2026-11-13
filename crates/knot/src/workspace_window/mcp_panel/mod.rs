@@ -15,6 +15,7 @@
 //! stamped with when they were taken rather than dressed up as live.
 
 pub(crate) mod actions;
+pub(crate) mod dismiss;
 pub(crate) mod handover;
 pub(crate) mod probe;
 pub(crate) mod rows;

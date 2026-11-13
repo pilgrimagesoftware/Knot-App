@@ -3,6 +3,8 @@
 //! Assertions are on the key resolving and on values surviving substitution,
 //! never on the English copy - a copy edit must not fail a test.
 
+use std::collections::BTreeSet;
+
 use knot_mcp_probe::{ALL_STATES, Inventory, ServerRow, ServerState, Target};
 
 use super::{SectionStatus, state_label, summary_text};
@@ -19,8 +21,12 @@ fn status<'a>(inventory: Option<&'a Inventory>) -> SectionStatus<'a> {
                     probing: false,
                     inventory,
                     failure: None,
-                    row_count: inventory.map_or(0, |i| i.rows().len() + 1) }
+                    row_count: inventory.map_or(0, |i| i.rows().len() + 1),
+                    dismissed: &NONE_DISMISSED }
 }
+
+/// No server dismissed: what every test before #402 assumed.
+static NONE_DISMISSED: BTreeSet<String> = BTreeSet::new();
 
 /// A key that did not resolve comes back as the key itself.
 fn resolved(text: &str) {
@@ -197,4 +203,55 @@ fn one_row_reads_singular() {
 
     resolved(&text);
     assert!(text.contains('1'));
+}
+
+/// #402: a connector the user has said they do not use is not named as
+/// needing attention, while one they have not dismissed still is.
+#[test]
+fn a_dismissed_server_does_not_need_attention() {
+    let inventory = Inventory::probed(vec![row("notion", ServerState::NeedsAuthentication),
+                                           row("linear", ServerState::NeedsAuthentication)]);
+    let dismissed: BTreeSet<String> = ["notion".to_owned()].into();
+
+    let text = summary_text(&SectionStatus { dismissed: &dismissed,
+                                             ..status(Some(&inventory)) });
+
+    assert!(text.contains("linear"), "got {text}");
+    assert!(!text.contains("notion"),
+            "a dismissed server was named: {text}");
+}
+
+/// With every server that wanted something dismissed, the header says nothing
+/// needs attention - the same thing it says when nothing ever did.
+#[test]
+fn dismissing_everything_that_wanted_attention_quiets_the_header() {
+    let inventory = Inventory::probed(vec![row("sheets", ServerState::Connected),
+                                           row("notion", ServerState::NeedsAuthentication)]);
+    let dismissed: BTreeSet<String> = ["notion".to_owned()].into();
+
+    let quiet = summary_text(&SectionStatus { dismissed: &dismissed,
+                                              ..status(Some(&inventory)) });
+    let loud = summary_text(&status(Some(&inventory)));
+
+    resolved(&quiet);
+    assert!(!quiet.contains("notion"), "got {quiet}");
+    assert!(quiet.contains('2'),
+            "the count still covers every server: {quiet}");
+    assert_ne!(quiet, loud);
+}
+
+/// #417: a dismissed server that connects, and later needs authentication
+/// again, is named as needing attention once more.
+#[test]
+fn a_dismissed_server_that_connected_and_lapsed_needs_attention_again() {
+    let mut dismissed: BTreeSet<String> = ["notion".to_owned()].into();
+    crate::workspace_window::mcp_panel::rows::clear_connected(&mut dismissed,
+        &Inventory::probed(vec![row("notion", ServerState::Connected)]));
+
+    let lapsed = Inventory::probed(vec![row("notion", ServerState::NeedsAuthentication)]);
+    let text = summary_text(&SectionStatus { dismissed: &dismissed,
+                                             ..status(Some(&lapsed)) });
+
+    assert!(text.contains("notion"),
+            "the lapsed server needs attention again: {text}");
 }

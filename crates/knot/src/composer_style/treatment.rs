@@ -44,7 +44,7 @@ impl Layer {
     pub(crate) fn of(construct: Construct) -> Self {
         match construct {
             Construct::Attachment => Self::Attachment,
-            Construct::SlashToken | Construct::Mention => Self::Token,
+            Construct::SlashToken | Construct::SkillToken | Construct::Mention => Self::Token,
             Construct::Emphasis
             | Construct::Strong
             | Construct::InlineCode
@@ -109,9 +109,13 @@ pub(crate) fn treatment(construct: Construct, palette: &Palette) -> HighlightSty
         // Tokens are the composer's own vocabulary, so they take a weight
         // rather than a background: a token is part of the sentence, not
         // an object sitting in it.
-        Construct::SlashToken => HighlightStyle { color: Some(palette.accent_foreground),
-                                                  font_weight: Some(FontWeight::SEMIBOLD),
-                                                  ..Default::default() },
+        // A skill token is drawn as a command is: the two share `/` for
+        // most agents, so they already look alike there (#272).
+        Construct::SlashToken | Construct::SkillToken => {
+            HighlightStyle { color: Some(palette.accent_foreground),
+                             font_weight: Some(FontWeight::SEMIBOLD),
+                             ..Default::default() }
+        }
         // A mention differs from a slash command by colour and by slant,
         // so the two are not one hue apart.
         Construct::Mention => HighlightStyle { color: Some(palette.primary),

@@ -110,7 +110,8 @@ fn a_turn_ending_clears_the_records() {
     let sink = SubagentSink::new(agent, "claude", Arc::clone(&registry)).expect("claude has one");
 
     sink.observe(&delegation_start("tc1"));
-    sink.observe(&SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: "end_turn".to_string(), }));
+    sink.observe(&SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason:
+                                                                knot_acp::StopReason::EndTurn, }));
 
     assert!(registry.lock().is_empty_for(agent));
 }
@@ -137,7 +138,7 @@ fn one_agents_turn_ending_leaves_another_alone() {
     sink_one.observe(&delegation_start("tc1"));
     sink_two.observe(&delegation_start("tc1"));
     sink_one.observe(&SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason:
-                                                                        "end_turn".to_string(), }));
+                                                                        knot_acp::StopReason::EndTurn, }));
 
     assert!(registry.lock().is_empty_for(one));
     assert!(!registry.lock().is_empty_for(two));

@@ -2,7 +2,8 @@
 //!
 //! A Panel-mode agent learns of the limit from the error that answers its
 //! prompt (#318). A terminal agent prints it instead - Claude Code's
-//! "You've hit your session limit · resets 5:20pm (America/Los_Angeles)",
+//! "You've hit your 5-hour limit · resets 5:20pm (America/Los_Angeles)",
+//! "session limit" before #397,
 //! or "Usage limit reached · wrapping up" when it is first allowed to finish
 //! what it was doing - and this is where Knot reads it.
 //!
@@ -137,20 +138,22 @@ impl SessionLimitTap {
     }
 }
 
-/// The limit `line` announces, if it opens with a notice that is followed
-/// by nothing or a separator. Leading decoration - a bullet, a box edge,
-/// indentation - is skipped first.
+/// The limit `line` announces, if it opens with one: a named limit, or a
+/// notice that is followed by nothing or a separator. Leading decoration - a
+/// bullet, a box edge, indentation - is skipped first.
 fn notice(line: &str) -> Option<SessionLimit> {
     let text = line.trim_start_matches(|c: char| !c.is_alphanumeric())
                    .trim_end();
     let lower = text.to_lowercase().replace('\u{2019}', "'");
-    let is_notice = SESSION_LIMIT_NOTICES.iter().any(|notice| {
-                                                    lower.strip_prefix(notice).is_some_and(|rest| {
-                                                       let rest = rest.trim_start();
-                                                       rest.is_empty()
+    let is_notice = SessionLimit::opens_with_named_limit(&lower)
+                    || SESSION_LIMIT_NOTICES.iter().any(|notice| {
+                                                       lower.strip_prefix(notice)
+                                                            .is_some_and(|rest| {
+                                                                let rest = rest.trim_start();
+                                                                rest.is_empty()
                                                        || rest.starts_with(SESSION_LIMIT_SEPARATORS)
-                                                   })
-                                                });
+                                                            })
+                                                   });
     if !is_notice {
         return None;
     }

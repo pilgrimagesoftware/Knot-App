@@ -183,6 +183,11 @@ prompt's name and a single-line preview of its text, and is distinguishable from
 commands and skills. A prompt added in the Prompts window reaches an open composer's
 next lookup.
 
+A Codex agent invokes its skills with `$`, not `/`: Codex rejects `/name` for a skill. So
+in a Codex agent's composer, `/` lists the panel commands and library prompts, and `$` at
+the start of a word lists its skills, completing to `$name`. Other agent types list their
+skills behind `/`.
+
 Inserting a library prompt replaces the partially typed slash token with the prompt's
 full text, line breaks included, with variables expanded for the selected agent. The
 text is editable before sending and inserting sends nothing; if the token is edited or

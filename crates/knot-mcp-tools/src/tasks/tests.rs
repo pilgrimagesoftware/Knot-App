@@ -14,6 +14,8 @@ use super::*;
 use crate::ActivationQueue;
 use crate::tasks::dispatch::DispatchContext;
 
+mod reset_after_complete;
+
 /// Registered, because messaging rejects an unregistered sender.
 fn agent(store: &mut AgentStore, name: &str, tags: &[&str], beside: Option<Uuid>) -> Uuid {
     let id = store.create(format!("/repo/{name}"),

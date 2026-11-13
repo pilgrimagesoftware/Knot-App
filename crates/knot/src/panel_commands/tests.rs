@@ -165,7 +165,7 @@ fn the_description_matches_as_well_as_the_token() {
 
 #[test]
 fn a_lone_slash_is_an_active_token_with_an_empty_filter() {
-    let token = active_token("/", 1).expect("a lone slash opens the lookup");
+    let token = active_token("/", 1, knot_core::agent_type::Invocation::SLASH).expect("a lone slash opens the lookup");
 
     assert_eq!(token.range, 0..1);
     assert_eq!(token.filter, "");
@@ -173,7 +173,7 @@ fn a_lone_slash_is_an_active_token_with_an_empty_filter() {
 
 #[test]
 fn typing_after_the_slash_fills_the_filter() {
-    let token = active_token("/p", 2).expect("a partial token stays active");
+    let token = active_token("/p", 2, knot_core::agent_type::Invocation::SLASH).expect("a partial token stays active");
 
     assert_eq!(token.range, 0..2);
     assert_eq!(token.filter, "p");
@@ -181,12 +181,15 @@ fn typing_after_the_slash_fills_the_filter() {
 
 #[test]
 fn a_slash_mid_prose_is_not_a_token() {
-    assert_eq!(active_token("see the /docs", 13), None);
+    assert_eq!(active_token("see the /docs",
+                            13,
+                            knot_core::agent_type::Invocation::SLASH),
+               None);
 }
 
 #[test]
 fn a_token_ends_at_whitespace() {
-    let token = active_token("/p mid-edit", 2).expect("the caret is still in the token");
+    let token = active_token("/p mid-edit", 2, knot_core::agent_type::Invocation::SLASH).expect("the caret is still in the token");
 
     assert_eq!(token.range, 0..2);
     assert_eq!(token.filter, "p");
@@ -194,14 +197,15 @@ fn a_token_ends_at_whitespace() {
 
 #[test]
 fn a_caret_past_the_token_closes_the_lookup() {
-    assert_eq!(active_token("/p mid-edit", 7), None);
+    assert_eq!(active_token("/p mid-edit", 7, knot_core::agent_type::Invocation::SLASH),
+               None);
 }
 
 #[test]
 fn a_token_on_a_later_line_is_active() {
     let value = "first line\n/se";
 
-    let token = active_token(value, value.len()).expect("the caret's line starts with a slash");
+    let token = active_token(value, value.len(), knot_core::agent_type::Invocation::SLASH).expect("the caret's line starts with a slash");
 
     assert_eq!(token.range, 11..14);
     assert_eq!(token.filter, "se");
@@ -209,7 +213,7 @@ fn a_token_on_a_later_line_is_active() {
 
 #[test]
 fn leading_whitespace_still_leaves_the_slash_first() {
-    let token = active_token("  /se", 5).expect("indent does not hide the token");
+    let token = active_token("  /se", 5, knot_core::agent_type::Invocation::SLASH).expect("indent does not hide the token");
 
     assert_eq!(token.range, 2..5);
     assert_eq!(token.filter, "se");
@@ -217,20 +221,22 @@ fn leading_whitespace_still_leaves_the_slash_first() {
 
 #[test]
 fn a_line_without_a_slash_has_no_token() {
-    assert_eq!(active_token("plain text", 4), None);
+    assert_eq!(active_token("plain text", 4, knot_core::agent_type::Invocation::SLASH),
+               None);
 }
 
 #[test]
 fn a_slash_token_reports_the_slash_trigger() {
-    let token = active_token("/se", 3).expect("a slash token");
+    let token =
+        active_token("/se", 3, knot_core::agent_type::Invocation::SLASH).expect("a slash token");
 
-    assert_eq!(token.trigger, Trigger::Slash);
-    assert_eq!(token.trigger.char(), '/');
+    assert_eq!(token.trigger, Trigger::Command);
+    assert_eq!(token.opener, '/');
 }
 
 #[test]
 fn a_mention_after_a_space_is_an_active_token() {
-    let token = active_token("look at @lib", 12).expect("an `@` after a space opens the lookup");
+    let token = active_token("look at @lib", 12, knot_core::agent_type::Invocation::SLASH).expect("an `@` after a space opens the lookup");
 
     assert_eq!(token.trigger, Trigger::Mention);
     assert_eq!(token.range, 8..12);
@@ -239,7 +245,7 @@ fn a_mention_after_a_space_is_an_active_token() {
 
 #[test]
 fn a_bare_at_is_an_active_token_with_an_empty_filter() {
-    let token = active_token("@", 1).expect("the trigger alone opens the lookup");
+    let token = active_token("@", 1, knot_core::agent_type::Invocation::SLASH).expect("the trigger alone opens the lookup");
 
     assert_eq!(token.trigger, Trigger::Mention);
     assert_eq!(token.filter, "");
@@ -248,7 +254,9 @@ fn a_bare_at_is_an_active_token_with_an_empty_filter() {
 /// `panel-file-mentions`: "`@` mid-word is not a trigger".
 #[test]
 fn an_at_inside_an_email_address_is_not_a_token() {
-    assert_eq!(active_token("write to paul@example.com", 25),
+    assert_eq!(active_token("write to paul@example.com",
+                            25,
+                            knot_core::agent_type::Invocation::SLASH),
                None,
                "the `@` follows a letter, so the lookup must stay shut");
 }
@@ -258,10 +266,10 @@ fn an_at_inside_an_email_address_is_not_a_token() {
 #[test]
 fn a_buffer_holding_both_reports_the_one_the_caret_is_in() {
     let value = "/review @lib.rs";
-    let at_slash = active_token(value, 4).expect("the caret is in the slash token");
-    let at_mention = active_token(value, 12).expect("the caret is in the mention");
+    let at_slash = active_token(value, 4, knot_core::agent_type::Invocation::SLASH).expect("the caret is in the slash token");
+    let at_mention = active_token(value, 12, knot_core::agent_type::Invocation::SLASH).expect("the caret is in the mention");
 
-    assert_eq!(at_slash.trigger, Trigger::Slash);
+    assert_eq!(at_slash.trigger, Trigger::Command);
     assert_eq!(at_slash.filter, "review");
     assert_eq!(at_mention.trigger, Trigger::Mention);
     // The filter is the whole token, not the text up to the caret - the
@@ -279,12 +287,12 @@ fn moving_the_caret_between_tokens_switches_the_trigger() {
     let value = "/review the diff @src/lib.rs";
     let triggers: Vec<Option<Trigger>> =
         [1, 7, 12, 18, 27].iter()
-                          .map(|caret| active_token(value, *caret).map(|t| t.trigger))
+                          .map(|caret| active_token(value, *caret, knot_core::agent_type::Invocation::SLASH).map(|t| t.trigger))
                           .collect();
 
     assert_eq!(triggers,
-               vec![Some(Trigger::Slash),
-                    Some(Trigger::Slash),
+               vec![Some(Trigger::Command),
+                    Some(Trigger::Command),
                     None,
                     Some(Trigger::Mention),
                     Some(Trigger::Mention)],
@@ -295,7 +303,9 @@ fn moving_the_caret_between_tokens_switches_the_trigger() {
 /// run, and a slash only triggers at the head of a line anyway.
 #[test]
 fn a_mention_holding_slashes_stays_one_mention() {
-    let token = active_token("@crates/knot/src", 16).expect("a mention");
+    let token = active_token("@crates/knot/src",
+                             16,
+                             knot_core::agent_type::Invocation::SLASH).expect("a mention");
 
     assert_eq!(token.trigger, Trigger::Mention);
     assert_eq!(token.filter, "crates/knot/src");
@@ -417,4 +427,55 @@ fn substring_matching_keeps_its_order_and_marks_nothing() {
                vec!["zeta", "zebra"],
                "declared order, not alphabetical and not scored");
     assert!(found.iter().all(|f| f.matched.is_empty()));
+}
+
+/// Codex's characters: commands behind `/`, skills behind `$` (#272).
+const CODEX: knot_core::agent_type::Invocation = knot_core::agent_type::Invocation { command: '/',
+                                                                                     skill:   '$', };
+
+#[test]
+fn a_dollar_token_is_a_skill_trigger_for_codex() {
+    let token = active_token("use $re", 7, CODEX).expect("a `$` after a space opens the lookup");
+
+    assert_eq!(token.trigger, Trigger::Skill);
+    assert_eq!(token.opener, '$');
+    assert_eq!(token.filter, "re");
+    assert_eq!(token.range, 4..7);
+}
+
+#[test]
+fn a_slash_token_is_still_a_command_for_codex() {
+    let token = active_token("/co", 3, CODEX).expect("a slash token");
+
+    assert_eq!(token.trigger, Trigger::Command);
+    assert_eq!(token.opener, '/');
+}
+
+/// Each list holds what its character opens for the agent: for Codex the
+/// skills move from `/` to `$`, and `/` keeps knot's commands.
+#[test]
+fn codex_skills_are_offered_behind_their_own_character() {
+    let folder = tempfile::TempDir::new().expect("a temporary agent folder");
+    let root = folder.path().join(".claude").join("skills");
+    write_skill(&root,
+                "zz-knot-272-skill",
+                &skill_file("zz-knot-272-skill", "Fixture."));
+    let offers = |registry: &LookupRegistry| {
+        registry.matching("zz-knot-272")
+                .iter()
+                .any(|entry| entry.entry.token == "zz-knot-272-skill")
+    };
+
+    let shared = LookupRegistry::for_agent(Some(folder.path()),
+                                           knot_core::agent_type::Invocation::SLASH);
+    assert!(offers(&shared),
+            "an agent sharing `/` gets its skills behind it");
+
+    let commands = LookupRegistry::for_agent(Some(folder.path()), CODEX);
+    assert!(!offers(&commands),
+            "Codex rejects `/skill`, so `/` must not offer one");
+    assert!(!commands.matching("send").is_empty(),
+            "knot's commands stay behind `/`");
+
+    assert!(offers(&LookupRegistry::skills_for(Some(folder.path()))));
 }

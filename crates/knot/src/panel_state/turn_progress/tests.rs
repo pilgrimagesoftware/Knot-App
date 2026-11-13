@@ -34,7 +34,7 @@ fn the_count_is_per_turn_and_ends_with_it() {
 
     state.push_user_message("first".to_string());
     streamed(&mut state, &"x".repeat(400));
-    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: "end_turn".into(), }));
+    state.apply(SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason: knot_acp::StopReason::EndTurn, }));
     assert_eq!(state.turn_progress(SystemTime::now()),
                None,
                "the turn has ended");
@@ -56,9 +56,31 @@ fn the_label_reads_like_the_cli() {
 
     assert_eq!(at(42, 0), "42s", "nothing written yet: just the time");
     let label = at(185, 1_201);
-    assert!(label.contains("3m 05s") && label.contains("1.2k") && !label.contains("%{"),
+    assert!(label.contains("3m 5s") && label.contains("1.2k") && !label.contains("%{"),
             "{label}");
-    assert!(at(3_725, 34_567).contains("1h 02m"));
+    assert!(at(3_725, 34_567).contains("1h 2m"));
     assert!(at(3_725, 34_567).contains("34k"));
     assert!(at(9, 950).contains("950"));
+}
+
+/// No zero-padding, and a zero minor unit is left out (#396).
+#[test]
+fn the_time_drops_padding_and_zero_units() {
+    let cases = [(0, "0s"),
+                 (59, "59s"),
+                 (60, "1m"),
+                 (65, "1m 5s"),
+                 (239, "3m 59s"),
+                 (240, "4m"),
+                 (241, "4m 1s"),
+                 (3_599, "59m 59s"),
+                 (3_600, "1h"),
+                 (3_659, "1h"),
+                 (3_725, "1h 2m"),
+                 (36_000, "10h")];
+    for (seconds, expected) in cases {
+        assert_eq!(format_elapsed(Duration::from_secs(seconds)),
+                   expected,
+                   "{seconds}s");
+    }
 }
