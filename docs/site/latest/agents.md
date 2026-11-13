@@ -268,6 +268,14 @@ when it reproduces that line exactly and every matching entry agrees. A matching
 Servers that come only from managed or enterprise MCP configuration, or from Claude Code plugins or
 Gemini extensions, aren't found this way.
 
+Your agent's account may offer servers you never set up. Claude, for example, lists every
+claude.ai connector, and each one you haven't connected reads as "Needs authentication". To stop
+one counting as needing attention, click the crossed-out eye at the end of its row. It moves to
+the bottom of the list under "Not connected — dismissed", and the collapsed section stops naming
+it. Click the eye on a dismissed row to bring it back. Knot remembers dismissed servers by name,
+for every agent and across launches. A dismissed server that connects is listed with the others
+again.
+
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that
 panel is expanded over the content area. Expanded, it lists subagents first, then the processes running underneath the agent's

@@ -5,6 +5,7 @@
 //! per-document arrangement.
 
 mod binding;
+mod dismissed_mcp_servers;
 mod prompts;
 mod pull_requests;
 
