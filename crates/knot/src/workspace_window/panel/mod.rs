@@ -31,4 +31,5 @@ mod scroll_to_latest;
 mod session;
 pub(super) mod shell;
 mod startup;
+pub(crate) mod steer;
 mod styling;

@@ -140,6 +140,13 @@ impl PanelSessionHandle {
         self.dirty.store(true, Ordering::SeqCst);
     }
 
+    /// Records a prompt steered into the running turn - see
+    /// `PanelState::push_steered_prompt`.
+    pub fn record_steered_prompt(&self, text: String) {
+        self.state.lock().push_steered_prompt(text);
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
     /// Adds a notice to the conversation - see `PanelState::push_notice`.
     pub fn record_notice(&self, text: String) {
         self.state.lock().push_notice(text);

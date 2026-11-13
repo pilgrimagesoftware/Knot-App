@@ -177,6 +177,14 @@ A permission request appears inline with its options as buttons, names the tool 
 blocks further prompts until you answer. A message sent while a response is in progress is queued
 and delivered when the turn ends; a stop control interrupts the active turn.
 
+For an agent that can take a message mid-turn - Claude, Codex and opencode advertise it - a queued
+message's row also offers **Steer now**: the agent gets it inside the turn it is running, the way a
+message typed into its own terminal mid-turn is picked up, rather than after the turn ends. Use it to
+correct course; the agent breaks off what it was generating to read it, and a long-running command
+it was waiting on may carry on in the background. Send still queues. If the turn ends just before the
+message arrives, it goes back to the front of the queue and is sent as the next turn. Agents that
+cannot take a message mid-turn, such as Gemini, show no Steer now.
+
 A message sent to an agent stopped by its session limit is queued too, and goes on its own when the
 limit resets - "resets 5:20pm (America/Los_Angeles)" is read as the next 5:20 pm in that zone. Its
 row says it is waiting for the session limit and offers **Send now**, which sends it next without

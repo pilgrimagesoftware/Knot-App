@@ -32,8 +32,11 @@ impl WorkspaceWindow {
     ///
     /// `held` is whether the session's usage limit is holding the queue
     /// (#368): each waiting row then says so and offers to send now.
+    /// `steerable` is whether the agent can take a prompt into the turn it
+    /// is running (#26): each waiting row then offers Steer now.
     pub(super) fn render_panel_queued_prompts(id: Uuid, queued_prompts: &[QueuedPanelPrompt],
-                                              held: bool, cx: &mut Context<Self>)
+                                              held: bool, steerable: bool,
+                                              cx: &mut Context<Self>)
                                               -> Option<impl IntoElement + use<>> {
         (!queued_prompts.is_empty()).then(|| {
                                         v_flex().gap_1().children(queued_prompts.iter().map(
@@ -125,6 +128,23 @@ impl WorkspaceWindow {
                                         }
                                     }))
                             }))
+                            // Steer now (#26): hand this prompt to the turn the
+                            // agent is running. Not on a failed row, whose way
+                            // out is retry, nor on one whose steer is out.
+                            .children((steerable && !prompt.failed && !prompt.steering).then(|| {
+                                Button::new(("panel-queued-prompt-steer", element_key(prompt_id)))
+                                    .icon(IconName::CornerDownRight)
+                                    .tooltip(knot_core::l10n::t("panel.steer_queued_now"))
+                                    .accessibility_label(knot_core::l10n::t("panel.steer_queued_now"))
+                                    .text_color(cx.theme().muted_foreground)
+                                    .ghost()
+                                    .small()
+                                    .on_click(cx.listener(move |view, _: &ClickEvent, _, cx| {
+                                        if view.steer_queued_prompt(id, prompt_id) {
+                                            cx.notify();
+                                        }
+                                    }))
+                            }))
                             // Every queued row can be edited and deleted: a
                             // prompt leaves the queue as it is handed to the
                             // agent, so nothing here is one the agent has.
@@ -173,6 +193,9 @@ impl WorkspaceWindow {
 /// the usage limit is holding says that, rather than plain "Queued" - the
 /// limit is the reason, and the reason it will go on its own (#368).
 fn status_label(prompt: &QueuedPanelPrompt, held: bool) -> String {
+    if prompt.steering {
+        return knot_core::l10n::t("panel.queued_steering").to_string();
+    }
     if held && !prompt.failed && !prompt.send_now {
         return knot_core::l10n::t("panel.queued_session_limit").to_string();
     }
