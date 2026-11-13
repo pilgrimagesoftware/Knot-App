@@ -250,6 +250,16 @@ impl AcpSession {
         self.client.session_cancel(&self.session_id).await
     }
 
+    /// Whether the agent can take a prompt into its running turn (#26).
+    pub fn supports_steering(&self) -> bool {
+        self.client.capabilities().supports_steering
+    }
+
+    /// Hands `text` to the running turn; see `AcpClient::session_steer`.
+    pub async fn steer(&self, text: &str) -> AcpResult<knot_acp::SteerOutcome> {
+        self.client.session_steer(&self.session_id, text).await
+    }
+
     /// Answers a pending `session/request_permission` request surfaced via
     /// a `SessionEvent::PermissionRequest` from this session's event
     /// stream.
