@@ -1,4 +1,35 @@
 
+## 1.37.0 - 2026-11-13
+
+### Added
+- Detect and send ACP steering for mid-turn prompts
+- Steer a queued prompt into the agent's running turn
+
+
+### Documentation
+- Accept ADR-0006 gpui-base table columns
+- Record the use of the _session/steering ACP extension
+- Accept ADR-0007 ACP steering extension
+
+
+### Fixed
+- Recognise Claude's renamed usage limits
+- Mask the Autopilot API key in Settings
+- Drop zero-padding and zero units from the turn timer
+- Center the sidebar row icons on their text
+- Complete a Codex agent's skills behind `$`, not `/`
+- Stop drawing a lone $ as a Codex skill token
+- Let unused MCP servers be dismissed from what needs attention
+- Keep a read send-message brief across a context reset
+- Never count a task's goal or a gone sender as owed
+- Stop Markdown tables breaking words while other columns have room
+- Keep hyphenated words whole in Markdown table columns
+- Say why a turn stopped when the agent ends it early
+- Clear an MCP server's dismissal once it connects
+- Hold Steer now while a permission is pending
+
+
+
 ## 1.36.0 - 2026-11-05
 
 ### Added
