@@ -33,6 +33,12 @@ pub enum InstructionCarrier {
     /// which `claude-agent-acp` appends to its `claude_code` preset. The
     /// object form: a string there replaces the preset outright.
     SessionMeta,
+    /// `_meta.antigravity.systemPrompt.append` on `session/new` and
+    /// `session/load`, which `agy acp` advertises under
+    /// `agentCapabilities._meta.antigravity` and applies to the system
+    /// prompt (checked live against agy 1.5.8: the same object at the top
+    /// level of `_meta`, as Claude takes it, is ignored).
+    AntigravityMeta,
     /// `developer_instructions` in the adapter's `CODEX_CONFIG`, which
     /// `codex-acp` sends as config overrides on `thread/start` and
     /// `thread/resume` alike. Not a `-c` argument, as the Swift app used
@@ -56,6 +62,7 @@ pub fn instruction_carrier(agent_type: &str) -> InstructionCarrier {
         "claude" => InstructionCarrier::SessionMeta,
         "codex" => InstructionCarrier::CodexConfigEnv,
         "opencode" => InstructionCarrier::OpencodeConfigEnv,
+        "antigravity" => InstructionCarrier::AntigravityMeta,
         _ => InstructionCarrier::FirstTurn,
     }
 }
@@ -155,6 +162,10 @@ pub fn instruction_delivery(request: DeliveryRequest<'_>) -> InstructionDelivery
     match carrier {
         InstructionCarrier::SessionMeta => {
             InstructionDelivery { session_meta: Some(json!({ "systemPrompt": { "append": instructions } })),
+                                  ..InstructionDelivery::default() }
+        }
+        InstructionCarrier::AntigravityMeta => {
+            InstructionDelivery { session_meta: Some(json!({ "antigravity": { "systemPrompt": { "append": instructions } } })),
                                   ..InstructionDelivery::default() }
         }
         InstructionCarrier::CodexConfigEnv => {

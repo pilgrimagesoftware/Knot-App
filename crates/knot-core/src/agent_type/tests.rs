@@ -118,7 +118,7 @@ fn a_known_type_answers_from_its_row() {
 
 /// The ids Knot can ask about their MCP servers today: the ones whose real
 /// listing output has been captured and has a parser pinned to a fixture.
-const PROBEABLE: &[&str] = &["claude", "gemini", "codex"];
+const PROBEABLE: &[&str] = &["claude", "gemini", "codex", "antigravity"];
 
 /// The ids that deliberately cannot be asked. Keeping them written down is
 /// the point: a new agent type added without an MCP decision changes this
@@ -132,12 +132,7 @@ const PROBEABLE: &[&str] = &["claude", "gemini", "codex"];
 /// - `copilot` - no MCP listing command is known.
 /// - `custom1`, `custom2` - a user-configured command, not a vendor CLI.
 /// - `shell` - runs no MCP client at all.
-const UNPROBEABLE: &[&str] = &["opencode",
-                               "copilot",
-                               "antigravity",
-                               "custom1",
-                               "custom2",
-                               "shell"];
+const UNPROBEABLE: &[&str] = &["opencode", "copilot", "custom1", "custom2", "shell"];
 
 /// Adding an agent type must force a decision about its MCP support. Without
 /// this, a new row defaults to "cannot determine" and nobody finds out until
