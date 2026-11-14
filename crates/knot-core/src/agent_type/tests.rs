@@ -132,7 +132,12 @@ const PROBEABLE: &[&str] = &["claude", "gemini", "codex"];
 /// - `copilot` - no MCP listing command is known.
 /// - `custom1`, `custom2` - a user-configured command, not a vendor CLI.
 /// - `shell` - runs no MCP client at all.
-const UNPROBEABLE: &[&str] = &["opencode", "copilot", "custom1", "custom2", "shell"];
+const UNPROBEABLE: &[&str] = &["opencode",
+                               "copilot",
+                               "antigravity",
+                               "custom1",
+                               "custom2",
+                               "shell"];
 
 /// Adding an agent type must force a decision about its MCP support. Without
 /// this, a new row defaults to "cannot determine" and nobody finds out until

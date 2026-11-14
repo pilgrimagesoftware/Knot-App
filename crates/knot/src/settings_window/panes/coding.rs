@@ -47,6 +47,7 @@ impl SettingsWindow {
             "opencode" => IconName::Terminal,
             "gemini" => IconName::Sparkles,
             "copilot" => IconName::Github,
+            "antigravity" => IconName::Rocket,
             "shell" => IconName::SquareTerminal,
             _ => IconName::Bot,
         }

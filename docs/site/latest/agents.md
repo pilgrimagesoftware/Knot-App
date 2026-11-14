@@ -42,6 +42,7 @@ on a fresh conversation and never on a resumed one, and changing it does not res
 | `opencode` | OpenCode through its ACP adapter | Panel |
 | `gemini` | Gemini through its ACP adapter | Panel |
 | `copilot` | GitHub Copilot through its ACP adapter | Panel |
+| `antigravity` | Google Antigravity through `agy acp` (sign in once with `agy acp --login`) | Panel |
 | `shell` | A terminal shell in the agent's folder | Terminal |
 
 The type fixes how the agent launches and which view it gets. A non-shell agent always launches

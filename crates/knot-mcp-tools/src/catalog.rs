@@ -123,7 +123,7 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                 ("icon", "string", "Emoji icon for the agent (e.g., '🤖')"),
                 ("agentType",
                  "string",
-                 "Agent type: claude, codex, opencode, gemini, copilot, custom1, custom2, or shell"),
+                 "Agent type: claude, codex, opencode, gemini, copilot, antigravity, custom1, custom2, or shell"),
                 ("repoPath", "string", "Path to the repository or worktree folder"),
                 ("createWorktree", "boolean", "If true, create a new worktree from repoPath"),
                 ("branchName",

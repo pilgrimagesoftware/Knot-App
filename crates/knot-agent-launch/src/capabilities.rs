@@ -24,7 +24,14 @@ mod tests {
 
     #[test]
     fn inline_registration_support_matches_spec_table() {
-        for t in ["claude", "codex", "opencode", "gemini", "copilot", "shell"] {
+        for t in ["claude",
+                  "codex",
+                  "opencode",
+                  "gemini",
+                  "copilot",
+                  "antigravity",
+                  "shell"]
+        {
             assert!(supports_inline_registration(t),
                     "{t} should support inline registration");
         }
