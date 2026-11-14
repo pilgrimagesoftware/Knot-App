@@ -5,7 +5,9 @@ name: Package
 #
 # Runs on every merge into develop, keeping the result as a workflow artifact,
 # and is called by release.yml with a tag, which also attaches the DMG, its
-# CycloneDX SBOM and a SHA256SUMS file to the GitHub Release.
+# CycloneDX SBOM and a SHA256SUMS file to the GitHub Release. The Linux
+# tar.gz and Windows zip are plain archives of the release binary, each with
+# its own `.sha256` file, so no job overwrites another's checksums.
 
 on:
   push:
@@ -37,8 +39,9 @@ concurrency:
 jobs:
   package:
     name: Package (macOS)
-    # macos-latest runners are Apple Silicon. Knot links AppKit through objc2
-    # and has no other supported platform, so this is the only leg.
+    # macos-latest runners are Apple Silicon. The .app and DMG need AppKit
+    # and cargo-packager's macOS bundlers; Linux and Windows get archives from
+    # the jobs below.
     runs-on: macos-latest
     timeout-minutes: 90
 
@@ -178,3 +181,88 @@ jobs:
             target/aarch64-apple-darwin/release/*.cdx.json \
             target/aarch64-apple-darwin/release/SHA256SUMS \
             --clobber
+
+  # A tar.gz / zip of the release binary rather than cargo-packager bundles:
+  # the packager's deb/AppImage/NSIS formats have not been run against Knot,
+  # and an archive is what a Homebrew formula or a manual install needs.
+  archive:
+    name: Archive (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: tar.gz
+          - name: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: zip
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc g++ clang libfontconfig-dev libwayland-dev \
+            libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev
+
+      - name: Toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          target: ${{ matrix.target }}
+          cache-key: archive-${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --package knot --target ${{ matrix.target }}
+
+      - name: Archive and checksum
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "knot") | .version')
+          name="Knot_${version}_${{ matrix.target }}"
+          bin=target/${{ matrix.target }}/release/knot
+          [ "$RUNNER_OS" = Windows ] && bin="$bin.exe"
+          stage="dist/$name"
+          mkdir -p "$stage"
+          cp "$bin" LICENSE.md README.md "$stage/"
+          cd dist
+          if [ "${{ matrix.ext }}" = zip ]; then
+            7z a -tzip "$name.zip" "$name" >/dev/null
+          else
+            tar -czf "$name.tar.gz" "$name"
+          fi
+          sha256sum "$name.${{ matrix.ext }}" > "$name.${{ matrix.ext }}.sha256"
+          cat "$name.${{ matrix.ext }}.sha256"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Knot-${{ matrix.name }}-${{ github.run_number }}
+          path: |
+            dist/*.${{ matrix.ext }}
+            dist/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to release
+        if: inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" dist/*.${{ matrix.ext }} dist/*.sha256 --clobber
