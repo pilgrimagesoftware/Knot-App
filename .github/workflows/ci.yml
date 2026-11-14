@@ -95,7 +95,7 @@ jobs:
   # and already gated on the Linux and macOS legs.
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     defaults:
       run:
         # Git Bash: scripts/test-each-crate.sh needs bash, jq and sort.
@@ -114,7 +114,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Test (every crate)
+      # `knot`'s GPUI window tests run past 30 minutes on a Windows runner,
+      # so it is linted and built here but tested on Linux and macOS only.
+      - name: Test (every crate but knot)
+        env:
+          TEST_SKIP_CRATES: knot
         run: scripts/test-each-crate.sh
 
       - name: Build

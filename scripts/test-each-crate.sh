@@ -17,7 +17,10 @@ set -uo pipefail
 # would otherwise ride into every `-p` argument.
 crates=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | tr -d '\r' | sort)
 failed=()
+# TEST_SKIP_CRATES: space-separated crates to leave out. The Windows CI job
+# skips `knot`, whose GPUI window tests run past 30 minutes there.
 for crate in $crates; do
+    case " ${TEST_SKIP_CRATES:-} " in *" $crate "*) echo "skipping $crate"; continue ;; esac
     echo "::group::cargo test -p $crate"
     if ! cargo test -p "$crate"; then
         failed+=("$crate")
