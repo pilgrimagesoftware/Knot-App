@@ -70,6 +70,9 @@ impl SettingsWindow {
             "codex" => format!("codex mcp add knot --url {url}"),
             "opencode" => "opencode mcp add".to_string(),
             "gemini" => format!("gemini mcp add --transport http knot {url} --scope user"),
+            // `agy mcp add <name> <url>`; http is detected from the URL
+            // (checked against agy 1.5.8).
+            "antigravity" => format!("agy mcp add knot {url}"),
             _ => String::new(),
         }
     }
