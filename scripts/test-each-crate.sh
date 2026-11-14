@@ -13,7 +13,9 @@
 # runs even after one fails, so one run reports all of them.
 set -uo pipefail
 
-crates=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sort)
+# `tr -d '\r'`: jq.exe on a Windows runner ends its lines with CRLF, which
+# would otherwise ride into every `-p` argument.
+crates=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | tr -d '\r' | sort)
 failed=()
 for crate in $crates; do
     echo "::group::cargo test -p $crate"

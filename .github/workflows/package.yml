@@ -235,7 +235,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name == "knot") | .version')
+            | jq -r '.packages[] | select(.name == "knot") | .version' | tr -d '\r')
           name="Knot_${version}_${{ matrix.target }}"
           bin=target/${{ matrix.target }}/release/knot
           [ "$RUNNER_OS" = Windows ] && bin="$bin.exe"
