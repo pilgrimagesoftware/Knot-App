@@ -1,4 +1,17 @@
 
+## 1.38.0 - 2026-11-14
+
+### Added
+- Add Google Antigravity as an agent type
+- Claim what agy has been checked to do
+- Show the agy command that registers Knot's MCP server
+
+
+### Fixed
+- Gate Unix-only tests off Windows
+
+
+
 ## 1.37.0 - 2026-11-13
 
 ### Added
