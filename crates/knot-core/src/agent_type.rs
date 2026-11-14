@@ -274,6 +274,20 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_manage:          McpManage::None,
                       subagents:           SubagentReporting::None,
                       invocation:          Invocation::SLASH, },
+      // `agy acp` is the CLI's own ACP server. Its MCP and subagent
+      // surfaces are unchecked, so nothing is claimed for them.
+      AgentTypeInfo { id:                  "antigravity",
+                      label:               "Antigravity",
+                      is_shell:            false,
+                      is_custom:           false,
+                      inline_registration: true,
+                      keeps_mcp_query:     false,
+                      hook_activity:       false,
+                      mcp_program:         "agy",
+                      mcp_list_args:       &[],
+                      mcp_manage:          McpManage::None,
+                      subagents:           SubagentReporting::None,
+                      invocation:          Invocation::SLASH, },
       // The custom types are a user-configured command, not a vendor CLI:
       // there is no `mcp` subcommand to assume.
       AgentTypeInfo { id:                  "custom1",
