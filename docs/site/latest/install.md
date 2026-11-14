@@ -13,16 +13,15 @@ Knot is a desktop workspace for running multiple AI coding agents. Download a pa
 | Platform | Status | Installation path |
 |---|---|---|
 | macOS | Supported | Download the macOS application from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases). |
-| Ubuntu | Supported for source builds | Build from source with Rust. |
-| Other Linux distributions | Expected to work with a supported GPUI-Kit desktop environment | Build from source and report platform issues in the repository. |
-| Windows | Not supported | No installer or tested build is currently provided. |
+| Linux (x86_64) | CI builds, lints and tests on Ubuntu | Download the `tar.gz` from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases), or build from source. Other distributions are expected to work with a supported GPUI-Kit desktop environment. |
+| Windows (x86_64) | CI builds and lints; several crates' tests still fail on Windows | Download the `zip` from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases), or build from source. |
 
 ## Download a release
 
 1. Open [Knot releases](https://github.com/pilgrimagesoftware/Knot-App/releases).
 2. Download the asset for your operating system and architecture, and `SHA256SUMS` from the same release.
-3. Check the download from the folder it is in. `shasum -a 256 -c SHA256SUMS --ignore-missing` must print `OK` beside the file name.
-4. On macOS, move `Knot.app` to `/Applications` before opening it.
+3. Check the download from the folder it is in. `shasum -a 256 -c SHA256SUMS --ignore-missing` must print `OK` beside the file name. The Linux and Windows archives carry their own `<archive>.sha256` file, checked the same way with `sha256sum -c`.
+4. On macOS, move `Knot.app` to `/Applications` before opening it. On Linux, extract the `tar.gz` and run `knot`. On Windows, extract the `zip` and run `knot.exe`. The Linux and Windows archives are unsigned and have no installer.
 5. Launch Knot, create or open a workspace, then add the coding agents you want it to manage.
 
 Each release also carries `Knot_<version>_aarch64.cdx.json`, a [CycloneDX](https://cyclonedx.org) software bill of materials that lists the Rust crates built into the app.
@@ -40,7 +39,7 @@ Run these commands only for a Knot app you downloaded from the project's release
 
 ## Build from source
 
-Source builds are supported on macOS and Ubuntu. Install the Rust version in `rust-toolchain.toml`, Git 2.30 or newer, a supported GPUI-Kit desktop environment, and at least one coding CLI such as Claude Code, Codex, Gemini CLI, GitHub Copilot, or OpenCode.
+Source builds are supported on macOS, Ubuntu and Windows. Install the Rust version in `rust-toolchain.toml`, Git 2.30 or newer, a supported GPUI-Kit desktop environment, and at least one coding CLI such as Claude Code, Codex, Gemini CLI, GitHub Copilot, or OpenCode.
 
 ```sh
 git clone https://github.com/pilgrimagesoftware/Knot-App.git
