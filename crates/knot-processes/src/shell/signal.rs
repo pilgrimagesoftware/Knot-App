@@ -92,6 +92,7 @@ mod tests {
     /// into `-1` - every process the user owns - which is what killed the CI
     /// runner. That only happens on Linux, and only for such ids, so on macOS
     /// this passes either way; on Linux CI it is the guard.
+    #[cfg(unix)]
     #[test]
     fn signalling_a_group_spares_an_unrelated_process() {
         use std::os::unix::process::CommandExt;
