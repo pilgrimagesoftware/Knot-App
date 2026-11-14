@@ -17,6 +17,16 @@ Knot is a desktop workspace for running multiple AI coding agents. Download a pa
 | Other Linux distributions | Expected to work with a supported GPUI-Kit desktop environment | Build from source and report platform issues in the repository. |
 | Windows | Not supported | No installer or tested build is currently provided. |
 
+## Install with Homebrew
+
+On Apple Silicon Macs:
+
+```sh
+brew install pilgrimagesoftware/tap/knot-ai
+```
+
+The cask installs `Knot.app` to `/Applications` and removes the quarantine attribute, so the quarantine steps below are not needed. Update with `brew upgrade --cask knot-ai`. There is no Linux formula yet; use the release archive.
+
 ## Download a release
 
 1. Open [Knot releases](https://github.com/pilgrimagesoftware/Knot-App/releases).
