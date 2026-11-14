@@ -21,8 +21,12 @@ Knot is a desktop workspace for running multiple AI coding agents. Download a pa
 On Apple Silicon Macs:
 
 ```sh
-brew install pilgrimagesoftware/tap/knot-ai
+brew tap pilgrimagesoftware/tap
+brew trust pilgrimagesoftware/tap
+brew install --cask knot-ai
 ```
+
+Homebrew 7 refuses to load a cask from a third-party tap until you trust it (`Refusing to load cask ... from untrusted tap`), so the `brew trust` step is required. It records the tap in `~/.homebrew/trust.json` (or `$XDG_CONFIG_HOME/homebrew/trust.json`).
 
 The cask installs `Knot.app` to `/Applications` and removes the quarantine attribute, so the quarantine steps below are not needed. Update with `brew upgrade --cask knot-ai`. There is no Linux formula yet; use the release archive.
 
