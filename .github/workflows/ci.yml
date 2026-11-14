@@ -119,6 +119,7 @@ jobs:
       - name: Test (every crate but knot)
         env:
           TEST_SKIP_CRATES: knot
+          TEST_CRATE_TIMEOUT: 420
         run: scripts/test-each-crate.sh
 
       - name: Build
