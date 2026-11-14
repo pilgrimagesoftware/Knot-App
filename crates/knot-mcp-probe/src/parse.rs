@@ -8,6 +8,7 @@
 //! roster is the coverage test that fails when a known agent type has a list
 //! command here and no format, or the reverse.
 
+pub(crate) mod antigravity;
 pub(crate) mod claude;
 pub(crate) mod codex;
 pub(crate) mod gemini;
@@ -32,6 +33,9 @@ pub enum ListFormat {
     /// `codex mcp list --json`: an array of configured servers, not a probe.
     /// See [`codex`] for why that limits what state a row can claim.
     Codex,
+    /// `agy mcp list`: a padded table of configured servers, not a probe.
+    /// See [`antigravity`].
+    Antigravity,
 }
 
 impl ListFormat {
@@ -49,6 +53,7 @@ impl ListFormat {
             Self::ClaudeCode => line::parse(output, &claude::SPEC),
             Self::Gemini => line::parse(output, &gemini::SPEC),
             Self::Codex => codex::parse(output),
+            Self::Antigravity => antigravity::parse(output),
         };
 
         rows.ok_or_else(|| ProbeError::Unrecognized { program:    program.to_owned(),
@@ -70,6 +75,7 @@ impl ListFormat {
             "claude" => Some(Self::ClaudeCode),
             "gemini" => Some(Self::Gemini),
             "codex" => Some(Self::Codex),
+            "antigravity" => Some(Self::Antigravity),
             _ => None,
         }
     }

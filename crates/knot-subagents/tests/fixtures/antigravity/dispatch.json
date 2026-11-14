@@ -1,0 +1,21 @@
+{
+  "sessionId": "6c335f50-44e2-4799-863a-cfc0a8844a96",
+  "update": {
+    "toolCallId": "call_565704519397567561",
+    "name": "invoke_subagent",
+    "args": {
+      "Prompt": "List the files in the current directory and report back with the full list of files found.",
+      "Role": "Directory Explorer",
+      "TypeName": "research"
+    },
+    "kind": "other",
+    "title": "Run invoke_subagent",
+    "rawInput": {
+      "Prompt": "List the files in the current directory and report back with the full list of files found.",
+      "Role": "Directory Explorer",
+      "TypeName": "research"
+    },
+    "sessionUpdate": "tool_call",
+    "status": "in_progress"
+  }
+}

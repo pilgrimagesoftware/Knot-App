@@ -42,6 +42,7 @@ mod tests {
     fn only_checked_adapters_are_trusted_to_keep_the_query() {
         assert!(keeps_mcp_query("claude"));
         assert!(keeps_mcp_query("codex"));
+        assert!(keeps_mcp_query("antigravity"));
         for t in ["opencode", "gemini", "copilot", "unknown-type"] {
             assert!(!keeps_mcp_query(t), "{t}");
         }

@@ -1,0 +1,4 @@
+NAME   TYPE   STATUS    COMMAND/URL
+local  stdio  disabled  /usr/bin/env FOO bar
+notes  http   enabled   http://127.0.0.1:9/mcp
+other  stdio  enabled   npx -y @scope/pkg --flag
