@@ -14,7 +14,7 @@ Knot is a desktop workspace for running multiple AI coding agents. Download a pa
 |---|---|---|
 | macOS | Supported | Download the macOS application from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases). |
 | Linux (x86_64) | CI builds, lints and tests on Ubuntu | Download the `tar.gz` from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases), or build from source. Other distributions are expected to work with a supported GPUI-Kit desktop environment. |
-| Windows (x86_64) | CI builds, lints and tests; not yet used day to day | Download the `zip` from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases), or build from source. |
+| Windows (x86_64) | CI builds and lints; several crates' tests still fail on Windows | Download the `zip` from [releases](https://github.com/pilgrimagesoftware/Knot-App/releases), or build from source. |
 
 ## Download a release
 

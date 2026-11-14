@@ -22,9 +22,9 @@ failed=()
 for crate in $crates; do
     case " ${TEST_SKIP_CRATES:-} " in *" $crate "*) echo "skipping $crate"; continue ;; esac
     echo "::group::cargo test -p $crate"
-    # TEST_CRATE_TIMEOUT (seconds, 0 = none): a hung crate fails by name
+    # TEST_CRATE_TIMEOUT (seconds; needs `timeout`, so not macOS): a hung crate fails by name
     # instead of holding the whole job until its timeout.
-    if ! timeout "${TEST_CRATE_TIMEOUT:-0}" cargo test -p "$crate"; then
+    if ! ${TEST_CRATE_TIMEOUT:+timeout "$TEST_CRATE_TIMEOUT"} cargo test -p "$crate"; then
         failed+=("$crate")
     fi
     echo "::endgroup::"
