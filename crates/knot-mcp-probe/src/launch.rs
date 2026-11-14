@@ -116,6 +116,9 @@ pub fn recover_launches(format: ListFormat, rows: &mut [ServerRow], roots: &Conf
         ListFormat::Gemini => gemini_scopes(roots),
         // Codex lists its launches in separate words already.
         ListFormat::Codex => return,
+        // `agy` lists a stdio command as one string, and recovering its words
+        // from `~/.gemini/config/mcp_config.json` is not done yet.
+        ListFormat::Antigravity => return,
     };
     for row in rows.iter_mut().filter(|row| row.launch.is_none()) {
         if let Target::Stdio { command } = &row.target {

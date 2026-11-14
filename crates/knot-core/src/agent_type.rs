@@ -274,6 +274,26 @@ pub const ALL: &[AgentTypeInfo] =
                       mcp_manage:          McpManage::None,
                       subagents:           SubagentReporting::None,
                       invocation:          Invocation::SLASH, },
+      // `agy acp` is the CLI's own ACP server. Checked live against agy
+      // 1.5.8: it keeps the MCP URL's `?agent=` query on `session/new` and
+      // `session/load`; `agy mcp list` is configuration, not a probe (see
+      // `knot_mcp_probe::parse::antigravity`); subagents arrive as
+      // `invoke_subagent` tool calls. It has no hook feed wired, so
+      // `hook_activity` stays false. `agy mcp enable <name>` is the one
+      // per-server command that helps a listed row (a disabled one); there
+      // is no auth command.
+      AgentTypeInfo { id:                  "antigravity",
+                      label:               "Antigravity",
+                      is_shell:            false,
+                      is_custom:           false,
+                      inline_registration: true,
+                      keeps_mcp_query:     true,
+                      hook_activity:       false,
+                      mcp_program:         "agy",
+                      mcp_list_args:       &["mcp", "list"],
+                      mcp_manage:          McpManage::PerServer(&["mcp", "enable", "%{server}"]),
+                      subagents:           SubagentReporting::ToolCalls,
+                      invocation:          Invocation::SLASH, },
       // The custom types are a user-configured command, not a vendor CLI:
       // there is no `mcp` subcommand to assume.
       AgentTypeInfo { id:                  "custom1",

@@ -118,7 +118,7 @@ fn a_known_type_answers_from_its_row() {
 
 /// The ids Knot can ask about their MCP servers today: the ones whose real
 /// listing output has been captured and has a parser pinned to a fixture.
-const PROBEABLE: &[&str] = &["claude", "gemini", "codex"];
+const PROBEABLE: &[&str] = &["claude", "gemini", "codex", "antigravity"];
 
 /// The ids that deliberately cannot be asked. Keeping them written down is
 /// the point: a new agent type added without an MCP decision changes this

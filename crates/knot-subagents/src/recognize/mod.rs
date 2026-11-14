@@ -16,11 +16,13 @@
 //!
 //! [`SubagentEvent`]: crate::event::SubagentEvent
 
+pub mod antigravity;
 pub mod claude;
 pub mod hooks;
 pub mod recognizer;
 pub mod report;
 
+pub use antigravity::AntigravityRecognizer;
 pub use claude::ClaudeRecognizer;
 pub use hooks::recognize_hook;
 pub use recognizer::{Recognizer, for_agent_type};

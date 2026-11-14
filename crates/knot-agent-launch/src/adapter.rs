@@ -106,6 +106,13 @@ pub fn acp_adapter(agent_type: &str) -> Option<AdapterConfig> {
                                           supports_resume:           true,
                                           supports_permission_modes: true,
                                           install:                   None, }),
+        // Native ACP subcommand (`agy acp`, protocol v1 over stdio) - no
+        // install step. Needs a prior sign-in (`agy acp --login`).
+        "antigravity" => Some(AdapterConfig { command:                   "agy",
+                                              args:                      &["acp"],
+                                              supports_resume:           true,
+                                              supports_permission_modes: true,
+                                              install:                   None, }),
         _ => None,
     }
 }
@@ -142,7 +149,8 @@ mod tests {
                                       ("codex", "codex-acp"),
                                       ("opencode", "opencode"),
                                       ("gemini", "gemini"),
-                                      ("copilot", "copilot")]
+                                      ("copilot", "copilot"),
+                                      ("antigravity", "agy")]
         {
             let adapter = acp_adapter(agent_type);
             assert_eq!(adapter.map(|a| a.command),
@@ -158,8 +166,15 @@ mod tests {
     /// named in one of these two tests.
     #[test]
     fn every_known_agent_type_is_decided_about() {
-        let decided =
-            ["claude", "codex", "opencode", "gemini", "copilot", "shell", "custom1", "custom2"];
+        let decided = ["claude",
+                       "codex",
+                       "opencode",
+                       "gemini",
+                       "copilot",
+                       "antigravity",
+                       "shell",
+                       "custom1",
+                       "custom2"];
         for kind in knot_core::agent_type::ALL {
             assert!(decided.contains(&kind.id),
                     "{} is in the roster but no adapter test names it",
@@ -195,7 +210,13 @@ mod tests {
     /// should be a decision, not an accident.
     #[test]
     fn every_registered_adapter_supports_resume() {
-        for agent_type in ["claude", "codex", "opencode", "gemini", "copilot"] {
+        for agent_type in ["claude",
+                           "codex",
+                           "opencode",
+                           "gemini",
+                           "copilot",
+                           "antigravity"]
+        {
             assert!(acp_adapter(agent_type).unwrap().supports_resume,
                     "{agent_type} should try to resume");
         }

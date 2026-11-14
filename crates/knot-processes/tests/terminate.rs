@@ -5,6 +5,9 @@
 //! this process as the session root, so nothing outside the test's own subtree
 //! can be signalled even if an assertion is wrong.
 
+// Signals, process groups and `sleep`/`sh` children: Unix only.
+#![cfg(unix)]
+
 use std::io::{BufRead, BufReader};
 use std::os::unix::process::ExitStatusExt;
 use std::process::{Child, Command, Stdio};

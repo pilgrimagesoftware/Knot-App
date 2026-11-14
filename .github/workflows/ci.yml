@@ -89,15 +89,17 @@ jobs:
       - name: Build
         run: make build
 
-  # Windows isn't in the `workspace` matrix above: its steps lean on `make`
-  # and Unix tools (awk, sort -V) that aren't on a windows-latest runner by
-  # default. This job proves `cargo build` alone, matching crates/knot's
-  # AppKit code being `cfg(target_os = "macos")`-gated with Linux/Windows
-  # fallbacks throughout - fmt/clippy/test parity for Windows is a follow-up,
-  # not required for #216.
+  # Windows isn't in the `workspace` matrix above: `make` isn't on a
+  # windows-latest runner, so this job runs the same cargo commands the
+  # Makefile wraps. fmt, size-check and declared-check are platform-neutral
+  # and already gated on the Linux and macOS legs.
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Git Bash: scripts/test-each-crate.sh needs bash, jq and sort.
+        shell: bash
 
     steps:
       - name: Checkout
@@ -106,7 +108,25 @@ jobs:
       - name: Toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
+          components: clippy
           cache-key: windows-latest
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # `knot`'s GPUI window tests run past 30 minutes on a Windows runner,
+      # so it is linted and built here but tested on Linux and macOS only.
+      # Informational until the Windows failures are fixed: knot-acp,
+      # knot-agent-launch, knot-core, knot-forge, knot-git, knot-library,
+      # knot-mcp-probe, knot-processes and knot-terminal each have tests that
+      # assume Unix paths, executables or processes. Drop `continue-on-error`
+      # once the step is green.
+      - name: Test (every crate but knot)
+        continue-on-error: true
+        env:
+          TEST_SKIP_CRATES: knot
+          TEST_CRATE_TIMEOUT: 420
+        run: scripts/test-each-crate.sh
 
       - name: Build
         run: cargo build --workspace

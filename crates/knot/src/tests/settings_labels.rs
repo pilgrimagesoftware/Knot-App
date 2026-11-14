@@ -166,6 +166,8 @@ fn mcp_install_command_matches_swift_reference_per_agent() {
                "opencode mcp add");
     assert_eq!(SettingsWindow::mcp_install_command("gemini", url),
                "gemini mcp add --transport http knot http://127.0.0.1:8767/mcp --scope user");
+    assert_eq!(SettingsWindow::mcp_install_command("antigravity", url),
+               "agy mcp add knot http://127.0.0.1:8767/mcp");
     assert_eq!(SettingsWindow::mcp_install_command("copilot", url), "");
 }
 

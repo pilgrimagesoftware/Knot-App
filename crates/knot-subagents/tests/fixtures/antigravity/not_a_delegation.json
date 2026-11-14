@@ -1,0 +1,14 @@
+{
+  "sessionId": "6c335f50-44e2-4799-863a-cfc0a8844a96",
+  "update": {
+    "sessionUpdate": "tool_call",
+    "toolCallId": "call_1",
+    "name": "list_dir",
+    "status": "in_progress",
+    "kind": "other",
+    "title": "Run list_dir",
+    "rawInput": {
+      "DirectoryPath": "/tmp/w"
+    }
+  }
+}

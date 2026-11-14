@@ -44,6 +44,19 @@ fn each_confirmed_adapter_has_its_own_carrier() {
                InstructionCarrier::CodexConfigEnv);
     assert_eq!(instruction_carrier("opencode"),
                InstructionCarrier::OpencodeConfigEnv);
+    assert_eq!(instruction_carrier("antigravity"),
+               InstructionCarrier::AntigravityMeta);
+}
+
+/// Top-level `systemPrompt` is ignored by agy; the nested key is the one a
+/// live session honored.
+#[test]
+fn antigravity_gets_its_own_nested_system_prompt() {
+    let delivery = deliver(InstructionCarrier::AntigravityMeta);
+    assert_eq!(delivery.session_meta,
+               Some(json!({ "antigravity": { "systemPrompt": { "append": "KNOT" } } })));
+    assert!(delivery.env.is_empty());
+    assert_eq!(delivery.first_turn, None);
 }
 
 /// An adapter nobody has checked for a system channel keeps what worked

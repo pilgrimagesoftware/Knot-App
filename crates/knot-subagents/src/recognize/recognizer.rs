@@ -1,6 +1,7 @@
 //! The recognizer trait, and which one an agent type gets.
 
 use crate::event::SubagentEvent;
+use crate::recognize::antigravity::AntigravityRecognizer;
 use crate::recognize::claude::ClaudeRecognizer;
 use crate::recognize::report::ToolCallReport;
 
@@ -24,6 +25,7 @@ pub trait Recognizer: Send + Sync {
 pub fn for_agent_type(agent_type: &str) -> Option<&'static dyn Recognizer> {
     match agent_type {
         "claude" => Some(&ClaudeRecognizer),
+        "antigravity" => Some(&AntigravityRecognizer),
         _ => None,
     }
 }

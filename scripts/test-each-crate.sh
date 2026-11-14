@@ -13,11 +13,18 @@
 # runs even after one fails, so one run reports all of them.
 set -uo pipefail
 
-crates=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sort)
+# `tr -d '\r'`: jq.exe on a Windows runner ends its lines with CRLF, which
+# would otherwise ride into every `-p` argument.
+crates=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | tr -d '\r' | sort)
 failed=()
+# TEST_SKIP_CRATES: space-separated crates to leave out. The Windows CI job
+# skips `knot`, whose GPUI window tests run past 30 minutes there.
 for crate in $crates; do
+    case " ${TEST_SKIP_CRATES:-} " in *" $crate "*) echo "skipping $crate"; continue ;; esac
     echo "::group::cargo test -p $crate"
-    if ! cargo test -p "$crate"; then
+    # TEST_CRATE_TIMEOUT (seconds; needs `timeout`, so not macOS): a hung crate fails by name
+    # instead of holding the whole job until its timeout.
+    if ! ${TEST_CRATE_TIMEOUT:+timeout "$TEST_CRATE_TIMEOUT"} cargo test -p "$crate"; then
         failed+=("$crate")
     fi
     echo "::endgroup::"
