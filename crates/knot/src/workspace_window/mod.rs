@@ -22,6 +22,7 @@ mod codex_usage_refresh;
 mod creation;
 #[cfg(test)]
 mod creation_tests;
+mod dashboard_prompts;
 mod file_finder;
 mod fresh_context;
 #[cfg(test)]
@@ -51,6 +52,7 @@ pub(crate) mod prompt_queue;
 mod pull_requests;
 mod pull_requests_actions;
 mod pull_requests_view;
+mod quick_prompt;
 mod render;
 mod repaint;
 #[cfg(test)]
