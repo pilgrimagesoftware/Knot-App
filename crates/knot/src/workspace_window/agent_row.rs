@@ -41,4 +41,9 @@ pub(super) struct AgentRow {
     /// there - and the user needs to know which agents are live, not why
     /// each one is not.
     pub(super) is_running:    bool,
+    /// The schedule's detail line - next run, or a recent missed or skipped
+    /// one (#404). `None` without a schedule.
+    pub(super) schedule_line: Option<String>,
+    /// The idle countdown, near the end of an idle period (#404).
+    pub(super) idle_line:     Option<String>,
 }

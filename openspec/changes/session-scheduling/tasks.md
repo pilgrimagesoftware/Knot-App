@@ -23,10 +23,10 @@
 
 ## 4. UI
 
-- [ ] 4.1 Agent editor: schedule (none/preset/cron with next-run preview and validation) and idle policy; not for shell agents
-- [ ] 4.2 Settings: idle default control, applied live
-- [ ] 4.3 Sidebar clock and timer detail lines, compact tooltip, title-bar timer icon; catalog keys with substitution tests
+- [x] 4.1 Agent editor: schedule (none/preset/cron with next-run preview and validation) and idle policy; not for shell agents
+- [x] 4.2 Settings: idle default control, applied live
+- [x] 4.3 Sidebar clock and timer detail lines, compact tooltip, title-bar timer icon; catalog keys with substitution tests
 
 ## 5. Docs
 
-- [ ] 5.1 `docs/site/latest/`: scheduling an agent, cron examples, idle shutdown, what counts as idle, that Knot must be running
+- [x] 5.1 `docs/site/latest/`: scheduling an agent, cron examples, idle shutdown, what counts as idle, that Knot must be running

@@ -26,6 +26,10 @@ impl AgentStore {
             // Not a launch parameter either: it waits for the next fresh
             // session rather than interrupting this one.
             agent.startup_prompt = req.startup_prompt;
+            // Neither interrupts the session: a schedule acts at its next
+            // run, an idle policy at the next idle check (#404).
+            agent.schedule = req.schedule;
+            agent.idle_policy = req.idle_policy;
             if let Some(agent_type) = &req.agent_type
                && *agent_type != agent.agent_type
             {

@@ -125,7 +125,20 @@ pub(crate) fn open_agent_editor(store: Arc<Mutex<knot_agents::AgentStore>>,
                       .placeholder(knot_core::l10n::t("agent_editor.startup_prompt_placeholder"))
                       .default_value(startup_text)
                                                });
+                  // Schedule and idle policy (#404): the agent's own when
+                  // editing, none and the fork source's policy otherwise.
+                  let scheduling = super::scheduling::SchedulingFields::new(
+                      editing.as_ref().and_then(|agent| agent.schedule.as_ref()),
+                      editing.as_ref()
+                             .map(|agent| agent.idle_policy)
+                             .or(prefill.idle_policy)
+                             .unwrap_or_default(),
+                      window,
+                      cx,
+                  );
                   let view = cx.new(|cx| {
+                                   let mut scheduling = scheduling;
+                                   scheduling.subscribe(window, cx);
                                    let avatar_subscription = cx.subscribe_in(
                 &avatar_input,
                 window,
@@ -186,6 +199,7 @@ pub(crate) fn open_agent_editor(store: Arc<Mutex<knot_agents::AgentStore>>,
                                          startup_choice,
                                          startup_custom_input,
                                          _startup_subscription: startup_subscription,
+                                         scheduling,
                                          prefill,
                                          insert_after,
                                          edit_target,
@@ -226,6 +240,8 @@ pub(crate) struct AgentEditor {
     /// The custom startup prompt's text, kept while another choice is
     /// selected so switching back does not lose it.
     pub(super) startup_custom_input:  Entity<TextareaState>,
+    /// The Schedule and When Idle controls (#404).
+    pub(super) scheduling:            super::scheduling::SchedulingFields,
     /// Re-renders on each edit so the unknown-variable warning keeps up.
     pub(super) _startup_subscription: Subscription,
     /// What this editor was opened to derive the new agent from - carries

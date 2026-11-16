@@ -38,6 +38,8 @@ pub(crate) struct AgentPrefill {
     pub(crate) description:     Option<String>,
     pub(crate) capabilities:    Option<knot_core::Capabilities>,
     pub(crate) cost_tier:       Option<knot_core::CostTier>,
+    /// The source's idle policy, for a fork (#404).
+    pub(crate) idle_policy:     Option<knot_core::schedule::IdlePolicy>,
     pub(crate) activation_mode: Option<knot_core::ActivationMode>,
     /// The session setup - model, permission mode, effort - the created
     /// agent starts with. Not a form field: like a duplicate's, it is the
@@ -104,9 +106,12 @@ pub(crate) fn parse_capability_tags(raw: &str) -> knot_core::Capabilities {
 /// alone - a shell command when creating, a persona when editing - stay
 /// where they are used.
 pub(super) struct AgentFields {
-    pub(super) folder: String,
-    pub(super) name:   String,
-    pub(super) avatar: String,
+    pub(super) folder:      String,
+    pub(super) name:        String,
+    pub(super) avatar:      String,
+    /// The schedule and idle policy the controls describe (#404).
+    pub(super) schedule:    Option<knot_core::schedule::Schedule>,
+    pub(super) idle_policy: knot_core::schedule::IdlePolicy,
 }
 
 #[cfg(test)]

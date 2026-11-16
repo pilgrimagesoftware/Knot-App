@@ -68,6 +68,15 @@ agent:
   # the title bar indicator's tooltip.
   autopilot: "Autopilot"
   autopilot_active: "Autopilot is on for this agent"
+  # Scheduled starts and idle shutdown (#404): the row's detail lines and
+  # the title bar's timer tooltip. `%{when}` is a time, or a day and a time
+  # (`schedule.when_*`).
+  schedule_next: "Next run %{when}"
+  schedule_missed: "Missed %{when}"
+  schedule_skipped: "Skipped %{when}: it was busy"
+  # Minutes, abbreviated as elsewhere (`mcp.age_minutes`), so no plural.
+  idle_deactivating: "Idle %{idle}m · deactivating in %{left}m"
+  idle_resetting: "Idle %{idle}m · resetting in %{left}m"
   # How a duplicated agent is named. The shape is the translator's:
   # where the number goes relative to the name, and what separates
   # them, are read back off this entry rather than assumed at the
@@ -232,6 +241,15 @@ settings:
     appearance: "Appearance"
     keyboard: "Keyboard"
   general:
+    # Idle shutdown's default (#404): off unless chosen.
+    idle: "Idle agents"
+    idle_action: "When an agent is idle"
+    idle_action_off: "Leave it running"
+    idle_action_deactivate: "Deactivate it"
+    idle_action_reset: "Reset it"
+    idle_after: "After"
+    idle_minutes: "%{minutes} min"
+    idle_hint: "Applies to every agent whose own setting is to use the default. Idle means no turn, subagent, queued prompt or new background process, and nobody typing or scrolling in its pane."
     appearance: "Appearance"
     appearance_hint: "Light and Dark override the system setting; Auto and System follow it."
     startup: "Startup"
@@ -611,6 +629,35 @@ agent_editor:
   startup_prompt_none: "None"
   startup_prompt_custom: "Custom"
   startup_prompt_missing: "Missing prompt"
+  # Schedule and idle controls (#404). An entry the editor refuses names
+  # what to fix, as an instruction.
+  schedule: "Schedule"
+  schedule_hint: "Starts the agent in a new conversation at these times, so its startup prompt runs. Knot must be running."
+  schedule_time_placeholder: "09:00"
+  schedule_hours_placeholder: "3"
+  schedule_cron_placeholder: "0 9 * * 1-5"
+  schedule_error_time: "Enter a time as HH:MM."
+  schedule_error_days: "Choose at least one day."
+  schedule_error_hours: "Enter a number of hours from 1 to 23."
+  schedule_error_cron: "Enter a five-field cron expression, such as 0 9 * * 1-5."
+  schedule_error_no_prompt: "Choose a startup prompt to schedule this agent."
+  schedule_kind:
+    none: "None"
+    daily: "Every day"
+    weekdays: "Weekdays"
+    days: "Chosen days"
+    every_hours: "Every N hours"
+    cron: "Cron"
+  idle: "When idle"
+  idle_hint: "Stops the agent after it has done nothing, and nobody has used its pane, for this long."
+  idle_minutes: "minutes"
+  idle_minutes_placeholder: "30"
+  idle_error_minutes: "Enter a number of minutes greater than zero."
+  idle_kind:
+    inherit: "Use the default"
+    off: "Never stop it"
+    deactivate: "Deactivate after"
+    reset: "Reset after"
   startup_prompt_placeholder: "What to ask the agent to do first"
   startup_prompt_hint: "Sent after the agent registers, on each new conversation - not when a conversation is resumed."
   error_choose_folder: "Choose a folder."
@@ -1191,3 +1238,17 @@ usage:
   resets_at: "Resets at %{when}"
   get_more: "Get more usage"
   dismiss: "Dismiss"
+# How a scheduled run's time is written (#404). Today: the time alone.
+# Another day: the day's short name and the time; the order is the
+# translator's.
+schedule:
+  when_today: "%{time}"
+  when_day: "%{day} %{time}"
+  weekday_short:
+    mon: "Mon"
+    tue: "Tue"
+    wed: "Wed"
+    thu: "Thu"
+    fri: "Fri"
+    sat: "Sat"
+    sun: "Sun"

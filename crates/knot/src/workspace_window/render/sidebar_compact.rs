@@ -56,6 +56,8 @@ pub(crate) struct CompactTooltip {
     /// The status line the full row shows: what the agent says it is doing,
     /// or its terminal title.
     pub status:        String,
+    /// The schedule and idle-countdown lines the full row shows (#404).
+    pub scheduling:    Vec<String>,
 }
 
 /// A compact row's tooltip: the agent's name, its state - worded as its
@@ -77,6 +79,7 @@ pub(crate) fn compact_tooltip(tooltip: &CompactTooltip) -> String {
     if !status.is_empty() {
         lines.push(status.to_owned());
     }
+    lines.extend(tooltip.scheduling.iter().cloned());
     lines.join("\n")
 }
 

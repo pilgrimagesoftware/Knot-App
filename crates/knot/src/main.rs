@@ -57,6 +57,7 @@ mod pull_request_state;
 mod quit_guard;
 mod read_folders;
 mod refresh_cache;
+mod schedule_text;
 mod scheduled_starts;
 mod settings_global;
 mod settings_window;

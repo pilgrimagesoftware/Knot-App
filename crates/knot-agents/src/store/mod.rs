@@ -82,6 +82,11 @@ pub struct EditRequest {
     /// Applied verbatim and restart-free: it is sent on the next fresh
     /// session, not to the one already running.
     pub startup_prompt:      Option<StartupPrompt>,
+    /// When the agent starts on its own (#404). Applied verbatim and
+    /// restart-free: it takes effect at the next run that comes due.
+    pub schedule:            Option<knot_core::schedule::Schedule>,
+    /// What idling does to it (#404). Restart-free, read at the next check.
+    pub idle_policy:         knot_core::schedule::IdlePolicy,
 }
 
 /// An agent removed by [`AgentStore::remove`], in cascade order (companions
