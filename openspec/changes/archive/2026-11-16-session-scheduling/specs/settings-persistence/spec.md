@@ -11,8 +11,8 @@ edits them:
 - **Preferences** - the scalar values: everything the user tunes about how the
   app looks and behaves, plus the per-agent-type command and options maps, the
   font settings, the sidebar width, the source base folder and its
-  first-launch detection flag, the idle shutdown default, and the document
-  version marker. These SHALL be
+  first-launch detection flag, the MCP servers the user has dismissed, the
+  idle shutdown default, and the document version marker. These SHALL be
   stored as a single preferences document in the platform's user-preferences
   directory (on macOS, `~/Library/Preferences` under the application's
   directory).

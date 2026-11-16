@@ -383,7 +383,8 @@ edits them:
 - **Preferences** - the scalar values: everything the user tunes about how the
   app looks and behaves, plus the per-agent-type command and options maps, the
   font settings, the sidebar width, the source base folder and its
-  first-launch detection flag, and the document version marker. These SHALL be
+  first-launch detection flag, the MCP servers the user has dismissed, the
+  idle shutdown default, and the document version marker. These SHALL be
   stored as a single preferences document in the platform's user-preferences
   directory (on macOS, `~/Library/Preferences` under the application's
   directory).
@@ -532,8 +533,9 @@ rather than leave it to shadow the next write.
 The system SHALL store, per workspace and keyed by the workspace's identity,
 the UI state the application tracks on the user's behalf: the window's saved
 bounds, the layout mode, which agents are active in that layout, the focused
-pane, the layout's split ratios, whether the dashboard is showing, and whether
-the workspace is detached.
+pane, the layout's split ratios, whether the dashboard is showing, whether
+the workspace is detached, and the last scheduled run handled (started,
+skipped or missed) for each of its agents.
 
 Writing any of that SHALL persist the UI-state document and SHALL NOT rewrite
 the saved-workspaces document, the saved-agents document, or any other. Where a
