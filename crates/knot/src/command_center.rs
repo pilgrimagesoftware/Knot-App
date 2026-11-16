@@ -53,6 +53,8 @@ pub(crate) struct CommandCenterWindow {
     /// opening or closing, or a connection failing, changes it without
     /// touching the store, so the poll compares it too (#10).
     drawn_sessions:       BTreeMap<Uuid, bool>,
+    /// The cards' quick-prompt fields (#10).
+    quick_prompts:        crate::dashboard_quick_prompt::QuickPromptFields,
 }
 
 impl CommandCenterWindow {
@@ -80,7 +82,8 @@ impl CommandCenterWindow {
                                                          diff_stats: DiffStatsCache::default(),
                                                          read_folders: Default::default(),
                                                          drawn_store_revision: 0,
-                                                         drawn_sessions: BTreeMap::new() }
+                                                         drawn_sessions: BTreeMap::new(),
+                                                         quick_prompts: Default::default() }
                                });
                   cx.new(|cx| Root::new(view, window, cx))
               })
@@ -228,42 +231,6 @@ impl CommandCenterWindow {
         }
     }
 
-    /// A Command Center over `store` with no poll, for tests outside this
-    /// module that need its reads.
-    #[cfg(test)]
-    pub(crate) fn for_tests(store: Arc<Mutex<knot_agents::AgentStore>>) -> Self {
-        Self { store,
-               messages: Arc::new(Mutex::new(knot_messaging::MessageStore::new())),
-               dashboard_sort: dashboard::DashboardSort::default(),
-               diff_stats: DiffStatsCache::default(),
-               read_folders: Default::default(),
-               drawn_store_revision: 0,
-               drawn_sessions: BTreeMap::new() }
-    }
-
-    /// Whether each agent has a session, read from its workspace's window.
-    /// An agent whose window is closed has none, whatever `activated` says.
-    /// In-memory reads of the open windows, not I/O.
-    pub(crate) fn sessions(&self, cx: &mut App) -> BTreeMap<Uuid, bool> {
-        let workspaces: Vec<(Uuid, Vec<Uuid>)> =
-            self.store
-                .lock()
-                .workspaces()
-                .iter()
-                .map(|workspace| (workspace.id, workspace.agent_ids.clone()))
-                .collect();
-        let mut sessions = BTreeMap::new();
-        for (workspace_id, agent_ids) in workspaces {
-            let view = WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx);
-            for id in agent_ids {
-                let has = view.as_ref()
-                              .is_some_and(|view| view.read(cx).has_session(id));
-                sessions.insert(id, has);
-            }
-        }
-        sessions
-    }
-
     /// Every workspace's card set, read from the store in one lock.
     ///
     /// Diff stats come from the cache rather than from `git`: this window
@@ -302,7 +269,8 @@ impl CommandCenterWindow {
                                                                   input_reason: agent.input_reason().map(str::to_owned),
                                 session_limit: agent.active_session_limit().cloned(),
                                                                   git_stats,
-                                                                  has_session: sessions.get(&agent.id).copied().unwrap_or(false) }
+                                                                  has_session: sessions.get(&agent.id).copied().unwrap_or(false),
+                                                                  quick_prompt: None }
                                                 })
                                                 .collect::<Vec<_>>();
                      dashboard::DashboardWorkspace { id:        workspace.id,
@@ -335,14 +303,25 @@ impl CommandCenterWindow {
 }
 
 impl Render for CommandCenterWindow {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let muted = cx.theme().muted_foreground;
         let palette = crate::status_palette::status_palette(cx);
         self.refresh_diff_stats(cx);
         let diff_stats = self.diff_stats.snapshot();
         let sessions = self.sessions(cx);
-        let dashboard_workspaces = self.dashboard_workspaces(&diff_stats, &sessions);
+        let mut dashboard_workspaces = self.dashboard_workspaces(&diff_stats, &sessions);
         self.drawn_sessions = sessions;
+        // Every card's field, across every section, pruned with the roster.
+        let mut fields = std::mem::take(&mut self.quick_prompts);
+        crate::dashboard_quick_prompt::attach(&mut fields,
+                                              dashboard_workspaces.iter_mut()
+                                                                  .flat_map(|workspace| {
+                                                                      workspace.agents.iter_mut()
+                                                                  }),
+                                              window,
+                                              cx,
+                                              Self::send_quick_prompt);
+        self.quick_prompts = fields;
         // Every workspace at once, for the header (#10).
         let header_summary =
             crate::dashboard_summary::summary(crate::dashboard_summary::status_counts(
@@ -455,6 +434,8 @@ fn spawn_store_poll(cx: &mut Context<CommandCenterWindow>) {
       })
       .detach();
 }
+
+mod prompts;
 
 #[cfg(test)]
 mod tests;

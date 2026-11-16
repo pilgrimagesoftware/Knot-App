@@ -22,6 +22,7 @@ mod codex_usage_refresh;
 mod creation;
 #[cfg(test)]
 mod creation_tests;
+mod dashboard_prompts;
 mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;

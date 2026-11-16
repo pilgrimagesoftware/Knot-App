@@ -5,6 +5,7 @@
 use gpui_kit::base::{StyledExt, h_flex, v_flex};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::input::Input;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::{
     ClickEvent, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled,
@@ -22,7 +23,10 @@ pub(crate) const CARD_WIDTH: f32 = 280.;
 /// four rows are conditional (the status line, the diff stat), so sizing to
 /// content left neighbouring cards visibly uneven; a fixed height keeps the
 /// grid uniform and the rows top-aligned within it.
-pub(crate) const CARD_HEIGHT: f32 = 124.;
+///
+/// It includes the quick-prompt field's row (#10) for every card, a shell
+/// agent's included, which leaves that row empty so the rows stay level.
+pub(crate) const CARD_HEIGHT: f32 = 160.;
 pub(crate) const GRID_SPACING: f32 = 16.;
 
 /// One agent's data as needed by a dashboard card - a plain snapshot, not a
@@ -50,6 +54,9 @@ pub(crate) struct DashboardAgent {
     /// sessions without clearing that, so an agent in a closed window read
     /// as running with nothing to send to.
     pub has_session:   bool,
+    /// The card's quick-prompt field (#10), owned by the view drawing the
+    /// grid. `None` for a shell agent, which has none.
+    pub quick_prompt:  Option<gpui_kit::Entity<gpui_kit::component::input::InputState>>,
 }
 
 /// One workspace's section as needed by a dashboard grid.
@@ -156,6 +163,9 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
     let state = agent.state;
     let has_session = agent.has_session;
     let git_stats = agent.git_stats;
+    let enabled = crate::dashboard_quick_prompt::field_state(agent)
+                  != crate::dashboard_quick_prompt::FieldState::Disabled;
+    let quick_prompt = agent.quick_prompt.clone();
 
     // A plain clickable container, not `Button` - `Button`'s "Normal Button"
     // sizing forces a fixed `h_8` height regardless of content unless an
@@ -232,6 +242,16 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                .map(|stats| {
                                    crate::app_state::diff_stats_row(&stats, muted, palette).text_xs()
                                }))
+            // At the bottom of the card, whatever rows above it showed.
+            .child(div().flex_1())
+            .children(quick_prompt.map(|input| {
+                // A click into the field is the field's; it must not also
+                // open the agent, as a tap on the card does.
+                div().id(gpui_kit::ElementId::from(format!("dashboard-quick-prompt-{id}")))
+                     .w_full()
+                     .on_click(|_: &ClickEvent, _, cx| cx.stop_propagation())
+                     .child(Input::new(&input).small().disabled(!enabled))
+            }))
             .on_click(move |_: &ClickEvent, window, cx| on_tap(id, window, cx))
 }
 

@@ -34,7 +34,8 @@ impl WorkspaceWindow {
     /// Diff stats come from the cache rather than from `git` directly - a
     /// card per agent times a subprocess per render is what
     /// [`WorkspaceWindow::refresh_dashboard_diff_stats`] exists to avoid.
-    pub(super) fn dashboard_content(&mut self, is_dashboard: bool, cx: &mut Context<Self>)
+    pub(super) fn dashboard_content(&mut self, is_dashboard: bool, window: &mut Window,
+                                    cx: &mut Context<Self>)
                                     -> Option<gpui_kit::AnyElement> {
         let dashboard_diff_stats = if is_dashboard {
             self.diff_stats_snapshot()
@@ -78,6 +79,7 @@ impl WorkspaceWindow {
                                 session_limit: agent.active_session_limit().cloned(),
                                 git_stats,
                                 has_session: self.has_session(agent.id),
+                                quick_prompt: None,
                             }
                                                                })
                                                                .collect::<Vec<_>>();
@@ -94,6 +96,11 @@ impl WorkspaceWindow {
                                                                         .sorted(dash_agents) }
                         });
 
+        // The cards' fields, created and pruned with the roster (#10).
+        let dashboard_workspace = dashboard_workspace.map(|mut workspace| {
+                                      self.attach_quick_prompts(&mut workspace.agents, window, cx);
+                                      workspace
+                                  });
         let weak = cx.entity().downgrade();
 
         dashboard_workspace.map(|dashboard_workspace| {

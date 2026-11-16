@@ -34,7 +34,8 @@ fn status_text_written_off_the_ui_thread_repaints_the_cards(cx: &mut TestAppCont
                                            diff_stats: DiffStatsCache::default(),
                                            read_folders: Default::default(),
                                            drawn_store_revision: 0,
-                                           drawn_sessions: Default::default() }
+                                           drawn_sessions: Default::default(),
+                                           quick_prompts: Default::default() }
                  });
     let notified = Arc::new(AtomicUsize::new(0));
     let _observer = cx.update(|cx| {

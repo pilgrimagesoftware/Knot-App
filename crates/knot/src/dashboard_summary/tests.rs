@@ -16,7 +16,8 @@ fn agent(state: AgentState, has_session: bool, is_shell: bool) -> DashboardAgent
                      input_reason: None,
                      session_limit: None,
                      git_stats: None,
-                     has_session }
+                     has_session,
+                     quick_prompt: None }
 }
 
 #[test]

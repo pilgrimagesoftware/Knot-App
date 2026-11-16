@@ -2,6 +2,10 @@ app:
   name: "Knot"
 
 dashboard:
+  quick_prompt:
+    send: "Send a prompt…"
+    queues: "Will queue until it can take it"
+    not_running: "Not running"
   summary:
     awaiting_one: "awaiting input"
     awaiting_many: "awaiting input"

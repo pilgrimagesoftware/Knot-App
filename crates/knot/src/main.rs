@@ -29,6 +29,7 @@ mod composer_style;
 mod consts;
 mod controls;
 mod dashboard;
+mod dashboard_quick_prompt;
 mod dashboard_summary;
 mod diff_stats;
 mod external_tools;

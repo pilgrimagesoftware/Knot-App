@@ -8,7 +8,9 @@ The dashboard SHALL show agents grouped by workspace, each in a card
 showing its avatar, name, status text and color, folder name, and git
 diff stats, and, for an agent that is not a shell agent, a quick prompt
 field, with an "Add Agent" tile per workspace group. A card SHALL show an
-agent as not running when it has no live session.
+agent as not running when it has no live session: a terminal session, or a
+panel session connecting or ready, in its open workspace window. A panel
+session whose connection failed is not live.
 
 #### Scenario: Card reflects agent state
 
@@ -32,6 +34,12 @@ agent as not running when it has no live session.
 - **WHEN** the Command Center shows an activated agent whose workspace window
   is closed
 - **THEN** its card shows it as not running
+
+#### Scenario: A failed connection is not running
+
+- **WHEN** an agent's panel session failed to connect
+- **THEN** its card shows it as not running and its quick prompt is disabled,
+  since a prompt queued there would never be sent
 
 #### Scenario: A shell agent's card has no quick prompt
 

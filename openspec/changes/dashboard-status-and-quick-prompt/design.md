@@ -11,9 +11,12 @@ while there is no session to send to.
 
 The snapshot field is replaced by `has_session`: the agent is activated, its
 workspace window is open, and that window holds a session slot for it (a
-panel session in any phase, including still connecting, or a terminal
-session). A connecting slot counts because `deliver_panel_prompt` queues into
-it and the queue drains when the session is ready.
+panel session connecting or ready, or a terminal session). A connecting slot
+counts because `deliver_panel_prompt` queues into it and the queue drains
+when the session is ready. A failed slot does not: `deliver_panel_prompt`
+would queue into it too, but nothing drains that queue, so the card shows
+the agent as not running and `quick_prompt` refuses rather than accept a
+prompt that would never go.
 
 - **Workspace dashboard**: read from its own `panel_sessions` / `sessions`.
 - **Command Center**: `WindowRegistry::workspace_view` for the agent's
