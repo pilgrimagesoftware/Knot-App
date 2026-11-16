@@ -5,6 +5,7 @@
 use gpui_kit::base::{StyledExt, h_flex, v_flex};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::input::Input;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::{
     ClickEvent, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled,
@@ -22,7 +23,10 @@ pub(crate) const CARD_WIDTH: f32 = 280.;
 /// four rows are conditional (the status line, the diff stat), so sizing to
 /// content left neighbouring cards visibly uneven; a fixed height keeps the
 /// grid uniform and the rows top-aligned within it.
-pub(crate) const CARD_HEIGHT: f32 = 124.;
+///
+/// It includes the quick-prompt field's row (#10) for every card, a shell
+/// agent's included, which leaves that row empty so the rows stay level.
+pub(crate) const CARD_HEIGHT: f32 = 160.;
 pub(crate) const GRID_SPACING: f32 = 16.;
 
 /// One agent's data as needed by a dashboard card - a plain snapshot, not a
@@ -44,10 +48,15 @@ pub(crate) struct DashboardAgent {
     /// see `knot_agents::Agent::active_session_limit`.
     pub session_limit: Option<knot_agents::SessionLimit>,
     pub git_stats:     Option<knot_git::DiffStats>,
-    /// Whether the agent has a session, as the sidebar row means it: a
-    /// `passive` agent that never started and a deactivated one are both
-    /// not running, and the card's working indicator says so.
-    pub is_running:    bool,
+    /// Whether the agent has a session a prompt can reach - a terminal
+    /// session, or a panel session connecting or ready - in a workspace
+    /// window that is open (#10). Not `activated`: closing a window drops its
+    /// sessions without clearing that, so an agent in a closed window read
+    /// as running with nothing to send to.
+    pub has_session:   bool,
+    /// The card's quick-prompt field (#10), owned by the view drawing the
+    /// grid. `None` for a shell agent, which has none.
+    pub quick_prompt:  Option<gpui_kit::Entity<gpui_kit::component::input::InputState>>,
 }
 
 /// One workspace's section as needed by a dashboard grid.
@@ -152,8 +161,11 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                                  });
     let is_shell = agent.is_shell;
     let state = agent.state;
-    let is_running = agent.is_running;
+    let has_session = agent.has_session;
     let git_stats = agent.git_stats;
+    let enabled = crate::dashboard_quick_prompt::field_state(agent)
+                  != crate::dashboard_quick_prompt::FieldState::Disabled;
+    let quick_prompt = agent.quick_prompt.clone();
 
     // A plain clickable container, not `Button` - `Button`'s "Normal Button"
     // sizing forces a fixed `h_8` height regardless of content unless an
@@ -193,7 +205,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                            // goes blank when it is not running at all,
                            // which no colour of label says.
                            .child(div().flex_shrink_0()
-                                       .child(crate::working_indicator::render(state, is_running, palette)))
+                                       .child(crate::working_indicator::render(state, has_session, palette)))
                            .children((!is_shell).then(|| {
                                                     // A session limit is a badge, bold
                                                     // and red (#369).
@@ -230,6 +242,16 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                .map(|stats| {
                                    crate::app_state::diff_stats_row(&stats, muted, palette).text_xs()
                                }))
+            // At the bottom of the card, whatever rows above it showed.
+            .child(div().flex_1())
+            .children(quick_prompt.map(|input| {
+                // A click into the field is the field's; it must not also
+                // open the agent, as a tap on the card does.
+                div().id(gpui_kit::ElementId::from(format!("dashboard-quick-prompt-{id}")))
+                     .w_full()
+                     .on_click(|_: &ClickEvent, _, cx| cx.stop_propagation())
+                     .child(Input::new(&input).small().disabled(!enabled))
+            }))
             .on_click(move |_: &ClickEvent, window, cx| on_tap(id, window, cx))
 }
 
@@ -308,7 +330,13 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
             .child(h_flex().gap_2p5()
                            .items_center()
                            .child(div().w(px(4.)).h(px(24.)).rounded(px(3.)).bg(color))
-                           .child(title))
+                           .child(title)
+                           // The section's own summary (#10): the workspace
+                           // dashboard's only one, since it has one section.
+                           .children(crate::dashboard_summary::summary(
+                               crate::dashboard_summary::status_counts(&workspace.agents),
+                               palette,
+                           )))
             .child(if workspace.agents.is_empty() {
                        div().pl_3()
                             .text_sm()

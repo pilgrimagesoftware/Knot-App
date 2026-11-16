@@ -21,6 +21,7 @@ mod keybindings;
 mod l10n_catalog;
 mod l10n_catalog_checklist;
 mod l10n_catalog_library_import;
+mod l10n_scheduling;
 mod layout_model;
 mod library_windows;
 mod markdown_tables;

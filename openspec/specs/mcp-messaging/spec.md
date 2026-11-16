@@ -12,7 +12,10 @@ including that messages do not survive an app restart.
 ### Requirement: Message model
 
 A message SHALL carry a unique id, sender id, recipient id (both stored as
-agent uuids), content, a timestamp, and a read flag defaulting to false.
+agent uuids), content, a timestamp, a read flag defaulting to false, the time
+it was read (none while unread), and its kind: direct, one copy of a
+broadcast, a dispatched task's goal, or a notice Knot wrote on an agent's
+behalf.
 Messages SHALL be held in memory only and SHALL NOT persist across app
 restarts.
 
@@ -21,15 +24,26 @@ restarts.
 - **WHEN** a message is created
 - **THEN** its read flag is false and it has a fresh id and timestamp
 
+#### Scenario: Reading stamps the time
+
+- **WHEN** a recipient checks its messages and they are marked read
+- **THEN** each of them records when it was read
+
 ### Requirement: Sender must be registered
 
 Send and broadcast SHALL be rejected unless the sender resolves to a known
 agent that is registered with MCP. Rejection SHALL return an explanatory
-string; broadcast SHALL return a recipient count of zero.
+string, the same for both: broadcast SHALL be rejected with the error a send
+gets, not answered with a recipient count of zero.
 
 #### Scenario: Unregistered sender
 
 - **WHEN** an unregistered agent calls send-message
+- **THEN** no message is stored and the caller receives "Sender not registered"
+
+#### Scenario: Unregistered sender broadcasts
+
+- **WHEN** an unregistered agent calls broadcast-message
 - **THEN** no message is stored and the caller receives "Sender not registered"
 
 ### Requirement: Recipients are workspace-scoped
@@ -179,8 +193,11 @@ person selects it.
 
 Check-messages SHALL return the caller's unread messages and, by default, mark
 them read. A caller MAY request a non-destructive read that leaves the flags
-unchanged. Unread queries SHALL report whether any unread message exists and
-SHALL be able to return the most recent unread message id.
+unchanged, MAY ask for messages already read as well, and MAY limit the
+result to messages sent at or after a given time. A check SHALL mark read
+only the unread messages it returned. Unread queries SHALL report whether any
+unread message exists and SHALL be able to return the most recent unread
+message id.
 
 #### Scenario: Check clears unread
 
@@ -188,13 +205,22 @@ SHALL be able to return the most recent unread message id.
 - **THEN** it receives its unread messages and a subsequent unread query
   reports none
 
+#### Scenario: A message left out is left unread
+
+- **WHEN** an agent checks with a `since` later than an unread message was
+  sent
+- **THEN** that message is not returned and is still unread
+
 ### Requirement: Broadcast fan-out
 
 Broadcast SHALL create one message per eligible recipient in the sender's
-workspace (excluding the sender, unregistered agents, shell agents, and
-companion-rule violations). Each stored message SHALL follow the same
-idle-gated delivery nudge as a direct send (see "Idle-time delivery nudge").
-The return value SHALL be the number of messages created.
+workspace (excluding the sender, unregistered agents, shell agents, locked
+agents, and companion-rule violations). Each stored message SHALL follow the
+same idle-gated delivery nudge as a direct send (see "Idle-time delivery
+nudge"). The return value SHALL be the number of messages created. A sender
+that may not send at all - unregistered, or locked - SHALL be rejected with the
+same error a direct send from it gets, rather than reported as a broadcast that
+reached no one.
 
 #### Scenario: Broadcast to a mixed workspace
 
@@ -254,3 +280,81 @@ later unread message SHALL be nudged afresh.
 - **WHEN** a user sends a normal message rather than an automatic inbox nudge
 - **THEN** the existing prompt and queue rules apply without continuation
   semantics being inferred
+
+### Requirement: Locked agents cannot be messaged
+
+An agent MAY be locked. A send to a locked agent SHALL be rejected with
+"Recipient is locked and cannot receive messages", SHALL store nothing, and
+SHALL NOT activate the recipient. Broadcast SHALL skip locked recipients.
+
+#### Scenario: Message to a locked agent
+
+- **WHEN** an agent sends a message to a locked, deactivated agent
+- **THEN** the send is rejected, nothing is stored, and the recipient is not
+  started
+
+### Requirement: Locked agents cannot send messages
+
+A send from a locked agent SHALL be rejected with "Locked agents cannot send
+messages", and so SHALL a broadcast from one, creating no messages.
+
+#### Scenario: Locked agent sends
+
+- **WHEN** a locked agent calls send-message
+- **THEN** the send is rejected and nothing is stored
+
+#### Scenario: Locked agent broadcasts
+
+- **WHEN** a locked agent calls broadcast-message
+- **THEN** the call is an error saying locked agents cannot send messages, and
+  nothing is stored
+
+### Requirement: Locked agents are passed over for tasks and reported
+
+`dispatch-task` SHALL NOT choose a locked agent for a capability-matched task,
+and SHALL be rejected when the named assignee is locked. `list-agents` and
+`describe-agents` SHALL report whether each agent is locked.
+
+#### Scenario: Capability dispatch passes over a locked agent
+
+- **WHEN** a task's capabilities match a locked agent and an unlocked one
+- **THEN** the unlocked agent is assigned the task
+
+### Requirement: A read message is owed a reply
+
+A message SHALL be unanswered when its recipient has read it, it was sent
+directly by another agent that still exists, it is not a broadcast, a
+dispatched task's goal or a notice, and the recipient has sent no message
+other than a notice to its sender since reading it. Any such message SHALL
+settle every message from that sender read before it.
+
+#### Scenario: A reply settles the brief
+
+- **WHEN** an agent reads a brief and then sends its sender a message
+- **THEN** the brief is no longer unanswered
+
+#### Scenario: Writing to someone else does not
+
+- **WHEN** an agent reads a brief and then messages a third agent only
+- **THEN** the brief is still unanswered
+
+#### Scenario: A dispatched task's goal is never owed
+
+- **WHEN** an agent reads the goal `dispatch-task` delivered and reports the
+  task with `complete-task` alone
+- **THEN** it holds no unanswered message
+
+#### Scenario: A brief from an agent that is gone
+
+- **WHEN** an agent reads a brief and its sender is then removed
+- **THEN** the brief is not unanswered
+
+#### Scenario: A notice neither asks nor answers
+
+- **WHEN** Knot sends a brief's sender a notice on the recipient's behalf
+- **THEN** the sender owes no reply to it, and the brief is still unanswered
+
+#### Scenario: A broadcast is never owed
+
+- **WHEN** an agent reads a broadcast and replies to no one
+- **THEN** it holds no unanswered message

@@ -294,6 +294,7 @@ impl WorkspaceWindow {
         }
         self.panel_prompt_input_subscriptions.remove(&id);
         self.panel_prompt_queues.remove(&id);
+        self.agent_idle.remove(&id);
         self.panel_prompts_in_flight.remove(&id);
         // Dropping the tracker stops its task; nothing else holds one.
         self.panel_trackers.remove(&id);

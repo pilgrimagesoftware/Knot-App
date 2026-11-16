@@ -41,6 +41,12 @@ impl AgentStore {
                     cost_tier,
                     session_config,
                     startup_prompt,
+                    // Not copied: two agents running the same script at the
+                    // same moment is not what duplicating means (#404).
+                    schedule: _,
+                    // Copied: how long it may idle is part of how it is set
+                    // up, and harmless to share.
+                    idle_policy,
                     // Follows from `agent_type` in `create`.
                     view_mode: _,
                     // Not copied: only an owner can be duplicated (companions
@@ -92,6 +98,7 @@ impl AgentStore {
         // choices yet. A duplicate has made the source's.
         if let Some(copy) = self.agents.iter_mut().find(|agent| agent.id == id) {
             copy.session_config = session_config;
+            copy.idle_policy = idle_policy;
         }
         Some(id)
     }

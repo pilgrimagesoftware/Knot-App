@@ -491,3 +491,31 @@ pub(crate) const CHARS_PER_TOKEN: usize = 4;
 /// GitHub refuses a much longer one, so past this the file goes to the
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
+
+/// How often the scheduled-start ticker checks every scheduled agent (#404).
+/// Runs are minute-granular and the grace window is ten minutes, so thirty
+/// seconds starts a run within half a minute of its time without busying the
+/// main thread.
+pub(crate) const SCHEDULE_TICK_INTERVAL: Duration = Duration::from_secs(30);
+
+/// How often a workspace window checks its agents for idling (#404). Idle
+/// periods are minutes long; checking every frame would only spend the main
+/// thread.
+pub(crate) const IDLE_CHECK_INTERVAL: Duration = Duration::from_secs(15);
+
+/// How often background processes are sampled for idle tracking alone, when
+/// no processes section is open (#404). Open, the section's own interval
+/// applies.
+pub(crate) const IDLE_PROCESS_SAMPLE_INTERVAL: Duration = Duration::from_secs(60);
+
+/// How close to an idle shutdown the countdown appears: the smaller of this
+/// and half the idle period (#404, `agent-list-ui`).
+pub(crate) const IDLE_COUNTDOWN_WINDOW: Duration = Duration::from_secs(10 * 60);
+
+/// Matches the file finder and `@` ranking keep (#5): the reference's
+/// `maxResults`.
+pub(crate) const FUZZY_MAX_RESULTS: usize = 50;
+/// Paths ranked between checks that a search is still wanted.
+pub(crate) const FILE_SEARCH_BATCH: usize = 4096;
+/// The finder's wait after the query last changed: the reference's debounce.
+pub(crate) const FILE_FINDER_DEBOUNCE_MS: u64 = 150;

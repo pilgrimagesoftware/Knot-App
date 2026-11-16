@@ -2,6 +2,21 @@ app:
   name: "Knot"
 
 dashboard:
+  quick_prompt:
+    send: "Send a prompt…"
+    queues: "Will queue until it can take it"
+    not_running: "Not running"
+  summary:
+    awaiting_one: "%{count} awaiting input"
+    awaiting_other: "%{count} awaiting input"
+    working_one: "%{count} working"
+    working_other: "%{count} working"
+    idle_one: "%{count} idle"
+    idle_other: "%{count} idle"
+    error_one: "%{count} error"
+    error_other: "%{count} errors"
+    off_one: "%{count} not running"
+    off_other: "%{count} not running"
   title: "Dashboard"
   command_center: "Command Center"
   no_agents: "No agents"
@@ -68,6 +83,19 @@ agent:
   # the title bar indicator's tooltip.
   autopilot: "Autopilot"
   autopilot_active: "Autopilot is on for this agent"
+  # Scheduled starts and idle shutdown (#404): the row's detail lines and
+  # the title bar's timer tooltip. `%{when}` is a time, or a day and a time
+  # (`schedule.when_*`).
+  schedule_next: "Next run %{when}"
+  schedule_missed: "Missed %{when}"
+  # A skipped run names what a new conversation would have discarded.
+  schedule_skipped_turn: "Skipped %{when}: a turn was in progress"
+  schedule_skipped_permission: "Skipped %{when}: a permission request was waiting"
+  schedule_skipped_queued: "Skipped %{when}: a prompt was queued"
+  schedule_skipped_reply: "Skipped %{when}: it owed a reply"
+  # Minutes, abbreviated as elsewhere (`mcp.age_minutes`), so no plural.
+  idle_deactivating: "Idle %{idle}m · deactivating in %{left}m"
+  idle_resetting: "Idle %{idle}m · resetting in %{left}m"
   # How a duplicated agent is named. The shape is the translator's:
   # where the number goes relative to the name, and what separates
   # them, are read back off this entry rather than assumed at the
@@ -124,7 +152,8 @@ panel:
   queued: "Queued"
   # The working turn's time and its estimated tokens (#35), Claude Code's
   # "(42s · 1.2k tokens)". The "~" marks the count as an estimate.
-  turn_progress: "%{elapsed} · ~%{tokens} tokens"
+  turn_progress_one: "%{elapsed} · ~%{tokens} token"
+  turn_progress_other: "%{elapsed} · ~%{tokens} tokens"
   queued_inbox_nudge: "Queued inbox check"
   queued_autopilot: "Queued Autopilot reply"
   queued_startup_prompt: "Queued startup prompt"
@@ -146,6 +175,7 @@ panel:
   lookup_hint: "Type to filter, Enter to insert, Esc to dismiss"
   lookup_prompt_tag: "Prompt"
   mentions_gathering: "Listing files…"
+  mentions_matching: "Matching files…"
   mentions_capped: "This folder is too large to list in full — showing what was found"
   # Each prompt and response's small relative-time label, per issue #577.
   # The tooltip shows the absolute moment; this is the words beside it.
@@ -231,6 +261,15 @@ settings:
     appearance: "Appearance"
     keyboard: "Keyboard"
   general:
+    # Idle shutdown's default (#404): off unless chosen.
+    idle: "Idle agents"
+    idle_action: "When an agent is idle"
+    idle_action_off: "Leave it running"
+    idle_action_deactivate: "Deactivate it"
+    idle_action_reset: "Reset it"
+    idle_after: "After"
+    idle_minutes: "%{minutes} min"
+    idle_hint: "Applies to every agent whose own setting is to use the default. Idle means no turn, subagent, queued prompt or new background process, and nobody typing or scrolling in its pane."
     appearance: "Appearance"
     appearance_hint: "Light and Dark override the system setting; Auto and System follow it."
     startup: "Startup"
@@ -411,6 +450,9 @@ keymap:
 
 menu:
   agents: "Agents"
+  # The Edit menu's own items, beside the text actions gpui supplies.
+  edit:
+    find_file: "Find File…"
   # The File menu's own items.
   file:
     new_agent: "New Agent…"
@@ -449,6 +491,8 @@ menu:
     bench_agent: "Bench Agent…"
     open_in: "Open In…"
     markdown_files: "Markdown Files"
+    config_files: "Config Files"
+    config_project_file: "%{path} (project)"
     agent_info: "Agent Info…"
     register_agent: "Register Agent"
     lock_agent: "Lock Agent"
@@ -493,7 +537,7 @@ menu:
 quit:
   working_title: "Agents are still working"
   working_message_one: "One agent is still working. Quitting now ends its session, and any work in progress is lost."
-  working_message_many: "%{count} agents are still working. Quitting now ends their sessions, and any work in progress is lost."
+  working_message_other: "%{count} agents are still working. Quitting now ends their sessions, and any work in progress is lost."
   working_confirm: "Quit Anyway"
   working_cancel: "Keep Working"
 
@@ -608,6 +652,35 @@ agent_editor:
   startup_prompt_none: "None"
   startup_prompt_custom: "Custom"
   startup_prompt_missing: "Missing prompt"
+  # Schedule and idle controls (#404). An entry the editor refuses names
+  # what to fix, as an instruction.
+  schedule: "Schedule"
+  schedule_hint: "Starts the agent in a new conversation at these times, so its startup prompt runs. Knot must be running."
+  schedule_time_placeholder: "09:00"
+  schedule_hours_placeholder: "3"
+  schedule_cron_placeholder: "0 9 * * 1-5"
+  schedule_error_time: "Enter a time as HH:MM."
+  schedule_error_days: "Choose at least one day."
+  schedule_error_hours: "Enter a number of hours from 1 to 23."
+  schedule_error_cron: "Enter a five-field cron expression, such as 0 9 * * 1-5."
+  schedule_error_no_prompt: "Choose a startup prompt to schedule this agent."
+  schedule_kind:
+    none: "None"
+    daily: "Every day"
+    weekdays: "Weekdays"
+    days: "Chosen days"
+    every_hours: "Every N hours"
+    cron: "Cron"
+  idle: "When idle"
+  idle_hint: "Stops the agent after it has done nothing, and nobody has used its pane, for this long."
+  idle_minutes: "minutes"
+  idle_minutes_placeholder: "30"
+  idle_error_minutes: "Enter a number of minutes greater than zero."
+  idle_kind:
+    inherit: "Use the default"
+    off: "Never stop it"
+    deactivate: "Deactivate after"
+    reset: "Reset after"
   startup_prompt_placeholder: "What to ask the agent to do first"
   startup_prompt_hint: "Sent after the agent registers, on each new conversation - not when a conversation is resumed."
   error_choose_folder: "Choose a folder."
@@ -819,7 +892,8 @@ issues:
   empty: "No open issues in this workspace's repositories."
   no_match: "No issues match the search and filters."
   fetch_failed: "The issues of %{repo} could not be fetched: %{reason}"
-  truncated: "Only the first %{count} open issues are shown."
+  truncated_one: "Only the first open issue is shown."
+  truncated_other: "Only the first %{count} open issues are shown."
   updated: "updated %{when}"
   open_in_browser: "Open in Browser"
   copy_url: "Copy URL"
@@ -933,10 +1007,14 @@ mcp:
   # disabled, pending approval, or in a state Knot could not read. Claiming
   # "all connected" here would be the header lying about the one thing it is
   # for.
-  summary_no_attention: "%{count} servers, none need attention"
+  summary_no_attention_one: "%{count} server, no attention needed"
+  summary_no_attention_other: "%{count} servers, none need attention"
   # Collapsed, the header names what is asking for something.
-  summary_attention: "%{names} need attention"
-  # What the listed names did not cover. `%{count}` counts servers.
+  summary_attention_one: "%{names} needs attention"
+  summary_attention_other: "%{names} need attention"
+  # What the listed names did not cover. `%{count}` counts servers. The verb
+  # agrees with every server named or counted, which is always more than one
+  # here (at least one name plus at least one more), so it has no `_one`.
   summary_attention_more: "%{names} +%{count} more need attention"
   # Between two names in that list; punctuation is the translator's.
   summary_separator: ", "
@@ -1106,7 +1184,8 @@ git_panel:
   binary_file: "Binary file"
   no_changes: "No changes"
   diff_failed: "That diff could not be read: %{reason}"
-  diff_truncated: "This diff is too large to show in full; the first %{count} lines are shown."
+  diff_truncated_one: "This diff is too large to show in full; only its first line is shown."
+  diff_truncated_other: "This diff is too large to show in full; the first %{count} lines are shown."
   # Commit.
   commit: "Commit"
   commit_title: "Commit staged changes"
@@ -1182,3 +1261,24 @@ usage:
   resets_at: "Resets at %{when}"
   get_more: "Get more usage"
   dismiss: "Dismiss"
+# How a scheduled run's time is written (#404). Today: the time alone.
+# Another day: the day's short name and the time; the order is the
+# translator's.
+schedule:
+  when_today: "%{time}"
+  when_day: "%{day} %{time}"
+  weekday_short:
+    mon: "Mon"
+    tue: "Tue"
+    wed: "Wed"
+    thu: "Thu"
+    fri: "Fri"
+    sat: "Sat"
+    sun: "Sun"
+
+finder:
+  placeholder: "Search files…"
+  gathering: "Listing files…"
+  matching: "Matching files…"
+  no_matches: "No matching files"
+  too_many: "Too many files to list (50,000+ limit)"

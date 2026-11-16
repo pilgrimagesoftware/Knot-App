@@ -82,6 +82,11 @@ pub struct EditRequest {
     /// Applied verbatim and restart-free: it is sent on the next fresh
     /// session, not to the one already running.
     pub startup_prompt:      Option<StartupPrompt>,
+    /// When the agent starts on its own (#404). Applied verbatim and
+    /// restart-free: it takes effect at the next run that comes due.
+    pub schedule:            Option<knot_core::schedule::Schedule>,
+    /// What idling does to it (#404). Restart-free, read at the next check.
+    pub idle_policy:         knot_core::schedule::IdlePolicy,
 }
 
 /// An agent removed by [`AgentStore::remove`], in cascade order (companions
@@ -203,6 +208,40 @@ impl AgentStore {
         let changed = self.agent(id)
                           .is_some_and(|agent| agent.autopilot_off != off);
         self.update(id, |agent| agent.autopilot_off = off);
+        if changed {
+            self.revise();
+        }
+    }
+
+    /// Give `id` a schedule, or take it away (#404). Moves the revision, so
+    /// every window redraws the agent's clock line. A new or changed schedule
+    /// runs only at occurrences after now; see
+    /// [`Self::seed_schedule_handled`].
+    pub fn set_schedule(&mut self, id: Uuid, schedule: Option<knot_core::schedule::Schedule>) {
+        self.set_schedule_at(id, schedule, jiff::Timestamp::now());
+    }
+
+    /// [`Self::set_schedule`] at a chosen time, for tests.
+    pub fn set_schedule_at(&mut self, id: Uuid, schedule: Option<knot_core::schedule::Schedule>,
+                           now: jiff::Timestamp) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.schedule != schedule);
+        let seed = changed && schedule.is_some();
+        self.update(id, |agent| agent.schedule = schedule);
+        if seed {
+            self.seed_schedule_handled(id, now.as_second());
+        }
+        if changed {
+            self.revise();
+        }
+    }
+
+    /// Set what idling does to `id` (#404). Moves the revision, as
+    /// [`Self::set_schedule`] does.
+    pub fn set_idle_policy(&mut self, id: Uuid, policy: knot_core::schedule::IdlePolicy) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.idle_policy != policy);
+        self.update(id, |agent| agent.idle_policy = policy);
         if changed {
             self.revise();
         }

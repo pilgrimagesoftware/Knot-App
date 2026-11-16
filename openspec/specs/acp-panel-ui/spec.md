@@ -756,7 +756,7 @@ empties. A queued prompt SHALL be visible in the conversation, clearly marked
 as waiting until it is delivered, and SHALL read as a normal prompt once
 delivered. Delivery SHALL resume on each turn end; a prompt whose delivery
 fails SHALL be reported under that prompt, and the queue SHALL continue with
-the remaining prompts.
+the remaining prompts. A prompt steered into the running turn is the exception: it leaves the queue when the agent takes it, and returns to the head when handed back.
 
 #### Scenario: Prompts are delivered in order
 - **WHEN** the user enqueues "first" and then "second" while a response is in
@@ -778,6 +778,12 @@ the remaining prompts.
 - **WHEN** the user sends while no prompt is queued and no response is in
   progress
 - **THEN** the prompt is delivered immediately and no queue entry is created
+
+#### Scenario: A steered prompt leaves the queue mid-turn
+- **WHEN** "first" and "second" are queued during a response and the agent
+  takes "second" into its running turn with Steer now
+- **THEN** "second" leaves the queue and reads as a prompt in that turn, and
+  "first" is still delivered when the turn ends
 
 ### Requirement: Permission gate is independent of the queue
 Queued delivery SHALL NOT bypass a pending permission request: a prompt must
@@ -1563,3 +1569,126 @@ that response's action bar.
 - **WHEN** the pointer rests on a link inside a response that is not the
   latest message
 - **THEN** the link's URL is shown and the response's action bar is revealed
+
+### Requirement: Steer a queued prompt into the running turn
+
+For an agent that supports steering, while a turn is running, each queued
+prompt SHALL offer Steer now, which hands that prompt to the running turn
+instead of waiting for it to end. A prompt the agent accepts SHALL leave the
+queue and read as a prompt in the running turn. A prompt the agent hands back
+for lack of a running turn SHALL return to the head of the queue. A steer that
+fails SHALL leave the prompt queued with the failure shown. Send SHALL keep
+queueing.
+
+#### Scenario: Correcting course mid-turn
+
+- **WHEN** a Claude agent is working, the user queues "also check the
+  tests", and chooses Steer now on it
+- **THEN** the prompt leaves the queue, appears in the conversation, and the
+  agent takes it up in the turn it is running
+
+#### Scenario: The turn ended first
+
+- **WHEN** the user chooses Steer now just as the turn ends, and the agent
+  answers that no turn is running
+- **THEN** the prompt is back at the head of the queue and is delivered as
+  the next turn
+
+#### Scenario: An agent without steering
+
+- **WHEN** a Gemini agent is working and the user queues a prompt
+- **THEN** no Steer now is offered, and the prompt is delivered when the turn
+  ends
+
+### Requirement: Steering waits for a pending permission
+
+Steer now SHALL NOT be offered, and no prompt SHALL be steered, while the
+agent has a permission request pending, as for any other prompt under
+"Permission gate is independent of the queue".
+
+#### Scenario: A permission is pending mid-turn
+
+- **WHEN** an agent that supports steering is waiting on a permission request
+  and the user has a prompt queued
+- **THEN** no Steer now is offered and nothing is sent until the request is
+  answered
+
+### Requirement: The working turn shows its time and approximate size
+
+While a turn is running, the working row SHALL show how long the turn has run,
+and once the agent has streamed text in it, an approximate token count marked as
+an estimate. The count SHALL cover only the running turn.
+
+#### Scenario: A turn that has run 42 seconds
+
+- **WHEN** a turn has run for 42 seconds and streamed about 4,800 characters
+- **THEN** the working row reads "42s · ~1.2k tokens"
+
+#### Scenario: A new turn
+
+- **WHEN** the user sends another prompt
+- **THEN** the time and count start again from zero
+
+### Requirement: A prompt can be saved to the prompt library
+
+Each user message in the panel SHALL expose, beside its copy control and
+revealed and laid out as that control is, a save control with a localized
+tooltip. Activating it SHALL open the prompt editor on a new prompt whose text
+is exactly the message's text, with the caret in the empty name field, so the
+user names it and saves it to the prompt library.
+
+#### Scenario: Saving a prompt
+
+- **WHEN** the user points at a sent prompt `run the gate` and activates its
+  save control
+- **THEN** the prompt editor opens on a new prompt whose text is
+  `run the gate`, with the caret in its name
+
+### Requirement: Markdown tables size their columns from their content
+
+Every Markdown surface SHALL size a table's columns from what they hold: each
+column gets at least its min-content width (its widest piece of text that
+cannot wrap) whenever the table's width allows every column its own, and the
+room beyond those widths goes to the columns that would be wider, in
+proportion to how much wider. Every row SHALL use the same column widths.
+
+#### Scenario: A column of short words beside a column of prose
+
+- **WHEN** a response contains a table whose first column holds single words,
+  such as "Observability", and whose second column holds long sentences
+- **THEN** no word in the first column breaks, and the second column narrows
+  and wraps its sentences instead
+
+#### Scenario: Columns line up
+
+- **WHEN** a table's rows hold cells of different lengths
+- **THEN** every row's cells in a column start at the same position and have
+  the same width
+
+### Requirement: Markdown table cells break words only as a last resort
+
+Table cell text SHALL wrap where the panel's other text wraps: at spaces, and
+before characters the text engine does not keep inside a word, such as `/`. A
+column's min-content width SHALL be measured to those same break points, so a
+hyphenated word such as "Short-term" counts as one word. A word SHALL break
+only when the columns' min-content widths together do not fit the table's
+width.
+
+#### Scenario: Wrapping prefers spaces
+
+- **WHEN** a cell's text is wider than its column
+- **THEN** it wraps at a space, not inside a word
+
+#### Scenario: A hyphenated word stays whole
+
+- **WHEN** a column's widest word is hyphenated, such as "Short-term", and the
+  column beside it has room to give
+- **THEN** the column is wide enough for the whole word, and the word does not
+  break at or after its hyphen
+
+#### Scenario: A table too narrow for its words
+
+- **WHEN** a table's frame is narrower than its columns' min-content widths
+  together
+- **THEN** the columns shrink to fit the frame and words break, rather than
+  the table overflowing

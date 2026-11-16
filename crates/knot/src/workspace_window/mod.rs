@@ -22,6 +22,8 @@ mod codex_usage_refresh;
 mod creation;
 #[cfg(test)]
 mod creation_tests;
+mod dashboard_prompts;
+mod file_finder;
 mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;
@@ -29,6 +31,7 @@ mod git_panel;
 mod handoff;
 #[cfg(test)]
 mod handoff_tests;
+pub(crate) mod idle;
 #[cfg(test)]
 mod inbox_nudge_tests;
 mod issue_filter;
@@ -50,10 +53,12 @@ pub(crate) mod prompt_queue;
 mod pull_requests;
 mod pull_requests_actions;
 mod pull_requests_view;
+mod quick_prompt;
 mod render;
 mod repaint;
 #[cfg(test)]
 mod restart_tests;
+pub(crate) mod scheduling;
 #[cfg(test)]
 mod send_prompt_tests;
 mod session_limits;

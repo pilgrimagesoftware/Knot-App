@@ -48,8 +48,8 @@ consecutive matched characters over scattered ones.
 The matched characters SHALL be marked in each listed row, so the user can
 see why a row is a match.
 
-This is the Swift reference's behaviour, moved from the finder sheet to the
-composer unchanged in substance.
+The ranking SHALL be the one `file-finder` specifies, so the lookup and the
+finder order the same files the same way.
 
 #### Scenario: A subsequence matches
 
@@ -67,6 +67,12 @@ composer unchanged in substance.
 - **WHEN** the lookup lists a match
 - **THEN** the characters that matched the typed text are distinguished
   within the row's path
+
+#### Scenario: The lookup and the finder agree
+
+- **WHEN** the user types `lib` after `@`, and then types `lib` into the file
+  finder for the same agent
+- **THEN** both list the same files in the same order
 
 ### Requirement: The listing is the agent's tracked working tree
 
@@ -201,3 +207,17 @@ buffer.
 
 - **WHEN** the user edits away the `@` or moves focus out of the composer
 - **THEN** the popup closes
+
+### Requirement: Ranking stays off the render path
+
+The lookup SHALL rank matches off the render path, using the same search as
+`file-finder`, and the popup SHALL show the most recent ranking for what is
+typed, never ranking anything while it is drawn. A ranking for a filter no
+longer typed SHALL NOT be shown.
+
+#### Scenario: Typing over a large folder
+
+- **WHEN** the agent's folder lists 50,000 files and the user types `@cfg`
+  one character at a time
+- **THEN** each keystroke is accepted without waiting for ranking, and the
+  popup shows the ranking for `cfg` once it lands, not one for `c` or `cf`

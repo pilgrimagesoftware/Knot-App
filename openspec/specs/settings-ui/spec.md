@@ -144,11 +144,16 @@ switch labelled with the first.
 ### Requirement: Coding tab
 
 The Coding tab SHALL show a "Source Folder" section (current
-`source_base_folder`, a folder picker, and a clear action) and an "Agent
-Options" section (an agent-type picker with a per-type options field bound
-to `agent_options`). The agent-type picker SHALL offer Claude, Codex,
-OpenCode, Gemini, Copilot and Shell. It SHALL NOT show an "Open With"
-section or editable custom-command fields — those depend on features not yet
+`source_base_folder`, a folder picker, and a clear action), then a row of
+tabs, one per agent type: Claude, Codex, OpenCode, Gemini, Copilot and Shell.
+Under the tabs, one group named for the selected agent SHALL hold everything
+about it: an options field bound to `agent_options` for that type and, for an
+agent with an installable ACP adapter, the adapter's command, its version
+status, a check action and, when an update is available, an Update action.
+The version status SHALL show the latest check's result, whether that check
+ran in the background or on request. An agent's tab SHALL carry a dot while
+an update is available for its adapter. The tab SHALL NOT show an "Open With"
+section or editable custom-command fields - those depend on features not yet
 in the Rust port.
 
 The clear action SHALL ask for confirmation before clearing. Unlike every
@@ -176,27 +181,37 @@ dialog and cannot retype from memory.
 
 #### Scenario: Editing options for an agent type persists it
 
-- **WHEN** the user selects "Codex" in the agent-type picker and types
-  `--flag value` into the Options field
+- **WHEN** the user selects the Codex tab and types `--flag value` into its
+  Options field
 - **THEN** `agent_options["codex"]` is saved as `"--flag value"`
   immediately
 
 #### Scenario: Switching agent type shows that type's own options
 
-- **WHEN** `agent_options["claude"]` is `"--foo"` and the user switches the
-  picker from Claude to Codex (with no stored value yet)
-- **THEN** the Options field shows empty, not `"--foo"`
+- **WHEN** `agent_options["claude"]` is `"--foo"` and the user switches from
+  the Claude tab to the Codex tab (with no stored value yet)
+- **THEN** the Options field shows empty, not `"--foo"`, and the group shows
+  Codex's adapter, not Claude's
+
+#### Scenario: A background check's result is shown
+
+- **WHEN** the background check has found an update for Claude's adapter and
+  the user opens the Coding tab
+- **THEN** the Claude tab carries a dot and its version status shows the
+  update, without the user checking again
 
 ### Requirement: Autopilot tab
 
 The Autopilot tab SHALL show: an "Enable autopilot" toggle bound to
 `autopilot_enabled`; an AI Provider section with a provider picker
-(OpenAI/Anthropic/Google) bound to `ai_provider`, an API key text field
-bound to `ai_api_key`, and a read-only model-name display derived from the
+(OpenAI/Anthropic/Google) bound to `ai_provider`, a secure API key field
+bound to `ai_api_key`, which draws its value masked and offers a control to
+reveal it, and a read-only model-name display derived from the
 selected provider; and an Action section with a picker (Mark
 conversation/Ask me/Auto-continue/Custom) bound to `autopilot_action`, plus
 a custom-prompt text area bound to `autopilot_custom_prompt` shown only
-when "Custom" is selected. Every control persists on change. The tab SHALL
+when "Custom" is selected. Every control persists on change. Masking SHALL
+change only how the API key is drawn, never the value stored. The tab SHALL
 NOT claim or imply the feature is functional beyond storing these
 preferences - no decision loop runs as a result of this change.
 
@@ -215,6 +230,12 @@ preferences - no decision loop runs as a result of this change.
 
 - **WHEN** the user types a value into the API Key field
 - **THEN** `ai_api_key` is saved with that exact value immediately
+
+#### Scenario: API key field is masked
+
+- **WHEN** the Autopilot tab shows a saved API key
+- **THEN** the field draws it masked rather than as plain text, and the
+  stored `ai_api_key` is unchanged
 
 #### Scenario: Custom prompt only shown for the Custom action
 
@@ -436,3 +457,16 @@ to a previously-visited tab SHALL show it exactly as it was left.
 - **WHEN** the user has unsaved text in one pane's editable field and
   switches to another tab, then back
 - **THEN** the unsaved text is still present, unchanged
+
+### Requirement: Idle shutdown default
+
+The settings window SHALL offer an idle shutdown default: off, or a period
+with deactivate or reset. Off is the default. It applies to every agent whose
+own idle setting is to use the default, and a change SHALL apply to open
+windows without reopening them.
+
+#### Scenario: Turning it on
+
+- **WHEN** the user sets the default to deactivate after 45 minutes
+- **THEN** every agent using the default is deactivated after 45 idle
+  minutes, and agents with their own setting are unchanged

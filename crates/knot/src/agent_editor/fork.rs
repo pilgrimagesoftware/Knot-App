@@ -34,6 +34,12 @@ impl AgentPrefill {
                                  cost_tier,
                                  session_config,
                                  startup_prompt,
+                                 // Not copied: a fork continues a session, and two
+                                 // agents running one script at once is not a fork (#404).
+                                 schedule: _,
+                                 // Copied, as `duplicate` does: how long it may idle is
+                                 // part of how it is set up (#404).
+                                 idle_policy,
                                  // Follows from `agent_type` in `create`.
                                  view_mode: _,
                                  // Not copied: only an owner can be forked, and
@@ -81,7 +87,8 @@ impl AgentPrefill {
                capabilities:    Some(capabilities.clone()),
                cost_tier:       Some(*cost_tier),
                activation_mode: Some(*activation_mode),
-               session_config:  session_config.clone(), }
+               session_config:  session_config.clone(),
+               idle_policy:     Some(*idle_policy), }
     }
 
     /// Whether an agent created as `created_type` from this prefill takes

@@ -13,16 +13,15 @@ the tool surface itself.
 `tools/list` SHALL return exactly these tools: `register-agent`,
 `list-agents`, `describe-agents`, `send-message`, `check-messages`,
 `broadcast-message`, `list-repos`, `list-worktrees`, `create-agent`,
-`close-agent`, `create-worktree`, `set-status`, `set-working-directory`,
-`display-markdown`, `view-mermaid`, `show-checklist`, `get-checklist`,
-`plan-tasks`, `dispatch-task`, `complete-task`, `task-status`. Every tool
-SHALL declare a JSON object input schema with typed properties and a required
-list.
+`close-agent`, `create-worktree`, `set-status`, `display-markdown`,
+`view-mermaid`, `show-checklist`, `get-checklist`, `plan-tasks`,
+`dispatch-task`, `complete-task`, `task-status`. Every tool SHALL declare a
+JSON object input schema with typed properties and a required list.
 
 #### Scenario: Catalog is complete and stable
 
 - **WHEN** `tools/list` is called
-- **THEN** every tool listed is present, each with a name, description, and
+- **THEN** all twenty tools are present, each with a name, description, and
   object input schema
 
 ### Requirement: Missing required argument is a tool error
@@ -96,7 +95,10 @@ agent for lacking a description.
 ### Requirement: send-message, check-messages, broadcast-message
 
 `send-message` SHALL require `from`, `to`, `content`. `check-messages` SHALL
-require `agentId` and accept optional `markAsRead` (default true).
+require `agentId` and accept optional `markAsRead` (default true),
+`includeRead` (default false) and `since`, an RFC 3339 time in the form each
+message's `timestamp` is reported in; a `since` that is not one SHALL be
+rejected with `isError` true. Each listed message SHALL carry `read`.
 `broadcast-message` SHALL require `from`, `content`. Their delivery, routing,
 and rejection semantics are defined by `mcp-messaging`; on rejection the tool
 result SHALL carry the rejection string with `isError` true.
@@ -106,6 +108,17 @@ result SHALL carry the rejection string with `isError` true.
 - **WHEN** `send-message` targets a shell agent
 - **THEN** the tool result text is "Cannot send messages to shell agents" with
   `isError` true
+
+#### Scenario: A read brief can be checked again
+
+- **WHEN** an agent that has already read a brief calls `check-messages` with
+  `includeRead` true
+- **THEN** the brief is listed with `read` true
+
+#### Scenario: A since that is not a time
+
+- **WHEN** `check-messages` is called with `since` set to `yesterday`
+- **THEN** the tool result has `isError` true
 
 ### Requirement: list-repos and list-worktrees
 
@@ -124,9 +137,11 @@ worktrees as name and absolute path.
 `create-agent` SHALL require the caller's `agentId`. It SHALL accept
 `benchAgentId` (deploy a bench template; then name/agentType/repoPath are
 optional), or otherwise require `name`, `agentType`, and `repoPath`. Optional
-inputs: `icon`, `createWorktree` with `branchName`, `companion`, `command`
-(shell only), `personaId`. On success it SHALL create the agent attributed to
-the caller and return the new agent id.
+inputs: `icon`, `createWorktree` with `branchName` and `worktreePath`,
+`companion`, `command` (shell only), `personaId`. `worktreePath` SHALL place the
+new worktree as `create-worktree`'s `path` does; given without `createWorktree`
+it SHALL be an error, and no agent SHALL be created. On success it SHALL create
+the agent attributed to the caller and return the new agent id.
 
 #### Scenario: Create from explicit fields
 
@@ -138,6 +153,20 @@ the caller and return the new agent id.
 
 - **WHEN** `create-agent` sets `createWorktree` true without `branchName`
 - **THEN** the result is an error naming the missing `branchName`
+
+#### Scenario: Create with a new worktree at a named location
+
+- **WHEN** `create-agent` sets `createWorktree` with a `branchName` and a
+  `worktreePath`
+- **THEN** the worktree is created at `worktreePath` and the new agent's folder
+  is that path
+
+#### Scenario: A worktree location without a worktree
+
+- **WHEN** `create-agent` is called with a `worktreePath` but without
+  `createWorktree`
+- **THEN** the result is an error naming `createWorktree`, and no agent is
+  created
 
 ### Requirement: close-agent
 
@@ -153,23 +182,49 @@ message stating the caller may only close agents it created.
 ### Requirement: create-worktree
 
 `create-worktree` SHALL require `repoPath` and a non-empty `branchName`, create
-a worktree on a new branch, and return the new worktree path on success.
+a worktree on a new branch, and return the new worktree path on success. It
+SHALL accept an optional `path`: when given, the worktree SHALL be created
+there, with a leading `~/` meaning the home folder; when omitted, at the
+default sibling location. A `path` that is relative after that expansion SHALL
+be an error, and no worktree SHALL be created.
 
 #### Scenario: Empty branch name
 
 - **WHEN** `create-worktree` is called with an empty `branchName`
 - **THEN** the result is an error and no worktree is created
 
+#### Scenario: Location named by the agent's instructions
+
+- **WHEN** `create-worktree` is called with an absolute `path` whose parent
+  folders do not exist yet
+- **THEN** the worktree is created at `path` and nothing is created at the
+  default location
+
+#### Scenario: Relative location
+
+- **WHEN** `create-worktree` is called with a relative `path`
+- **THEN** the result is an error saying the path must be absolute, and no
+  worktree is created
+
 ### Requirement: set-status
 
 `set-status` SHALL require the caller's `agentId` and a `status` string. It
 SHALL set the agent's human-readable status text; an empty string SHALL clear
-it. This status is distinct from the automatic state machine value.
+it. This status is distinct from the automatic state machine value. The new
+text SHALL be drawn wherever the agent's status is shown within one repaint
+poll, whether or not anything else about that agent is changing.
 
 #### Scenario: Clear status
 
 - **WHEN** `set-status` is called with an empty `status`
 - **THEN** the agent's status text becomes empty and its state is unchanged
+
+#### Scenario: The status of an idle agent is drawn
+
+- **WHEN** one agent calls `set-status` for another agent that is idle, with
+  nothing streaming in any open window
+- **THEN** the new text appears in the sidebar and everywhere else the status
+  is shown, without the user doing anything
 
 ### Requirement: display-markdown and view-mermaid
 
@@ -404,3 +459,111 @@ session runs.
 - **WHEN** an agent calls `set-working-directory` with an empty `path`, or
   with its own folder
 - **THEN** it has no working directory, and its folder is read again
+
+### Requirement: show-checklist
+
+`show-checklist` SHALL require `agentId` and `items` and accept an optional
+`title`. `items` SHALL be a non-empty array of objects, each with a non-empty
+`id` unique within the list, a non-empty `text`, and an optional `kind` of
+`check` (the default) or `question`. A malformed list SHALL be a tool error
+naming the offending item and SHALL leave the agent's checklist unchanged. A
+valid call SHALL set the agent's checklist, unsent, in its artifact panel.
+
+#### Scenario: Show a checklist
+
+- **WHEN** `show-checklist` is called with a check and a question
+- **THEN** the agent's artifact panel shows both, unticked and unanswered
+
+#### Scenario: A malformed list is refused
+
+- **WHEN** `show-checklist` is called with two items sharing an id
+- **THEN** the call is a tool error naming the duplicate and no checklist is set
+
+### Requirement: show-checklist keeps the user's answers on update
+
+Calling `show-checklist` for an agent that already has a checklist SHALL
+replace its items while keeping the user's tick or answer for every item whose
+`id` and `kind` are unchanged. It SHALL NOT close or replace the agent's
+markdown or diagram artifacts.
+
+#### Scenario: An update keeps the answers
+
+- **WHEN** the user has ticked an item and `show-checklist` is called again
+  with that item's id and kind and reworded text
+- **THEN** the item shows the new text and is still ticked
+
+#### Scenario: A changed kind starts over
+
+- **WHEN** an answered question is shown again with the same id as a check
+- **THEN** the check is unticked
+
+### Requirement: get-checklist
+
+`get-checklist` SHALL require `agentId` and return the agent's checklist as
+JSON: its `title`, whether it has been `submitted` since it last changed, and
+every item with its `id`, `text` and `kind`, plus `checked` for a check and
+`answer` for a question. An agent with no checklist SHALL get a tool error that
+names `show-checklist`.
+
+#### Scenario: Read the user's answers
+
+- **WHEN** the user has ticked a check and answered a question, and the agent
+  calls `get-checklist`
+- **THEN** the result shows the check as ticked and the question's answer,
+  without the user having sent anything
+
+### Requirement: A task may start its assignee on a fresh conversation
+
+A `plan-tasks` task MAY carry `resetContext` true. Dispatching it SHALL
+deliver its goal as any dispatch does, and then restart the assignee without
+its conversation as soon as the assignee is neither Working nor awaiting
+input. The system SHALL NOT nudge the assignee to read its inbox until that
+restart has happened. `plan-tasks` and `task-status` SHALL report
+`resetContext` on each task that carries it.
+
+#### Scenario: An idle assignee starts fresh
+
+- **WHEN** a `resetContext` task is dispatched to an idle agent
+- **THEN** the agent is restarted on a new conversation, and then nudged to
+  read the task
+
+#### Scenario: A working assignee finishes first
+
+- **WHEN** a `resetContext` task is dispatched to an agent that is Working
+- **THEN** the agent is not restarted until it stops working
+
+#### Scenario: A task without it keeps the conversation
+
+- **WHEN** a task without `resetContext` is dispatched
+- **THEN** the assignee is not restarted
+
+### Requirement: A reset does not cut work short
+
+`dispatch-task` SHALL return `isError` true, leaving the task `ready`, when a
+`resetContext` task's recipient is the caller, or holds another task in any
+plan that is `dispatched` and not yet reported.
+
+#### Scenario: The assignee is still on another task
+
+- **WHEN** a `resetContext` task is dispatched to an agent idle while its
+  previous dispatched task awaits a reply
+- **THEN** the result has `isError` true, names that task, and the task stays
+  `ready`
+
+#### Scenario: Not to the caller
+
+- **WHEN** the caller dispatches a `resetContext` task assigned to itself
+- **THEN** the result has `isError` true and the task stays `ready`
+
+### Requirement: Array parameters declare their items
+
+Every tool's input schema SHALL give each array, at any depth, an `items`
+schema describing its elements, because function-calling backends such as
+Gemini's reject a request carrying an array parameter without one.
+
+#### Scenario: plan-tasks
+
+- **WHEN** a client lists the tools
+- **THEN** `plan-tasks`' `tasks` declares object items with `id`, `goal`,
+  `assignee`, `capabilities`, `dependsOn` and `resetContext`, and
+  `describe-agents`' `capabilities` declares string items

@@ -19,6 +19,9 @@ impl AgentEditor {
         !self.name_input.read(cx).value().trim().is_empty()
         && !self.folder_path.trim().is_empty()
         && PathBuf::from(self.folder_path.trim()).is_dir()
+        // An entry the scheduling controls refuse keeps Save disabled; the
+        // reason is shown under the control (#404).
+        && self.submitted_scheduling(cx).is_ok()
     }
 
     /// The three fields both submit paths read, validated and trimmed, or
@@ -41,15 +44,27 @@ impl AgentEditor {
             cx.notify();
             return None;
         }
+        let (schedule, idle_policy) = match self.submitted_scheduling(cx) {
+            Ok(scheduling) => scheduling,
+            Err(message) => {
+                self.error = Some(message);
+                cx.notify();
+                return None;
+            }
+        };
         Some(AgentFields { folder,
                            name,
-                           avatar: self.avatar_input.read(cx).value().trim().to_string() })
+                           avatar: self.avatar_input.read(cx).value().trim().to_string(),
+                           schedule,
+                           idle_policy })
     }
 
     pub(super) fn create(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(AgentFields { folder,
                                name,
-                               avatar, }) = self.validated_fields(cx)
+                               avatar,
+                               schedule,
+                               idle_policy, }) = self.validated_fields(cx)
         else {
             return;
         };
@@ -100,6 +115,9 @@ impl AgentEditor {
             else {
                 Default::default()
             };
+            // Nor for scheduling (#404): set once it exists.
+            store.set_schedule(id, schedule);
+            store.set_idle_policy(id, idle_policy);
             for (config_id, value) in session_config {
                 if let Err(error) =
                     store.set_session_config_option(id, config_id.clone(), value.clone())
@@ -113,9 +131,15 @@ impl AgentEditor {
             let store = self.store.lock();
             settings.saved_agents = store.saved_agents(settings.restore_conversation_on_launch);
             settings.saved_workspaces = store.saved_workspaces();
+            // A schedule just set records its earlier runs as handled (#404);
+            // written with the rest so a relaunch cannot run one.
+            settings.workspace_ui = store.saved_workspace_ui();
         });
         if let Err(error) = installed.persist_roster() {
             eprintln!("failed to persist the agent roster: {error}");
+        }
+        if let Err(error) = installed.persist_workspace_ui() {
+            eprintln!("failed to persist the handled scheduled runs: {error}");
         }
         (self.on_created)(created_id, window, cx);
         window.remove_window();
@@ -131,7 +155,9 @@ impl AgentEditor {
         };
         let Some(AgentFields { folder,
                                name,
-                               avatar, }) = self.validated_fields(cx)
+                               avatar,
+                               schedule,
+                               idle_policy, }) = self.validated_fields(cx)
         else {
             return;
         };
@@ -156,6 +182,8 @@ impl AgentEditor {
                     capabilities,
                     cost_tier: self.cost_tier,
                     startup_prompt: self.submitted_startup_prompt(cx),
+                    schedule,
+                    idle_policy,
                 },
             );
             if let Err(error) = result {
@@ -168,9 +196,15 @@ impl AgentEditor {
             let store = self.store.lock();
             settings.saved_agents = store.saved_agents(settings.restore_conversation_on_launch);
             settings.saved_workspaces = store.saved_workspaces();
+            // A schedule just set records its earlier runs as handled (#404);
+            // written with the rest so a relaunch cannot run one.
+            settings.workspace_ui = store.saved_workspace_ui();
         });
         if let Err(error) = installed.persist_roster() {
             eprintln!("failed to persist the agent roster: {error}");
+        }
+        if let Err(error) = installed.persist_workspace_ui() {
+            eprintln!("failed to persist the handled scheduled runs: {error}");
         }
         (self.on_created)(id, window, cx);
         window.remove_window();

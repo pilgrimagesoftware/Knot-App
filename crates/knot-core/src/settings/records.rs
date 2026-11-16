@@ -154,6 +154,16 @@ pub struct SavedAgent {
             deserialize_with = "super::prompts::de_startup_prompt",
             skip_serializing_if = "Option::is_none")]
     pub startup_prompt:  Option<StartupPrompt>,
+    /// When the agent starts on its own, in a new conversation, so its
+    /// startup prompt runs (#404). Stored as text; a value this build cannot
+    /// read loads as `Schedule::Unreadable` and never runs. See
+    /// `openspec/changes/session-scheduling`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule:        Option<crate::schedule::Schedule>,
+    /// What happens to the agent after it has been idle (#404). Absent from
+    /// older records, which follow the settings default.
+    #[serde(default)]
+    pub idle_policy:     crate::schedule::IdlePolicy,
 }
 
 impl SavedAgent {
@@ -184,7 +194,9 @@ impl SavedAgent {
                capabilities: Capabilities::new(),
                cost_tier: CostTier::default(),
                session_config: BTreeMap::new(),
-               startup_prompt: None }
+               startup_prompt: None,
+               schedule: None,
+               idle_policy: crate::schedule::IdlePolicy::default() }
     }
 }
 
@@ -299,6 +311,12 @@ pub struct WorkspaceUiState {
     /// launch can reopen it (`reopen_workspaces_on_launch`). Written once,
     /// at quit, for every entry; `false` for a record that predates it.
     pub open_at_quit:          bool,
+    /// The last scheduled run each agent in this workspace had handled -
+    /// started, skipped or missed - as Unix seconds (#404). Kept here, not on
+    /// the agent, because Knot recorded it rather than the user setting it;
+    /// kept at all so a relaunch inside the grace window cannot start the
+    /// same run again.
+    pub schedule_runs_handled: BTreeMap<Uuid, i64>,
 }
 
 /// A window's position and size in logical pixels, as plain numbers -
@@ -325,7 +343,8 @@ impl Default for WorkspaceUiState {
                show_dashboard:        None,
                is_detached:           None,
                window_bounds:         None,
-               open_at_quit:          false, }
+               open_at_quit:          false,
+               schedule_runs_handled: BTreeMap::new(), }
     }
 }
 
@@ -553,7 +572,8 @@ mod tests {
                                                                                     y:      34.,
                                                                                     width:  960.,
                                                                                     height: 640., }),
-                                    open_at_quit:          true, };
+                                    open_at_quit:          true,
+                                    schedule_runs_handled: BTreeMap::new(), };
         let json = serde_json::to_string(&ui).unwrap();
         let back: WorkspaceUiState = serde_json::from_str(&json).unwrap();
         assert_eq!(ui, back);

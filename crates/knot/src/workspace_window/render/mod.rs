@@ -62,6 +62,7 @@ use crate::workspace_window::sidebar_is_compact;
 use crate::workspace_window::with_agents_menu_actions;
 use crate::workspace_window::workspace_title;
 
+mod activity_capture;
 mod agent_sections;
 mod changes_tabs;
 mod content;
@@ -106,6 +107,9 @@ impl WorkspaceWindow {
     /// disagree with the rows about which workspace this window is.
     fn frame_snapshot(&self, cx: &App) -> Option<(String, Vec<AgentRow>)> {
         let autopilot_enabled = crate::settings_global::read(cx).autopilot_enabled;
+        // Evaluating a schedule is arithmetic on the clock, not I/O (#404).
+        let now = jiff::Zoned::now();
+        let outcomes = cx.try_global::<crate::scheduled_starts::ScheduleOutcomes>();
         let store = self.store.lock();
         let title = workspace_title(&store, self.workspace_id)?;
         let workspace = store.workspaces()
@@ -138,7 +142,21 @@ impl WorkspaceWindow {
                                       header_title: agent.header_title().to_string(),
                                       persona_name,
                                       agent_type: agent.agent_type.clone(),
-                                      is_running: agent.activated }
+                                      is_running: agent.activated,
+                                      schedule_line: if agent.is_shell() {
+                                          None
+                                      }
+                                      else {
+                                          crate::schedule_text::schedule_line(
+                                              agent.schedule.as_ref(),
+                                              outcomes.and_then(|outcomes| outcomes.0.get(&agent.id).copied()),
+                                              &now,
+                                          )
+                                      },
+                                      idle_line: self.agent_idle
+                                                     .get(&agent.id)
+                                                     .and_then(|idle| idle.countdown)
+                                                     .map(crate::schedule_text::idle_line) }
                        })
                        .collect()))
     }
@@ -538,7 +556,7 @@ impl Render for WorkspaceWindow {
 
         // One content slot: at most one takeover shows at a time, so the
         // first that claims it wins and `content_column` needs no third arm.
-        let takeover_content = self.dashboard_content(is_dashboard, cx)
+        let takeover_content = self.dashboard_content(is_dashboard, window, cx)
                                    .or_else(|| self.changes_content(is_changes, window, cx));
 
         let title_bar_left = self.title_bar_left(is_takeover,
@@ -553,6 +571,7 @@ impl Render for WorkspaceWindow {
                                                    cx);
         let selected_menu = self.selected_agent_menu(cx);
         let shortcuts = self.shortcut_availability();
+        let file_finder = self.render_file_finder(cx);
         let background_targets = SidebarMenuTargets { store:         Arc::clone(&self.store),
                                                       window_entity: cx.entity(),
                                                       workspace_id:  self.workspace_id, };
@@ -629,5 +648,8 @@ impl Render for WorkspaceWindow {
                                                                        window,
                                                                        cx))),
             )
+            // Last, so it paints over everything else (#5).
+            .relative()
+            .children(file_finder)
     }
 }

@@ -23,8 +23,11 @@ use knot_watch::Watch;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
+use crate::file_search::FileSearch;
 use crate::panel_commands::FolderFiles;
-use crate::panel_commands::LookupRegistry;
+use crate::panel_commands::LookupEntry;
+use crate::panel_commands::LookupMatch;
+use crate::panel_commands::LookupSource;
 use crate::workspace_window::WorkspaceWindow;
 
 /// Where an agent's listing has got to.
@@ -41,22 +44,43 @@ pub(in crate::workspace_window) enum MentionState {
 
 /// One agent's mention listing.
 pub(in crate::workspace_window) struct PanelMentions {
-    state:    MentionState,
-    registry: LookupRegistry,
+    state:   MentionState,
+    /// The listing, shared with any search ranking it.
+    entries: Arc<Vec<LookupEntry>>,
+    /// The `@` lookup's ranking, done off the render path (#5).
+    search:  FileSearch,
     /// Where `spawn_blocking` leaves a finished listing. Taken by the
     /// repaint poll, which is the only thing that reads it.
-    landed:   Arc<Mutex<Option<FolderFiles>>>,
+    landed:  Arc<Mutex<Option<FolderFiles>>>,
     /// Set by the folder watch when something changed under it.
-    dirty:    Arc<AtomicBool>,
+    dirty:   Arc<AtomicBool>,
     /// Held so it is stopped when the agent's state is torn down; a
     /// dropped `Watch` that nobody stopped keeps its task.
-    watch:    Option<Arc<Watch>>,
+    watch:   Option<Arc<Watch>>,
 }
 
 impl PanelMentions {
-    /// The entries to complete over. Empty while gathering.
-    pub(in crate::workspace_window) fn registry(&self) -> &LookupRegistry {
-        &self.registry
+    /// How far the listing has got.
+    pub(in crate::workspace_window) fn state(&self) -> MentionState {
+        self.state
+    }
+
+    /// A listing already gathered, for tests about what is done with it.
+    #[cfg(test)]
+    pub(in crate::workspace_window) fn listed(paths: &[&str]) -> Self {
+        Self { state:   MentionState::Ready { overflowed: false },
+               entries: Arc::new(paths.iter()
+                                      .map(|path| LookupEntry::new(*path, ""))
+                                      .collect()),
+               search:  FileSearch::default(),
+               landed:  Arc::new(Mutex::new(None)),
+               dirty:   Arc::new(AtomicBool::new(false)),
+               watch:   None, }
+    }
+
+    /// The listing, shared with any search ranking it.
+    pub(in crate::workspace_window) fn entries(&self) -> &Arc<Vec<LookupEntry>> {
+        &self.entries
     }
 }
 
@@ -83,17 +107,41 @@ impl WorkspaceWindow {
 
         self.panel_mentions.insert(id,
                                    PanelMentions { state: MentionState::Gathering,
-                                                   registry: LookupRegistry::default(),
+                                                   entries: Arc::new(Vec::new()),
+                                                   search: FileSearch::default(),
                                                    landed,
                                                    dirty,
                                                    watch });
         Some(MentionState::Gathering)
     }
 
-    /// `id`'s listing, if it has one.
-    pub(in crate::workspace_window) fn panel_mentions_for(&self, id: Uuid)
-                                                          -> Option<&PanelMentions> {
-        self.panel_mentions.get(&id)
+    /// The `@` lookup's matches for `filter` over `id`'s listing, or
+    /// `None` when the agent has no listing.
+    ///
+    /// Never ranks here - this is called from render. A bare `@` lists the
+    /// folder as gathered, unranked, as it always has. Anything else asks
+    /// the agent's search for a ranking and shows the landed one for
+    /// exactly `filter`, or a "matching" row until it lands
+    /// (`panel-file-mentions`, "Ranking stays off the render path").
+    pub(in crate::workspace_window) fn mention_ranking(&mut self, id: Uuid, filter: &str)
+                                                       -> Option<Vec<LookupMatch>> {
+        let handle = self.runtime.handle().clone();
+        let mentions = self.panel_mentions.get_mut(&id)?;
+        if filter.is_empty() {
+            return Some(mentions.entries
+                                .iter()
+                                .take(crate::consts::FUZZY_MAX_RESULTS)
+                                .cloned()
+                                .map(LookupMatch::plain)
+                                .collect());
+        }
+        let entries = Arc::clone(&mentions.entries);
+        mentions.search
+                .request(&handle, &entries, filter, std::time::Duration::ZERO);
+        Some(match mentions.search.matches_for(filter) {
+                 Some(matches) => matches.to_vec(),
+                 None => vec![LookupMatch::status(knot_core::l10n::t("panel.mentions_matching"))],
+             })
     }
 
     /// Walks `folder` off the main thread, leaving the result in `landed`.
@@ -140,13 +188,20 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn drain_mention_listings(&mut self) -> bool {
         let mut changed = false;
         let mut restart: Vec<(Uuid, Arc<Mutex<Option<FolderFiles>>>)> = Vec::new();
+        let mut relisted: Vec<Uuid> = Vec::new();
 
         for (id, mentions) in &mut self.panel_mentions {
             if let Some(files) = mentions.landed.lock().take() {
+                relisted.push(*id);
                 mentions.state = MentionState::Ready { overflowed: files.overflowed(), };
-                mentions.registry = LookupRegistry::from_sources(&[&files]);
+                mentions.entries = Arc::new(files.entries());
+                // A ranking of the previous listing is stale now.
+                mentions.search.invalidate();
                 changed = true;
             }
+            // A local, as below: `drain` clears as it reads.
+            let ranked = mentions.search.drain();
+            changed |= ranked;
             // Assigned to a local first: `||` would skip this whenever the
             // take above was `Some`, and because the swap consumes the
             // flag, the skipped change would be lost rather than deferred.
@@ -154,6 +209,12 @@ impl WorkspaceWindow {
             if fired {
                 restart.push((*id, Arc::clone(&mentions.landed)));
             }
+        }
+
+        // The finder ranks the same listing; a new one makes its ranking
+        // stale too.
+        for id in relisted {
+            self.invalidate_file_finder(id);
         }
 
         for (id, landed) in restart {
@@ -181,3 +242,6 @@ impl WorkspaceWindow {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

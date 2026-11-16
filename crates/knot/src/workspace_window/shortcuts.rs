@@ -85,6 +85,15 @@ impl WorkspaceWindow {
                    .on_action(cx.listener(|view, _: &TogglePullRequests, _, cx| {
                                     view.toggle_view(WorkspaceViewMode::Changes, cx)
                                 }));
+        // Find File needs an agent to search the folder of (#5).
+        let el = if available.focus_input {
+            el.on_action(cx.listener(|view, _: &crate::app_bootstrap::FindFile, window, cx| {
+                               view.open_file_finder(window, cx)
+                           }))
+        }
+        else {
+            el
+        };
         let el = if available.focus_input {
             el.on_action(cx.listener(|view, _: &FocusAgentInput, _, cx| view.focus_agent_input(cx)))
         }

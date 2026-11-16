@@ -23,6 +23,7 @@ pub(crate) enum AgentMenuEntry {
     BenchAgent,
     OpenIn,
     MarkdownFiles,
+    ConfigFiles,
     AgentInfo,
     RegisterAgent,
     LockAgent,
@@ -45,7 +46,7 @@ impl AgentMenuEntry {
     /// and `tests::every_agent_menu_entry_is_in_all` walks this list against
     /// an exhaustive match, so a variant added here without an action - or
     /// added to the enum without reaching this list - fails the build.
-    pub(crate) const ALL: [Self; 21] = [Self::Separator,
+    pub(crate) const ALL: [Self; 22] = [Self::Separator,
                                         Self::NewCompanion,
                                         Self::NewShellCompanion,
                                         Self::EditAgent,
@@ -56,6 +57,7 @@ impl AgentMenuEntry {
                                         Self::BenchAgent,
                                         Self::OpenIn,
                                         Self::MarkdownFiles,
+                                        Self::ConfigFiles,
                                         Self::AgentInfo,
                                         Self::RegisterAgent,
                                         Self::LockAgent,
@@ -84,6 +86,7 @@ impl AgentMenuEntry {
             Self::BenchAgent => Some(knot_core::l10n::t("menu.agent.bench_agent")),
             Self::OpenIn => Some(knot_core::l10n::t("menu.agent.open_in")),
             Self::MarkdownFiles => Some(knot_core::l10n::t("menu.agent.markdown_files")),
+            Self::ConfigFiles => Some(knot_core::l10n::t("menu.agent.config_files")),
             Self::AgentInfo => Some(knot_core::l10n::t("menu.agent.agent_info")),
             Self::RegisterAgent => Some(knot_core::l10n::t("menu.agent.register_agent")),
             Self::LockAgent => Some(knot_core::l10n::t("menu.agent.lock_agent")),
@@ -114,6 +117,9 @@ pub(crate) struct AgentMenuFacts {
     pub(crate) has_move_targets:     bool,
     /// Whether the agent has ever shown a markdown file.
     pub(crate) has_markdown_history: bool,
+    /// Whether Knot knows where this agent type keeps its configuration
+    /// (#27). A shell or a custom type has none to list.
+    pub(crate) has_config_files:     bool,
     /// Whether the agent is running, i.e. has a session to stop. Deactivate
     /// is absent rather than disabled when it is not, matching how this
     /// menu hides every other item that does not apply.
@@ -149,6 +155,7 @@ impl AgentMenuFacts {
                                                is_shell:             false,
                                                has_move_targets:     true,
                                                has_markdown_history: true,
+                                               has_config_files:     true,
                                                is_running:           true,
                                                is_panel_mode:        true,
                                                can_lock:             true,
@@ -192,6 +199,7 @@ pub(crate) fn agent_context_menu_entries(facts: AgentMenuFacts) -> Vec<AgentMenu
          [OpenIn].into_iter()
                  .chain([MarkdownFiles].into_iter()
                                        .filter(|_| facts.has_markdown_history))
+                 .chain([ConfigFiles].into_iter().filter(|_| facts.has_config_files))
                  .collect(),
          // Deactivate sits with the other session actions, and
          // immediately above Restart Agent: both act on the

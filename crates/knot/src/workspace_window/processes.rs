@@ -37,10 +37,10 @@ impl WorkspaceWindow {
     ///
     /// Answers whether a new sample landed, so the poll repaints for it and
     /// not for the twenty-nine ticks a second that find nothing.
-    pub(super) fn process_sampling_tick(&mut self) -> bool {
+    pub(super) fn process_sampling_tick(&mut self, cx: &gpui_kit::App) -> bool {
         let landed = self.drain_published_processes();
         let refused = self.drain_process_failures();
-        self.claim_process_sample();
+        self.claim_process_sample(cx);
         landed || refused
     }
 
@@ -110,6 +110,19 @@ impl WorkspaceWindow {
         };
         self.process_generation = generation;
 
+        // Idle tracking reads the same pass (#404): which processes run under
+        // each session, against what the session started with.
+        let now = std::time::SystemTime::now();
+        for (agent, processes) in &descendants {
+            if let Some(root) = self.agent_session_root(*agent) {
+                let processes: Vec<(u32, std::time::Duration)> =
+                    processes.iter()
+                             .map(|process| (process.pid, process.elapsed))
+                             .collect();
+                self.note_process_sample(*agent, root, &processes, now);
+            }
+        }
+
         // An agent whose section has never been toggled still has a header to
         // fill, and `toggle` is the only other thing that creates an entry.
         // Without this the very agents the fix is for - the ones nobody has
@@ -132,8 +145,23 @@ impl WorkspaceWindow {
     }
 
     /// Starts a sample if one is due and none is already running.
-    fn claim_process_sample(&mut self) {
-        let roots = self.observed_process_roots();
+    fn claim_process_sample(&mut self, cx: &gpui_kit::App) {
+        let observed = self.observed_process_roots();
+        // Agents an idle policy applies to are sampled too, so a background
+        // process keeps them awake (#404) - on a much slower cadence when no
+        // section is open.
+        let mut roots = observed.clone();
+        for agent in self.idle_tracked_agents(cx) {
+            if let Some(root) = self.agent_session_root(agent) {
+                roots.entry(agent).or_insert(root);
+            }
+        }
+        let interval = if observed.is_empty() {
+            crate::consts::IDLE_PROCESS_SAMPLE_INTERVAL
+        }
+        else {
+            knot_processes::consts::SAMPLE_INTERVAL
+        };
 
         if roots.is_empty() {
             // Nothing observed: no subprocess, and the next expansion
@@ -143,7 +171,7 @@ impl WorkspaceWindow {
         }
 
         let due = self.process_sampled_at
-                      .is_none_or(|at| at.elapsed() >= knot_processes::consts::SAMPLE_INTERVAL);
+                      .is_none_or(|at| at.elapsed() >= interval);
         if !due {
             return;
         }

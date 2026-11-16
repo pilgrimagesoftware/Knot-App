@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::consts::READ_RETENTION_LIMIT;
-use crate::message::Message;
+use crate::message::{Message, MessageKind};
 
 /// In-memory message queue. No persistence: a fresh `MessageStore` is the
 /// entire history on every app restart.
@@ -89,16 +89,17 @@ impl MessageStore {
     }
 
     /// Marks message `id` as a dispatched task's goal, which is never owed
-    /// a reply (see [`Message::task`]).
+    /// a reply (see [`MessageKind::Task`]).
     pub fn mark_task(&mut self, id: Uuid) {
         if let Some(message) = self.messages.iter_mut().find(|m| m.id == id) {
-            message.task = true;
+            message.kind = MessageKind::Task;
         }
     }
 
     /// The messages `agent_id` has read and not answered, oldest first: sent
     /// to it directly by another agent that `sender_present` says still
-    /// exists, not a broadcast or a dispatched task's goal, with no message
+    /// exists, of a kind owed a reply (see [`MessageKind::owes_reply`]), with
+    /// no message
     /// from it back to that sender since it read them (#405).
     ///
     /// A reply is any message to the sender, not one that quotes the brief:
@@ -110,9 +111,7 @@ impl MessageStore {
                           -> Vec<&Message> {
         self.messages
             .iter()
-            .filter(|m| {
-                m.to == agent_id && m.is_read && !m.broadcast && !m.task && m.from != agent_id
-            })
+            .filter(|m| m.to == agent_id && m.is_read && m.kind.owes_reply() && m.from != agent_id)
             .filter(|m| sender_present(m.from))
             .filter(|m| !self.answered(m))
             .collect()
@@ -147,7 +146,8 @@ impl MessageStore {
     fn answered(&self, message: &Message) -> bool {
         let since = message.read_at.unwrap_or(message.timestamp);
         self.messages.iter().any(|reply| {
-                                reply.from == message.to
+                                reply.kind.answers()
+                                && reply.from == message.to
                                 && reply.to == message.from
                                 && reply.timestamp >= since
                             })

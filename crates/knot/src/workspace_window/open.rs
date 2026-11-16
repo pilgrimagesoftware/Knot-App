@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use gpui_kit::App;
 use gpui_kit::AppContext;
+use gpui_kit::Entity;
 use gpui_kit::component::Root;
 use gpui_kit::component::resizable::ResizableState;
 use parking_lot::Mutex;
@@ -73,6 +74,32 @@ impl WorkspaceWindow {
                                       messages: Arc<Mutex<knot_messaging::MessageStore>>,
                                       workspace_id: Uuid, select_agent: Option<Uuid>,
                                       cx: &mut App) {
+        Self::open_window(store, messages, workspace_id, select_agent, true, cx);
+    }
+
+    /// The workspace window for a scheduled run (#404): the open one as it
+    /// is, without raising it, or a new one that takes focus only when Knot
+    /// is already the active app - a run at 09:00 must not pull the user out
+    /// of whatever other app they are in. `None` if no window could be made.
+    pub(crate) fn open_for_schedule(store: Arc<Mutex<knot_agents::AgentStore>>,
+                                    messages: Arc<Mutex<knot_messaging::MessageStore>>,
+                                    workspace_id: Uuid, cx: &mut App)
+                                    -> Option<Entity<Self>> {
+        let key = WindowKey::Workspace(workspace_id);
+        if let Some(view) = WindowRegistry::workspace_view(key, cx) {
+            return Some(view);
+        }
+        let knot_is_active = cx.active_window().is_some();
+        Self::open_window(store, messages, workspace_id, None, knot_is_active, cx);
+        WindowRegistry::workspace_view(key, cx)
+    }
+
+    /// Opens or raises `workspace_id`'s window. `take_focus` false opens a
+    /// new window without making it key or activating the app, and leaves an
+    /// open one where it is.
+    fn open_window(store: Arc<Mutex<knot_agents::AgentStore>>,
+                   messages: Arc<Mutex<knot_messaging::MessageStore>>, workspace_id: Uuid,
+                   select_agent: Option<Uuid>, take_focus: bool, cx: &mut App) {
         // One window per workspace: a second request raises the first rather
         // than opening another, and shows the agent it named if it named one
         // (`openspec/specs/window-lifecycle`). Every route that opens a
@@ -80,6 +107,9 @@ impl WorkspaceWindow {
         // editor's post-create jump - arrives here, so the check belongs here
         // rather than at each of them.
         let key = WindowKey::Workspace(workspace_id);
+        if !take_focus && WindowRegistry::workspace_view(key, cx).is_some() {
+            return;
+        }
         if WindowRegistry::activate(key, cx) {
             if let Some(requested) = select_agent
                && let Some(view) = WindowRegistry::workspace_view(key, cx)
@@ -97,7 +127,8 @@ impl WorkspaceWindow {
             workspace_title(&store.lock(), workspace_id).unwrap_or_else(|| "Workspace".to_string());
         let saved_bounds = store.lock().workspace_ui(workspace_id).window_bounds;
         let placed = reconciled_workspace_bounds(saved_bounds, cx);
-        let options = workspace_window_options(placed, cx);
+        let mut options = workspace_window_options(placed, cx);
+        options.focus = take_focus;
         if let Err(error) =
             cx.open_window(options, move |window, cx| {
                   // Every window tracks the OS appearance, so a light/dark flip
@@ -112,7 +143,9 @@ impl WorkspaceWindow {
                   // Order the new window front rather than letting it open
                   // behind whatever has focus - matching what the settings
                   // window already does when it reuses an open one.
-                  window.activate_window();
+                  if take_focus {
+                      window.activate_window();
+                  }
                   let selected_agent = select_agent.or_else(|| {
                                                        let store = store.lock();
                                                        agent_selection_for_workspace(&store,
@@ -193,6 +226,8 @@ impl WorkspaceWindow {
                     panel_selector_items: BTreeMap::new(),
                     panel_prompt_input_subscriptions: BTreeMap::new(),
                     panel_prompt_queues: BTreeMap::new(),
+                    agent_idle: BTreeMap::new(),
+                    idle_checked_at: None,
                     panel_prompts_in_flight: BTreeMap::new(),
                     panel_trackers: BTreeMap::new(),
                     panel_reported_states: BTreeMap::new(),
@@ -208,6 +243,8 @@ impl WorkspaceWindow {
                     panel_pending_context: BTreeMap::new(),
                     panel_composer_styling: BTreeMap::new(),
                     panel_mentions: BTreeMap::new(),
+                    dashboard_quick_prompts: Default::default(),
+                    file_finder: None,
                     panel_pending_attachments: BTreeMap::new(),
                     panel_shell_runs: Arc::new(Mutex::new(BTreeMap::new())),
                     panel_input_expanded: BTreeSet::new(),

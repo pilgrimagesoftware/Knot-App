@@ -106,6 +106,7 @@ impl AgentEditor {
             rows.push(self.persona_row(personas, cx));
         }
         rows.extend(self.startup_prompt_rows(cx));
+        rows.extend(self.scheduling_rows(cx));
         rows.extend(self.activation_rows(cx));
         rows
     }

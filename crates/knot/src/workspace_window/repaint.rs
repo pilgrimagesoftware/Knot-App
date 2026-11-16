@@ -148,6 +148,8 @@ impl WorkspaceWindow {
         // without this an `@` lookup would show whatever it had when
         // something unrelated last repainted the window.
         let mentions_listed = self.drain_mention_listings();
+        // A local like the line above: `drain` clears as it reads (#5).
+        let finder_ranked = self.drain_file_finder();
         // `display-markdown` and `view-mermaid` are served on the MCP
         // server's thread, which has no context to notify from, and nothing
         // else in this chain reads the fields they write. Until this existed
@@ -167,7 +169,7 @@ impl WorkspaceWindow {
         // Runs `ps` on its own much slower cadence, and only while a
         // processes section is expanded on the shown agent - see
         // `workspace_window::processes`.
-        let processes_sampled = self.process_sampling_tick();
+        let processes_sampled = self.process_sampling_tick(cx);
         // Both subagent feeds write off the main thread with no context to
         // notify from - the ACP drain on a session task, the hook route on an
         // axum worker - so a dispatch or a completion only reaches the screen
@@ -181,7 +183,11 @@ impl WorkspaceWindow {
         // exits. Lands here because `spawn_blocking` has no context to
         // notify from - see `workspace_window::mcp_panel::probe`.
         let mcp_probed = self.mcp_probe_tick(cx);
+        // Idling is checked on its own slower interval (#404). A local, so it
+        // runs every tick whatever the chain below decides.
+        let idle_changed = self.idle_tick(cx);
         if panel_states_moved
+           || idle_changed
            || fresh_contexts_started
            || session_limits_landed
            || panel_status_landed
@@ -208,6 +214,7 @@ impl WorkspaceWindow {
            || git_reads_landed
            || subagents_changed
            || mentions_listed
+           || finder_ranked
            || artifacts_moved
            || documents_landed
            || shell_runs_moved

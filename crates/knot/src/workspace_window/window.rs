@@ -221,6 +221,11 @@ pub(crate) struct WorkspaceWindow {
     /// cancels it).
     pub(super) panel_prompt_input_subscriptions: BTreeMap<Uuid, Subscription>,
     pub(super) panel_prompt_queues:              BTreeMap<Uuid, Vec<QueuedPanelPrompt>>,
+    /// Each agent's idle tracking (#404); see `workspace_window::idle`.
+    /// Pruned in `teardown_session`.
+    pub(super) agent_idle:                       BTreeMap<Uuid, super::idle::AgentIdle>,
+    /// When idling was last checked, so the check runs on its own interval.
+    pub(super) idle_checked_at:                  Option<std::time::Instant>,
     /// The prompt each agent's pump has taken off its queue and is waiting
     /// on a result for.
     ///
@@ -295,6 +300,11 @@ pub(crate) struct WorkspaceWindow {
     /// Built on the agent's first `@`, since an agent nobody mentions a
     /// file to should not cost a walk - see `panel::mentions`.
     pub(super) panel_mentions:                   BTreeMap<Uuid, panel::mentions::PanelMentions>,
+    /// The dashboard cards' quick-prompt fields (#10).
+    pub(super) dashboard_quick_prompts:          crate::dashboard_quick_prompt::QuickPromptFields,
+    /// The open file finder, if any (#5). One per window, for the selected
+    /// agent.
+    pub(super) file_finder:                      Option<super::file_finder::FileFinder>,
     /// Each Panel-mode composer's styled runs: its three decoration
     /// collections, the buffer they describe and the palette they were
     /// painted from. Created with the composer entity, so a restored draft

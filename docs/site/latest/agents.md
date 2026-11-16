@@ -42,7 +42,7 @@ on a fresh conversation and never on a resumed one, and changing it does not res
 | `opencode` | OpenCode through its ACP adapter | Panel |
 | `gemini` | Gemini through its ACP adapter | Panel |
 | `copilot` | GitHub Copilot through its ACP adapter | Panel |
-| `antigravity` | Google Antigravity through `agy acp` (sign in once with `agy acp --login`) | Panel |
+| `antigravity` | Google Antigravity through `agy acp --process-per-session` (sign in once with `agy acp --login`) | Panel |
 | `shell` | A terminal shell in the agent's folder | Terminal |
 
 The type fixes how the agent launches and which view it gets. A non-shell agent always launches
@@ -73,6 +73,46 @@ unregister them, and tear down their sessions. Save to Bench stores an agent as 
 Bench Agent… saves it and then closes it. Deactivate All stops every running agent, and a shell
 agent is removed on its own when its terminal process exits.
 
+## Scheduled starts and idle shutdown
+
+An agent with a startup prompt can start on its own. In the agent editor, set **Schedule** to a
+preset (every day, weekdays, chosen days, or every N hours) or to a five-field cron expression, and
+the editor shows when it next runs. When a run comes due, Knot opens the workspace window if it is
+closed, without pulling you out of another app, and starts the agent in a new conversation, so its
+startup prompt runs from a clean context.
+
+| Schedule | Runs |
+| --- | --- |
+| Every day, 09:00 | 09:00 each day |
+| Weekdays, 08:30 | 08:30 Monday to Friday |
+| Every 5 hours | 00:00, 05:00, 10:00, 15:00, 20:00, then 00:00 again |
+| Cron `30 8 * * 1-5` | 08:30 Monday to Friday |
+| Cron `0 */2 * * *` | Every two hours, on the hour |
+
+Times are in the Mac's local time zone. A run at a time skipped by a daylight-saving change runs at
+the first valid time after it, and a time that happens twice runs once.
+
+Schedules run only while Knot is running. A run missed by up to 10 minutes, because the Mac was
+asleep or Knot was still launching, runs once when Knot notices; an older one is skipped and the
+sidebar shows it as missed for an hour. A run never interrupts work: if the agent is mid-turn, has
+a permission request or a queued prompt waiting, or owes another agent a reply, that run is skipped
+and the sidebar says so. A scheduled agent's row shows its next run.
+
+**When idle** stops an agent that has done nothing for a while. Set a default in Settings >
+General > Idle agents, and override it per agent in the editor: use the default, never stop it,
+or deactivate or reset it after a number of minutes. It is off by default.
+
+An agent counts as idle only while it has no turn under way, no running subagent, no queued
+prompt, no pending permission request, no unanswered message, and no background process its latest
+turn started (such as a test run), and while nobody types, clicks or scrolls in its pane. A turn that ended
+with a question to you counts as idle; a permission request does not. Near the end of the period
+the row shows how long the agent has been idle and when it stops.
+
+Deactivating stops the session as the context menu's Deactivate does. Resetting starts a new
+conversation **without** sending the startup prompt again, so a scripted agent does not rerun its
+script every time it goes idle, and a reset agent is not reset again until it has been used.
+Neither applies to shell agents.
+
 ## The sidebar agent list
 
 Each agent has a row: its avatar and name, a state dot, and detail lines under the name - agent
@@ -96,12 +136,20 @@ for its context menu.
 
 The context menu offers companion creation (New Companion…, New Shell Companion), editing (Edit
 Agent…, Fork Agent, Duplicate Agent), placement (Move to Workspace, Save to Bench, Bench Agent…),
-opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Lock Agent or
+opening (Open In…, Markdown Files, Config Files), and session actions (Deactivate, Register Agent, Lock Agent or
 Unlock Agent, Restart Agent,
 Restart with New Conversation, Remove Agent), showing the items that apply. A companion shows only
 Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
 without it, and Register Agent re-sends the registration prompt by hand.
+
+**Config Files** lists where the agent's type keeps its configuration: the user-level files first
+(for Claude, `~/.claude.json` and `~/.claude/settings.json`; for Codex, `config.toml` under
+`$CODEX_HOME` or `~/.codex`; for OpenCode, `~/.config/opencode/opencode.jsonc` or `.json`; for
+Gemini, `~/.gemini/settings.json`; for Copilot, `~/.copilot/config.json` and `mcp-config.json`; for
+Antigravity, `~/.gemini/antigravity-cli/settings.json`), then the project's own under the agent's
+folder, such as `.claude/settings.json` or `.mcp.json`. Choosing one opens it in your default text
+editor. A file you haven't created yet opens nothing. Shell and custom agents have no Config Files.
 
 Move to Workspace moves the agent's session along with it. The agent leaves its current window
 and its session there stops. It restarts in the destination workspace in the same conversation,
@@ -254,6 +302,20 @@ For example, copy an error message, then insert a prompt reading
 and copying something else while it expands does not change it. `{% raw %}{{clipboard}}{% endraw %}`
 is always empty in a startup prompt, which is sent without you choosing it, and the agent editor
 warns when a custom startup prompt uses it.
+
+## Find File
+
+**Edit > Find File…** (⌘⇧F) searches the selected agent's folder for a file and hands its path to
+the agent: in the conversation panel it's inserted where the cursor is in the message box, and for a
+shell agent it's typed at the prompt without pressing Return. Type part of a path - `lib`, or a few
+letters spread across it like `kgs` for `crates/knot-git/src` - and pick a result with the arrow
+keys and Return, or click it. Esc or a click outside closes the finder.
+
+Results are ranked the way the original Knot ranked them: a match in the file's name beats one in a
+directory above it, and letters that run together beat scattered ones. The `@` lookup in the message
+box uses the same ranking, so both list the same files in the same order. The folder is listed as it
+is for `@`: a git repository's tracked and untracked-but-not-ignored files, otherwise every file
+outside version-control and dependency directories, up to 50,000.
 
 ## Subagents and processes
 

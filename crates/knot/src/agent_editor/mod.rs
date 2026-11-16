@@ -10,6 +10,7 @@ mod fields;
 mod fork;
 mod pickers;
 mod render;
+mod scheduling;
 mod startup_prompt;
 mod submit;
 mod window;

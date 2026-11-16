@@ -12,7 +12,8 @@ fn tooltip(state: AgentState, status: &str) -> CompactTooltip {
                      input_reason: None,
                      session_limit: None,
                      is_shell: false,
-                     status: status.into() }
+                     status: status.into(),
+                     scheduling: Vec::new() }
 }
 
 #[test]

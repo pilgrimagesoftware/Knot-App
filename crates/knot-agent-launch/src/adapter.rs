@@ -108,8 +108,18 @@ pub fn acp_adapter(agent_type: &str) -> Option<AdapterConfig> {
                                           install:                   None, }),
         // Native ACP subcommand (`agy acp`, protocol v1 over stdio) - no
         // install step. Needs a prior sign-in (`agy acp --login`).
+        //
+        // `--process-per-session` is what gets Knot's MCP server into the
+        // session (#431). Since agy 1.5.9, plain `agy acp` shares one backend
+        // across sessions and stops advertising `mcpCapabilities.http`, so
+        // Knot sends an empty `mcpServers` and the agent has no Knot tools.
+        // In this mode agy serves each session from its own worker, booted
+        // with that session's MCP servers, and advertises `http` again
+        // (checked live against agy 1.5.9). The worker exits with its
+        // front, so `kill_on_drop` still takes the whole session down.
         "antigravity" => Some(AdapterConfig { command:                   "agy",
-                                              args:                      &["acp"],
+                                              args:                      &["acp",
+                                                                           "--process-per-session"],
                                               supports_resume:           true,
                                               supports_permission_modes: true,
                                               install:                   None, }),
@@ -195,6 +205,14 @@ mod tests {
                        None,
                        "{agent_type} should have no registered adapter");
         }
+    }
+
+    /// Without `--process-per-session`, agy 1.5.9 advertises no MCP
+    /// transport and Knot's server never reaches the session (#431).
+    #[test]
+    fn antigravity_runs_a_worker_per_session_so_it_takes_mcp_servers() {
+        assert_eq!(acp_adapter("antigravity").unwrap().args,
+                   &["acp", "--process-per-session"]);
     }
 
     /// `codex-acp` 2.0.0 loads sessions (#540). Whether a given install

@@ -17,6 +17,7 @@ pub mod import;
 pub mod l10n;
 pub mod log_dir;
 pub mod pull_request_url;
+pub mod schedule;
 pub mod settings;
 
 pub use cache_dir::cache_dir;

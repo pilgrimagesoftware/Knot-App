@@ -21,6 +21,12 @@ a reply equal to or prefixed by `binary` (case-insensitive) is `binary`,
 one equal to or prefixed by `open` is `open`, and anything else - including
 a request failure - is `completed`.
 
+The system prompt SHALL classify a message as `binary` or `open` only when it
+asks the user a question or for a decision the agent needs before it can go
+on, and SHALL name as `completed` a status report or summary, a message saying
+nothing is needed from the user, a request addressed to another agent, and a
+closing courtesy after finished work.
+
 #### Scenario: Unrecognized response defaults to completed
 
 - **WHEN** the provider's response is neither `binary` nor `open`
@@ -32,6 +38,12 @@ a request failure - is `completed`.
   provider, network error)
 - **THEN** the classification is treated as `completed` and no action is
   dispatched
+
+#### Scenario: A report that needs nothing is completed
+
+- **WHEN** the system prompt is read
+- **THEN** it lists a status report stating that nothing needs the user's
+  input among its `completed` examples
 
 ### Requirement: Action matrix
 
@@ -74,15 +86,21 @@ An empty custom prompt SHALL skip the request entirely and take no action.
 
 ### Requirement: Supported providers
 
-The system SHALL support OpenAI, Anthropic, and Google as classification
-and custom-action providers, each called with a fixed, cheap model for the
-provider and the configured API key. A missing or whitespace-only API key
-SHALL fail the request without making any call.
+The system SHALL support OpenAI, Anthropic, Google, OpenCode Zen and OpenRouter
+as classification and custom-action providers, each called with a fixed, cheap
+model for the provider and the configured API key. A missing or
+whitespace-only API key SHALL fail the request without making any call.
 
 #### Scenario: Blank API key fails fast
 
 - **WHEN** the configured API key is empty or whitespace-only
 - **THEN** no network request is made and the call fails
+
+#### Scenario: A gateway provider
+
+- **WHEN** the provider is OpenCode Zen or OpenRouter
+- **THEN** the request is an OpenAI-style Chat Completions call to that
+  provider's own endpoint, with the key as a bearer token
 
 ### Requirement: Panel-mode turn-end trigger
 
@@ -126,11 +144,22 @@ identically whichever trigger fired. Landing `mark` or `ask` SHALL set the
 agent to Awaiting input and raise the awaiting-input notification; landing a
 reply SHALL do neither, since the reply starts the agent's next turn.
 
+Landing `mark` or `ask` SHALL record why the agent waits - that Autopilot
+stopped it, and whether the reply asked for a go-ahead or an open question, or
+that the custom action could not check it - as the agent's awaiting reason, and
+SHALL carry the same text as the notification's message.
+
 #### Scenario: A mark waits on the user
 
 - **WHEN** a classification lands as `mark`
 - **THEN** the agent is Awaiting input and the awaiting-input notification is
   raised
+
+#### Scenario: A mark says why
+
+- **WHEN** a `binary` classification lands as `mark`
+- **THEN** the agent's awaiting reason, and the notification's message, say
+  that Autopilot read the last reply as asking for a go-ahead
 
 #### Scenario: An injected reply does not mark the agent
 
@@ -177,3 +206,25 @@ session history.
 
 - **WHEN** Autopilot sends a reply to a Panel-mode agent
 - **THEN** the "replied for you" notice precedes the reply in the conversation
+
+### Requirement: Autopilot can be turned off for one agent
+
+While Autopilot is enabled in Settings, the user SHALL be able to turn it off
+for a single agent, and back on. The choice SHALL persist across a relaunch.
+The system SHALL NOT classify a reply from an agent with Autopilot turned off,
+whichever trigger fired, and SHALL drop a classification that was already in
+flight when Autopilot was turned off for the agent. A duplicate or fork of the agent SHALL start following
+Settings.
+
+#### Scenario: A reply from an agent with Autopilot off
+
+- **WHEN** Autopilot is enabled and configured, and an agent with Autopilot
+  turned off finishes a turn
+- **THEN** no classification runs and nothing lands for that agent
+
+#### Scenario: Turned off while a reply is being classified
+
+- **WHEN** the user turns Autopilot off for an agent while its last reply is
+  being classified
+- **THEN** the result is dropped: the agent is not marked, no notification is
+  raised, and no reply is sent
