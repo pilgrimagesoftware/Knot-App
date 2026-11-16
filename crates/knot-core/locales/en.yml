@@ -124,7 +124,8 @@ panel:
   queued: "Queued"
   # The working turn's time and its estimated tokens (#35), Claude Code's
   # "(42s · 1.2k tokens)". The "~" marks the count as an estimate.
-  turn_progress: "%{elapsed} · ~%{tokens} tokens"
+  turn_progress_one: "%{elapsed} · ~%{tokens} token"
+  turn_progress_other: "%{elapsed} · ~%{tokens} tokens"
   queued_inbox_nudge: "Queued inbox check"
   queued_autopilot: "Queued Autopilot reply"
   queued_startup_prompt: "Queued startup prompt"
@@ -493,7 +494,7 @@ menu:
 quit:
   working_title: "Agents are still working"
   working_message_one: "One agent is still working. Quitting now ends its session, and any work in progress is lost."
-  working_message_many: "%{count} agents are still working. Quitting now ends their sessions, and any work in progress is lost."
+  working_message_other: "%{count} agents are still working. Quitting now ends their sessions, and any work in progress is lost."
   working_confirm: "Quit Anyway"
   working_cancel: "Keep Working"
 
@@ -819,7 +820,8 @@ issues:
   empty: "No open issues in this workspace's repositories."
   no_match: "No issues match the search and filters."
   fetch_failed: "The issues of %{repo} could not be fetched: %{reason}"
-  truncated: "Only the first %{count} open issues are shown."
+  truncated_one: "Only the first open issue is shown."
+  truncated_other: "Only the first %{count} open issues are shown."
   updated: "updated %{when}"
   open_in_browser: "Open in Browser"
   copy_url: "Copy URL"
@@ -933,10 +935,14 @@ mcp:
   # disabled, pending approval, or in a state Knot could not read. Claiming
   # "all connected" here would be the header lying about the one thing it is
   # for.
-  summary_no_attention: "%{count} servers, none need attention"
+  summary_no_attention_one: "%{count} server, no attention needed"
+  summary_no_attention_other: "%{count} servers, none need attention"
   # Collapsed, the header names what is asking for something.
-  summary_attention: "%{names} need attention"
-  # What the listed names did not cover. `%{count}` counts servers.
+  summary_attention_one: "%{names} needs attention"
+  summary_attention_other: "%{names} need attention"
+  # What the listed names did not cover. `%{count}` counts servers. The verb
+  # agrees with every server named or counted, which is always more than one
+  # here (at least one name plus at least one more), so it has no `_one`.
   summary_attention_more: "%{names} +%{count} more need attention"
   # Between two names in that list; punctuation is the translator's.
   summary_separator: ", "
@@ -1106,7 +1112,8 @@ git_panel:
   binary_file: "Binary file"
   no_changes: "No changes"
   diff_failed: "That diff could not be read: %{reason}"
-  diff_truncated: "This diff is too large to show in full; the first %{count} lines are shown."
+  diff_truncated_one: "This diff is too large to show in full; only its first line is shown."
+  diff_truncated_other: "This diff is too large to show in full; the first %{count} lines are shown."
   # Commit.
   commit: "Commit"
   commit_title: "Commit staged changes"

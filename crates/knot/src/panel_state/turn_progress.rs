@@ -41,9 +41,10 @@ impl TurnProgress {
         if self.approx_tokens == 0 {
             return elapsed;
         }
-        knot_core::l10n::t_with("panel.turn_progress",
-                                &[("elapsed", &elapsed),
-                                  ("tokens", &format_tokens(self.approx_tokens))])
+        knot_core::l10n::t_count("panel.turn_progress",
+                                 self.approx_tokens as u64,
+                                 &[("elapsed", &elapsed),
+                                   ("tokens", &format_tokens(self.approx_tokens))])
     }
 }
 

@@ -29,6 +29,29 @@ pub fn t_with(key: &str, args: &[(&str, &str)]) -> String {
     text
 }
 
+/// The sentence for `count`: the catalog entry `{key}_one` when `count` is 1,
+/// otherwise `{key}_other`, with `%{count}` and every `args` value
+/// substituted.
+///
+/// For a sentence whose words agree with a number (a noun after it, a verb
+/// that follows it), so the whole sentence is one entry per form and the
+/// translator decides where the number goes. [`pluralize`] is for a bare
+/// "count noun" fragment inside a larger sentence. A `%{count}` key that is
+/// neither a pair read through this nor on the catalog test's allowlist fails
+/// `every_counted_sentence_has_both_forms`.
+///
+/// English needs two forms. A locale with more plural categories would need
+/// more keys and a rule per locale; the catalog has only `en`.
+#[must_use]
+pub fn t_count(key: &str, count: u64, args: &[(&str, &str)]) -> String {
+    let suffix = if count == 1 { "_one" } else { "_other" };
+    let count_text = count.to_string();
+    let mut all = Vec::with_capacity(args.len() + 1);
+    all.push(("count", count_text.as_str()));
+    all.extend_from_slice(args);
+    t_with(&format!("{key}{suffix}"), &all)
+}
+
 /// Formats `count` with the correctly localized noun form.
 ///
 /// `singular_key` and `plural_key` are translation keys (e.g. `"count.file"`
@@ -50,6 +73,9 @@ pub fn pluralize(count: u64, singular_key: &str, plural_key: &str) -> String {
 pub fn plural_noun(count: u64, singular_key: &str, plural_key: &str) -> String {
     t(if count == 1 { singular_key } else { plural_key })
 }
+
+#[cfg(test)]
+mod plural_tests;
 
 #[cfg(test)]
 mod tests {
@@ -126,7 +152,7 @@ mod tests {
 
     #[test]
     fn t_with_substitutes_a_named_placeholder() {
-        assert_eq!(t_with("quit.working_message_many", &[("count", "3")]),
+        assert_eq!(t_with("quit.working_message_other", &[("count", "3")]),
                    "3 agents are still working. Quitting now ends their sessions, and any work in \
                     progress is lost.");
     }
@@ -135,7 +161,7 @@ mod tests {
     fn t_with_leaves_an_unmatched_placeholder_visible() {
         // Better a literal `%{count}` in the copy than a sentence that
         // silently lost its number.
-        assert!(t_with("quit.working_message_many", &[]).contains("%{count}"));
+        assert!(t_with("quit.working_message_other", &[]).contains("%{count}"));
     }
 
     #[test]
