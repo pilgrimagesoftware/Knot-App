@@ -31,16 +31,17 @@ fn entry_ordinal(entry: AgentMenuEntry) -> usize {
         AgentMenuEntry::BenchAgent => 8,
         AgentMenuEntry::OpenIn => 9,
         AgentMenuEntry::MarkdownFiles => 10,
-        AgentMenuEntry::AgentInfo => 11,
-        AgentMenuEntry::RegisterAgent => 12,
-        AgentMenuEntry::LockAgent => 13,
-        AgentMenuEntry::UnlockAgent => 14,
-        AgentMenuEntry::AutopilotOff => 15,
-        AgentMenuEntry::AutopilotOn => 16,
-        AgentMenuEntry::Deactivate => 17,
-        AgentMenuEntry::RestartAgent => 18,
-        AgentMenuEntry::RestartWithNewConversation => 19,
-        AgentMenuEntry::RemoveAgent => 20,
+        AgentMenuEntry::ConfigFiles => 11,
+        AgentMenuEntry::AgentInfo => 12,
+        AgentMenuEntry::RegisterAgent => 13,
+        AgentMenuEntry::LockAgent => 14,
+        AgentMenuEntry::UnlockAgent => 15,
+        AgentMenuEntry::AutopilotOff => 16,
+        AgentMenuEntry::AutopilotOn => 17,
+        AgentMenuEntry::Deactivate => 18,
+        AgentMenuEntry::RestartAgent => 19,
+        AgentMenuEntry::RestartWithNewConversation => 20,
+        AgentMenuEntry::RemoveAgent => 21,
     }
 }
 
@@ -130,7 +131,8 @@ fn the_agents_menu_submenus_come_from_the_snapshot() {
                                            agent_context_menu_entries(AgentMenuFacts::EVERY_ITEM),
                                        move_targets:     vec![(Uuid::new_v4(),
                                                                "Second".to_string())],
-                                       markdown_history: vec![PathBuf::from("/tmp/notes/plan.md")], };
+                                       markdown_history: vec![PathBuf::from("/tmp/notes/plan.md")],
+                                       config_files:     Vec::new(), };
 
     let move_targets = submenu_items(&snapshot, &entry_label(AgentMenuEntry::MoveToWorkspace));
     assert_eq!(move_targets, vec!["Second".to_string()]);
@@ -211,4 +213,18 @@ fn submenu_items(snapshot: &AgentMenuSnapshot, title: &str) -> Vec<String> {
                                 _ => None,
                             })
                             .collect()
+}
+
+/// #27: the menu bar's Config Files lists the snapshot's files by label.
+#[test]
+fn the_config_files_submenu_comes_from_the_snapshot() {
+    let file = crate::agent_config::ConfigFile { label:      "~/.claude.json".into(),
+                                                 candidates: vec![PathBuf::from("/h/.claude.json")], };
+    let snapshot = AgentMenuSnapshot { entries:
+                                           agent_context_menu_entries(AgentMenuFacts::EVERY_ITEM),
+                                       config_files: vec![file],
+                                       ..Default::default() };
+
+    assert_eq!(submenu_items(&snapshot, &entry_label(AgentMenuEntry::ConfigFiles)),
+               vec!["~/.claude.json".to_string()]);
 }

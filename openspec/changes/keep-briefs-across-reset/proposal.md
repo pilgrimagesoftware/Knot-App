@@ -55,5 +55,8 @@ read the brief is still there.
     "A read message is owed a reply".
   - `agent-lifecycle`: ADDED "A new conversation inherits the old one's open
     threads" and "Knot's own reset waits for open threads".
-- Not in this change: telling the sender that a recipient's conversation was
-  reset (issue item 4), listed as a follow-up in `tasks.md`.
+- Item 4, added later: the same restart sends each sender of a reopened
+  message one notice from the reset agent naming it and the messages' send
+  times. Messages gain a `MessageKind` (direct, broadcast, task, notice)
+  replacing the `broadcast` and `task` flags; a notice is neither owed a
+  reply nor counts as one.
