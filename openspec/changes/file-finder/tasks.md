@@ -37,9 +37,10 @@
 - [x] 4.1 A stale scoring result is discarded, for the finder and for `@`
 - [x] 4.5 Rendering the `@` popup over a large listing does not score: a
       test that render only reads the landed result
-- [x] 4.2 Each delivery mode receives the path, with no newline in Terminal
-      mode (Panel tested in a window; Terminal is `TerminalSession::send_text`
-      with the bare path, as `deliver_prompt` already uses it)
+- [x] 4.2 Each delivery mode receives the path: Panel end to end into a real
+      composer (created if missing); Terminal mode routed to the terminal, with
+      the text written pinned as the bare path, no newline (the fixture has no
+      PTY, so the write itself is `TerminalSession::send_text`)
 - [x] 4.3 Keyboard selection and dismissal
 - [x] 4.4 The menu item's enablement
 

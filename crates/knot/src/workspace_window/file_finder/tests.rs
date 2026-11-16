@@ -1,12 +1,13 @@
 //! The file finder in a window (`file-finder`): when it opens, what it
-//! lists, and where a chosen path goes. The fixture's agents are Panel mode
-//! (every non-shell agent is), so delivery is checked into the composer;
-//! the Terminal-mode branch is `TerminalSession::send_text`, unchanged.
+//! lists, and where a chosen path goes. Panel delivery is checked end to end
+//! into a real composer; for Terminal mode the fixture has no PTY to type
+//! into, so the test pins the routing and the exact text written, and the
+//! write itself is `TerminalSession::send_text`.
 
 use gpui_kit::TestAppContext;
 use uuid::Uuid;
 
-use super::state::FinderRows;
+use super::state::{FinderRows, FoundPathTarget, terminal_text};
 use crate::app_bootstrap::FindFile;
 use crate::keymap::SelectAgent1;
 use crate::workspace_window::panel::mentions::PanelMentions;
@@ -153,4 +154,51 @@ fn selecting_another_agent_closes_it(cx: &mut TestAppContext) {
                     assert!(view.drain_file_finder());
                     assert!(view.file_finder.is_none());
                 });
+}
+
+/// A shell agent is Terminal mode: its path is typed, not inserted; a
+/// Panel agent's goes to its composer; and the text typed is the bare path
+/// with no newline, so it waits at the prompt.
+#[gpui_kit::test]
+fn a_terminal_mode_agent_has_the_path_typed_without_a_newline(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(1, cx);
+    let panel = fixture.agents[0];
+    let shell = fixture.view.update(&mut fixture.window, |view, _| {
+                                let mut store = view.store.lock();
+                                let workspace = store.workspaces()[0].id;
+                                store.create("~/shell",
+                                             knot_agents::CreateOptions { workspace_id:
+                                                                              Some(workspace),
+                                                                          agent_type:
+                                                                              Some("shell".into()),
+                                                                          ..Default::default() })
+                            });
+    fixture.view.update(&mut fixture.window, |view, _| {
+                    assert_eq!(view.found_path_target(panel), FoundPathTarget::Composer);
+                    assert_eq!(view.found_path_target(shell), FoundPathTarget::Terminal);
+                    assert_eq!(view.found_path_target(Uuid::new_v4()),
+                               FoundPathTarget::Nowhere);
+                });
+    assert_eq!(terminal_text("src/my file.rs"), "src/my file.rs");
+    assert!(!terminal_text("src/lib.rs").ends_with('\n'));
+}
+
+/// A Panel agent whose composer was never built still gets the path: the
+/// composer is created for it.
+#[gpui_kit::test]
+fn a_panel_agent_without_a_composer_gets_one(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(1, cx);
+    let agent = fixture.agents[0];
+    fixture.window.update(|window, cx| {
+                      fixture.view.update(cx, |view, cx| {
+                                      assert!(!view.panel_prompt_inputs.contains_key(&agent));
+                                      view.deliver_found_path(agent, "src/lib.rs", window, cx);
+                                  })
+                  });
+    let text = fixture.view.read_with(&fixture.window, |view, cx| {
+                               view.panel_prompt_inputs[&agent].read(cx)
+                                                               .value()
+                                                               .to_string()
+                           });
+    assert_eq!(text, "src/lib.rs");
 }

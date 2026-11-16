@@ -27,6 +27,21 @@ pub(in crate::workspace_window) struct FileFinder {
     _changes:            Subscription,
 }
 
+/// Where a chosen path is delivered; see `WorkspaceWindow::found_path_target`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::workspace_window) enum FoundPathTarget {
+    Composer,
+    Terminal,
+    Nowhere,
+}
+
+/// What is typed into a terminal for a chosen `path`: the path alone - no
+/// newline, so it waits at the prompt rather than running (`file-finder`,
+/// "Choosing a file"), and no quoting, as the reference typed it.
+pub(in crate::workspace_window) fn terminal_text(path: &str) -> String {
+    path.to_owned()
+}
+
 /// What the finder lists below its field.
 #[derive(Debug, Clone, PartialEq)]
 pub(in crate::workspace_window) enum FinderRows {
@@ -175,21 +190,34 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn deliver_found_path(&mut self, agent: Uuid, path: &str,
                                                           window: &mut Window,
                                                           cx: &mut Context<Self>) {
-        let panel_mode = self.store
-                             .lock()
-                             .agent(agent)
-                             .is_some_and(|agent| agent.view_mode == knot_core::ViewMode::Panel);
-        if panel_mode && let Some(input) = self.panel_prompt_inputs.get(&agent) {
-            input.update(cx, |state, cx| {
-                     state.replace(path, window, cx);
-                     state.focus(window, cx);
-                 });
-            return;
+        match self.found_path_target(agent) {
+            FoundPathTarget::Composer => {
+                // Created if the agent has none yet - a Panel agent whose
+                // conversation was never shown - so the path is not dropped.
+                let input = self.panel_prompt_input(agent, window, cx);
+                input.update(cx, |state, cx| {
+                         state.replace(path, window, cx);
+                         state.focus(window, cx);
+                     });
+            }
+            FoundPathTarget::Terminal => {
+                if let Some(session) = self.sessions.get(&agent)
+                   && let Err(error) = session.lock().send_text(&terminal_text(path))
+                {
+                    eprintln!("failed to type a found path for agent {agent}: {error}");
+                }
+            }
+            FoundPathTarget::Nowhere => {}
         }
-        if let Some(session) = self.sessions.get(&agent)
-           && let Err(error) = session.lock().send_text(path)
-        {
-            eprintln!("failed to type a found path for agent {agent}: {error}");
+    }
+
+    /// Where a found path for `agent` goes: a Panel-mode agent's composer, a
+    /// Terminal-mode agent's terminal, or nowhere for an agent that is gone.
+    pub(in crate::workspace_window) fn found_path_target(&self, agent: Uuid) -> FoundPathTarget {
+        match self.store.lock().agent(agent).map(|agent| agent.view_mode) {
+            Some(knot_core::ViewMode::Panel) => FoundPathTarget::Composer,
+            Some(knot_core::ViewMode::Terminal) => FoundPathTarget::Terminal,
+            None => FoundPathTarget::Nowhere,
         }
     }
 
