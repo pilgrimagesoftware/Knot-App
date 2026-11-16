@@ -17,13 +17,45 @@ pub struct Message {
     /// is measured against: a message answered is one the recipient wrote
     /// back to its sender after reading it (#405).
     pub read_at:   Option<SystemTime>,
-    /// One of a broadcast's copies. A broadcast tells, it does not ask, so
-    /// it is never left unanswered.
-    pub broadcast: bool,
-    /// A dispatched task's goal, delivered by `dispatch-task`. Never owed a
-    /// reply either: the task graph tracks that work, and the worker reports
-    /// it with `complete-task`, which writes no message back.
-    pub task:      bool,
+    /// What kind of message it is, which decides whether it is owed a reply.
+    pub kind:      MessageKind,
+}
+
+/// What a message is, for whether its recipient owes the sender a reply
+/// (#405). One per message: a message is exactly one of these.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MessageKind {
+    /// Sent to this agent alone with `send-message`: owed a reply.
+    #[default]
+    Direct,
+    /// One of a broadcast's copies. A broadcast tells, it does not ask.
+    Broadcast,
+    /// A dispatched task's goal, delivered by `dispatch-task`. The task graph
+    /// tracks that work, and the worker reports it with `complete-task`,
+    /// which writes no message back.
+    Task,
+    /// Written by Knot on an agent's behalf, such as telling a sender that
+    /// the agent's conversation was reset. Neither owed a reply nor a reply
+    /// itself: the agent did not write it.
+    Notice,
+}
+
+impl MessageKind {
+    /// Whether a message of this kind, once read, is owed a reply.
+    pub fn owes_reply(self) -> bool {
+        match self {
+            Self::Direct => true,
+            Self::Broadcast | Self::Task | Self::Notice => false,
+        }
+    }
+
+    /// Whether a message of this kind, sent back to someone, answers them.
+    pub fn answers(self) -> bool {
+        match self {
+            Self::Direct | Self::Broadcast | Self::Task => true,
+            Self::Notice => false,
+        }
+    }
 }
 
 impl Message {
@@ -36,13 +68,18 @@ impl Message {
                timestamp: SystemTime::now(),
                is_read: false,
                read_at: None,
-               broadcast: false,
-               task: false }
+               kind: MessageKind::Direct }
     }
 
     /// One recipient's copy of a broadcast: unread, and never owed a reply.
     pub fn broadcast(from: Uuid, to: Uuid, content: impl Into<String>) -> Self {
-        Self { broadcast: true,
+        Self { kind: MessageKind::Broadcast,
+               ..Self::new(from, to, content) }
+    }
+
+    /// A notice Knot writes on `from`'s behalf; see [`MessageKind::Notice`].
+    pub fn notice(from: Uuid, to: Uuid, content: impl Into<String>) -> Self {
+        Self { kind: MessageKind::Notice,
                ..Self::new(from, to, content) }
     }
 }

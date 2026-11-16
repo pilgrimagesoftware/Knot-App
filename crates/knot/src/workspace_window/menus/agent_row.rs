@@ -78,6 +78,8 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
                          is_shell:             agent.is_shell(),
                          has_move_targets:     own_workspace.is_some() && !move_targets.is_empty(),
                          has_markdown_history: !history.is_empty(),
+                         has_config_files:
+                             crate::agent_config::has_config_files(&agent.agent_type),
                          is_running:           agent.activated,
                          is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel,
                          can_lock:             !agent.locked,
@@ -123,8 +125,11 @@ fn open_editor_from_menu(targets: &AgentMenuTargets, prefill: AgentPrefill,
 pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu,
                                      window: &mut Window, cx: &mut Context<PopupMenu>)
                                      -> PopupMenu {
-    let (facts, move_targets, markdown_history) =
-        agent_menu_facts(&targets.store.lock(), targets.id);
+    let (facts, move_targets, markdown_history, config_files) = {
+        let store = targets.store.lock();
+        let (facts, move_targets, markdown_history) = agent_menu_facts(&store, targets.id);
+        (facts, move_targets, markdown_history, crate::agent_config::for_agent(&store, targets.id))
+    };
     let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
     let mut menu = menu;
     for entry in agent_context_menu_entries(facts) {
@@ -186,6 +191,22 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
                                                                                     &file, app);
                                                        }
                                                    }));
+                        }
+                        submenu
+                    })
+            }
+            AgentMenuEntry::ConfigFiles => {
+                let files = config_files.clone();
+                let title = AgentMenuEntry::ConfigFiles.label().unwrap_or_default();
+                menu.submenu(title, window, cx, move |mut submenu, _, _| {
+                        for file in &files {
+                            let candidates = file.candidates.clone();
+                            submenu = submenu.item(PopupMenuItem::new(file.label.clone())
+                                                       .on_click(move |_, _window, _app| {
+                                                           crate::agent_config::open_config_file(
+                                &candidates,
+                            );
+                                                       }));
                         }
                         submenu
                     })
@@ -440,7 +461,8 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
         AgentMenuEntry::Separator
         | AgentMenuEntry::MoveToWorkspace
         | AgentMenuEntry::OpenIn
-        | AgentMenuEntry::MarkdownFiles => {}
+        | AgentMenuEntry::MarkdownFiles
+        | AgentMenuEntry::ConfigFiles => {}
     }
 }
 

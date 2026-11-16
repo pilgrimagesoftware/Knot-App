@@ -6,8 +6,9 @@
 
 A message SHALL carry a unique id, sender id, recipient id (both stored as
 agent uuids), content, a timestamp, a read flag defaulting to false, the time
-it was read (none while unread), whether it is one copy of a broadcast, and
-whether it is a dispatched task's goal.
+it was read (none while unread), and its kind: direct, one copy of a
+broadcast, a dispatched task's goal, or a notice Knot wrote on an agent's
+behalf.
 Messages SHALL be held in memory only and SHALL NOT persist across app
 restarts.
 
@@ -48,10 +49,10 @@ message id.
 ### Requirement: A read message is owed a reply
 
 A message SHALL be unanswered when its recipient has read it, it was sent
-directly by another agent that still exists, it is neither a broadcast nor a
-dispatched task's goal, and the recipient has sent no message to its sender
-since reading it. Any message from the recipient to that sender SHALL settle
-every message from that sender read before it.
+directly by another agent that still exists, it is not a broadcast, a
+dispatched task's goal or a notice, and the recipient has sent no message
+other than a notice to its sender since reading it. Any such message SHALL
+settle every message from that sender read before it.
 
 #### Scenario: A reply settles the brief
 
@@ -73,6 +74,11 @@ every message from that sender read before it.
 
 - **WHEN** an agent reads a brief and its sender is then removed
 - **THEN** the brief is not unanswered
+
+#### Scenario: A notice neither asks nor answers
+
+- **WHEN** Knot sends a brief's sender a notice on the recipient's behalf
+- **THEN** the sender owes no reply to it, and the brief is still unanswered
 
 #### Scenario: A broadcast is never owed
 

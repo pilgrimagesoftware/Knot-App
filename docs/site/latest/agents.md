@@ -96,12 +96,20 @@ for its context menu.
 
 The context menu offers companion creation (New Companion…, New Shell Companion), editing (Edit
 Agent…, Fork Agent, Duplicate Agent), placement (Move to Workspace, Save to Bench, Bench Agent…),
-opening (Open In…, Markdown Files), and session actions (Deactivate, Register Agent, Lock Agent or
+opening (Open In…, Markdown Files, Config Files), and session actions (Deactivate, Register Agent, Lock Agent or
 Unlock Agent, Restart Agent,
 Restart with New Conversation, Remove Agent), showing the items that apply. A companion shows only
 Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
 Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
 without it, and Register Agent re-sends the registration prompt by hand.
+
+**Config Files** lists where the agent's type keeps its configuration: the user-level files first
+(for Claude, `~/.claude.json` and `~/.claude/settings.json`; for Codex, `config.toml` under
+`$CODEX_HOME` or `~/.codex`; for OpenCode, `~/.config/opencode/opencode.jsonc` or `.json`; for
+Gemini, `~/.gemini/settings.json`; for Copilot, `~/.copilot/config.json` and `mcp-config.json`; for
+Antigravity, `~/.gemini/antigravity-cli/settings.json`), then the project's own under the agent's
+folder, such as `.claude/settings.json` or `.mcp.json`. Choosing one opens it in your default text
+editor. A file you haven't created yet opens nothing. Shell and custom agents have no Config Files.
 
 Move to Workspace moves the agent's session along with it. The agent leaves its current window
 and its session there stops. It restarts in the destination workspace in the same conversation,
