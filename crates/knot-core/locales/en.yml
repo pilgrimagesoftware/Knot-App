@@ -2,6 +2,21 @@ app:
   name: "Knot"
 
 dashboard:
+  quick_prompt:
+    send: "Send a prompt…"
+    queues: "Will queue until it can take it"
+    not_running: "Not running"
+  summary:
+    awaiting_one: "%{count} awaiting input"
+    awaiting_other: "%{count} awaiting input"
+    working_one: "%{count} working"
+    working_other: "%{count} working"
+    idle_one: "%{count} idle"
+    idle_other: "%{count} idle"
+    error_one: "%{count} error"
+    error_other: "%{count} errors"
+    off_one: "%{count} not running"
+    off_other: "%{count} not running"
   title: "Dashboard"
   command_center: "Command Center"
   no_agents: "No agents"

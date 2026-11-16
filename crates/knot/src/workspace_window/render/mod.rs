@@ -556,7 +556,7 @@ impl Render for WorkspaceWindow {
 
         // One content slot: at most one takeover shows at a time, so the
         // first that claims it wins and `content_column` needs no third arm.
-        let takeover_content = self.dashboard_content(is_dashboard, cx)
+        let takeover_content = self.dashboard_content(is_dashboard, window, cx)
                                    .or_else(|| self.changes_content(is_changes, window, cx));
 
         let title_bar_left = self.title_bar_left(is_takeover,
