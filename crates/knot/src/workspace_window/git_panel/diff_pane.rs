@@ -89,8 +89,9 @@ impl WorkspaceWindow {
                      .py_1()
                      .text_xs()
                      .text_color(cx.theme().muted_foreground)
-                     .child(knot_core::l10n::t_with("git_panel.diff_truncated",
-                                                    &[("count", &shown.to_string())]))
+                     .child(knot_core::l10n::t_count("git_panel.diff_truncated",
+                                                     shown as u64,
+                                                     &[]))
                                    }))
                 // The list scrolls vertically on its own state; the div
                 // around it scrolls long lines sideways. The vertical bar

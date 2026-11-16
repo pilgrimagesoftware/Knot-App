@@ -255,3 +255,48 @@ fn a_dismissed_server_that_connected_and_lapsed_needs_attention_again() {
     assert!(text.contains("notion"),
             "the lapsed server needs attention again: {text}");
 }
+
+/// #437: one server reads as one ("1 server"), two as more. Compared against
+/// the catalog's own forms, so a copy edit cannot fail it.
+#[test]
+fn the_no_attention_count_agrees_with_one_and_two() {
+    let one = Inventory::probed(vec![row("a", ServerState::Disabled)]);
+    let two = Inventory::probed(vec![row("a", ServerState::Disabled),
+                                     row("b", ServerState::Unknown)]);
+
+    assert_eq!(summary_text(&status(Some(&one))),
+               knot_core::l10n::t_with("mcp.summary_no_attention_one", &[("count", "1")]));
+    assert_eq!(summary_text(&status(Some(&two))),
+               knot_core::l10n::t_with("mcp.summary_no_attention_other", &[("count", "2")]));
+}
+
+/// #437: the verb agrees with how many servers are named.
+#[test]
+fn the_attention_verb_agrees_with_one_and_two_names() {
+    let one = Inventory::probed(vec![row("github", ServerState::Failed)]);
+    let two = Inventory::probed(vec![row("github", ServerState::Failed),
+                                     row("linear", ServerState::NeedsAuthentication)]);
+    let separator = knot_core::l10n::t("mcp.summary_separator");
+
+    assert_eq!(summary_text(&status(Some(&one))),
+               knot_core::l10n::t_with("mcp.summary_attention_one", &[("names", "github")]));
+    assert_eq!(summary_text(&status(Some(&two))),
+               knot_core::l10n::t_with("mcp.summary_attention_other",
+                                       &[("names", &format!("github{separator}linear"))]));
+}
+
+/// The remainder form names the most servers and counts at least one more,
+/// so it always takes the plural verb; one remaining server must not switch
+/// it to a singular form.
+#[test]
+fn one_more_server_keeps_the_plural_verb() {
+    let four = Inventory::probed(["a", "b", "c", "d"].map(|name| row(name, ServerState::Failed))
+                                                     .to_vec());
+
+    let text = summary_text(&status(Some(&four)));
+
+    let listed = ["a", "b", "c"].join(&knot_core::l10n::t("mcp.summary_separator"));
+    assert_eq!(text,
+               knot_core::l10n::t_with("mcp.summary_attention_more",
+                                       &[("names", &listed), ("count", "1")]));
+}
