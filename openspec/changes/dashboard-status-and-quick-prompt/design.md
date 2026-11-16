@@ -44,9 +44,9 @@ It maps each non-shell agent through `working_indicator::state(state,
 has_session)` — the function that picks the card's indicator — so the summary
 and the cards cannot disagree. Order: awaiting input, working, idle, error,
 not running; zero counts are dropped. Each entry is a colored dot from the
-card's `StatusPalette` and a count with its label through `l10n::pluralize`
-(one key pair per state), since "1 Error" / "2 Errors" is the translator's
-to word.
+card's `StatusPalette` and the count's entry through `l10n::t_count` (one
+`_one`/`_other` pair per state, from #439), so the translator words the
+whole entry and places the number.
 
 Where it is drawn depends on how many sections a dashboard has. The Command
 Center shows several workspaces: one summary in its header over every agent,

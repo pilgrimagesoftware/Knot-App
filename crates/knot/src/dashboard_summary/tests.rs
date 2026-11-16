@@ -48,11 +48,14 @@ fn shell_agents_are_not_counted() {
 }
 
 #[test]
-fn every_label_key_resolves_and_keeps_its_count() {
+fn every_label_resolves_and_keeps_its_count() {
     for state in ORDER {
-        let (one, many) = label_keys(state);
-        assert_ne!(knot_core::l10n::t(one), one);
-        assert_ne!(knot_core::l10n::t(many), many);
-        assert!(knot_core::l10n::pluralize(3, one, many).starts_with('3'));
+        let key = label_key(state);
+        for (count, form) in [(1_u64, "_one"), (3, "_other")] {
+            let full = format!("{key}{form}");
+            assert_ne!(knot_core::l10n::t(&full), full, "{full}");
+            assert!(knot_core::l10n::t_count(key, count, &[]).contains(&count.to_string()),
+                    "{full} keeps its count");
+        }
     }
 }

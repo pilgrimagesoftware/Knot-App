@@ -10,7 +10,7 @@
 
 - [x] 1.1 `status_counts` over `DashboardAgent`, through `working_indicator::state`; unit tests for order, dropped zeros, shell agents and not-running agents
 - [x] 1.2 Draw it beside each section's name, and in the header of the Command Center only
-- [x] 1.3 Catalog keys per state through `l10n::pluralize`; key-resolution tests
+- [x] 1.3 Catalog keys per state through `l10n::t_count` (`_one`/`_other`); key-resolution tests
 
 ## 2. Quick prompt
 

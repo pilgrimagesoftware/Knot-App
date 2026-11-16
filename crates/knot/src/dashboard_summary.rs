@@ -42,22 +42,16 @@ pub(crate) fn status_counts<'a>(agents: impl IntoIterator<Item = &'a DashboardAg
          .collect()
 }
 
-/// The catalog keys naming one and several agents in `state`.
-pub(crate) fn label_keys(state: WorkingIndicatorState) -> (&'static str, &'static str) {
+/// The catalog key for counting agents in `state`, read through
+/// `l10n::t_count` (`{key}_one` / `{key}_other`), so the translator words the
+/// whole entry and places the number.
+pub(crate) fn label_key(state: WorkingIndicatorState) -> &'static str {
     match state {
-        WorkingIndicatorState::AwaitingInput => {
-            ("dashboard.summary.awaiting_one", "dashboard.summary.awaiting_many")
-        }
-        WorkingIndicatorState::Working => {
-            ("dashboard.summary.working_one", "dashboard.summary.working_many")
-        }
-        WorkingIndicatorState::Idle => {
-            ("dashboard.summary.idle_one", "dashboard.summary.idle_many")
-        }
-        WorkingIndicatorState::Error => {
-            ("dashboard.summary.error_one", "dashboard.summary.error_many")
-        }
-        WorkingIndicatorState::Off => ("dashboard.summary.off_one", "dashboard.summary.off_many"),
+        WorkingIndicatorState::AwaitingInput => "dashboard.summary.awaiting",
+        WorkingIndicatorState::Working => "dashboard.summary.working",
+        WorkingIndicatorState::Idle => "dashboard.summary.idle",
+        WorkingIndicatorState::Error => "dashboard.summary.error",
+        WorkingIndicatorState::Off => "dashboard.summary.off",
     }
 }
 
@@ -80,13 +74,12 @@ pub(crate) fn summary(counts: Vec<(WorkingIndicatorState, usize)>,
     (!counts.is_empty()).then(|| {
                             h_flex().gap_3().text_sm().children(counts.into_iter().map(
             |(state, count)| {
-                let (one, many) = label_keys(state);
                 h_flex().gap_1()
                         .items_center()
                         .child(div().size(px(8.))
                                     .rounded_full()
                                     .bg(rgb(dot_color(state, palette))))
-                        .child(knot_core::l10n::pluralize(count as u64, one, many))
+                        .child(knot_core::l10n::t_count(label_key(state), count as u64, &[]))
             },
         ))
                         })
