@@ -450,6 +450,8 @@ menu:
     bench_agent: "Bench Agent…"
     open_in: "Open In…"
     markdown_files: "Markdown Files"
+    config_files: "Config Files"
+    config_project_file: "%{path} (project)"
     agent_info: "Agent Info…"
     register_agent: "Register Agent"
     lock_agent: "Lock Agent"
