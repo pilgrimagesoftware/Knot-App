@@ -51,6 +51,18 @@ fn tool(name: &str, description: &str, properties: &[(&str, &str, &str)], requir
                      input_schema: schema(properties, required), }
 }
 
+/// `definition` with `items` as the element schema of its array property
+/// `property`. Gemini's function calling rejects an array parameter without
+/// `items`, and one such tool fails the whole request, not just that tool
+/// (#431: agy's turns ended in `INVALID_ARGUMENT ... items: missing field`).
+fn with_items(mut definition: ToolDefinition, property: &str, items: serde_json::Value)
+              -> ToolDefinition {
+    if let Some(schema) = definition.input_schema.properties.get_mut(property) {
+        schema.items = Some(items);
+    }
+    definition
+}
+
 /// Every tool Knot's server provides, as `tools/list` answers it.
 ///
 /// Public so the MCP servers section can list Knot's own tools without a
@@ -58,168 +70,321 @@ fn tool(name: &str, description: &str, properties: &[(&str, &str, &str)], requir
 /// state, which is what makes reading it outside a session honest.
 #[must_use]
 pub fn tool_catalog() -> Vec<ToolDefinition> {
-    vec![tool(consts::REGISTER_AGENT,
-              "Register this agent with Knot crew. Call this first before using other tools.",
-              &[("agentId", "string", "The agent ID provided by Knot"),
-                ("sessionId", "string", "Your internal session ID.")],
-              &["agentId"]),
-         tool(consts::LIST_AGENTS,
-              "List all registered agents with their status (name, folder, working/idle), \
+    vec![
+         tool(
+        consts::REGISTER_AGENT,
+        "Register this agent with Knot crew. Call this first before using other tools.",
+        &[
+            ("agentId", "string", "The agent ID provided by Knot"),
+            ("sessionId", "string", "Your internal session ID."),
+        ],
+        &["agentId"],
+    ),
+         tool(
+        consts::LIST_AGENTS,
+        "List all registered agents with their status (name, folder, working/idle), \
                each with its description, capability tags, reachable tools and cost tier",
-              &[("agentId", "string", "Your agent ID")],
-              &["agentId"]),
-         tool(consts::DESCRIBE_AGENTS,
-              "Find agents by capability - answers 'who can do X'. Returns candidates \
+        &[("agentId", "string", "Your agent ID")],
+        &["agentId"],
+    ),
+         with_items(
+        tool(
+            consts::DESCRIBE_AGENTS,
+            "Find agents by capability - answers 'who can do X'. Returns candidates \
                carrying every requested tag, cheapest-idle-first, across live agents and \
                deployable bench templates. Omit capabilities to list everything visible. \
                No match is an empty list, not an error.",
-              &[("agentId", "string", "Your agent ID"),
-                ("capabilities",
-                 "array",
-                 "Capability tags a candidate must all carry, e.g. [\"rust\", \"testing\"]. \
-                  Omit to list every visible candidate."),
-                ("includeTemplates",
-                 "boolean",
-                 "Include deployable bench templates as well as live agents (default true)")],
-              &["agentId"]),
-         tool(consts::SEND_MESSAGE,
-              "Send a message to another agent by name or ID",
-              &[("from", "string", "Your agent ID"),
-                ("to", "string", "Recipient agent name or ID"),
-                ("content", "string", "Message content")],
-              &["from", "to", "content"]),
-         tool(consts::CHECK_MESSAGES,
-              "Check your inbox for new messages from other agents",
-              &[("agentId", "string", "Your agent ID"),
-                ("markAsRead", "boolean", "Mark messages as read (default: true)"),
-                ("includeRead",
-                 "boolean",
-                 "Also return messages already read, each with `read: true` - what you were sent \
-                  before your conversation was reset (default: false)"),
-                ("since",
-                 "string",
-                 "Only messages sent at or after this RFC 3339 time, as `timestamp` reports it")],
-              &["agentId"]),
-         tool(consts::BROADCAST_MESSAGE,
-              "Send a message to all other registered agents",
-              &[("from", "string", "Your agent ID"),
-                ("content", "string", "Message content")],
-              &["from", "content"]),
-         tool(consts::LIST_REPOS,
-              "List all git repositories in the configured source folder",
-              &[],
-              &[]),
-         tool(consts::LIST_WORKTREES,
-              "List all worktrees for a given repository",
-              &[("repoPath", "string", "Path to the repository")],
-              &["repoPath"]),
-         tool(consts::CREATE_AGENT,
-              "Create a new agent in Knot. Can optionally create a new git worktree for the agent. Note: shell agents are plain terminals without an AI agent, so do not try to send messages to them.",
-              &[("agentId", "string", "Your agent ID (used to track who created the agent)"),
-                ("benchAgentId",
-                 "string",
-                 "ID of a bench agent to deploy. When provided, name/agentType/repoPath are optional and default to the bench agent's configuration."),
-                ("name", "string", "Name for the agent"),
-                ("icon", "string", "Emoji icon for the agent (e.g., '🤖')"),
-                ("agentType",
-                 "string",
-                 "Agent type: claude, codex, opencode, gemini, copilot, antigravity, custom1, custom2, or shell"),
-                ("repoPath", "string", "Path to the repository or worktree folder"),
-                ("createWorktree", "boolean", "If true, create a new worktree from repoPath"),
-                ("branchName",
-                 "string",
-                 "Branch name for new worktree (required if createWorktree is true)"),
-                ("worktreePath",
-                 "string",
-                 "Absolute path for the new worktree; only with createWorktree, an error without it. Pass it whenever your instructions say where worktrees go; omitted, the worktree is created beside the repository as <repo>-<branch>."),
-                ("companion",
-                 "boolean",
-                 "If true, the new agent is a companion of the creator: it won't appear in the agent list, its visibility is linked to the creator, and it will be closed when the creator is closed. Only use this flag if the user has explicitly asked for a companion agent."),
-                ("command", "string", "Command to run (only for shell agent type)"),
-                ("personaId",
-                 "string",
-                 "ID of a persona to apply. Only works with agents that support system prompts (claude, codex).")],
-              &["agentId"]),
-         tool(consts::CLOSE_AGENT,
-              "Close an agent that you created. You can only close agents that you created, not agents created by the user or other agents.",
-              &[("agentId", "string", "Your agent ID"),
-                ("target", "string", "The agent to close (name or ID)")],
-              &["agentId", "target"]),
-         tool(consts::CREATE_WORKTREE,
-              "Create a new git worktree from a repository. Returns the path to the new worktree. If your instructions say where worktrees go, pass that location as path: without it the worktree is created beside the repository as <repo>-<branch>.",
-              &[("repoPath", "string", "Path to the source repository"),
-                ("branchName", "string", "Branch name for the new worktree"),
-                ("path",
-                 "string",
-                 "Absolute path for the new worktree (a leading ~/ is your home folder). Pass it whenever your instructions name a worktree location; omitted, the worktree goes beside the repository as <repo>-<branch>.")],
-              &["repoPath", "branchName"]),
-         tool(consts::SET_STATUS,
-              "MANDATORY: Set your status so other agents know what you are doing. Call before starting any task, after completing it, and when changing direction. Keep it short and specific (e.g. 'Implementing auth module', 'Running tests', 'Done — PR ready'). Use empty string to clear.",
-              &[("agentId", "string", "Your agent ID"),
-                ("status",
-                 "string",
-                 "Short status text describing what you are currently doing. Use empty string to clear.")],
-              &["agentId", "status"]),
-         tool(consts::SET_WORKING_DIRECTORY,
-              "Tell Knot which git working tree you are working in, so its git panel and diff stats show that tree rather than your folder. Call it when you start working in a worktree (pass the worktree's root, the folder holding .git), and with an empty path when you go back to your folder. A restart or deactivation clears it.",
-              &[("agentId", "string", "Your agent ID"),
-                ("path",
-                 "string",
-                 "Absolute path to the root of the git working tree you are working in (a leading ~/ is your home folder). Empty to go back to your folder.")],
-              &["agentId", "path"]),
-         tool(consts::DISPLAY_MARKDOWN,
-              "Display a markdown file in a panel for the user to review. Use this to show plans, documentation, or any markdown content that needs user attention. Also use if the user asks you to show him a file. Never assume the panel is open or displaying the right file as the user may have closed it: call the tool again when relevant.",
-              &[("agentId", "string", "Your agent ID"),
-                ("filePath", "string", "Absolute path to the markdown file to display"),
-                ("maximized",
-                 "boolean",
-                 "If true, maximize the panel to fill the available space. Only set to true if the user explicitly requests it. Default: false")],
-              &["agentId", "filePath"]),
-         tool(consts::PLAN_TASKS,
-              "Commit a plan: a small graph of tasks with dependencies. Required before \
+            &[
+                ("agentId", "string", "Your agent ID"),
+                (
+                    "capabilities",
+                    "array",
+                    "Capability tags a candidate must all carry, e.g. [\"rust\", \"testing\"]. \
+                  Omit to list every visible candidate.",
+                ),
+                (
+                    "includeTemplates",
+                    "boolean",
+                    "Include deployable bench templates as well as live agents (default true)",
+                ),
+            ],
+            &["agentId"],
+        ),
+        "capabilities",
+        serde_json::json!({ "type": "string" }),
+    ),
+         tool(
+        consts::SEND_MESSAGE,
+        "Send a message to another agent by name or ID",
+        &[
+            ("from", "string", "Your agent ID"),
+            ("to", "string", "Recipient agent name or ID"),
+            ("content", "string", "Message content"),
+        ],
+        &["from", "to", "content"],
+    ),
+         tool(
+        consts::CHECK_MESSAGES,
+        "Check your inbox for new messages from other agents",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "markAsRead",
+                "boolean",
+                "Mark messages as read (default: true)",
+            ),
+            (
+                "includeRead",
+                "boolean",
+                "Also return messages already read, each with `read: true` - what you were sent \
+                  before your conversation was reset (default: false)",
+            ),
+            (
+                "since",
+                "string",
+                "Only messages sent at or after this RFC 3339 time, as `timestamp` reports it",
+            ),
+        ],
+        &["agentId"],
+    ),
+         tool(
+        consts::BROADCAST_MESSAGE,
+        "Send a message to all other registered agents",
+        &[
+            ("from", "string", "Your agent ID"),
+            ("content", "string", "Message content"),
+        ],
+        &["from", "content"],
+    ),
+         tool(
+        consts::LIST_REPOS,
+        "List all git repositories in the configured source folder",
+        &[],
+        &[],
+    ),
+         tool(
+        consts::LIST_WORKTREES,
+        "List all worktrees for a given repository",
+        &[("repoPath", "string", "Path to the repository")],
+        &["repoPath"],
+    ),
+         tool(
+        consts::CREATE_AGENT,
+        "Create a new agent in Knot. Can optionally create a new git worktree for the agent. Note: shell agents are plain terminals without an AI agent, so do not try to send messages to them.",
+        &[
+            (
+                "agentId",
+                "string",
+                "Your agent ID (used to track who created the agent)",
+            ),
+            (
+                "benchAgentId",
+                "string",
+                "ID of a bench agent to deploy. When provided, name/agentType/repoPath are optional and default to the bench agent's configuration.",
+            ),
+            ("name", "string", "Name for the agent"),
+            ("icon", "string", "Emoji icon for the agent (e.g., '🤖')"),
+            (
+                "agentType",
+                "string",
+                "Agent type: claude, codex, opencode, gemini, copilot, antigravity, custom1, custom2, or shell",
+            ),
+            (
+                "repoPath",
+                "string",
+                "Path to the repository or worktree folder",
+            ),
+            (
+                "createWorktree",
+                "boolean",
+                "If true, create a new worktree from repoPath",
+            ),
+            (
+                "branchName",
+                "string",
+                "Branch name for new worktree (required if createWorktree is true)",
+            ),
+            (
+                "worktreePath",
+                "string",
+                "Absolute path for the new worktree; only with createWorktree, an error without it. Pass it whenever your instructions say where worktrees go; omitted, the worktree is created beside the repository as <repo>-<branch>.",
+            ),
+            (
+                "companion",
+                "boolean",
+                "If true, the new agent is a companion of the creator: it won't appear in the agent list, its visibility is linked to the creator, and it will be closed when the creator is closed. Only use this flag if the user has explicitly asked for a companion agent.",
+            ),
+            (
+                "command",
+                "string",
+                "Command to run (only for shell agent type)",
+            ),
+            (
+                "personaId",
+                "string",
+                "ID of a persona to apply. Only works with agents that support system prompts (claude, codex).",
+            ),
+        ],
+        &["agentId"],
+    ),
+         tool(
+        consts::CLOSE_AGENT,
+        "Close an agent that you created. You can only close agents that you created, not agents created by the user or other agents.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            ("target", "string", "The agent to close (name or ID)"),
+        ],
+        &["agentId", "target"],
+    ),
+         tool(
+        consts::CREATE_WORKTREE,
+        "Create a new git worktree from a repository. Returns the path to the new worktree. If your instructions say where worktrees go, pass that location as path: without it the worktree is created beside the repository as <repo>-<branch>.",
+        &[
+            ("repoPath", "string", "Path to the source repository"),
+            ("branchName", "string", "Branch name for the new worktree"),
+            (
+                "path",
+                "string",
+                "Absolute path for the new worktree (a leading ~/ is your home folder). Pass it whenever your instructions name a worktree location; omitted, the worktree goes beside the repository as <repo>-<branch>.",
+            ),
+        ],
+        &["repoPath", "branchName"],
+    ),
+         tool(
+        consts::SET_STATUS,
+        "MANDATORY: Set your status so other agents know what you are doing. Call before starting any task, after completing it, and when changing direction. Keep it short and specific (e.g. 'Implementing auth module', 'Running tests', 'Done — PR ready'). Use empty string to clear.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "status",
+                "string",
+                "Short status text describing what you are currently doing. Use empty string to clear.",
+            ),
+        ],
+        &["agentId", "status"],
+    ),
+         tool(
+        consts::SET_WORKING_DIRECTORY,
+        "Tell Knot which git working tree you are working in, so its git panel and diff stats show that tree rather than your folder. Call it when you start working in a worktree (pass the worktree's root, the folder holding .git), and with an empty path when you go back to your folder. A restart or deactivation clears it.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "path",
+                "string",
+                "Absolute path to the root of the git working tree you are working in (a leading ~/ is your home folder). Empty to go back to your folder.",
+            ),
+        ],
+        &["agentId", "path"],
+    ),
+         tool(
+        consts::DISPLAY_MARKDOWN,
+        "Display a markdown file in a panel for the user to review. Use this to show plans, documentation, or any markdown content that needs user attention. Also use if the user asks you to show him a file. Never assume the panel is open or displaying the right file as the user may have closed it: call the tool again when relevant.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "filePath",
+                "string",
+                "Absolute path to the markdown file to display",
+            ),
+            (
+                "maximized",
+                "boolean",
+                "If true, maximize the panel to fill the available space. Only set to true if the user explicitly requests it. Default: false",
+            ),
+        ],
+        &["agentId", "filePath"],
+    ),
+         with_items(
+        tool(
+            consts::PLAN_TASKS,
+            "Commit a plan: a small graph of tasks with dependencies. Required before \
                dispatching work that spans more than one agent or more than one task. Cycles \
                and dangling dependencies are rejected. Re-planning keeps the state of tasks \
                already under way.",
-              &[("agentId", "string", "Your agent ID"),
-                ("tasks",
-                 "array",
-                 "Tasks as objects: id (unique in this plan), goal, and optionally assignee \
+            &[
+                ("agentId", "string", "Your agent ID"),
+                (
+                    "tasks",
+                    "array",
+                    "Tasks as objects: id (unique in this plan), goal, and optionally assignee \
                   (an agent name or ID), capabilities (tags to resolve at dispatch time), \
                   dependsOn (ids in this same plan) and resetContext (true to start the \
-                  assignee on a fresh conversation for this task, once it is not working)")],
-              &["agentId", "tasks"]),
-         tool(consts::DISPATCH_TASK,
-              "Dispatch one ready task from your committed plan. Refused while any \
+                  assignee on a fresh conversation for this task, once it is not working)",
+                ),
+            ],
+            &["agentId", "tasks"],
+        ),
+        "tasks",
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "id": { "type": "string" },
+                "goal": { "type": "string" },
+                "assignee": { "type": "string" },
+                "capabilities": { "type": "array", "items": { "type": "string" } },
+                "dependsOn": { "type": "array", "items": { "type": "string" } },
+                "resetContext": { "type": "boolean" }
+            },
+            "required": ["id", "goal"]
+        }),
+    ),
+         tool(
+        consts::DISPATCH_TASK,
+        "Dispatch one ready task from your committed plan. Refused while any \
                dependency is not done, naming what it is waiting for.",
-              &[("agentId", "string", "Your agent ID"),
-                ("taskId", "string", "The task to dispatch")],
-              &["agentId", "taskId"]),
-         tool(consts::COMPLETE_TASK,
-              "Report how a dispatched task turned out. Returns the tasks this made ready \
+        &[
+            ("agentId", "string", "Your agent ID"),
+            ("taskId", "string", "The task to dispatch"),
+        ],
+        &["agentId", "taskId"],
+    ),
+         tool(
+        consts::COMPLETE_TASK,
+        "Report how a dispatched task turned out. Returns the tasks this made ready \
                and, on failure, the ones it blocked.",
-              &[("agentId", "string", "Your agent ID"),
-                ("taskId", "string", "The task to report on"),
-                ("outcome", "string", "Either 'done' or 'failed'"),
-                ("note", "string", "Optional note about the outcome")],
-              &["agentId", "taskId", "outcome"]),
-         tool(consts::TASK_STATUS,
-              "Read your committed plan: every task with its state, assignee and \
+        &[
+            ("agentId", "string", "Your agent ID"),
+            ("taskId", "string", "The task to report on"),
+            ("outcome", "string", "Either 'done' or 'failed'"),
+            ("note", "string", "Optional note about the outcome"),
+        ],
+        &["agentId", "taskId", "outcome"],
+    ),
+         tool(
+        consts::TASK_STATUS,
+        "Read your committed plan: every task with its state, assignee and \
                dependencies. Empty when you have not planned anything.",
-              &[("agentId", "string", "Your agent ID")],
-              &["agentId"]),
-         tool(consts::VIEW_MERMAID,
-              "Display a Mermaid diagram in a panel for the user to view. Supports flowcharts (graph TD/LR), state diagrams, sequence diagrams, class diagrams, and ER diagrams. Pass the mermaid source text directly. The diagram will be rendered natively alongside any open markdown panel.",
-              &[("agentId", "string", "Your agent ID"),
-                ("source", "string", "Mermaid diagram source text (e.g. 'graph TD; A-->B;')"),
-                ("title", "string", "Optional title to display above the diagram")],
-              &["agentId", "source"]),
+        &[("agentId", "string", "Your agent ID")],
+        &["agentId"],
+    ),
+         tool(
+        consts::VIEW_MERMAID,
+        "Display a Mermaid diagram in a panel for the user to view. Supports flowcharts (graph TD/LR), state diagrams, sequence diagrams, class diagrams, and ER diagrams. Pass the mermaid source text directly. The diagram will be rendered natively alongside any open markdown panel.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "source",
+                "string",
+                "Mermaid diagram source text (e.g. 'graph TD; A-->B;')",
+            ),
+            (
+                "title",
+                "string",
+                "Optional title to display above the diagram",
+            ),
+        ],
+        &["agentId", "source"],
+    ),
          show_checklist_tool(),
-         tool(consts::GET_CHECKLIST,
-              "Read your checklist as the user has left it: each item with its kind, \
+         tool(
+        consts::GET_CHECKLIST,
+        "Read your checklist as the user has left it: each item with its kind, \
                whether a check is ticked and a question's answer, and whether the user has \
                sent it.",
-              &[("agentId", "string", "Your agent ID")],
-              &["agentId"]),]
+        &[("agentId", "string", "Your agent ID")],
+        &["agentId"],
+    ),
+    ]
 }
 
 /// `show-checklist`, whose `items` array declares its element schema: some
@@ -377,3 +542,6 @@ impl ToolCatalog for McpToolCatalog {
         result
     }
 }
+
+#[cfg(test)]
+mod tests;
