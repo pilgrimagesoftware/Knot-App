@@ -168,9 +168,15 @@ agent's details before it is created.
 
 ### Requirement: Fork Agent from the context menu
 Selecting Fork Agent SHALL open the agent editor to create a new agent
-carrying the selected agent's folder, avatar, agent type and persona, its
+carrying the selected agent's whole setup - folder, avatar, agent type,
+persona, shell command, startup prompt, description, capabilities, cost tier,
+activation mode and session setup (model, permission mode, effort) - its
 session id (so the fork resumes the same conversation), a name suffixed to
-mark it as a fork, and placement immediately after the source.
+mark it as a fork, and placement immediately after the source. Every carried
+field the editor shows SHALL be editable before the agent is created. The
+session id and session setup SHALL be carried only when the agent is created
+with the source's agent type; a fork the user changed to another type SHALL
+start a fresh session with that type's defaults.
 
 #### Scenario: Fork carries the session forward
 - **WHEN** the user selects Fork Agent on an agent with session id `s1`
@@ -180,6 +186,19 @@ mark it as a fork, and placement immediately after the source.
 #### Scenario: Cancelling a fork creates nothing
 - **WHEN** the user selects Fork Agent and dismisses the editor
 - **THEN** no agent is created
+
+#### Scenario: Fork carries the setup
+- **WHEN** the user selects Fork Agent on an agent with a description,
+  capabilities, a cost tier, an activation mode and a chosen model, and
+  creates the fork without changing anything
+- **THEN** the created agent has the same description, capabilities, cost
+  tier, activation mode and session setup as the source
+
+#### Scenario: A fork changed to another type starts fresh
+- **WHEN** the user forks a Claude agent and changes the type to Codex in the
+  editor before creating
+- **THEN** the created agent resumes no session and replays no session setup,
+  and still carries the source's description, capabilities and cost tier
 
 ### Requirement: Duplicate Agent from the context menu
 Selecting Duplicate Agent SHALL immediately create a copy of the selected
@@ -278,7 +297,9 @@ as the wrong thing entirely.
 
 The icons SHALL be drawn as icons rather than as characters inside the line's
 text, so they share the lines' muted colour, size with their line, and sit in
-one column down the row.
+one column down the row. Each icon SHALL be centred vertically on the first
+line of its text, rather than aligned to the top of the line, where an icon
+shorter than the text reads as sitting above it.
 
 #### Scenario: A status line is identifiable as a status
 
@@ -295,6 +316,12 @@ one column down the row.
 - **WHEN** an agent row renders with a type, a persona, a status and a folder
 - **THEN** all four leading icons share the row's muted colour and align in
   one column
+
+#### Scenario: An icon is centred on its line
+
+- **WHEN** an agent row renders a detail line, at either line size
+- **THEN** the line's icon is centred vertically on the first line of its
+  text, neither above nor below it
 
 #### Scenario: A line with nothing to show has no icon
 
@@ -801,8 +828,10 @@ rather than squeezing the full-width one, porting the Swift reference's
 - An agent row SHALL show its avatar alone, centered, with the state dot
   overlaid on the avatar rather than in a column of its own. The name, agent
   type, companion marker, persona, activity line and folder SHALL be hidden, and
-  the agent's name SHALL be available as the row's tooltip so a row stays
-  identifiable.
+  the row's tooltip SHALL carry what they said: the agent's name, its state as
+  its status dot's tooltip words it (for an agent that has a dot), and its
+  activity line when it has one, so a row stays identifiable and what the
+  agent is doing stays in reach (#253).
 - The dashboard row SHALL show its icon alone, centered, with its label hidden.
 - The sidebar's title bar SHALL hide the workspace name and keep the application
   icon. The workspace SHALL stay identifiable while the label is hidden: the
@@ -837,8 +866,10 @@ unchanged.
 
 #### Scenario: A compact row is still identifiable
 
-- **WHEN** the pointer rests on a compact agent row
-- **THEN** a tooltip names that agent
+- **WHEN** the pointer rests on a compact agent row whose agent is working on
+  "Running tests"
+- **THEN** a tooltip names that agent, says it is working, and shows
+  "Running tests"
 
 #### Scenario: A compact row still reports state
 
@@ -1230,3 +1261,56 @@ SHALL NOT save anything.
 
 - **WHEN** the user drags `B` and releases it over its own row
 - **THEN** the order is unchanged and the workspaces file is not rewritten
+
+### Requirement: Lock and unlock an agent
+
+The agent row context menu SHALL offer Lock Agent for an unlocked agent and
+Unlock Agent for a locked one, never both, and neither for a shell agent. The
+menu bar's Agents menu SHALL carry both items, enabled as they apply to the
+selected agent. The lock SHALL persist across a relaunch. A locked agent's row
+SHALL show a Locked detail line with its icon, and the sidebar's Broadcast to
+All Agents SHALL skip locked agents.
+
+#### Scenario: Locking from the context menu
+
+- **WHEN** the user selects Lock Agent on an agent's row
+- **THEN** the agent is locked, its row shows Locked, and its context menu
+  offers Unlock Agent instead
+
+#### Scenario: Broadcast skips a locked agent
+
+- **WHEN** the user broadcasts to all agents in a workspace with a locked agent
+- **THEN** every agent but the locked one receives the text
+
+### Requirement: Send prompt to marks a locked agent
+
+The "Send prompt to" submenu SHALL list a locked agent and send to it when
+chosen, since the user prompting an agent is not agent messaging. It SHALL mark
+the agent locked, with a lock icon and in its label.
+
+#### Scenario: Send prompt to marks a locked agent
+
+- **WHEN** the user opens "Send prompt to" in a workspace with a locked agent
+- **THEN** the locked agent is listed with a lock and marked locked, and
+  choosing it sends the prompt
+
+### Requirement: Autopilot indicator and per-agent toggle
+
+An agent whose replies Autopilot reads - Autopilot on in Settings, not turned
+off for the agent, and not a shell - SHALL show an Autopilot detail line with a
+propeller icon on its sidebar row, and the same icon beside its status in the
+title bar. The agent row context menu SHALL offer Turn Off Autopilot or Turn On
+Autopilot, whichever applies, only while Autopilot is on in Settings and never
+for a shell agent; the menu bar's Agents menu SHALL carry both.
+
+#### Scenario: Turning Autopilot off for one agent
+
+- **WHEN** Autopilot is on and the user selects Turn Off Autopilot on an agent
+- **THEN** the agent's Autopilot line and title bar icon disappear, and its
+  context menu offers Turn On Autopilot
+
+#### Scenario: Autopilot off in Settings
+
+- **WHEN** Autopilot is off in Settings
+- **THEN** no agent shows the indicator, and the context menu offers neither
+  item

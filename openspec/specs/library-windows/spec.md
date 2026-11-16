@@ -34,7 +34,9 @@ two libraries be open side by side.
 The Personas window SHALL list every non-deleted persona (name and a
 truncated instructions preview) with per-row edit and delete actions, an
 "Add Persona…" action, and a "Restore Defaults" action gated behind a
-confirmation dialog.
+confirmation dialog. A persona assigned to agents SHALL name them on its row,
+each name a link that opens that agent's workspace window with the agent
+selected, or raises the window if it is open.
 
 #### Scenario: Empty list shows a message, not nothing
 
@@ -70,9 +72,15 @@ confirmation dialog.
 
 #### Scenario: A persona in use cannot be deleted
 
-- **WHEN** a persona is assigned to two agents
-- **THEN** its delete action is disabled, and its tooltip says it is in use
-  by 2 agents
+- **WHEN** a persona is assigned to agents Alpha and Beta
+- **THEN** its delete action is disabled, its tooltip says it is in use by
+  Alpha and Beta, and its row lists Alpha and Beta as "Used by"
+
+#### Scenario: Going to an agent that uses a persona
+
+- **WHEN** the user clicks an agent's name on a persona's "Used by" line
+- **THEN** that agent's workspace window opens, or comes forward, with the
+  agent selected
 
 #### Scenario: Restoring defaults requires confirmation
 
@@ -196,3 +204,64 @@ bench kind.
   persona
 - **THEN** the persona appears in the Personas window's list without
   reopening it
+
+### Requirement: A persona or prompt can be submitted to Knot-Library
+
+Each row in the Personas and Prompts windows SHALL offer to submit its item
+to Knot-Library. Submitting SHALL ask for a title, a one-line description and
+optional tags, and SHALL NOT proceed until they meet Knot-Library's
+contribution rules.
+
+#### Scenario: The form is checked before anything opens
+
+- **WHEN** the description is empty, or a tag contains a character other
+  than `a-z`, `0-9` and `-`
+- **THEN** the dialog cannot proceed, and a bad tag is named
+
+#### Scenario: A prompt's description is kept
+
+- **WHEN** a prompt is submitted with a description
+- **THEN** the prompt keeps it, and the next submission starts from it
+
+### Requirement: A submission is reviewed before it is published
+
+Proceeding SHALL show the file as it will be proposed, editable, and SHALL
+NOT open anything until the user confirms it. The file SHALL carry the
+item's own id. What is published SHALL be the reviewed text. Text that looks
+like a home folder, an email address or a credential SHALL be flagged.
+
+#### Scenario: Nothing is published without confirmation
+
+- **WHEN** the user moves from the details to the review step
+- **THEN** the file is shown for editing and nothing has opened
+
+#### Scenario: Local values are flagged
+
+- **WHEN** the reviewed file holds the user's home folder path
+- **THEN** the review step warns before it can be opened on GitHub
+
+### Requirement: A submission opens on GitHub as a new item or an update
+
+Confirming SHALL open Knot-Library on GitHub in the browser; Knot SHALL NOT
+write to the library itself. An item whose id the library's index already
+has SHALL be an update to that file; any other SHALL be a new file at
+`<kind-dir>/<slug>.md`. A file the page cannot carry SHALL be put on the
+clipboard, and the user SHALL be told which happened.
+
+#### Scenario: A new prompt opens as a new library file
+
+- **WHEN** the user confirms the prompt "Code review", whose id the library
+  does not have
+- **THEN** Knot-Library's new-file page opens at `prompts/code-review.md`
+  carrying the reviewed file
+
+#### Scenario: An item the library has is an update
+
+- **WHEN** the user confirms a prompt imported from Knot-Library and edited
+- **THEN** the library's existing file for that id opens for editing, and the
+  reviewed file is on the clipboard to replace it
+
+#### Scenario: A long file goes to the clipboard
+
+- **WHEN** a new file is too long to carry in the page's address
+- **THEN** the file is on the clipboard and the new-file page opens empty
