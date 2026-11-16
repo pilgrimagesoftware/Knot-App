@@ -55,6 +55,7 @@ actions!(knot_app,
           AgentMenuBenchAgent,
           AgentMenuOpenIn,
           AgentMenuMarkdownFiles,
+          AgentMenuConfigFiles,
           AgentMenuAgentInfo,
           AgentMenuRegisterAgent,
           AgentMenuLockAgent,
@@ -125,6 +126,14 @@ pub(crate) struct AgentMenuShowMarkdownFile {
     pub(crate) path: PathBuf,
 }
 
+/// One file in the Config Files submenu: the paths it may be at, the
+/// first that exists being opened (#27).
+#[derive(Clone, PartialEq, Eq, Debug, Action)]
+#[action(namespace = knot_app, no_json)]
+pub(crate) struct AgentMenuOpenConfigFile {
+    pub(crate) candidates: Vec<PathBuf>,
+}
+
 /// The action that invokes `entry`, or `None` for a separator.
 ///
 /// Total over the labelled entries, and injective - the pairing is asserted
@@ -143,6 +152,7 @@ pub(crate) fn agent_menu_action(entry: AgentMenuEntry) -> Option<Box<dyn Action>
              AgentMenuEntry::BenchAgent => Box::new(AgentMenuBenchAgent),
              AgentMenuEntry::OpenIn => Box::new(AgentMenuOpenIn),
              AgentMenuEntry::MarkdownFiles => Box::new(AgentMenuMarkdownFiles),
+             AgentMenuEntry::ConfigFiles => Box::new(AgentMenuConfigFiles),
              AgentMenuEntry::AgentInfo => Box::new(AgentMenuAgentInfo),
              AgentMenuEntry::RegisterAgent => Box::new(AgentMenuRegisterAgent),
              AgentMenuEntry::LockAgent => Box::new(AgentMenuLockAgent),
@@ -185,6 +195,8 @@ pub(crate) struct AgentMenuSnapshot {
     pub(crate) move_targets:     Vec<(Uuid, String)>,
     /// The markdown files the selected agent has shown.
     pub(crate) markdown_history: Vec<PathBuf>,
+    /// The selected agent's config files (#27).
+    pub(crate) config_files:     Vec<crate::agent_config::ConfigFile>,
 }
 
 /// The Agents menu, carrying every item the context menu can offer.
@@ -210,7 +222,8 @@ fn agent_menu_item(entry: AgentMenuEntry, snapshot: &AgentMenuSnapshot) -> Optio
              AgentMenuEntry::Separator => MenuItem::separator(),
              AgentMenuEntry::MoveToWorkspace
              | AgentMenuEntry::OpenIn
-             | AgentMenuEntry::MarkdownFiles => {
+             | AgentMenuEntry::MarkdownFiles
+             | AgentMenuEntry::ConfigFiles => {
                  agent_menu_submenu(entry, snapshot)?.disabled(!snapshot.entries.contains(&entry))
              }
              // Not `MenuItem::action`, which takes a concrete action:
@@ -263,6 +276,16 @@ fn agent_menu_submenu(entry: AgentMenuEntry, snapshot: &AgentMenuSnapshot) -> Op
                     .map(|path| {
                         MenuItem::action(markdown_label(path),
                                          AgentMenuShowMarkdownFile { path: path.clone() })
+                    })
+                    .collect()
+        }
+        AgentMenuEntry::ConfigFiles => {
+            snapshot.config_files
+                    .iter()
+                    .map(|file| {
+                        MenuItem::action(file.label.clone(),
+                                         AgentMenuOpenConfigFile { candidates:
+                                                                       file.candidates.clone(), })
                     })
                     .collect()
         }
