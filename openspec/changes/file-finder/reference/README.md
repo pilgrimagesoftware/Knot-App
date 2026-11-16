@@ -1,5 +1,8 @@
 # FuzzyScorer snapshot
 
+The corpus and snapshot now live beside the port, in
+`crates/knot/src/fuzzy_score/`; this directory keeps the generator.
+
 The ordering the port must reproduce, produced by the Swift reference's own
 scorer rather than reconstructed from it.
 
@@ -18,6 +21,6 @@ Regenerate:
 ```sh
 mkdir -p /tmp/fz && git show d0a84963^:Skwad/Utilities/FuzzyScorer.swift > /tmp/fz/FuzzyScorer.swift
 swiftc -O -o /tmp/fz/gen /tmp/fz/FuzzyScorer.swift reference/generate.swift
-/tmp/fz/gen reference/corpus.txt lib kgs mod readme WsWin spec.md agentrow Cargo \
-  fuzzy panelstate consts tests.rs ACP knot-git/src > reference/snapshot.jsonl
+/tmp/fz/gen crates/knot/src/fuzzy_score/corpus.txt lib kgs mod readme WsWin spec.md agentrow Cargo \
+  fuzzy panelstate consts tests.rs ACP knot-git/src > crates/knot/src/fuzzy_score/snapshot.jsonl
 ```

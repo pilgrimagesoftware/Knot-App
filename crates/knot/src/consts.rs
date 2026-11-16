@@ -491,3 +491,12 @@ pub(crate) const CHARS_PER_TOKEN: usize = 4;
 /// GitHub refuses a much longer one, so past this the file goes to the
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
+
+/// How many matches the file finder and the `@` lookup's fuzzy ranking keep:
+/// the Swift reference's `FileSearchService.maxResults` (#5).
+pub(crate) const FUZZY_MAX_RESULTS: usize = 50;
+
+/// How many paths a file search ranks between checks that it is still
+/// wanted - small enough that a superseded search stops within a few
+/// milliseconds, large enough that the check is noise (#5).
+pub(crate) const FILE_SEARCH_BATCH: usize = 4096;

@@ -1,100 +1,68 @@
-//! Subsequence matching with a score, for completing file paths.
+//! Fuzzy ranking for completing file paths: the Swift reference's scorer
+//! (`crate::fuzzy_score`), shaped into lookup matches.
 //!
-//! `panel-file-mentions` asks for three things, and the score is built
-//! from exactly those: the filter matches as a **subsequence** rather than
-//! a substring, so `kgs` reaches `crates/knot-git/src/lib.rs`; matches on
-//! the file's **name** outrank matches on its parent directories; and
-//! **consecutive** matched characters outrank scattered ones.
+//! `panel-file-mentions` asks for subsequence matching, name over directory
+//! and runs over scattered characters; the reference's scorer gives all
+//! three, and the `@` lookup and the file finder share it so they order the
+//! same files the same way (`openspec/changes/file-finder`). It replaced a
+//! greedy scorer that only approximated it.
 //!
-//! It is not a general fuzzy finder and does not try to be. There is no
-//! learning, no frecency and no typo tolerance - a missing character means
-//! no match, which is what keeps a list of thousands honest.
+//! **Costly over a large listing.** Call it off the render path - the `@`
+//! lookup and the finder both go through `crate::file_search`.
 
+use crate::fuzzy_score;
 use crate::panel_commands::entry::LookupEntry;
 use crate::panel_commands::entry::LookupMatch;
 
-/// Each matched character is worth this before any bonus.
-const MATCH: i32 = 1;
-/// A character matched immediately after the previous one. Runs are what
-/// make a match legible, so this is the largest single bonus.
-const CONSECUTIVE: i32 = 8;
-/// A character matched inside the file's name rather than in a directory
-/// above it.
-const IN_NAME: i32 = 6;
-/// A character matched at the start of a path segment - the beginning of a
-/// word, which reads as intentional rather than incidental.
-const SEGMENT_START: i32 = 4;
-
-/// The entries `filter` selects, best first.
+/// The entries `filter` selects, best first, at most
+/// `consts::FUZZY_MAX_RESULTS`.
 pub(crate) fn matching(entries: &[LookupEntry], filter: &str) -> Vec<LookupMatch> {
-    let mut scored: Vec<(i32, LookupMatch)> =
+    ranked(entries, filter).into_iter()
+                           .map(|(_, found)| found)
+                           .collect()
+}
+
+/// [`matching`] with each match's score, which merging rankings of
+/// separate batches needs.
+pub(crate) fn ranked(entries: &[LookupEntry], filter: &str) -> Vec<(i32, LookupMatch)> {
+    let by_token: std::collections::HashMap<&str, &LookupEntry> =
         entries.iter()
-               .filter_map(|entry| {
-                   score(&entry.token, filter).map(|(score, matched)| {
-                                                  (score,
-                                                   LookupMatch { entry: entry.clone(),
-                                                                 matched,
-                                                                 is_status: false })
-                                              })
-               })
+               .map(|entry| (entry.token.as_str(), entry))
                .collect();
-
-    // Score first, then the shorter path, then the path itself. The last
-    // two are not quality judgements - they make the order total, so the
-    // same filter over the same files always lists the same way.
-    scored.sort_by(|(left_score, left), (right_score, right)| {
-              right_score.cmp(left_score)
-                         .then(left.entry.token.len().cmp(&right.entry.token.len()))
-                         .then(left.entry.token.cmp(&right.entry.token))
-          });
-    scored.into_iter().map(|(_, matched)| matched).collect()
+    fuzzy_score::rank(filter, entries.iter().map(|entry| entry.token.as_str()))
+        .into_iter()
+        .map(|(token, found)| {
+            let entry = by_token[token];
+            (found.score,
+             LookupMatch { entry:     entry.clone(),
+                           matched:   byte_offsets(token, &found.indices),
+                           is_status: false, })
+        })
+        .collect()
 }
 
-/// `filter`'s score against `token`, and the byte offsets it matched, or
-/// `None` when `filter` is not a subsequence of it.
-///
-/// Greedy left to right. A greedy walk can pick an earlier occurrence of a
-/// character where a later one would have scored better, which costs this
-/// the occasional ideal ordering and saves it from being quadratic on
-/// every keystroke over thousands of paths.
-fn score(token: &str, filter: &str) -> Option<(i32, Vec<usize>)> {
-    let name_start = token.rfind('/').map_or(0, |index| index + 1);
-
-    let mut matched = Vec::new();
-    let mut score = 0;
-    let mut previous: Option<usize> = None;
-    let mut haystack = token.char_indices().peekable();
-
-    for wanted in filter.chars().flat_map(char::to_lowercase) {
-        loop {
-            let (offset, candidate) = haystack.next()?;
-            if !candidate.to_lowercase().eq(std::iter::once(wanted)) {
-                continue;
-            }
-            score += MATCH;
-            if previous.is_some_and(|last| last + candidate.len_utf8() == offset) {
-                score += CONSECUTIVE;
-            }
-            if offset >= name_start {
-                score += IN_NAME;
-            }
-            if is_segment_start(token, offset) {
-                score += SEGMENT_START;
-            }
-            matched.push(offset);
-            previous = Some(offset);
-            break;
-        }
-    }
-    Some((score, matched))
+/// The score order [`ranked`] uses, for merging: score first, then token.
+pub(crate) fn order(left: &(i32, LookupMatch), right: &(i32, LookupMatch)) -> std::cmp::Ordering {
+    right.0
+         .cmp(&left.0)
+         .then_with(|| left.1.entry.token.cmp(&right.1.entry.token))
 }
 
-/// Whether `offset` begins a path segment or a word within one.
-fn is_segment_start(token: &str, offset: usize) -> bool {
-    if offset == 0 {
-        return true;
+/// `char` offsets into `text` as byte offsets, which is what a lookup row
+/// highlights by.
+fn byte_offsets(text: &str, chars: &[usize]) -> Vec<usize> {
+    let starts: Vec<usize> = text.char_indices().map(|(byte, _)| byte).collect();
+    chars.iter()
+         .filter_map(|index| starts.get(*index).copied())
+         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn offsets_become_byte_offsets() {
+        assert_eq!(byte_offsets("é/lib.rs", &[2, 3, 4]), vec![3, 4, 5]);
     }
-    token[..offset].chars()
-                   .next_back()
-                   .is_some_and(|previous| matches!(previous, '/' | '-' | '_' | '.' | ' '))
 }

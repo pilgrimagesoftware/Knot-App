@@ -211,8 +211,7 @@ impl WorkspaceWindow {
                 vec![LookupMatch::status(knot_core::l10n::t("panel.mentions_gathering"))]
             }
             MentionState::Ready { overflowed } => {
-                let mentions = self.panel_mentions_for(id)?;
-                let mut matches = mentions.registry().matching(&token.filter);
+                let mut matches = self.mention_ranking(id, &token.filter)?;
                 matches.truncate(LOOKUP_MAX_VISIBLE);
                 if matches.is_empty() {
                     return None;
