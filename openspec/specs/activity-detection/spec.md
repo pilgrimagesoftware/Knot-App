@@ -216,6 +216,16 @@ attention message, so the notification names what is being asked. A transition
 with no text available SHALL carry none, and the notification SHALL fall back
 to its default body.
 
+A permission request SHALL stop being pending as soon as it is answered,
+whichever way: by the user, as `cancelled` when the turn is stopped, or as
+Deny when the session ends. The agent SHALL then leave Awaiting input on the
+same terms as when the user answers it.
+
+While an agent is in Awaiting input, the system SHALL keep the reason it is
+waiting - the permission request's prompt text, or the hook's message - and
+SHALL show it with the status: in the sidebar state dot's tooltip and on the
+agent's dashboard card. Leaving Awaiting input SHALL clear the reason.
+
 #### Scenario: Permission request during a turn
 
 - **WHEN** the agent sends a permission request mid-turn
@@ -248,3 +258,141 @@ to its default body.
   `acp-client`'s subprocess exit handling)
 - **THEN** the agent's status becomes Error, matching the terminal path's
   non-zero-exit behavior
+
+#### Scenario: A permission cancelled by Stop stops being pending
+
+- **WHEN** a Panel-mode agent has a pending permission request and the user
+  stops the turn
+- **THEN** the request is no longer pending and the agent leaves Awaiting
+  input without anyone answering it in the panel
+
+#### Scenario: The cell says what the agent waits for
+
+- **WHEN** a Panel-mode agent is in Awaiting input on a permission request
+  titled `Bash`
+- **THEN** its state dot's tooltip and its dashboard card name that request
+
+### Requirement: A session limit is its own status
+
+When a Panel-mode agent's turn ends in an error reporting that its session or
+usage limit is reached, the system SHALL set the agent's status to Error until
+the user sends another prompt, and every surface naming the status SHALL call
+it "Session limit" rather than "Error", adding when the limit resets where the
+provider said and there is room.
+
+#### Scenario: A turn refused at the session limit
+
+- **WHEN** a Panel-mode agent's prompt is answered with "You've hit your session
+  limit · resets 5:20pm (America/Los_Angeles)"
+- **THEN** the agent's dot is red in its cell and in the window's header, and
+  the header reads "Session limit · resets 5:20pm (America/Los_Angeles)"
+
+#### Scenario: The next prompt tries again
+
+- **WHEN** the user sends a limited agent another prompt
+- **THEN** the agent is Working, and no longer shows "Session limit"
+
+#### Scenario: Any other failed turn
+
+- **WHEN** a Panel-mode agent's prompt is answered with any other error
+- **THEN** the agent goes Idle, as before
+
+### Requirement: A session limit is drawn bold and red
+
+A session limit SHALL be drawn in a stronger, more saturated red than Error's:
+the dot in that red, and the "Session limit" label as a bold badge of white
+text on red. Both SHALL meet the contrast every status colour is held to, in
+both appearances.
+
+#### Scenario: The session limit is drawn bold and red
+
+- **WHEN** an agent is stopped by its session limit in the dark appearance
+- **THEN** its dot is a more saturated red than an errored agent's, and the
+  header and dashboard card show "Session limit" as a bold white-on-red badge
+
+### Requirement: A terminal agent's usage-limit notice is a session limit
+
+When a Terminal-mode Claude agent's output has a line opening with a usage
+limit notice, the system SHALL show the agent's Session limit status, with the
+reset time the notice gives, and SHALL keep it through further output and hook
+reports until the user submits a prompt; a permission prompt SHALL show over
+it while it is pending.
+
+#### Scenario: The wrap-up allowance
+
+- **WHEN** a Terminal-mode Claude agent prints "Usage limit reached · wrapping
+  up" and goes on working, then stops
+- **THEN** its dot turns red with "Session limit" when the notice appears, and
+  stays so while it works and after it stops
+
+#### Scenario: A permission during the wrap-up
+
+- **WHEN** a limited agent's wrap-up asks for a permission
+- **THEN** the agent shows Awaiting input until it is answered, and then
+  Session limit again
+
+#### Scenario: Refused again after the lift
+
+- **WHEN** the user submits a prompt to a limited agent and it is refused
+  with the same notice as before
+- **THEN** the agent shows Session limit again
+
+#### Scenario: The next prompt lifts it
+
+- **WHEN** the user submits a prompt to that agent
+- **THEN** the agent is Working, and no longer shows "Session limit"
+
+#### Scenario: Prose about limits
+
+- **WHEN** an agent's output mentions "usage limit reached" mid-line
+- **THEN** its status is unaffected
+
+### Requirement: Autopilot does not answer a limited agent
+
+The system SHALL NOT classify the closing turn of an agent showing a session
+limit.
+
+#### Scenario: The wrap-up's Stop
+
+- **WHEN** a limited agent's wrap-up ends in a Stop with Autopilot enabled
+- **THEN** no classification starts
+
+### Requirement: A named usage limit is a session limit
+
+The system SHALL recognise a usage-limit notice by its stable lead, "You've
+hit your" or "You've reached your", followed by a short name ending in
+"limit", whatever the limit is called, and SHALL mark the agent with a session
+limit for it as for the older "session limit" wording. A limit that does not
+stop the session SHALL NOT be one.
+
+#### Scenario: A turn refused at the 5-hour limit
+
+- **WHEN** a Panel-mode agent's prompt is answered with "You've hit your 5-hour
+  limit · resets 5:20pm (America/Los_Angeles)"
+- **THEN** the agent shows "Session limit · resets 5:20pm
+  (America/Los_Angeles)" with a red dot, as for the older "session limit"
+  wording
+
+#### Scenario: Weekly and per-model limits
+
+- **WHEN** an agent is refused with "You've hit your weekly limit" or "You've
+  hit your Opus limit", or a terminal agent prints either at the start of a
+  line
+- **THEN** the agent shows "Session limit"
+
+#### Scenario: The other stable lead
+
+- **WHEN** an agent is refused with "You've reached your Fable limit."
+- **THEN** the agent shows "Session limit"
+
+#### Scenario: Fast mode's limit is not a session limit
+
+- **WHEN** an agent prints or is answered with "You've hit your fast limit ·
+  resets in 4m"
+- **THEN** its status is unaffected, because the agent carries on at normal
+  speed
+
+#### Scenario: A lead that names no limit
+
+- **WHEN** an agent is answered with "You've hit your team's shared budget."
+- **THEN** its status is unaffected

@@ -515,11 +515,17 @@ verdicts of the Swift reference's `MarkdownPanelView`, each with a localized
 label and tooltip:
 
 - While the user is reading the file, **Approve** and **Review**.
-- **Approve** SHALL send the agent the message `approved let's do it` as one
-  submitted prompt.
+- **Approve** SHALL send the agent `Approved: <file>` as one submitted prompt,
+  naming the file - relative to the agent's folder when it lies inside it, in
+  full otherwise - so the approval cannot be mistaken for agreement to
+  something else pending (#30).
 - **Review** SHALL start an unsent reply naming the file -
   `While reviewing <file>, user made the following comments:` followed by a new
-  line - and then offer **Submit Review** in place of the two.
+  line - and then offer **Submit Review** in place of the two. For a Panel-mode
+  agent, **Approve** SHALL stay on offer beside it: approving then sends
+  `Approved: <file>, with these review comments:` followed by what the user
+  wrote after the reply's opening line, and leaves in the composer any draft
+  that was there before the review began.
 - **Submit Review** SHALL send the reply with whatever the user added to it.
 - Once a verdict is sent, none SHALL be offered until the file is read again.
   The agent revising the file is what reopens the question.
@@ -539,14 +545,21 @@ NOT be localized.
 
 - **WHEN** an idle Panel-mode agent has a markdown file open and the user
   activates Approve
-- **THEN** the agent receives `approved let's do it` as a prompt, and the
-  section offers no verdict until the file is read again
+- **THEN** the agent receives `Approved: <file>` as a prompt, and the section
+  offers no verdict until the file is read again
 
 #### Scenario: Reviewing with comments
 
 - **WHEN** the user activates Review, types a comment in the composer, and
   activates Submit Review
 - **THEN** the agent receives the reply naming the file followed by the comment
+
+#### Scenario: Approving with review comments
+
+- **WHEN** a Panel-mode agent has `plan.md` open in its folder, the user
+  activates Review, types `keep step 2 short`, and activates Approve
+- **THEN** the agent receives `Approved: plan.md, with these review comments:`
+  followed by `keep step 2 short`
 
 ### Requirement: Each section offers actions on its artifact
 
@@ -648,3 +661,76 @@ and needs no knowledge of the menu or the key.
 
 - **WHEN** the selected agent's panel is shown
 - **THEN** View > Artifacts is checked
+
+### Requirement: The checklist section collects the user's answers
+
+An agent's checklist (set by `show-checklist`) SHALL be an artifact of the
+panel: alone it SHALL open and fill the panel; beside a markdown or diagram
+section it SHALL have its own area below them, sharing the height evenly, and
+SHALL NOT take part in their split or collapse. A check SHALL be a checkbox and
+a question a text field. Each tick and answer SHALL be recorded on the agent's
+checklist as it is made, and each field SHALL show the answer the checklist
+holds.
+
+#### Scenario: A checklist alone opens the panel
+
+- **WHEN** an agent with no other artifact shows a checklist
+- **THEN** its artifact panel opens with the checklist filling it
+
+#### Scenario: A field follows a replaced checklist
+
+- **WHEN** the user has typed an answer, closed only the checklist, and the
+  agent shows the same items again
+- **THEN** the answer field is empty, as the new checklist's answer is
+
+### Requirement: Send delivers the checklist to the agent
+
+The checklist's header SHALL carry a Send control. Send SHALL deliver the whole
+checklist as one message - each item with its id and its tick or answer - the
+way the markdown section's Approve delivers: a prompt for a Panel-mode agent, a
+submitted command for a Terminal-mode one. The checklist SHALL be marked sent
+only once delivered, and Send SHALL then be unavailable until a tick or answer
+changes.
+
+#### Scenario: Answers are sent as one message
+
+- **WHEN** the user ticks an item, answers a question, and presses Send
+- **THEN** the agent receives one message listing every item with its state and
+  the checklist is marked sent
+
+#### Scenario: Nothing to deliver to
+
+- **WHEN** the user presses Send for an agent with no session
+- **THEN** the checklist is not marked sent
+
+### Requirement: A closed checklist keeps its answers
+
+Closing the checklist SHALL remember it with its ticks and answers, and
+reopening the panel SHALL restore it as it was. It SHALL carry its own close
+control only when another section is open, as the other sections do.
+
+#### Scenario: Reopening keeps the answers
+
+- **WHEN** the user closes a checklist they have partly answered and then
+  reopens the panel
+- **THEN** the checklist returns with the same ticks and answers
+
+### Requirement: The markdown section lists the agent's earlier files
+
+While an agent has shown markdown files before the one its section shows, the
+section's header SHALL offer a control, with a localized tooltip, listing those
+files by name, most recent first, from the same history the agent's Markdown
+Files menu reads. Choosing one SHALL show it in the section again, unexpanded,
+through the store as that menu does. The control SHALL NOT be shown when there
+is no earlier file.
+
+#### Scenario: Getting back to a file the agent replaced
+
+- **WHEN** the user is reading `plan.md` and the agent shows `notes.md` over it
+- **THEN** the section's earlier-files control lists `plan.md`, and choosing it
+  shows `plan.md` again with `notes.md` now listed as the earlier file
+
+#### Scenario: Nothing earlier
+
+- **WHEN** an agent has shown only one markdown file
+- **THEN** the section shows no earlier-files control

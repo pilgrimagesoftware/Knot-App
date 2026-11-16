@@ -1612,3 +1612,83 @@ agent has a permission request pending, as for any other prompt under
   and the user has a prompt queued
 - **THEN** no Steer now is offered and nothing is sent until the request is
   answered
+
+### Requirement: The working turn shows its time and approximate size
+
+While a turn is running, the working row SHALL show how long the turn has run,
+and once the agent has streamed text in it, an approximate token count marked as
+an estimate. The count SHALL cover only the running turn.
+
+#### Scenario: A turn that has run 42 seconds
+
+- **WHEN** a turn has run for 42 seconds and streamed about 4,800 characters
+- **THEN** the working row reads "42s · ~1.2k tokens"
+
+#### Scenario: A new turn
+
+- **WHEN** the user sends another prompt
+- **THEN** the time and count start again from zero
+
+### Requirement: A prompt can be saved to the prompt library
+
+Each user message in the panel SHALL expose, beside its copy control and
+revealed and laid out as that control is, a save control with a localized
+tooltip. Activating it SHALL open the prompt editor on a new prompt whose text
+is exactly the message's text, with the caret in the empty name field, so the
+user names it and saves it to the prompt library.
+
+#### Scenario: Saving a prompt
+
+- **WHEN** the user points at a sent prompt `run the gate` and activates its
+  save control
+- **THEN** the prompt editor opens on a new prompt whose text is
+  `run the gate`, with the caret in its name
+
+### Requirement: Markdown tables size their columns from their content
+
+Every Markdown surface SHALL size a table's columns from what they hold: each
+column gets at least its min-content width (its widest piece of text that
+cannot wrap) whenever the table's width allows every column its own, and the
+room beyond those widths goes to the columns that would be wider, in
+proportion to how much wider. Every row SHALL use the same column widths.
+
+#### Scenario: A column of short words beside a column of prose
+
+- **WHEN** a response contains a table whose first column holds single words,
+  such as "Observability", and whose second column holds long sentences
+- **THEN** no word in the first column breaks, and the second column narrows
+  and wraps its sentences instead
+
+#### Scenario: Columns line up
+
+- **WHEN** a table's rows hold cells of different lengths
+- **THEN** every row's cells in a column start at the same position and have
+  the same width
+
+### Requirement: Markdown table cells break words only as a last resort
+
+Table cell text SHALL wrap where the panel's other text wraps: at spaces, and
+before characters the text engine does not keep inside a word, such as `/`. A
+column's min-content width SHALL be measured to those same break points, so a
+hyphenated word such as "Short-term" counts as one word. A word SHALL break
+only when the columns' min-content widths together do not fit the table's
+width.
+
+#### Scenario: Wrapping prefers spaces
+
+- **WHEN** a cell's text is wider than its column
+- **THEN** it wraps at a space, not inside a word
+
+#### Scenario: A hyphenated word stays whole
+
+- **WHEN** a column's widest word is hyphenated, such as "Short-term", and the
+  column beside it has room to give
+- **THEN** the column is wide enough for the whole word, and the word does not
+  break at or after its hyphen
+
+#### Scenario: A table too narrow for its words
+
+- **WHEN** a table's frame is narrower than its columns' min-content widths
+  together
+- **THEN** the columns shrink to fit the frame and words break, rather than
+  the table overflowing
