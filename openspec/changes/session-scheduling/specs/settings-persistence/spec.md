@@ -98,8 +98,8 @@ The system SHALL store, per workspace and keyed by the workspace's identity,
 the UI state the application tracks on the user's behalf: the window's saved
 bounds, the layout mode, which agents are active in that layout, the focused
 pane, the layout's split ratios, whether the dashboard is showing, whether
-the workspace is detached, and the last scheduled run started for each of its
-agents.
+the workspace is detached, and the last scheduled run handled (started,
+skipped or missed) for each of its agents.
 
 Writing any of that SHALL persist the UI-state document and SHALL NOT rewrite
 the saved-workspaces document, the saved-agents document, or any other. Where a

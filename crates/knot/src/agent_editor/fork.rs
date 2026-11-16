@@ -34,6 +34,12 @@ impl AgentPrefill {
                                  cost_tier,
                                  session_config,
                                  startup_prompt,
+                                 // Not copied: a fork continues a session, and two
+                                 // agents running one script at once is not a fork (#404).
+                                 schedule: _,
+                                 // Set in the editor with the schedule (#404, task 4.1);
+                                 // `AgentPrefill` gains it there.
+                                 idle_policy: _,
                                  // Follows from `agent_type` in `create`.
                                  view_mode: _,
                                  // Not copied: only an owner can be forked, and

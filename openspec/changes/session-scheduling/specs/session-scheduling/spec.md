@@ -74,8 +74,8 @@ unaffected.
 A run due while Knot was not running or the Mac was asleep SHALL run once
 when Knot next sees it, if it is at most 10 minutes late. An older run SHALL
 be recorded as missed and not run. Knot SHALL never run more than one missed
-run of an agent, and SHALL never run the same scheduled run twice, including
-across a relaunch.
+run of an agent, and SHALL never handle the same scheduled run twice, including
+across a relaunch: a run once skipped or missed is not started later.
 
 #### Scenario: Waking shortly after
 

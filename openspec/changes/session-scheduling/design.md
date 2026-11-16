@@ -84,10 +84,12 @@ so it needs an app-level ticker:
   permission request, a non-empty prompt queue, or an unanswered message the
   agent holds. A new conversation would discard each of those. The run is
   skipped and recorded with that reason.
-- Runs are keyed by their scheduled instant. The last fired instant per
-  agent is **persisted** in the workspace's UI-state document (Knot recorded
-  it; the user did not configure it). So a relaunch inside the grace window
-  never fires the same run again, and a slow tick never fires two.
+- Runs are keyed by their scheduled instant. The last run *handled* per
+  agent (started, skipped or missed) is **persisted** in the workspace's
+  UI-state document (Knot recorded it; the user did not configure it). So a
+  relaunch inside the grace window never starts the same run again, a run
+  skipped as busy is not started minutes later when the agent frees up, and a
+  slow tick never handles two.
 - **Grace**: a due run up to 10 minutes late still fires (sleep, launch).
   Older: marked missed, the next occurrence takes over. At most one run
   fires per agent per tick.

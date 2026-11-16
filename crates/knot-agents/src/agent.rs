@@ -85,6 +85,11 @@ pub struct Agent {
     /// session. Durable, and restart-free to edit: it takes effect on the
     /// next fresh session. See `openspec/specs/prompt-library/spec.md`.
     pub startup_prompt:  Option<StartupPrompt>,
+    /// When the agent starts on its own (#404); see
+    /// `knot_core::schedule`. Durable.
+    pub schedule:        Option<knot_core::schedule::Schedule>,
+    /// What idling does to it (#404). Durable.
+    pub idle_policy:     knot_core::schedule::IdlePolicy,
 
     // Runtime-only
     /// Whether this agent has been activated in this run and so may start.
@@ -285,6 +290,8 @@ mod tests {
                 cost_tier:               Default::default(),
                 session_config:          BTreeMap::new(),
                 startup_prompt:          None,
+                schedule:                None,
+                idle_policy:             Default::default(),
                 activated:               false,
                 state:                   AgentState::Idle,
                 idle_since:              None,

@@ -164,6 +164,8 @@ fn test_agent(name: &str, registered: bool) -> Agent {
             cost_tier:               Default::default(),
             session_config:          Default::default(),
             startup_prompt:          None,
+            schedule:                None,
+            idle_policy:             Default::default(),
             activated:               false,
             state:                   AgentState::Idle,
             idle_since:              None,

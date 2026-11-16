@@ -33,6 +33,8 @@ pub fn from_saved(saved: &SavedAgent) -> Agent {
             cost_tier:       saved.cost_tier,
             session_config:  saved.session_config.clone(),
             startup_prompt:  saved.startup_prompt.clone(),
+            schedule:        saved.schedule.clone(),
+            idle_policy:     saved.idle_policy,
 
             activated:               false,
             state:                   AgentState::Idle,
@@ -85,6 +87,8 @@ pub fn to_saved(agent: &Agent, remember_conversation: bool) -> SavedAgent {
                  cost_tier:       agent.cost_tier,
                  session_config:  agent.session_config.clone(),
                  startup_prompt:  agent.startup_prompt.clone(),
+                 schedule:        agent.schedule.clone(),
+                 idle_policy:     agent.idle_policy,
                  session_id:      remember_conversation.then(|| agent.session_id.clone())
                                                        .flatten(),
                  acp_session_id:  remember_conversation.then(|| agent.acp_session_id.clone())
