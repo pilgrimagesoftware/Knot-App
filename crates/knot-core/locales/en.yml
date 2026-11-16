@@ -88,7 +88,11 @@ agent:
   # (`schedule.when_*`).
   schedule_next: "Next run %{when}"
   schedule_missed: "Missed %{when}"
-  schedule_skipped: "Skipped %{when}: it was busy"
+  # A skipped run names what a new conversation would have discarded.
+  schedule_skipped_turn: "Skipped %{when}: a turn was in progress"
+  schedule_skipped_permission: "Skipped %{when}: a permission request was waiting"
+  schedule_skipped_queued: "Skipped %{when}: a prompt was queued"
+  schedule_skipped_reply: "Skipped %{when}: it owed a reply"
   # Minutes, abbreviated as elsewhere (`mcp.age_minutes`), so no plural.
   idle_deactivating: "Idle %{idle}m · deactivating in %{left}m"
   idle_resetting: "Idle %{idle}m · resetting in %{left}m"

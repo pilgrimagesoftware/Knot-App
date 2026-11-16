@@ -112,11 +112,14 @@ impl WorkspaceWindow {
 
         // Idle tracking reads the same pass (#404): which processes run under
         // each session, against what the session started with.
+        let now = std::time::SystemTime::now();
         for (agent, processes) in &descendants {
             if let Some(root) = self.agent_session_root(*agent) {
-                self.note_process_sample(*agent,
-                                         root,
-                                         processes.iter().map(|process| process.pid).collect());
+                let processes: Vec<(u32, std::time::Duration)> =
+                    processes.iter()
+                             .map(|process| (process.pid, process.elapsed))
+                             .collect();
+                self.note_process_sample(*agent, root, &processes, now);
             }
         }
 

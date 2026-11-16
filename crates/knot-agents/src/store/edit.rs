@@ -11,6 +11,7 @@ impl AgentStore {
                              .folder
                              .clone();
         let mut needs_restart = false;
+        let schedule_changed;
         {
             let agent = self.agent_mut(id).expect("agent checked above");
             agent.name = req.name;
@@ -28,6 +29,7 @@ impl AgentStore {
             agent.startup_prompt = req.startup_prompt;
             // Neither interrupts the session: a schedule acts at its next
             // run, an idle policy at the next idle check (#404).
+            schedule_changed = agent.schedule != req.schedule && req.schedule.is_some();
             agent.schedule = req.schedule;
             agent.idle_policy = req.idle_policy;
             if let Some(agent_type) = &req.agent_type
@@ -64,6 +66,10 @@ impl AgentStore {
                 }
                 self.restart(companion_id)?;
             }
+        }
+        // A new or changed schedule runs only at occurrences after now (#404).
+        if schedule_changed {
+            self.seed_schedule_handled(id, jiff::Timestamp::now().as_second());
         }
         if needs_restart {
             self.restart(id)?;

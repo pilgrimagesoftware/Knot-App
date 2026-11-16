@@ -71,17 +71,17 @@ fn fixture(cx: &mut TestAppContext) -> Fixture {
 }
 
 impl Fixture {
-    fn busy(&mut self) -> bool {
+    fn blocker(&mut self) -> Option<knot_core::schedule::SkipReason> {
         let id = self.agent;
         self.view
-            .read_with(&self.window, |view, _| view.scheduled_run_busy(id))
+            .read_with(&self.window, |view, _| view.scheduled_run_blocker(id))
     }
 }
 
 #[gpui_kit::test]
 fn an_idle_agent_with_nothing_owed_is_not_busy(cx: &mut TestAppContext) {
     let mut fixture = fixture(cx);
-    assert!(!fixture.busy());
+    assert_eq!(fixture.blocker(), None);
 }
 
 #[gpui_kit::test]
@@ -94,7 +94,8 @@ fn a_queued_prompt_makes_it_busy(cx: &mut TestAppContext) {
                         .or_default()
                         .push(QueuedPanelPrompt::new("next".into(), PromptOrigin::User));
                 });
-    assert!(fixture.busy());
+    assert_eq!(fixture.blocker(),
+               Some(knot_core::schedule::SkipReason::PromptQueued));
 }
 
 #[gpui_kit::test]
@@ -106,12 +107,14 @@ fn an_unanswered_brief_makes_it_busy_until_it_replies(cx: &mut TestAppContext) {
         messages.add(knot_messaging::Message::new(sender, agent, "please review #12"));
         messages.mark_read(agent);
     }
-    assert!(fixture.busy(), "a read, unanswered brief is work in hand");
+    assert_eq!(fixture.blocker(),
+               Some(knot_core::schedule::SkipReason::OwesReply),
+               "a read, unanswered brief is work in hand");
 
     fixture.messages
            .lock()
            .add(knot_messaging::Message::new(agent, sender, "done"));
-    assert!(!fixture.busy(), "a reply settles it");
+    assert_eq!(fixture.blocker(), None, "a reply settles it");
 }
 
 #[gpui_kit::test]

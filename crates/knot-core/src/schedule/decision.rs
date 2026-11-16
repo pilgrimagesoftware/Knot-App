@@ -13,12 +13,15 @@ use super::evaluate::previous_run;
 /// once, and only when recent".
 pub const GRACE: SignedDuration = SignedDuration::from_mins(10);
 
-/// Why a due run did not start.
+/// Why a due run did not start: each is work a new conversation would
+/// discard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkipReason {
-    /// A turn in progress, a pending permission request, a queued prompt, or
-    /// an unanswered message: a new conversation would discard it.
-    Busy,
+    TurnInProgress,
+    PermissionPending,
+    PromptQueued,
+    /// It read a message and has not answered it (#405).
+    OwesReply,
 }
 
 /// The answer for one agent on one tick.
@@ -54,7 +57,9 @@ impl RunDecision {
 /// agent per tick and missed runs are never replayed in a batch. A run at or
 /// before `last_handled` has been dealt with already.
 #[must_use]
-pub fn decide(schedule: &Schedule, last_handled: Option<Timestamp>, now: &Zoned, busy: bool)
+/// `busy` is what would be discarded by starting now, if anything.
+pub fn decide(schedule: &Schedule, last_handled: Option<Timestamp>, now: &Zoned,
+              busy: Option<SkipReason>)
               -> RunDecision {
     let Some(run) = previous_run(schedule, now)
     else {
@@ -66,9 +71,8 @@ pub fn decide(schedule: &Schedule, last_handled: Option<Timestamp>, now: &Zoned,
     if now.timestamp().duration_since(run.timestamp()) > GRACE {
         return RunDecision::Missed { run };
     }
-    if busy {
-        return RunDecision::Skip { run,
-                                   reason: SkipReason::Busy };
+    if let Some(reason) = busy {
+        return RunDecision::Skip { run, reason };
     }
     RunDecision::Start { run }
 }

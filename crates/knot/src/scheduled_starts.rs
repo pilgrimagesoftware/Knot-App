@@ -76,10 +76,13 @@ pub(crate) fn tick(store: &Arc<Mutex<knot_agents::AgentStore>>,
     for scheduled in scheduled_agents {
         let key = WindowKey::Workspace(scheduled.workspace);
         let busy = match WindowRegistry::workspace_view(key, cx) {
-            Some(view) => view.read(cx).scheduled_run_busy(scheduled.agent),
+            Some(view) => view.read(cx).scheduled_run_blocker(scheduled.agent),
             // No window, no session: only a message it owes a reply to can
             // make it busy.
-            None => owes_a_reply(&store.lock(), &messages.lock(), scheduled.agent),
+            None => {
+                owes_a_reply(&store.lock(), &messages.lock(), scheduled.agent)
+                    .then_some(SkipReason::OwesReply)
+            }
         };
         let decision = decide(&scheduled.schedule, scheduled.last_handled, now, busy);
         let Some(handled) = decision.handled()

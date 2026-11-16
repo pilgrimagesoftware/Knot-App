@@ -44,6 +44,21 @@ impl AgentStore {
         handled.retain(|id, _| members.contains(id));
     }
 
+    /// Marks every run of `agent`'s schedule up to `now_seconds` as handled,
+    /// for a schedule just set or changed: a run that fell due before the
+    /// schedule existed was never pending, so it must not start the agent
+    /// now and reset the conversation the user is in (#404). Only later
+    /// occurrences can run.
+    pub(crate) fn seed_schedule_handled(&mut self, agent: Uuid, now_seconds: i64) {
+        let workspace = self.workspaces
+                            .iter()
+                            .find(|workspace| workspace.agent_ids.contains(&agent))
+                            .map(|workspace| workspace.id);
+        if let Some(workspace) = workspace {
+            self.record_schedule_run_handled(workspace, agent, now_seconds);
+        }
+    }
+
     /// Replace the whole UI-state map, as the store is loaded from settings.
     pub fn set_workspace_ui(&mut self, ui: std::collections::BTreeMap<Uuid, WorkspaceUiState>) {
         self.workspace_ui = ui;

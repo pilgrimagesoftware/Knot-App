@@ -214,11 +214,23 @@ impl AgentStore {
     }
 
     /// Give `id` a schedule, or take it away (#404). Moves the revision, so
-    /// every window redraws the agent's clock line.
+    /// every window redraws the agent's clock line. A new or changed schedule
+    /// runs only at occurrences after now; see
+    /// [`Self::seed_schedule_handled`].
     pub fn set_schedule(&mut self, id: Uuid, schedule: Option<knot_core::schedule::Schedule>) {
+        self.set_schedule_at(id, schedule, jiff::Timestamp::now());
+    }
+
+    /// [`Self::set_schedule`] at a chosen time, for tests.
+    pub fn set_schedule_at(&mut self, id: Uuid, schedule: Option<knot_core::schedule::Schedule>,
+                           now: jiff::Timestamp) {
         let changed = self.agent(id)
                           .is_some_and(|agent| agent.schedule != schedule);
+        let seed = changed && schedule.is_some();
         self.update(id, |agent| agent.schedule = schedule);
+        if seed {
+            self.seed_schedule_handled(id, now.as_second());
+        }
         if changed {
             self.revise();
         }

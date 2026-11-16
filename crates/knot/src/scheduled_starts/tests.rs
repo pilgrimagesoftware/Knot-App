@@ -50,7 +50,11 @@ fn fixture(startup_prompt: bool, cx: &mut TestAppContext) -> Fixture {
                                                StartupPrompt::Custom("run the report".into())
                                            })));
     let sender = store.create("~/sender", options(None));
-    store.set_schedule(agent, Some("daily 09:00".parse().expect("a preset")));
+    // Set at 08:00, before the run: a schedule set after its time would wait
+    // for the next one (#404).
+    store.set_schedule_at(agent,
+                          Some("daily 09:00".parse().expect("a preset")),
+                          la(8, 0).timestamp());
     store.set_activated(agent, false);
     let store = Arc::new(Mutex::new(store));
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
@@ -157,7 +161,7 @@ fn an_agent_owing_a_reply_is_skipped_not_started(cx: &mut TestAppContext) {
 
     assert!(!fixture.activated());
     assert_eq!(fixture.outcome(cx),
-               Some(ScheduleOutcome::Skipped(la(9, 0).timestamp(), SkipReason::Busy)));
+               Some(ScheduleOutcome::Skipped(la(9, 0).timestamp(), SkipReason::OwesReply)));
     assert!(fixture.handled().is_some(),
             "a skipped run is handled, so it does not start later");
 }
@@ -180,7 +184,9 @@ fn an_agent_without_a_startup_prompt_is_never_run(cx: &mut TestAppContext) {
 
     fixture.tick(&la(9, 1), cx);
 
-    assert_eq!(fixture.handled(), None);
+    assert_eq!(fixture.handled(),
+               Some(la(8, 0).timestamp().as_second()),
+               "only the seed from setting the schedule; the ticker handled nothing");
     assert_eq!(fixture.outcome(cx), None);
     assert!(!fixture.window_open(cx));
 }

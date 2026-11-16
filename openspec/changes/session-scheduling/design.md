@@ -148,12 +148,29 @@ message was reopened"), because those go only to senders of messages the
 agent held unanswered. An idle deactivate keeps the conversation, so it
 starts no handoff at all.
 
-**Background processes.** A session's descendants in its first sample are
-its baseline - stdio MCP servers and similar run for the session's whole life
-and are not activity. A descendant that appears later (a test run, a build)
-keeps the agent awake while it runs. The baseline is keyed by the session's
-root pid, so a restart re-baselines. This is an approximation; a server
-started lazily mid-session would read as activity until the next session.
+**Background processes.** Once the agent has had a turn, a descendant counts
+as activity only if it started during or after that turn (its start is the
+sample time less `ps`'s elapsed time; the turn is dated from the last check
+before the agent was seen working). A test run the turn started keeps the
+agent awake; a helper an earlier turn started - a stdio MCP server spawned on
+first use - stops counting when the next turn begins. Before the first turn,
+the descendants in the session's first sample are its baseline and only later
+ones count. A new root pid is a new session and resets both. What remains
+approximate: a helper started lazily *during the latest turn* counts until the
+next turn, since timing cannot tell it from a test run. Follow-up candidate:
+exclude descendants whose command matches one of the agent's configured stdio
+MCP servers.
+
+**A schedule set after its time.** Setting or changing a schedule records the
+moment as handled (`AgentStore::seed_schedule_handled`, from `set_schedule`
+and `edit`), so only occurrences after it can run, and the editor persists
+the UI-state document with the roster. Otherwise a schedule saved within ten
+minutes after its time would start the agent at once and discard the
+conversation the user is in.
+
+**Skip reasons.** `SkipReason` names what a new conversation would discard -
+a pending permission, a turn, a queued prompt, an owed reply - and the
+sidebar's skipped line says which.
 
 **Reset once per stretch.** After an idle reset the new conversation is idle
 by definition, so it is not reset again until it has been busy or used.

@@ -159,34 +159,37 @@ fn a_repeated_local_time_runs_once() {
 fn a_due_run_starts_once() {
     let daily = schedule("daily 09:00");
     let now = la(2026, 11, 16, 9, 1);
-    let decision = decide(&daily, None, &now, false);
+    let decision = decide(&daily, None, &now, None);
     let RunDecision::Start { run } = &decision
     else {
         panic!("expected a start, got {decision:?}");
     };
     assert_eq!(hm(run), (9, 0));
-    assert_eq!(decide(&daily, decision.handled(), &now, false),
+    assert_eq!(decide(&daily, decision.handled(), &now, None),
                RunDecision::NotDue);
 }
 
 #[test]
 fn a_relaunch_inside_the_grace_window_does_not_start_the_run_again() {
     let daily = schedule("daily 09:00");
-    let handled = decide(&daily, None, &la(2026, 11, 16, 9, 0), false).handled();
+    let handled = decide(&daily, None, &la(2026, 11, 16, 9, 0), None).handled();
     // Knot quits and relaunches at 09:05; the handled run was persisted.
-    assert_eq!(decide(&daily, handled, &la(2026, 11, 16, 9, 5), false),
+    assert_eq!(decide(&daily, handled, &la(2026, 11, 16, 9, 5), None),
                RunDecision::NotDue);
 }
 
 #[test]
 fn a_busy_agent_skips_the_run_and_the_skip_is_final() {
     let daily = schedule("daily 09:00");
-    let decision = decide(&daily, None, &la(2026, 11, 16, 9, 0), true);
+    let decision = decide(&daily,
+                          None,
+                          &la(2026, 11, 16, 9, 0),
+                          Some(SkipReason::TurnInProgress));
     assert!(matches!(decision,
-                     RunDecision::Skip { reason: SkipReason::Busy,
+                     RunDecision::Skip { reason: SkipReason::TurnInProgress,
                                          .. }));
     // Free again at 09:03: still inside the grace window, but already handled.
-    assert_eq!(decide(&daily, decision.handled(), &la(2026, 11, 16, 9, 3), false),
+    assert_eq!(decide(&daily, decision.handled(), &la(2026, 11, 16, 9, 3), None),
                RunDecision::NotDue);
 }
 
@@ -194,8 +197,7 @@ fn a_busy_agent_skips_the_run_and_the_skip_is_final() {
 fn a_run_up_to_the_grace_period_late_still_starts() {
     let daily = schedule("daily 09:00");
     let late = la(2026, 11, 16, 9, 0).checked_add(GRACE).expect("in range");
-    assert!(matches!(decide(&daily, None, &late, false),
-                     RunDecision::Start { .. }));
+    assert!(matches!(decide(&daily, None, &late, None), RunDecision::Start { .. }));
 }
 
 #[test]
@@ -203,13 +205,13 @@ fn an_older_run_is_missed_and_only_the_latest_counts() {
     let every3 = schedule("every 3h");
     // Last handled at 06:00; Knot is back at 13:00. 09:00 and 12:00 came due.
     let handled = Some(la(2026, 11, 16, 6, 0).timestamp());
-    let decision = decide(&every3, handled, &la(2026, 11, 16, 13, 0), false);
+    let decision = decide(&every3, handled, &la(2026, 11, 16, 13, 0), None);
     let RunDecision::Missed { run } = &decision
     else {
         panic!("expected a missed run, got {decision:?}");
     };
     assert_eq!(hm(run), (12, 0), "only the latest due run is handled");
-    assert_eq!(decide(&every3, decision.handled(), &la(2026, 11, 16, 13, 1), false),
+    assert_eq!(decide(&every3, decision.handled(), &la(2026, 11, 16, 13, 1), None),
                RunDecision::NotDue);
 }
 

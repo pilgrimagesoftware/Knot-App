@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use jiff::Zoned;
 use knot_core::l10n::{t, t_with};
-use knot_core::schedule::{IdleAction, Schedule, next_run};
+use knot_core::schedule::{IdleAction, Schedule, SkipReason, next_run};
 
 use crate::scheduled_starts::ScheduleOutcome;
 use crate::workspace_window::idle::IdleCountdown;
@@ -53,14 +53,23 @@ pub(crate) fn schedule_line(schedule: Option<&Schedule>, outcome: Option<Schedul
             return Some(t_with("agent.schedule_missed",
                                &[("when", &when_text(&local(at), now))]));
         }
-        Some(ScheduleOutcome::Skipped(at, _)) if recent(at) => {
-            return Some(t_with("agent.schedule_skipped",
-                               &[("when", &when_text(&local(at), now))]));
+        Some(ScheduleOutcome::Skipped(at, reason)) if recent(at) => {
+            return Some(t_with(skip_key(reason), &[("when", &when_text(&local(at), now))]));
         }
         _ => {}
     }
     let next = next_run(schedule, now)?;
     Some(t_with("agent.schedule_next", &[("when", &when_text(&next, now))]))
+}
+
+/// The catalog entry for a run skipped for `reason`.
+pub(crate) fn skip_key(reason: SkipReason) -> &'static str {
+    match reason {
+        SkipReason::TurnInProgress => "agent.schedule_skipped_turn",
+        SkipReason::PermissionPending => "agent.schedule_skipped_permission",
+        SkipReason::PromptQueued => "agent.schedule_skipped_queued",
+        SkipReason::OwesReply => "agent.schedule_skipped_reply",
+    }
 }
 
 /// The idle countdown's detail line.

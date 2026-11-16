@@ -88,6 +88,13 @@ across a relaunch: a run once skipped or missed is not started later.
 - **THEN** neither runs, the 12:00 run is shown as missed, and the next run
   is the following occurrence
 
+#### Scenario: A schedule set after its time waits for the next run
+
+- **WHEN** at 09:05 the user gives an idle agent the schedule "every day at
+  09:00", or changes its schedule to it
+- **THEN** the agent is not started now; its first run is 09:00 the next day,
+  since a run that fell due before the schedule existed was never pending
+
 #### Scenario: Relaunching just after a run
 
 - **WHEN** the 09:00 run has run, and the user quits and relaunches Knot at
@@ -117,8 +124,8 @@ inherits it. Both are off unless set. Shell agents are not affected.
 
 An agent SHALL count as idle only while it has no turn in progress, no
 running subagents, no queued prompt, no pending permission request, no
-unanswered message it holds, and no running background process under its
-session besides its own adapter or shell. Typing, sending, or scrolling in
+unanswered message it holds, and no running background process its latest
+turn started. Typing, sending, or scrolling in
 its conversation or terminal SHALL restart the idle period.
 
 #### Scenario: Scrolling back counts as activity

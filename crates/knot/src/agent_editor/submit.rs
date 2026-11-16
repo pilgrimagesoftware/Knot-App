@@ -131,9 +131,15 @@ impl AgentEditor {
             let store = self.store.lock();
             settings.saved_agents = store.saved_agents(settings.restore_conversation_on_launch);
             settings.saved_workspaces = store.saved_workspaces();
+            // A schedule just set records its earlier runs as handled (#404);
+            // written with the rest so a relaunch cannot run one.
+            settings.workspace_ui = store.saved_workspace_ui();
         });
         if let Err(error) = installed.persist_roster() {
             eprintln!("failed to persist the agent roster: {error}");
+        }
+        if let Err(error) = installed.persist_workspace_ui() {
+            eprintln!("failed to persist the handled scheduled runs: {error}");
         }
         (self.on_created)(created_id, window, cx);
         window.remove_window();
@@ -190,9 +196,15 @@ impl AgentEditor {
             let store = self.store.lock();
             settings.saved_agents = store.saved_agents(settings.restore_conversation_on_launch);
             settings.saved_workspaces = store.saved_workspaces();
+            // A schedule just set records its earlier runs as handled (#404);
+            // written with the rest so a relaunch cannot run one.
+            settings.workspace_ui = store.saved_workspace_ui();
         });
         if let Err(error) = installed.persist_roster() {
             eprintln!("failed to persist the agent roster: {error}");
+        }
+        if let Err(error) = installed.persist_workspace_ui() {
+            eprintln!("failed to persist the handled scheduled runs: {error}");
         }
         (self.on_created)(id, window, cx);
         window.remove_window();

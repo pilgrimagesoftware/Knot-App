@@ -10,10 +10,14 @@
 //! tracked, its last turn ending (`Agent::idle_since`), the last time it was
 //! seen busy, and the last user activity in its pane. Busy is checked every
 //! [`IDLE_CHECK_INTERVAL`]: a turn, a pending permission, a queued prompt, an
-//! unanswered message, a running subagent, or a background process that was
-//! not there when the session started. That last rule is an approximation -
-//! the processes a session starts with (stdio MCP servers) run for its whole
-//! life, so they are a baseline, and only processes that appear later count.
+//! unanswered message, a running subagent, or a background process the
+//! agent's latest turn started. That last rule is an approximation: once the
+//! agent has had a turn, a descendant counts only if it started during or
+//! after that turn, so helpers from earlier turns (a stdio MCP server started
+//! on first use) stop counting when the next turn begins. Before any turn,
+//! the processes the session started with are its baseline and only later
+//! ones count. A helper started lazily during the latest turn still counts
+//! until the next one; timing alone cannot tell it from a test run.
 //!
 //! What it owns: one [`AgentIdle`] per agent, pruned in `teardown_session`.
 
@@ -36,6 +40,13 @@ pub(crate) struct AgentIdle {
     last_busy_seen:          Option<SystemTime>,
     /// The session's root pid and the descendants it started with.
     process_baseline:        Option<(u32, BTreeSet<u32>)>,
+    /// When the agent's latest turn began (to the precision of the checks),
+    /// or `None` before its first turn in this session.
+    turn_started_at:         Option<SystemTime>,
+    /// Whether the last check saw it working, to notice a turn starting.
+    was_working:             bool,
+    /// When the last check ran.
+    last_checked:            Option<SystemTime>,
     /// A descendant outside the baseline was running at the last sample.
     process_active:          bool,
     /// Set by an idle reset: the next session starts without the startup
@@ -54,6 +65,9 @@ impl AgentIdle {
                last_user_activity:      None,
                last_busy_seen:          None,
                process_baseline:        None,
+               turn_started_at:         None,
+               was_working:             false,
+               last_checked:            None,
                process_active:          false,
                withhold_startup_prompt: false,
                reset_awaits_activity:   false,
@@ -122,24 +136,39 @@ impl WorkspaceWindow {
         entry.reset_awaits_activity = false;
     }
 
-    /// A process sample landed for `id`, whose session root is `root`.
-    /// Descendants not present in the session's first sample count as
-    /// activity.
-    pub(crate) fn note_process_sample(&mut self, id: Uuid, root: u32, pids: BTreeSet<u32>) {
-        let now = SystemTime::now();
+    /// A process sample landed for `id`, whose session root is `root`, at
+    /// `now`: each descendant's pid and how long it has run. See the module
+    /// doc for which count as activity.
+    pub(crate) fn note_process_sample(&mut self, id: Uuid, root: u32,
+                                      processes: &[(u32, Duration)], now: SystemTime) {
         let entry = self.agent_idle
                         .entry(id)
                         .or_insert_with(|| AgentIdle::new(now));
-        match &entry.process_baseline {
-            Some((baseline_root, baseline)) if *baseline_root == root => {
-                entry.process_active = pids.iter().any(|pid| !baseline.contains(pid));
-            }
-            // A new session: what it starts with is its infrastructure.
-            _ => {
-                entry.process_baseline = Some((root, pids));
-                entry.process_active = false;
-            }
+        let pids: BTreeSet<u32> = processes.iter().map(|(pid, _)| *pid).collect();
+        let same_session = entry.process_baseline
+                                .as_ref()
+                                .is_some_and(|(baseline_root, _)| *baseline_root == root);
+        if !same_session {
+            // A new session: what it starts with is its infrastructure, and
+            // the old session's turns say nothing about it.
+            entry.process_baseline = Some((root, pids));
+            entry.turn_started_at = None;
+            entry.process_active = false;
+            return;
         }
+        entry.process_active = match entry.turn_started_at {
+            Some(turn) => processes.iter().any(|(_, elapsed)| {
+                                              now.checked_sub(*elapsed)
+                                                 .is_some_and(|started| started >= turn)
+                                          }),
+            None => {
+                let baseline = entry.process_baseline
+                                    .as_ref()
+                                    .map(|(_, baseline)| baseline.clone())
+                                    .unwrap_or_default();
+                pids.iter().any(|pid| !baseline.contains(pid))
+            }
+        };
     }
 
     /// Whether the next session `id` starts should go without its startup
@@ -195,10 +224,21 @@ impl WorkspaceWindow {
             else {
                 continue;
             };
+            let working = self.store
+                              .lock()
+                              .agent(id)
+                              .is_some_and(|agent| agent.state == knot_agents::AgentState::Running);
             let busy = self.idle_busy(id);
             let entry = self.agent_idle
                             .entry(id)
                             .or_insert_with(|| AgentIdle::new(now));
+            // A turn began since the last check: date it from that check, the
+            // latest moment it was known not to be working.
+            if working && !entry.was_working {
+                entry.turn_started_at = Some(entry.last_checked.unwrap_or(now));
+            }
+            entry.was_working = working;
+            entry.last_checked = Some(now);
             if busy {
                 entry.last_busy_seen = Some(now);
                 entry.reset_awaits_activity = false;
@@ -237,7 +277,7 @@ impl WorkspaceWindow {
         let processes = self.agent_idle
                             .get(&id)
                             .is_some_and(|entry| entry.process_active);
-        working || subagents || processes || self.scheduled_run_busy(id)
+        working || subagents || processes || self.scheduled_run_blocker(id).is_some()
     }
 
     fn stop_for_idling(&mut self, id: Uuid, action: IdleAction, now: SystemTime,

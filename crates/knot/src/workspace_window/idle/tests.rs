@@ -7,7 +7,6 @@
 //! capture are fed in through the same entry points the sampler and the
 //! capture listeners call.
 
-use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -210,9 +209,12 @@ fn a_process_started_after_the_session_keeps_it_awake(cx: &mut TestAppContext) {
     fixture.view.update(&mut fixture.window, |view, _| {
                     // The session's first sample is its baseline: an MCP
                     // server.
-                    view.note_process_sample(id, 100, BTreeSet::from([101]));
+                    view.note_process_sample(id, 100, &[(101, mins(1))], SystemTime::now());
                     // Later, a test run appears beside it.
-                    view.note_process_sample(id, 100, BTreeSet::from([101, 202]));
+                    view.note_process_sample(id,
+                                             100,
+                                             &[(101, mins(2)), (202, mins(1))],
+                                             SystemTime::now());
                 });
     let start = SystemTime::now();
     fixture.check(start);
@@ -225,8 +227,8 @@ fn the_processes_a_session_starts_with_do_not_keep_it_awake(cx: &mut TestAppCont
     let mut fixture = fixture(IdlePolicy::Custom(rule(30, IdleAction::Deactivate)), cx);
     let id = fixture.agent;
     fixture.view.update(&mut fixture.window, |view, _| {
-                    view.note_process_sample(id, 100, BTreeSet::from([101]));
-                    view.note_process_sample(id, 100, BTreeSet::from([101]));
+                    view.note_process_sample(id, 100, &[(101, mins(1))], SystemTime::now());
+                    view.note_process_sample(id, 100, &[(101, mins(1))], SystemTime::now());
                 });
     let start = SystemTime::now();
     fixture.check(start);
@@ -304,4 +306,63 @@ fn a_reset_agent_that_is_used_can_be_reset_again(cx: &mut TestAppContext) {
     assert_ne!(fixture.restart_token(),
                reset_token,
                "used, then idle again: reset again");
+}
+
+impl Fixture {
+    fn set_state(&mut self, state: knot_agents::AgentState) {
+        self.store.lock().set_state(self.agent, state);
+    }
+
+    fn sample(&mut self, at: SystemTime, processes: &[(u32, Duration)]) {
+        let id = self.agent;
+        let processes = processes.to_vec();
+        self.view.update(&mut self.window, |view, _| {
+                     view.note_process_sample(id, 100, &processes, at);
+                 });
+    }
+}
+
+/// Once the agent has had a turn, a process counts only if that turn (or
+/// later) started it: a test run from the turn keeps the agent awake, an
+/// older helper does not.
+#[gpui_kit::test]
+fn a_process_started_in_the_latest_turn_keeps_it_awake(cx: &mut TestAppContext) {
+    use knot_agents::AgentState;
+    let mut fixture = fixture(IdlePolicy::Custom(rule(30, IdleAction::Deactivate)), cx);
+    let start = SystemTime::now();
+    fixture.sample(start, &[(101, mins(1))]);
+    fixture.check(start);
+    fixture.set_state(AgentState::Running);
+    fixture.check(start + mins(1));
+    fixture.set_state(AgentState::Idle);
+    // The helper predates the turn; the test run started a minute into it.
+    fixture.sample(start + mins(5), &[(101, mins(6)), (202, mins(4))]);
+    fixture.check(start + mins(40));
+    assert!(fixture.activated(), "the turn's test run is still going");
+}
+
+/// A helper started during one turn - a stdio MCP server on first use -
+/// stops counting once the next turn begins, so the agent can go idle again.
+#[gpui_kit::test]
+fn a_helper_from_an_earlier_turn_stops_counting(cx: &mut TestAppContext) {
+    use knot_agents::AgentState;
+    let mut fixture = fixture(IdlePolicy::Custom(rule(30, IdleAction::Deactivate)), cx);
+    let start = SystemTime::now();
+    fixture.sample(start, &[]);
+    fixture.check(start);
+    // Turn one starts the helper.
+    fixture.set_state(AgentState::Running);
+    fixture.check(start + mins(1));
+    fixture.set_state(AgentState::Idle);
+    fixture.check(start + mins(3));
+    // Turn two.
+    fixture.set_state(AgentState::Running);
+    fixture.check(start + mins(10));
+    fixture.set_state(AgentState::Idle);
+    // The helper, started a minute into turn one, is still alive.
+    fixture.sample(start + mins(12), &[(303, mins(11))]);
+    fixture.check(start + mins(12));
+    fixture.check(start + mins(12) + mins(30));
+    assert!(!fixture.activated(),
+            "a helper from an earlier turn is not activity");
 }

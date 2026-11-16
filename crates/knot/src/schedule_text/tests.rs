@@ -67,11 +67,11 @@ fn a_recent_missed_run_is_named_and_an_old_one_gives_way_to_the_next() {
 
 #[test]
 fn a_recent_skipped_run_is_named() {
-    let skipped = Some(ScheduleOutcome::Skipped(la(13, 9, 0).timestamp(), SkipReason::Busy));
+    let skipped = Some(ScheduleOutcome::Skipped(la(13, 9, 0).timestamp(), SkipReason::OwesReply));
     let line =
         schedule_line(Some(&schedule("daily 09:00")), skipped, &la(13, 9, 10)).expect("a line");
     assert_eq!(line,
-               t_with("agent.schedule_skipped",
+               t_with("agent.schedule_skipped_reply",
                       &[("when", &when_text(&la(13, 9, 0), &la(13, 9, 10)))]));
 }
 
@@ -95,4 +95,28 @@ fn the_countdown_names_both_durations_and_the_action() {
         assert!(line.contains("52") && line.contains('8'),
                 "values survive: {line}");
     }
+}
+
+#[test]
+fn every_skip_reason_has_its_own_line() {
+    use super::skip_key;
+    let keys = [SkipReason::TurnInProgress,
+                SkipReason::PermissionPending,
+                SkipReason::PromptQueued,
+                SkipReason::OwesReply].map(skip_key);
+    for key in keys {
+        assert_ne!(t(key), key, "{key} is missing from the catalog");
+    }
+    let distinct: std::collections::BTreeSet<_> = keys.iter().map(|key| t(key)).collect();
+    assert_eq!(distinct.len(), keys.len(), "each reason reads differently");
+}
+
+/// A skipped line resolves to real text, not the key: a vanished key would
+/// make the comparison above pass vacuously.
+#[test]
+fn the_skipped_line_is_real_text() {
+    let skipped = Some(ScheduleOutcome::Skipped(la(13, 9, 0).timestamp(), SkipReason::OwesReply));
+    let line =
+        schedule_line(Some(&schedule("daily 09:00")), skipped, &la(13, 9, 10)).expect("a line");
+    assert!(!line.starts_with("agent."), "unresolved key: {line}");
 }

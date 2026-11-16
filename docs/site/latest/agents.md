@@ -103,8 +103,8 @@ General > Idle agents, and override it per agent in the editor: use the default,
 or deactivate or reset it after a number of minutes. It is off by default.
 
 An agent counts as idle only while it has no turn under way, no running subagent, no queued
-prompt, no pending permission request, no unanswered message, and no background process it started
-since its session began, and while nobody types, clicks or scrolls in its pane. A turn that ended
+prompt, no pending permission request, no unanswered message, and no background process its latest
+turn started (such as a test run), and while nobody types, clicks or scrolls in its pane. A turn that ended
 with a question to you counts as idle; a permission request does not. Near the end of the period
 the row shows how long the agent has been idle and when it stops.
 
