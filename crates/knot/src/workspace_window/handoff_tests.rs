@@ -126,3 +126,63 @@ fn a_brief_from_a_removed_agent_does_not_hold_a_fresh_context(cx: &mut TestAppCo
                     assert!(view.restart_for_fresh_context(cx));
                 });
 }
+
+/// The messages `to` has waiting, as (from, kind) pairs.
+fn inbox(fixture: &mut Fixture, to: Uuid) -> Vec<(Uuid, knot_messaging::MessageKind)> {
+    fixture.view.update(&mut fixture.window, |view, _| {
+                    view.messages
+                        .lock()
+                        .unread_for(to)
+                        .iter()
+                        .map(|message| (message.from, message.kind))
+                        .collect()
+                })
+}
+
+/// #405 item 4: the sender of a brief the agent had not answered hears that
+/// its conversation was reset - once, however many briefs it sent.
+#[gpui_kit::test]
+fn a_reset_tells_each_sender_once(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(3, cx);
+    let (lead, other, agent) = (fixture.agents[0], fixture.agents[1], fixture.agents[2]);
+    read_brief(&mut fixture, lead, agent);
+    read_brief(&mut fixture, lead, agent);
+    read_brief(&mut fixture, other, agent);
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.restart_agents(&[agent], false, cx)
+                });
+
+    assert_eq!(inbox(&mut fixture, lead),
+               vec![(agent, knot_messaging::MessageKind::Notice)],
+               "one notice for two briefs");
+    assert_eq!(inbox(&mut fixture, other),
+               vec![(agent, knot_messaging::MessageKind::Notice)]);
+}
+
+/// Keeping the conversation keeps the brief in hand: nobody is told.
+#[gpui_kit::test]
+fn keeping_the_conversation_tells_nobody(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let (lead, agent) = (fixture.agents[0], fixture.agents[1]);
+    read_brief(&mut fixture, lead, agent);
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.restart_agents(&[agent], true, cx)
+                });
+
+    assert!(inbox(&mut fixture, lead).is_empty());
+}
+
+/// The sender reads the notice and owes nothing for it, so its own
+/// fresh-context restart is not held.
+#[gpui_kit::test]
+fn the_notice_holds_no_reset_of_the_sender(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(2, cx);
+    let (lead, agent) = (fixture.agents[0], fixture.agents[1]);
+    read_brief(&mut fixture, lead, agent);
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    view.restart_agents(&[agent], false, cx);
+                    view.messages.lock().mark_read(lead);
+                    view.store.lock().request_fresh_context(lead);
+                    assert!(view.restart_for_fresh_context(cx));
+                });
+}

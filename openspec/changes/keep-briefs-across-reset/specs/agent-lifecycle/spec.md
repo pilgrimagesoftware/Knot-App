@@ -22,6 +22,20 @@ conversation SHALL do neither.
 - **WHEN** the same agent is restarted keeping its conversation
 - **THEN** the brief stays read and no note is sent
 
+### Requirement: A reset tells the senders it owed
+
+When a restart into a new conversation reopens an agent's unanswered
+messages, the system SHALL send each of their senders one notice from that
+agent, naming the agent and the send time of each reopened message, and
+saying the messages are back in its inbox. A restart that keeps the
+conversation SHALL send none.
+
+#### Scenario: Two briefs from one sender
+
+- **WHEN** an agent holding two unanswered briefs from one sender and one
+  from another is restarted with a new conversation
+- **THEN** each sender receives exactly one notice from that agent
+
 ### Requirement: Knot's own reset waits for open threads
 
 A restart into a fresh conversation that the system starts by itself, such as
