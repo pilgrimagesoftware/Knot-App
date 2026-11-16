@@ -27,7 +27,7 @@ pub use builders::{
 pub use capabilities::{keeps_mcp_query, supports_inline_registration};
 pub use default_mode::{DefaultMode, unconfigured_default_mode};
 pub use escape::persona_prompt;
-pub use handoff::{OpenThread, handoff_note};
+pub use handoff::{OpenThread, handoff_note, reset_notice};
 pub use instructions::{
     DeliveryRequest, InstructionCarrier, InstructionDelivery, InstructionsFile,
     instruction_carrier, instruction_delivery, merge_session_meta, standing_instructions,

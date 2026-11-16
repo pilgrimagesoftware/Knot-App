@@ -207,4 +207,25 @@ mod unanswered {
         assert!(!store.has_unanswered(agent, |id| id != sender));
         assert!(store.reopen_unanswered(agent, |id| id != sender).is_empty());
     }
+
+    /// #405 item 4: the notice Knot sends a sender on the reset agent's
+    /// behalf asks nothing, so it is never owed a reply.
+    #[test]
+    fn a_notice_is_never_owed_a_reply() {
+        let mut store = MessageStore::new();
+        let (agent, sender) = (Uuid::new_v4(), Uuid::new_v4());
+        store.add(Message::notice(agent, sender, "agent was reset"));
+        store.mark_read(sender);
+        assert!(!store.has_unanswered(sender, |_| true));
+    }
+
+    /// Nor is it the reset agent answering: the agent did not write it, and
+    /// counting it would settle the very brief it reports reopened.
+    #[test]
+    fn a_notice_does_not_answer_the_brief() {
+        let (mut store, sender, agent) = store_with_brief();
+        store.mark_read(agent);
+        store.add(Message::notice(agent, sender, "agent was reset"));
+        assert!(store.has_unanswered(agent, |_| true));
+    }
 }
