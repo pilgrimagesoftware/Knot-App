@@ -51,6 +51,30 @@ matching, name over directory and runs over scattered characters, which the
 real scorer satisfies; its scenario `kgs` → `crates/knot-git/src/lib.rs`
 still holds (rank 15 of 50 in the snapshot).
 
+### `@` ranking moves off the render path
+
+Today `render_panel_lookup` calls `panel_mention_matches`, which calls the
+registry's `matching` over every listed path, synchronously, on each
+repaint - tolerable for a greedy linear scan, not for the DP over 50,000
+paths. So the `@` lookup uses the finder's search (below) too: a filter
+change requests a search for (agent, filter); render draws the landed
+result for exactly the filter typed, or a "matching..." status row (like
+the existing "gathering" one) until it lands, and never scores itself. A
+ranking for an earlier filter is not shown, even briefly: its rows could
+be chosen from by mistake. The `@` popup keeps no debounce of its own beyond the
+search's, so it stays as quick as the scorer allows.
+
+A result is keyed by agent and filter and carries its generation, so a
+popup that moved on, or an agent whose listing was refreshed, never shows a
+ranking for something no longer typed.
+
+### Highlight offsets
+
+The greedy scorer returns byte offsets and the `@` rows highlight by byte.
+The port returns `char` offsets, as `FuzzyScorer` does in its own units, so
+the `@` row renderer converts once when it draws, and the finder's does the
+same. A path with a multi-byte character is the test case.
+
 The listing is shared too: the finder asks `panel_commands::files` for the
 agent's cached `FolderFiles`, starting the gather if the agent has none.
 That listing already follows folder changes, so the finder is never staler
@@ -78,7 +102,8 @@ waits on) go into `repaint_poll_tick`'s chain, per
 - Terminal mode: the path is written to the agent's terminal as typed
   input, with no newline, as the reference's `sendText` did. Paths with
   spaces are written as they are, as the reference did.
-- Panel mode: inserted into the composer at the caret. The finder closes
+- Panel mode: the plain relative path, no `@` and no escaping, inserted
+  into the composer at the caret. The finder closes
   and focus returns to the composer, or to the terminal.
 
 ## Focus

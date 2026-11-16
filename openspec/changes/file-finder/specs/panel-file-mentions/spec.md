@@ -38,3 +38,20 @@ finder order the same files the same way.
 - **WHEN** the user types `lib` after `@`, and then types `lib` into the file
   finder for the same agent
 - **THEN** both list the same files in the same order
+
+## ADDED Requirements
+
+### Requirement: Ranking stays off the render path
+
+The lookup SHALL rank matches off the render path, using the same search as
+`file-finder`, and the popup SHALL show the most recent ranking for what is
+typed, never ranking anything while it is drawn. A ranking for a filter no
+longer typed SHALL NOT be shown.
+
+#### Scenario: Typing over a large folder
+
+- **WHEN** the agent's folder lists 50,000 files and the user types `@cfg`
+  one character at a time
+- **THEN** each keystroke is accepted without waiting for ranking, and the
+  popup shows the ranking for `cfg` once it lands, not one for `c` or `cf`
+

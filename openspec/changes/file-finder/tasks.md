@@ -8,6 +8,10 @@
       `reference/snapshot.jsonl`: top 50 per query, scores and indices
 - [ ] 1.3 Switch the `@` lookup to it and remove the greedy scorer;
       `panel-file-mentions` scenarios still pass
+- [ ] 1.4 Move `@` ranking off the render path: `panel_mention_matches`
+      requests a search and reads the last landed result; nothing in render
+      scores (#438 review)
+- [ ] 1.5 Highlight `@` rows by `char` offset; test with a multi-byte path
 
 ## 2. Search
 
@@ -30,7 +34,9 @@
 
 ## 4. Tests
 
-- [ ] 4.1 A stale scoring result is discarded
+- [ ] 4.1 A stale scoring result is discarded, for the finder and for `@`
+- [ ] 4.5 Rendering the `@` popup over a large listing does not score: a
+      test that render only reads the landed result
 - [ ] 4.2 Each delivery mode receives the path, with no newline in Terminal
       mode
 - [ ] 4.3 Keyboard selection and dismissal
