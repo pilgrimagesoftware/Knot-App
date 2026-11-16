@@ -61,15 +61,26 @@ so it needs an app-level ticker:
 - One task at app level (like `adapter_updates`), waking every 30 seconds.
   It reads saved agents' schedules from the shared `AgentStore`, compares
   each `next_run` with now, and on a due run defers onto the main thread.
-- On the main thread: `WorkspaceWindow::open_agent` (the path a Command
-  Center card takes) to open or raise the window, then
-  `restart_agents(&[id], keep_conversation = false)` on it, which starts a
+- On the main thread: open the agent's workspace window through the path a
+  Command Center card takes (`open_agent`), but **without taking focus**:
+  the window is shown and ordered in front of Knot's other windows only,
+  and Knot is not activated over another app. If Knot is already the
+  frontmost app, the window comes forward as a card click would.
+- `restart_agents` only starts agents that are activated (its doc:
+  "an agent that is not activated is only reset"). A scheduled run is the
+  case where the agent is usually stopped, so the run first activates it
+  (`activate_agent`, the path a message to a deactivated agent takes), then
+  calls `restart_agents(&[id], keep_conversation = false)`. That starts a
   fresh session and queues the startup prompt (`PromptOrigin::Startup`) as a
   manual start does.
-- Mid-turn at fire time: skipped, recorded as skipped.
-- Runs are keyed by their scheduled instant. The last fired instant is kept
-  per agent (runtime state, not persisted), so a tick never fires the same
-  run twice and a slow tick never fires two.
+- **Busy** at fire time means any of: a turn in progress, a pending
+  permission request, a non-empty prompt queue, or an unanswered message the
+  agent holds. A new conversation would discard each of those. The run is
+  skipped and recorded with that reason.
+- Runs are keyed by their scheduled instant. The last fired instant per
+  agent is **persisted** in the workspace's UI-state document (Knot recorded
+  it; the user did not configure it). So a relaunch inside the grace window
+  never fires the same run again, and a slow tick never fires two.
 - **Grace**: a due run up to 10 minutes late still fires (sleep, launch).
   Older: marked missed, the next occurrence takes over. At most one run
   fires per agent per tick.
@@ -95,12 +106,38 @@ once a minute, through the same `spawn_blocking` path, and its result joins
 `repaint_poll_tick`'s chain like the existing sample. A process other than
 the session's own adapter or shell counts as activity.
 
+An agent is never idle while it has a pending permission request, or holds a
+message it has not answered (the open-threads rule below). A turn that ended
+asking the user a question (`AgentState::Input` with no permission pending)
+does count as idle.
+
 When `now - idle_start >= after`:
 
 - `Deactivate`: `deactivate_agent`, the context menu's action.
 - `Reset`: `restart_agents(.., keep_conversation = false)` with the startup
   prompt suppressed for that restart, as a field on the restart request, so
   the suppression cannot leak to a later manual or scheduled start.
+
+## Interaction with `keep-briefs-across-reset` (#405)
+
+That unarchived change's `agent-lifecycle` requirement "Knot's own reset
+waits for open threads" says a fresh-conversation restart Knot starts by
+itself waits while the agent holds an unanswered message. Both automatic
+paths here are that kind of restart. Both treat an unanswered message as
+"not done", in line with that rule rather than as an exemption from it:
+
+- Idle reset and idle deactivate: an agent holding an unanswered message is
+  not idle, so neither fires until it answers.
+- Scheduled start: such an agent is busy, and the run is skipped with that
+  reason.
+
+When either path does restart an agent, #405's handoff runs as for any
+fresh-conversation restart, with the note in the agent's first turn. Since
+both paths require the agent to hold nothing unanswered, the handoff has no
+briefs to reopen. It also triggers none of the sender notices (#433, "your
+message was reopened"), because those go only to senders of messages the
+agent held unanswered. An idle deactivate keeps the conversation, so it
+starts no handoff at all.
 
 The new per-agent runtime fields (`last_user_activity`, last fired run,
 idle sample) go in one struct per agent, pruned in `teardown_session`, not

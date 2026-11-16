@@ -7,8 +7,9 @@
 An agent that is not a shell agent and has a startup prompt MAY carry a
 schedule. When a run comes due while Knot is running, Knot SHALL open or
 raise the agent's workspace window and start the agent in a new
-conversation, so that its startup prompt runs. An agent without a startup
-prompt SHALL NOT be given a schedule.
+conversation, activating it first if it was deactivated, so that its
+startup prompt runs. An agent without a startup prompt SHALL NOT be given a
+schedule.
 
 #### Scenario: A daily run
 
@@ -16,16 +17,25 @@ prompt SHALL NOT be given a schedule.
 - **THEN** the agent is started in a new conversation and its startup prompt
   is sent to it
 
+#### Scenario: A run comes due for a deactivated agent
+
+- **WHEN** a run comes due for an agent the user stopped, or that was
+  deactivated for idling
+- **THEN** it is activated and started in a new conversation, and its startup
+  prompt is sent
+
 #### Scenario: The workspace window is closed
 
 - **WHEN** a run comes due and the agent's workspace window is not open
-- **THEN** the window opens and the agent starts in it
+- **THEN** the window opens and the agent starts in it, without taking focus
+  from another app the user is working in
 
 ### Requirement: A schedule is a preset or a cron expression
 
 A schedule SHALL be either a preset — every day, every weekday, or chosen
-days, at a time; or every N hours on the hour — or a standard five-field cron
-expression. Both SHALL be evaluated in the Mac's local time zone. A local
+days, at a time; or every N hours, at the hours from midnight that are
+multiples of N, so the last gap of a day is shorter when N does not divide
+24 — or a standard five-field cron expression. Both SHALL be evaluated in the Mac's local time zone. A local
 time skipped by a clock change SHALL run at the first valid time after it,
 and a time that occurs twice SHALL run once.
 
@@ -40,10 +50,12 @@ and a time that occurs twice SHALL run once.
   02:00 to 03:00
 - **THEN** it runs once, at 03:00
 
-### Requirement: A scheduled run never interrupts a turn
+### Requirement: A scheduled run never discards the agent's work
 
-A run that comes due while the agent has a turn in progress SHALL be skipped
-and recorded as skipped. The next occurrence is unaffected.
+A run SHALL be skipped, and recorded as skipped with the reason, when the
+agent is busy: it has a turn in progress, a pending permission request, a
+queued prompt, or an unanswered message it holds. The next occurrence is
+unaffected.
 
 #### Scenario: Busy at run time
 
@@ -51,12 +63,19 @@ and recorded as skipped. The next occurrence is unaffected.
 - **THEN** the turn continues, no new conversation is started, and the run
   is recorded as skipped
 
+#### Scenario: An unanswered brief
+
+- **WHEN** a run comes due for an idle agent that holds an unanswered message
+- **THEN** the run is skipped because the agent owes a reply, and the message
+  stays as it was
+
 ### Requirement: Missed runs run at most once, and only when recent
 
 A run due while Knot was not running or the Mac was asleep SHALL run once
 when Knot next sees it, if it is at most 10 minutes late. An older run SHALL
 be recorded as missed and not run. Knot SHALL never run more than one missed
-run of an agent, and SHALL never run the same scheduled run twice.
+run of an agent, and SHALL never run the same scheduled run twice, including
+across a relaunch.
 
 #### Scenario: Waking shortly after
 
@@ -68,6 +87,12 @@ run of an agent, and SHALL never run the same scheduled run twice.
 - **WHEN** Knot launches at 13:00 and runs were due at 09:00 and 12:00
 - **THEN** neither runs, the 12:00 run is shown as missed, and the next run
   is the following occurrence
+
+#### Scenario: Relaunching just after a run
+
+- **WHEN** the 09:00 run has run, and the user quits and relaunches Knot at
+  09:05
+- **THEN** the 09:00 run does not run again
 
 ### Requirement: An agent can be stopped after it has been idle
 
@@ -91,16 +116,23 @@ inherits it. Both are off unless set. Shell agents are not affected.
 ### Requirement: Idle means nothing is happening and nobody is looking
 
 An agent SHALL count as idle only while it has no turn in progress, no
-running subagents, no queued prompt, no pending permission request, and no
-running background process under its session besides its own adapter or
-shell. Typing, sending, or scrolling in its conversation or terminal SHALL
-restart the idle period. Awaiting input counts as idle.
+running subagents, no queued prompt, no pending permission request, no
+unanswered message it holds, and no running background process under its
+session besides its own adapter or shell. Typing, sending, or scrolling in
+its conversation or terminal SHALL restart the idle period.
 
 #### Scenario: Scrolling back counts as activity
 
 - **WHEN** the user scrolls an agent's conversation 25 minutes into a
   30-minute idle period
 - **THEN** the idle period starts again from that moment
+
+#### Scenario: An unanswered brief keeps it awake
+
+- **WHEN** an agent's turn has ended but it holds a message it has not
+  answered
+- **THEN** it is not idle, and is neither deactivated nor reset, until it
+  answers
 
 #### Scenario: A background process keeps it awake
 
@@ -120,3 +152,22 @@ send it.
   script and goes idle for its period
 - **THEN** it is reset into a new conversation, and its startup prompt is not
   sent again
+
+### Requirement: An agent that asked the user a question can go idle
+
+An agent whose turn ended asking the user something SHALL count as idle,
+since nobody has answered. An agent waiting on a pending permission request
+SHALL NOT, because resetting or deactivating it would discard the action it
+is waiting to take.
+
+#### Scenario: A question left unanswered
+
+- **WHEN** an agent's turn ended with a question to the user and nobody
+  answers for its idle period
+- **THEN** it is stopped for idling
+
+#### Scenario: A permission request left pending
+
+- **WHEN** an agent has waited on a permission request for longer than its
+  idle period
+- **THEN** it is not stopped for idling

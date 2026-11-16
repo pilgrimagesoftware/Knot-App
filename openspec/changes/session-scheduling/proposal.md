@@ -17,12 +17,16 @@ someone notices (#404).
 - A schedule is either a **preset** (every day, weekdays, chosen days, at a
   time; or every N hours) or a five-field **cron expression**. Both evaluate
   in the Mac's local time zone.
-- An agent that is mid-turn when its run comes due is not interrupted; that
-  run is skipped and recorded as skipped.
+- A stopped agent (stopped by the user, or deactivated for idling) is
+  activated, then started. A busy agent (mid-turn, a pending permission
+  request, a queued prompt, or an unanswered message it holds) is not
+  interrupted: that run is skipped and recorded with the reason.
+- The workspace window opens without taking focus from another app.
 - Knot runs schedules only while it is running. A run missed by up to
   10 minutes (the Mac was asleep, or Knot was launching) still runs once on
   wake or launch; an older miss is skipped and shown as missed. Missed runs
-  are never run in a batch.
+  are never run in a batch. The last run started is persisted per agent, so a
+  relaunch never runs the same one twice.
 
 **Idle shutdown**
 
@@ -34,7 +38,9 @@ someone notices (#404).
   prompt, no pending permission request, no running background process under
   the session beyond its own adapter or shell, and no user activity in the
   agent's conversation or terminal (typing, sending, scrolling) for the whole
-  period. "Awaiting input" counts as idle: the user has not answered.
+  period. An agent holding a message it hasn't answered is not idle. A turn
+  that ended asking the user a question counts as idle, since nobody
+  answered. A pending permission request does not.
 - **A reset after idling does not run the startup prompt.** Otherwise a
   scripted agent would run its script, go idle, be reset, run it again, and
   never stop. Only a scheduled start, or a start the user makes, runs it.
@@ -74,6 +80,13 @@ someone notices (#404).
 - Dependency decision (ADR candidate): cron evaluation. The workspace uses
   `jiff` and has no `chrono`; the common cron crates depend on `chrono`. See
   `design.md`.
-- `settings-persistence`'s "Preferences and durable data are stored
+- `settings-persistence`: "Preferences and durable data are stored
   separately" is also MODIFIED by the unarchived `dismiss-unused-mcp-servers`
-  change. Whichever is archived second must merge the preferences list.
+  change, so whichever is archived second must merge the preferences list.
+  "Per-workspace UI state is its own document" is MODIFIED here to hold the
+  last run started.
+- **Depends on** the unarchived `keep-briefs-across-reset` change
+  (`agent-lifecycle`: "Knot's own reset waits for open threads"). Both
+  automatic paths follow it by treating an unanswered message as busy, not
+  idle, rather than exempting themselves. If that change were dropped, this
+  one's "unanswered message" conditions would need their own definition.
