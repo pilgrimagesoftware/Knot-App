@@ -300,6 +300,9 @@ pub(crate) struct WorkspaceWindow {
     /// Built on the agent's first `@`, since an agent nobody mentions a
     /// file to should not cost a walk - see `panel::mentions`.
     pub(super) panel_mentions:                   BTreeMap<Uuid, panel::mentions::PanelMentions>,
+    /// The open file finder, if any (#5). One per window, for the selected
+    /// agent.
+    pub(super) file_finder:                      Option<super::file_finder::FileFinder>,
     /// Each Panel-mode composer's styled runs: its three decoration
     /// collections, the buffer they describe and the palette they were
     /// painted from. Created with the composer entity, so a restored draft

@@ -148,6 +148,8 @@ impl WorkspaceWindow {
         // without this an `@` lookup would show whatever it had when
         // something unrelated last repainted the window.
         let mentions_listed = self.drain_mention_listings();
+        // A local like the line above: `drain` clears as it reads (#5).
+        let finder_ranked = self.drain_file_finder();
         // `display-markdown` and `view-mermaid` are served on the MCP
         // server's thread, which has no context to notify from, and nothing
         // else in this chain reads the fields they write. Until this existed
@@ -212,6 +214,7 @@ impl WorkspaceWindow {
            || git_reads_landed
            || subagents_changed
            || mentions_listed
+           || finder_ranked
            || artifacts_moved
            || documents_landed
            || shell_runs_moved

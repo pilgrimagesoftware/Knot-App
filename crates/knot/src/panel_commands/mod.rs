@@ -23,7 +23,7 @@
 mod builtin;
 mod entry;
 mod files;
-mod fuzzy;
+pub(crate) mod fuzzy;
 mod registry;
 mod shell;
 mod skills;

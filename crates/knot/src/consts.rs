@@ -511,3 +511,11 @@ pub(crate) const IDLE_PROCESS_SAMPLE_INTERVAL: Duration = Duration::from_secs(60
 /// How close to an idle shutdown the countdown appears: the smaller of this
 /// and half the idle period (#404, `agent-list-ui`).
 pub(crate) const IDLE_COUNTDOWN_WINDOW: Duration = Duration::from_secs(10 * 60);
+
+/// Matches the file finder and `@` ranking keep (#5): the reference's
+/// `maxResults`.
+pub(crate) const FUZZY_MAX_RESULTS: usize = 50;
+/// Paths ranked between checks that a search is still wanted.
+pub(crate) const FILE_SEARCH_BATCH: usize = 4096;
+/// The finder's wait after the query last changed: the reference's debounce.
+pub(crate) const FILE_FINDER_DEBOUNCE_MS: u64 = 150;

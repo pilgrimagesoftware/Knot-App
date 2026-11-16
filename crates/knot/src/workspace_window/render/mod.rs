@@ -571,6 +571,7 @@ impl Render for WorkspaceWindow {
                                                    cx);
         let selected_menu = self.selected_agent_menu(cx);
         let shortcuts = self.shortcut_availability();
+        let file_finder = self.render_file_finder(cx);
         let background_targets = SidebarMenuTargets { store:         Arc::clone(&self.store),
                                                       window_entity: cx.entity(),
                                                       workspace_id:  self.workspace_id, };
@@ -647,5 +648,8 @@ impl Render for WorkspaceWindow {
                                                                        window,
                                                                        cx))),
             )
+            // Last, so it paints over everything else (#5).
+            .relative()
+            .children(file_finder)
     }
 }

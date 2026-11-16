@@ -156,6 +156,7 @@ panel:
   lookup_hint: "Type to filter, Enter to insert, Esc to dismiss"
   lookup_prompt_tag: "Prompt"
   mentions_gathering: "Listing files…"
+  mentions_matching: "Matching files…"
   mentions_capped: "This folder is too large to list in full — showing what was found"
   # Each prompt and response's small relative-time label, per issue #577.
   # The tooltip shows the absolute moment; this is the words beside it.
@@ -430,6 +431,9 @@ keymap:
 
 menu:
   agents: "Agents"
+  # The Edit menu's own items, beside the text actions gpui supplies.
+  edit:
+    find_file: "Find File…"
   # The File menu's own items.
   file:
     new_agent: "New Agent…"
@@ -1252,3 +1256,10 @@ schedule:
     fri: "Fri"
     sat: "Sat"
     sun: "Sun"
+
+finder:
+  placeholder: "Search files…"
+  gathering: "Listing files…"
+  matching: "Matching files…"
+  no_matches: "No matching files"
+  too_many: "Too many files to list (50,000+ limit)"
