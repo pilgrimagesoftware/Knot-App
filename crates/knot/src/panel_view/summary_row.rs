@@ -21,7 +21,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::component::Sizable;
 use gpui_kit::component::shimmer::ShimmerText;
 use gpui_kit::{ClickEvent, IntoElement, div, rgb};
-use knot_core::l10n::{t, t_with};
+use knot_core::l10n::t;
 
 use crate::panel_state::PanelState;
 use crate::panel_state::ToolRunSummary;
@@ -163,12 +163,8 @@ pub(super) fn summary_text(summary: ToolRunSummary) -> String {
     }
 }
 
-/// `n` rendered through the catalogue entry its plurality calls for.
-///
-/// Each phrase is one entry rather than a noun glued to a number at the
-/// call site, so the word order around the count stays the translator's
-/// choice - the reasoning `knot_core::l10n::t_with` documents.
+/// `n` rendered through the catalogue entry its plurality calls for, by
+/// `knot_core::l10n::t_count` - the one place that picks `_one`/`_other`.
 fn count_phrase(n: usize, key: &str) -> String {
-    let suffix = if n == 1 { "_one" } else { "_other" };
-    t_with(&format!("{key}{suffix}"), &[("count", &n.to_string())])
+    knot_core::l10n::t_count(key, n as u64, &[])
 }
