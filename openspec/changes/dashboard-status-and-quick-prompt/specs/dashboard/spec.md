@@ -7,7 +7,8 @@
 The dashboard SHALL show agents grouped by workspace, each in a card
 showing its avatar, name, status text and color, folder name, and git
 diff stats, and, for an agent that is not a shell agent, a quick prompt
-field, with an "Add Agent" tile per workspace group.
+field, with an "Add Agent" tile per workspace group. A card SHALL show an
+agent as not running when it has no live session.
 
 #### Scenario: Card reflects agent state
 
@@ -26,6 +27,12 @@ field, with an "Add Agent" tile per workspace group.
 - **WHEN** a workspace has no non-companion agents
 - **THEN** its section shows "No agents" instead of a card grid
 
+#### Scenario: An agent whose workspace window is closed
+
+- **WHEN** the Command Center shows an activated agent whose workspace window
+  is closed
+- **THEN** its card shows it as not running
+
 #### Scenario: A shell agent's card has no quick prompt
 
 - **WHEN** a card shows a shell agent
@@ -38,10 +45,10 @@ field, with an "Add Agent" tile per workspace group.
 
 The dashboard SHALL show a status summary counting agents by the state their
 cards show: awaiting input, working, idle, error, then not running, leaving
-out any state with no agents and not counting shell agents. It SHALL appear
-once in the dashboard header for every agent shown, and beside each workspace
-section's name for that section's agents, in both the workspace dashboard and
-the Command Center.
+out any state with no agents and not counting shell agents. Each workspace
+section SHALL show one for its agents. The Command Center SHALL also show one
+in its header for every agent it shows; a workspace's own dashboard, having
+one section, SHALL NOT repeat it in its header.
 
 #### Scenario: A workspace with mixed states
 
@@ -52,8 +59,13 @@ the Command Center.
 
 #### Scenario: A stopped agent counts as not running
 
-- **WHEN** an agent has no session, whatever state it last recorded
+- **WHEN** an agent has no live session, whatever state it last recorded
 - **THEN** the summary counts it as not running, as its card shows it
+
+#### Scenario: One summary in a workspace's own dashboard
+
+- **WHEN** a workspace window shows its dashboard
+- **THEN** its single section shows a summary and the header shows none
 
 #### Scenario: Shell agents are not counted
 
@@ -98,9 +110,10 @@ send nothing. The field SHALL clear once the prompt is delivered or queued.
 ### Requirement: Quick prompt says when it cannot send
 
 A quick prompt field SHALL be disabled, saying the agent is not running, when
-the agent has no session. For a working agent it SHALL stay enabled and say
-that the prompt will queue. A delivery that finds no session SHALL keep the
-typed text.
+the agent has no live session. Whenever a prompt would queue rather than send
+now (a turn in progress, a pending permission request, a usage-limit hold),
+the field SHALL stay enabled and say it will queue. A delivery that finds no
+session or no window SHALL keep the typed text.
 
 #### Scenario: A stopped agent
 
@@ -112,4 +125,11 @@ typed text.
 
 - **WHEN** a card shows a working agent
 - **THEN** its quick prompt field accepts input and says the prompt will
-  queue until the turn ends
+  queue
+
+#### Scenario: Command Center, workspace window closed
+
+- **WHEN** the Command Center shows an activated agent whose workspace window
+  is closed
+- **THEN** its quick prompt field is disabled and says the agent is not
+  running, and nothing is sent

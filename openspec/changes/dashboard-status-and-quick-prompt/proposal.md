@@ -33,9 +33,15 @@ prompt already uses.
   for an agent with no session (`working_indicator::state`'s `Off`); a
   summary that filed those under their stale state would disagree with the
   cards beneath it. Swift had no such state.
-- Shown in the dashboard header for every agent on it, and beside each
-  workspace section's name for that section's agents, in both the workspace
-  dashboard and the Command Center.
+- Shown beside each workspace section's name. The Command Center, which
+  has several sections, also shows one in its header for all of them. A
+  workspace's own dashboard has one section, so it does not repeat it in the
+  header.
+- **"Not running" means no live session.** The cards today read
+  `activated`, which stays set when a workspace window is closed and its
+  sessions are dropped. Both the summary and the card's indicator move to a
+  session signal (`has_session`), so an agent in a closed window reads as not
+  running everywhere. This changes the existing card's behavior.
 
 **Quick prompt** — carried over, with three deliberate differences.
 
@@ -51,17 +57,20 @@ prompt already uses.
   have no conversation and no `deliver_panel_prompt` path, and typing a
   command into a shell from a card is a different and riskier feature; the
   field is not drawn on a shell agent's card.
-- **Not running means no field input.** An agent without a session (never
-  started, deactivated, or its workspace window closed) shows the field
-  disabled, saying it is not running. Swift had no such case.
+- **Not running means no field input.** An agent without a live session
+  (never started, deactivated, or its workspace window closed) shows the
+  field disabled, saying it is not running. Swift had no such case.
+- **The field says when it will queue**: during a turn, a pending
+  permission request, or a usage-limit hold. Those are the cases where
+  `deliver_panel_prompt` queues.
 
 **Dropped**: nothing. Swift's hover scale and shadow are styling and stay
 with the existing card's own look.
 
 ## Impact
 
-- `dashboard` spec: two ADDED requirements, and the "Agent card grid"
-  requirement MODIFIED to include the quick prompt.
+- `dashboard` spec: three ADDED requirements, and the "Agent card grid"
+  requirement MODIFIED to include the quick prompt and the not-running rule.
 - `knot`: `dashboard.rs` (summary and field), `command_center.rs` and the
   workspace dashboard (routing), `l10n` keys. Cards grow by the field's
   height (`CARD_HEIGHT`).
