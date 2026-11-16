@@ -603,6 +603,11 @@ pub(crate) fn run() {
                                // Adapters are checked for updates unasked,
                                // shortly after launch and daily (#367).
                                crate::adapter_updates::install(cx);
+                               // Agents start on their schedules, whether or
+                               // not their window is open (#404).
+                               crate::scheduled_starts::install(Arc::clone(&store),
+                                                                Arc::clone(&messages),
+                                                                cx);
                                cx.set_global(MenuBarState::default());
                                // Every window that can be reopened is
                                // registered here, so a second request for

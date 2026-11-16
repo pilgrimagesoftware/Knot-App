@@ -54,6 +54,7 @@ mod render;
 mod repaint;
 #[cfg(test)]
 mod restart_tests;
+pub(crate) mod scheduling;
 #[cfg(test)]
 mod send_prompt_tests;
 mod session_limits;

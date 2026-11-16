@@ -3926,6 +3926,7 @@ version = "1.38.0"
 dependencies = [
  "gpui-kit",
  "gpui-terminal",
+ "jiff",
  "knot-acp",
  "knot-activity",
  "knot-agent-launch",

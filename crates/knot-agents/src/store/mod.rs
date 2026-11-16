@@ -208,6 +208,28 @@ impl AgentStore {
         }
     }
 
+    /// Give `id` a schedule, or take it away (#404). Moves the revision, so
+    /// every window redraws the agent's clock line.
+    pub fn set_schedule(&mut self, id: Uuid, schedule: Option<knot_core::schedule::Schedule>) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.schedule != schedule);
+        self.update(id, |agent| agent.schedule = schedule);
+        if changed {
+            self.revise();
+        }
+    }
+
+    /// Set what idling does to `id` (#404). Moves the revision, as
+    /// [`Self::set_schedule`] does.
+    pub fn set_idle_policy(&mut self, id: Uuid, policy: knot_core::schedule::IdlePolicy) {
+        let changed = self.agent(id)
+                          .is_some_and(|agent| agent.idle_policy != policy);
+        self.update(id, |agent| agent.idle_policy = policy);
+        if changed {
+            self.revise();
+        }
+    }
+
     pub fn set_registered(&mut self, id: Uuid, registered: bool) {
         self.update(id, |agent| agent.is_registered = registered);
     }

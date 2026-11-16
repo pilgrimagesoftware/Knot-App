@@ -20,6 +20,30 @@ impl AgentStore {
         self.workspace_ui.get(&id).cloned().unwrap_or_default()
     }
 
+    /// The last scheduled run `agent` in `workspace` had handled - started,
+    /// skipped or missed - as Unix seconds (#404).
+    pub fn schedule_run_handled(&self, workspace: Uuid, agent: Uuid) -> Option<i64> {
+        self.workspace_ui
+            .get(&workspace)?
+            .schedule_runs_handled
+            .get(&agent)
+            .copied()
+    }
+
+    /// Records that `agent`'s scheduled run at `run_seconds` was handled, and
+    /// drops entries for agents no longer in `workspace`, so the map does not
+    /// outlive the agents it is about.
+    pub fn record_schedule_run_handled(&mut self, workspace: Uuid, agent: Uuid, run_seconds: i64) {
+        let members: Vec<Uuid> = self.workspaces
+                                     .iter()
+                                     .find(|candidate| candidate.id == workspace)
+                                     .map(|candidate| candidate.agent_ids.clone())
+                                     .unwrap_or_default();
+        let handled = &mut self.workspace_ui_mut(workspace).schedule_runs_handled;
+        handled.insert(agent, run_seconds);
+        handled.retain(|id, _| members.contains(id));
+    }
+
     /// Replace the whole UI-state map, as the store is loaded from settings.
     pub fn set_workspace_ui(&mut self, ui: std::collections::BTreeMap<Uuid, WorkspaceUiState>) {
         self.workspace_ui = ui;

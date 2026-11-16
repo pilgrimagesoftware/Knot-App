@@ -491,3 +491,9 @@ pub(crate) const CHARS_PER_TOKEN: usize = 4;
 /// GitHub refuses a much longer one, so past this the file goes to the
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
+
+/// How often the scheduled-start ticker checks every scheduled agent (#404).
+/// Runs are minute-granular and the grace window is ten minutes, so thirty
+/// seconds starts a run within half a minute of its time without busying the
+/// main thread.
+pub(crate) const SCHEDULE_TICK_INTERVAL: Duration = Duration::from_secs(30);
