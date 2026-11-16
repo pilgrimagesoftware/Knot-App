@@ -22,6 +22,7 @@ fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
                                  is_shell:             false,
                                  has_move_targets:     true,
                                  has_markdown_history: true,
+                                 has_config_files:     true,
                                  is_running:           true,
                                  is_panel_mode:        true,
                                  can_lock:             true,
@@ -42,6 +43,7 @@ fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
                     AgentMenuEntry::Separator,
                     AgentMenuEntry::OpenIn,
                     AgentMenuEntry::MarkdownFiles,
+                    AgentMenuEntry::ConfigFiles,
                     AgentMenuEntry::Separator,
                     AgentMenuEntry::AgentInfo,
                     AgentMenuEntry::RegisterAgent,
@@ -124,6 +126,7 @@ fn agent_context_menu_omits_companion_actions_for_companions() {
                                  is_shell:             true,
                                  has_move_targets:     true,
                                  has_markdown_history: false,
+                                 has_config_files:     false,
                                  is_running:           false,
                                  is_panel_mode:        false,
                                  can_lock:             true,
@@ -339,6 +342,7 @@ fn agent_context_menu_never_emits_a_stray_divider() {
                                                      is_shell,
                                                      has_move_targets,
                                                      has_markdown_history,
+                                                     has_config_files: has_markdown_history,
                                                      is_running,
                                                      is_panel_mode,
                                                      can_lock: !locked,
@@ -441,4 +445,26 @@ fn the_menu_facts_follow_the_agents_autopilot_setting() {
     store.set_autopilot_off(id, true);
     let (facts, ..) = agent_menu_facts(&store, id);
     assert!(facts.can_autopilot_on && !facts.can_autopilot_off);
+}
+
+/// #27: Config Files follows the agent's type - a coding agent has one, a
+/// shell does not.
+#[test]
+fn config_files_follows_the_agent_type() {
+    let mut store = knot_agents::AgentStore::new();
+    let space = workspace("W");
+    let workspace_id = space.id;
+    store.add_workspace(space);
+    let coding = store.create("/tmp/a",
+                              knot_agents::CreateOptions { workspace_id: Some(workspace_id),
+                                                           ..Default::default() });
+    let shell = store.create("/tmp/b",
+                             knot_agents::CreateOptions { workspace_id: Some(workspace_id),
+                                                          agent_type: Some("shell".into()),
+                                                          ..Default::default() });
+
+    assert!(agent_menu_facts(&store, coding).0.has_config_files);
+    assert!(!agent_menu_facts(&store, shell).0.has_config_files);
+    assert!(!agent_context_menu_entries(agent_menu_facts(&store, shell).0)
+                .contains(&AgentMenuEntry::ConfigFiles));
 }

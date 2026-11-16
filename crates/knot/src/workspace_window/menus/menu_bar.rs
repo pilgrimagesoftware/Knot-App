@@ -17,6 +17,7 @@ use crate::agent_menu::AgentMenuAgentInfo;
 use crate::agent_menu::AgentMenuAutopilotOff;
 use crate::agent_menu::AgentMenuAutopilotOn;
 use crate::agent_menu::AgentMenuBenchAgent;
+use crate::agent_menu::AgentMenuConfigFiles;
 use crate::agent_menu::AgentMenuDeactivate;
 use crate::agent_menu::AgentMenuDuplicateAgent;
 use crate::agent_menu::AgentMenuEditAgent;
@@ -27,6 +28,7 @@ use crate::agent_menu::AgentMenuMoveToWorkspace;
 use crate::agent_menu::AgentMenuMoveToWorkspaceTarget;
 use crate::agent_menu::AgentMenuNewCompanion;
 use crate::agent_menu::AgentMenuNewShellCompanion;
+use crate::agent_menu::AgentMenuOpenConfigFile;
 use crate::agent_menu::AgentMenuOpenIn;
 use crate::agent_menu::AgentMenuOpenInApp;
 use crate::agent_menu::AgentMenuRegisterAgent;
@@ -161,6 +163,7 @@ impl WorkspaceWindow {
             (agent.name.clone(), agent.folder.clone())
         };
         let (facts, move_targets, markdown_history) = agent_menu_facts(&store, id);
+        let config_files = crate::agent_config::for_agent(&store, id);
         drop(store);
         let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
         Some(SelectedAgentMenu { targets:  AgentMenuTargets { store: Arc::clone(&self.store),
@@ -172,7 +175,8 @@ impl WorkspaceWindow {
                                  snapshot: AgentMenuSnapshot { entries:
                                                                    agent_context_menu_entries(facts),
                                                                move_targets,
-                                                               markdown_history }, })
+                                                               markdown_history,
+                                                               config_files }, })
     }
 
     pub(in crate::workspace_window) fn selected_agent_header(&self) -> Option<SelectedAgentHeader> {
@@ -223,6 +227,7 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
                                     BenchAgent => AgentMenuBenchAgent,
                                     OpenIn => AgentMenuOpenIn,
                                     MarkdownFiles => AgentMenuMarkdownFiles,
+                                    ConfigFiles => AgentMenuConfigFiles,
                                     AgentInfo => AgentMenuAgentInfo,
                                     RegisterAgent => AgentMenuRegisterAgent,
                                     LockAgent => AgentMenuLockAgent,
@@ -259,6 +264,17 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
               if let Some(app) = open_in::OpenInApp::from_id(action.app_id.as_ref()) {
                   open_in::open_folder(app, &folder);
               }
+          })
+    }
+    else {
+        el
+    };
+    let el = if selected.snapshot
+                        .entries
+                        .contains(&AgentMenuEntry::ConfigFiles)
+    {
+        el.on_action(|action: &AgentMenuOpenConfigFile, _window, _app| {
+              crate::agent_config::open_config_file(&action.candidates);
           })
     }
     else {
