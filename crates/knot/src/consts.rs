@@ -492,11 +492,10 @@ pub(crate) const CHARS_PER_TOKEN: usize = 4;
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
 
-/// How many matches the file finder and the `@` lookup's fuzzy ranking keep:
-/// the Swift reference's `FileSearchService.maxResults` (#5).
+/// Matches the file finder and `@` ranking keep (#5): the reference's
+/// `maxResults`.
 pub(crate) const FUZZY_MAX_RESULTS: usize = 50;
-
-/// How many paths a file search ranks between checks that it is still
-/// wanted - small enough that a superseded search stops within a few
-/// milliseconds, large enough that the check is noise (#5).
+/// Paths ranked between checks that a search is still wanted.
 pub(crate) const FILE_SEARCH_BATCH: usize = 4096;
+/// The finder's wait after the query last changed: the reference's debounce.
+pub(crate) const FILE_FINDER_DEBOUNCE_MS: u64 = 150;

@@ -22,6 +22,7 @@ pub(super) mod find_bar;
 pub(crate) mod input;
 mod limit_hold;
 pub(crate) mod lookup;
+pub(in crate::workspace_window) mod marked;
 pub(crate) mod mentions;
 mod pane;
 pub(crate) mod prompt;

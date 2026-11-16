@@ -83,7 +83,10 @@ pub(crate) fn fixed_bindings() -> Vec<FixedBinding> {
                        // free for this (`app-menu`). The composer's own ⌘F
                        // reaches the pane as the input's `Search` instead.
                        fixed(KeyBinding::new("cmd-f", PanelFind, None),
-                             "keymap.fixed.find"),];
+                             "keymap.fixed.find"),
+                       // The reference's Find File… key (#5).
+                       fixed(KeyBinding::new("cmd-shift-f", crate::app_bootstrap::FindFile, None),
+                             "menu.edit.find_file"),];
     // The Agents menu's keys keep their definition beside the menu; see
     // `agent_menu::agent_menu_key_bindings`.
     out.extend(agent_menu_key_bindings().into_iter().map(|binding| {

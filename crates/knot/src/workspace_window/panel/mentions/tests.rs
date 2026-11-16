@@ -1,27 +1,13 @@
 //! The `@` lookup ranks off the render path (`panel-file-mentions`,
 //! "Ranking stays off the render path"; #438 review).
 
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-
 use gpui_kit::TestAppContext;
-use parking_lot::Mutex;
 
-use super::{MentionState, PanelMentions};
-use crate::file_search::FileSearch;
-use crate::panel_commands::LookupEntry;
+use super::PanelMentions;
 use crate::workspace_window::shortcuts_tests::window_with_agents;
 
-/// An agent with a listing already gathered, so the test is about ranking.
 fn listed(paths: &[&str]) -> PanelMentions {
-    PanelMentions { state:   MentionState::Ready { overflowed: false },
-                    entries: Arc::new(paths.iter()
-                                           .map(|path| LookupEntry::new(*path, ""))
-                                           .collect()),
-                    search:  FileSearch::default(),
-                    landed:  Arc::new(Mutex::new(None)),
-                    dirty:   Arc::new(AtomicBool::new(false)),
-                    watch:   None, }
+    PanelMentions::listed(paths)
 }
 
 /// What render asks for comes back at once as a "matching" row - nothing

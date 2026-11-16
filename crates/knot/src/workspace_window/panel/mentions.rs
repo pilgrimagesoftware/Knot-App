@@ -59,6 +59,31 @@ pub(in crate::workspace_window) struct PanelMentions {
     watch:   Option<Arc<Watch>>,
 }
 
+impl PanelMentions {
+    /// How far the listing has got.
+    pub(in crate::workspace_window) fn state(&self) -> MentionState {
+        self.state
+    }
+
+    /// A listing already gathered, for tests about what is done with it.
+    #[cfg(test)]
+    pub(in crate::workspace_window) fn listed(paths: &[&str]) -> Self {
+        Self { state:   MentionState::Ready { overflowed: false },
+               entries: Arc::new(paths.iter()
+                                      .map(|path| LookupEntry::new(*path, ""))
+                                      .collect()),
+               search:  FileSearch::default(),
+               landed:  Arc::new(Mutex::new(None)),
+               dirty:   Arc::new(AtomicBool::new(false)),
+               watch:   None, }
+    }
+
+    /// The listing, shared with any search ranking it.
+    pub(in crate::workspace_window) fn entries(&self) -> &Arc<Vec<LookupEntry>> {
+        &self.entries
+    }
+}
+
 impl WorkspaceWindow {
     /// Starts `id`'s listing if it has none, and returns how far along it
     /// is.
@@ -163,9 +188,11 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn drain_mention_listings(&mut self) -> bool {
         let mut changed = false;
         let mut restart: Vec<(Uuid, Arc<Mutex<Option<FolderFiles>>>)> = Vec::new();
+        let mut relisted: Vec<Uuid> = Vec::new();
 
         for (id, mentions) in &mut self.panel_mentions {
             if let Some(files) = mentions.landed.lock().take() {
+                relisted.push(*id);
                 mentions.state = MentionState::Ready { overflowed: files.overflowed(), };
                 mentions.entries = Arc::new(files.entries());
                 // A ranking of the previous listing is stale now.
@@ -182,6 +209,12 @@ impl WorkspaceWindow {
             if fired {
                 restart.push((*id, Arc::clone(&mentions.landed)));
             }
+        }
+
+        // The finder ranks the same listing; a new one makes its ranking
+        // stale too.
+        for id in relisted {
+            self.invalidate_file_finder(id);
         }
 
         for (id, landed) in restart {
