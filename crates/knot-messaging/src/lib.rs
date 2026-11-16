@@ -14,7 +14,7 @@ mod store;
 
 pub use consts::READ_RETENTION_LIMIT;
 pub use error::{Result, SendError};
-pub use message::Message;
+pub use message::{Message, MessageKind};
 pub use notify::{
     DeliveryEvent, DeliveryNotifier, NoopNotifier, QueuedNotifier, RecordingNotifier,
 };

@@ -44,9 +44,36 @@ pub fn handoff_note(status: &str, threads: &[OpenThread]) -> Option<String> {
     Some(note)
 }
 
+/// What the sender of reopened messages is told when `agent`'s conversation
+/// is reset before it answered them (#405 item 4). `sent_at` holds each
+/// message's send time, as `check-messages` reports a `timestamp`.
+///
+/// It says the messages were reopened rather than lost, so the sender knows
+/// not to resend them, only to expect the agent to start them again.
+pub fn reset_notice(agent: &str, sent_at: &[String]) -> String {
+    let which = match sent_at {
+        [one] => format!("your message sent {one}"),
+        many => format!("your messages sent {}", many.join(", ")),
+    };
+    format!("Knot: {agent}'s conversation was reset before it answered {which}. They are back \
+             in its inbox for its new conversation, which will read them again; there is no \
+             need to resend them, but it may not remember what it already did for them.")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_reset_notice_names_the_agent_and_each_message() {
+        let one = reset_notice("Builder 2", &["2026-11-16T16:00:00Z".to_owned()]);
+        assert!(one.contains("Builder 2's conversation was reset"));
+        assert!(one.contains("your message sent 2026-11-16T16:00:00Z"));
+
+        let two = reset_notice("Builder 2", &["t1".to_owned(), "t2".to_owned()]);
+        assert!(two.contains("your messages sent t1, t2"));
+        assert!(!two.contains('\n'));
+    }
 
     fn thread(from: &str) -> OpenThread {
         OpenThread { from:    from.to_owned(),
