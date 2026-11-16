@@ -62,6 +62,7 @@ use crate::workspace_window::sidebar_is_compact;
 use crate::workspace_window::with_agents_menu_actions;
 use crate::workspace_window::workspace_title;
 
+mod activity_capture;
 mod agent_sections;
 mod changes_tabs;
 mod content;

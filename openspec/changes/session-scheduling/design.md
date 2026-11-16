@@ -148,6 +148,23 @@ message was reopened"), because those go only to senders of messages the
 agent held unanswered. An idle deactivate keeps the conversation, so it
 starts no handoff at all.
 
+**Background processes.** A session's descendants in its first sample are
+its baseline - stdio MCP servers and similar run for the session's whole life
+and are not activity. A descendant that appears later (a test run, a build)
+keeps the agent awake while it runs. The baseline is keyed by the session's
+root pid, so a restart re-baselines. This is an approximation; a server
+started lazily mid-session would read as activity until the next session.
+
+**Reset once per stretch.** After an idle reset the new conversation is idle
+by definition, so it is not reset again until it has been busy or used.
+
+**Pane activity.** A capture-phase wrapper around the selected agent's pane
+notes key presses, clicks and scroll-wheel events (`render/activity_capture`).
+Capture phase only observes, so the composer, the terminal and the
+conversation list see their events as before; scrolling is caught through a
+canvas, because a div's scroll listener runs in the bubble phase after an
+inner scroll view may have stopped the event.
+
 The new per-agent runtime fields (`last_user_activity`, last fired run,
 idle sample) go in one struct per agent, pruned in `teardown_session`, not
 three more parallel maps.

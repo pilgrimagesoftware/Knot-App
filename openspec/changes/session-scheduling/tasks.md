@@ -15,11 +15,11 @@
 
 ## 3. Idle shutdown
 
-- [ ] 3.1 One per-agent runtime struct (last user activity, last fired run, idle sample), pruned in `teardown_session`
-- [ ] 3.2 Stamp user activity from composer keys, sends, terminal keys and scroll in conversation and terminal
-- [ ] 3.3 Once-a-minute process sample for agents with an idle policy, joined to `repaint_poll_tick`'s chain
-- [ ] 3.4 Idle start as a pure function of the signals, including no pending permission and no unanswered message (not idle) versus a question to the user (idle); evaluation every 15 s per window; deactivate or reset
-- [ ] 3.5 Reset suppresses the startup prompt for that restart only; tests for both paths
+- [x] 3.1 One per-agent runtime struct (last user activity, last fired run, idle sample), pruned in `teardown_session`
+- [x] 3.2 Stamp user activity from composer keys, sends, terminal keys and scroll in conversation and terminal
+- [x] 3.3 Once-a-minute process sample for agents with an idle policy, joined to `repaint_poll_tick`'s chain
+- [x] 3.4 Idle start as a pure function of the signals, including no pending permission and no unanswered message (not idle) versus a question to the user (idle); evaluation every 15 s per window; deactivate or reset
+- [x] 3.5 Reset suppresses the startup prompt for that restart only; tests for both paths
 
 ## 4. UI
 

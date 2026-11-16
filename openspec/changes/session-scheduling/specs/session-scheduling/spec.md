@@ -171,3 +171,23 @@ is waiting to take.
 - **WHEN** an agent has waited on a permission request for longer than its
   idle period
 - **THEN** it is not stopped for idling
+
+### Requirement: An idle reset happens once per stretch of idleness
+
+After an idle reset, the agent SHALL NOT be reset for idling again until it
+has been busy or the user has acted in its pane. A fresh conversation nobody
+has used is idle by definition; resetting it every period would start a new
+adapter each time for nothing.
+
+#### Scenario: An untouched fresh conversation
+
+- **WHEN** an agent was reset for idling and nothing has happened in its new
+  conversation for several of its idle periods
+- **THEN** it is not reset again
+
+#### Scenario: Used, then idle again
+
+- **WHEN** the user sends that agent a prompt, its turn ends, and it then idles
+  for its period
+- **THEN** it is reset again
+

@@ -226,6 +226,8 @@ impl WorkspaceWindow {
                     panel_selector_items: BTreeMap::new(),
                     panel_prompt_input_subscriptions: BTreeMap::new(),
                     panel_prompt_queues: BTreeMap::new(),
+                    agent_idle: BTreeMap::new(),
+                    idle_checked_at: None,
                     panel_prompts_in_flight: BTreeMap::new(),
                     panel_trackers: BTreeMap::new(),
                     panel_reported_states: BTreeMap::new(),
