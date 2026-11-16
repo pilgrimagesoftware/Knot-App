@@ -211,8 +211,7 @@ impl WorkspaceWindow {
                 vec![LookupMatch::status(knot_core::l10n::t("panel.mentions_gathering"))]
             }
             MentionState::Ready { overflowed } => {
-                let mentions = self.panel_mentions_for(id)?;
-                let mut matches = mentions.registry().matching(&token.filter);
+                let mut matches = self.mention_ranking(id, &token.filter)?;
                 matches.truncate(LOOKUP_MAX_VISIBLE);
                 if matches.is_empty() {
                     return None;
@@ -257,10 +256,16 @@ impl WorkspaceWindow {
                     .child(div().flex_shrink_0()
                                 .font_family(cx.theme().mono_font_family.clone())
                                 .child(if entry.is_status {
-                                    entry.entry.token.clone()
+                                    entry.entry.token.clone().into_any_element()
                                 }
                                 else {
-                                    format!("{opener}{}", entry.entry.token)
+                                    // The characters the filter matched,
+                                    // marked (`panel-file-mentions`).
+                                    super::marked::marked_text(format!("{opener}{}",
+                                                                       entry.entry.token),
+                                                               &entry.matched,
+                                                               opener.len_utf8(),
+                                                               cx.theme().accent)
                                 }))
                     .child(div().flex_1()
                                 .min_w_0()

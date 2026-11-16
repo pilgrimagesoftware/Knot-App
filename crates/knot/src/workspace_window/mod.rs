@@ -23,6 +23,7 @@ mod creation;
 #[cfg(test)]
 mod creation_tests;
 mod dashboard_prompts;
+mod file_finder;
 mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;

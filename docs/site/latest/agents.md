@@ -263,6 +263,20 @@ and copying something else while it expands does not change it. `{% raw %}{{clip
 is always empty in a startup prompt, which is sent without you choosing it, and the agent editor
 warns when a custom startup prompt uses it.
 
+## Find File
+
+**Edit > Find File…** (⌘⇧F) searches the selected agent's folder for a file and hands its path to
+the agent: in the conversation panel it's inserted where the cursor is in the message box, and for a
+shell agent it's typed at the prompt without pressing Return. Type part of a path - `lib`, or a few
+letters spread across it like `kgs` for `crates/knot-git/src` - and pick a result with the arrow
+keys and Return, or click it. Esc or a click outside closes the finder.
+
+Results are ranked the way the original Knot ranked them: a match in the file's name beats one in a
+directory above it, and letters that run together beat scattered ones. The `@` lookup in the message
+box uses the same ranking, so both list the same files in the same order. The folder is listed as it
+is for `@`: a git repository's tracked and untracked-but-not-ignored files, otherwise every file
+outside version-control and dependency directories, up to 50,000.
+
 ## Subagents and processes
 
 A coding agent can delegate work to a subagent from within its turn. Knot records each subagent as

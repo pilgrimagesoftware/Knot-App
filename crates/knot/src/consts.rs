@@ -491,3 +491,11 @@ pub(crate) const CHARS_PER_TOKEN: usize = 4;
 /// GitHub refuses a much longer one, so past this the file goes to the
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
+
+/// Matches the file finder and `@` ranking keep (#5): the reference's
+/// `maxResults`.
+pub(crate) const FUZZY_MAX_RESULTS: usize = 50;
+/// Paths ranked between checks that a search is still wanted.
+pub(crate) const FILE_SEARCH_BATCH: usize = 4096;
+/// The finder's wait after the query last changed: the reference's debounce.
+pub(crate) const FILE_FINDER_DEBOUNCE_MS: u64 = 150;
