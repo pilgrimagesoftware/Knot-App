@@ -7,6 +7,7 @@
 
 mod about_window;
 mod adapter_updates;
+mod agent_config;
 mod agent_editor;
 mod agent_menu;
 mod agent_menu_entries;
