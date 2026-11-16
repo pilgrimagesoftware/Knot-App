@@ -77,9 +77,8 @@ someone notices (#404).
 - `knot`: an app-level schedule ticker; idle evaluation in the workspace
   window's poll; a per-agent last-user-activity stamp; low-rate process
   sampling for agents with an idle policy.
-- Dependency decision (ADR candidate): cron evaluation. The workspace uses
-  `jiff` and has no `chrono`; the common cron crates depend on `chrono`. See
-  `design.md`.
+- New dependency: `croner` 4 with only its `jiff` feature, so no `chrono`
+  (ADR-0008). Cron evaluation is not hand-rolled.
 - `settings-persistence`: "Preferences and durable data are stored
   separately" is also MODIFIED by the unarchived `dismiss-unused-mcp-servers`
   change, so whichever is archived second must merge the preferences list.

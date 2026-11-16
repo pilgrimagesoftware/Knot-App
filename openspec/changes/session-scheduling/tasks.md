@@ -3,8 +3,8 @@
 ## 1. Data and evaluation
 
 - [ ] 1.1 `Schedule`, `Preset`, `IdlePolicy`, `IdleAction` in `knot-core` with `Display`/`FromStr`; `SavedAgent.schedule` and `.idle_policy` with `#[serde(default)]`; `Settings.idle_default`
-- [ ] 1.2 ADR: cron evaluation over `jiff` (recommended) vs `croner` + `chrono`
-- [ ] 1.3 `next_run` for presets (including `EveryHours` with N not dividing 24) and five-field cron in local time; DST tests; a cron property test against brute force (required)
+- [x] 1.2 ADR-0008: `croner` 4 with only its `jiff` feature; five-field parsing; no hand-rolled evaluator
+- [ ] 1.3 `next_run` for presets (including `EveryHours` with N not dividing 24) and five-field cron through `croner` in local time; DST tests at a spring-forward and a fall-back; six-field patterns rejected
 - [ ] 1.4 Persistence tests: older records and preferences load as no schedule, `Inherit`, off
 
 ## 2. Scheduled start

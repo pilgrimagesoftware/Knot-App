@@ -42,15 +42,19 @@ Presets and cron both go through it, so both get the same time zone and DST
 rules: a local time skipped by a spring-forward runs at the first valid time
 after it; a time repeated by a fall-back runs once.
 
-### Cron evaluation (dependency decision, ADR candidate)
+### Cron evaluation: `croner` over `jiff` (ADR-0008)
 
-The common crates (`cron`, `croner`) depend on `chrono`, which the workspace
-does not use; it already has `jiff`. Recommendation: a small evaluator for
-standard five-field cron (`*`, lists, ranges, steps, names for months and
-days, the Vixie day-of-month / day-of-week OR rule) over `jiff`, with
-property tests against a brute-force minute-by-minute search. About 200
-lines, no new dependency. The alternative, `croner` plus `chrono`, is
-recorded in the ADR if the reviewer prefers it.
+`croner` 4 with `default-features = false, features = ["jiff"]`: its
+`CronDateTime` impl for `jiff::Zoned` lets `Cron::find_next_occurrence` work
+in the zoned times this change uses, and no `chrono` enters the workspace.
+The parser is built with seconds and years disallowed, so only standard
+five-field cron is accepted. A preset is evaluated by building the
+equivalent cron pattern and handing it to the same `next_run`, so presets
+and cron share one evaluator and one set of DST rules. Knot's tests pin the
+DST behavior the spec requires (a skipped time runs at the first valid time
+after it, a repeated one runs once), so a `croner` upgrade that changes it
+fails a test. The approval excluded a hand-rolled evaluator; see
+`docs/adr/0008-croner-for-cron-schedules.md` for the options weighed.
 
 ## Scheduled start
 
@@ -161,8 +165,8 @@ beyond `now`, which rows already use for durations.
 
 ## Testing
 
-- `next_run`: presets, cron fields, DST gaps and repeats; cron property test
-  against brute force.
+- `next_run`: each preset, cron fields including the DOM/DOW rule, DST gaps
+  and repeats, and six-field patterns rejected.
 - The ticker's decision as a pure function of (schedules, last fired, now,
   busy): fires once, skips busy, grace window, missed, never two.
 - Idle start as a pure function of the signals; each signal resets it.
