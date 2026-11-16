@@ -130,10 +130,9 @@ fn render_section(section: RepoSection, truncated: bool, targets: &[SendTarget],
                     .child(heading)
                     .children(truncated.then(|| {
                                            div().text_xs().text_color(muted).child(
-                            knot_core::l10n::t_with("issues.truncated",
-                                                    &[("count",
-                                                       &knot_forge::consts::ISSUE_LIST_LIMIT
-                                                           .to_string())]),
+                            knot_core::l10n::t_count("issues.truncated",
+                                                     knot_forge::consts::ISSUE_LIST_LIMIT as u64,
+                                                     &[]),
                         )
                                        }))
                     .children(group.issues

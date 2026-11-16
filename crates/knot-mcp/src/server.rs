@@ -323,37 +323,47 @@ pub(crate) fn agent_from_query(query: Option<&str>) -> Option<Uuid> {
 }
 
 /// The connection a request arrived on, as a [`Caller`] - its session and
-/// the agent that session is bound to - and the session id to answer with.
+/// the agent that session is bound to - and the session id to answer with,
+/// if any.
 ///
 /// A URL naming an agent binds the session to it, which also drops a
 /// session the agent held before: a restarted agent's new connection takes
 /// over from its old one. A session is only reported to the tools as kept
 /// when the client will send it again - one from `initialize`, or one it
 /// sent and the server still knows.
+///
+/// A request that is not `initialize` and carries no session id is answered
+/// with none (#431). Streamable HTTP assigns a session at initialization
+/// (MCP 2025-11-25, Transports, "Session Management"); a client probing
+/// before initializing - agy's Go client sends `server/discover` first - and
+/// handed an id there sends it on `initialize`, gets a different one back,
+/// and abandons the connection without ever listing tools.
 fn connection(state: &AppState, is_initialize: bool, sent: Option<String>, agent: Option<Uuid>)
-              -> (Caller, String) {
+              -> (Caller, Option<String>) {
     let sessions = &state.sessions;
     let opened = || sessions.create_session(agent.unwrap_or_else(Uuid::nil)).id;
     let (session_id, kept) = match sent {
-        _ if is_initialize => (opened(), true),
+        _ if is_initialize => (Some(opened()), true),
         Some(id) if sessions.session(&id).is_some() => {
             sessions.touch(&id);
             if let Some(agent) = agent {
                 sessions.bind(&id, agent);
             }
-            (id, true)
+            (Some(id), true)
         }
         // The client's session outlived the server's TTL (e.g. a paused
         // session resuming after `DEFAULT_SESSION_TIMEOUT`). Reissue a fresh
         // session instead of erroring so the client self-heals without a
         // manual `/mcp reconnect` or restart.
-        Some(_) | None => (opened(), false),
+        Some(_) => (Some(opened()), false),
+        None => (None, false),
     };
-    let bound = sessions.session(&session_id)
-                        .map(|session| session.agent_id)
-                        .filter(|agent| !agent.is_nil());
+    let bound = session_id.as_deref()
+                          .and_then(|id| sessions.session(id))
+                          .map(|session| session.agent_id)
+                          .filter(|agent| !agent.is_nil());
     let caller = Caller { agent:      bound.or(agent),
-                          session_id: kept.then(|| session_id.clone()),
+                          session_id: session_id.clone().filter(|_| kept),
                           sessions:   sessions.clone(), };
     (caller, session_id)
 }
@@ -419,11 +429,13 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
 
     if accepts_sse {
         let data = serde_json::to_string(&response).unwrap_or_else(|_| "{}".to_string());
-        return sse_response("message", &data, Some(&response_session_id));
+        return sse_response("message", &data, response_session_id.as_deref());
     }
 
     let mut resp = axum::Json(response).into_response();
-    if let Ok(value) = HeaderValue::from_str(&response_session_id) {
+    if let Some(id) = response_session_id.as_deref()
+       && let Ok(value) = HeaderValue::from_str(id)
+    {
         resp.headers_mut().insert(SESSION_HEADER, value);
     }
     resp

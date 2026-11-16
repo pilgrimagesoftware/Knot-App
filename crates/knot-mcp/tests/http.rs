@@ -348,3 +348,49 @@ async fn vitals_track_uptime_sessions_and_requests_per_interval() {
     server.stop();
     assert!(server.uptime().is_none(), "a stopped server has no uptime");
 }
+
+/// #431: agy's MCP client (Go, `Mcp-Protocol-Version: 2026-07-28`) sends
+/// `server/discover` before `initialize`, then `initialize` with whatever
+/// session id the first answer carried. A server that hands out an id on
+/// that sessionless probe and a different one on `initialize` makes the
+/// client abandon the connection before `tools/list`. The sequence here is
+/// the one captured from agy 1.5.9.
+#[tokio::test]
+async fn a_sessionless_probe_before_initialize_is_given_no_session() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+    let client = reqwest::Client::new();
+
+    let discover = client.post(format!("{base}/mcp"))
+                         .header("Mcp-Protocol-Version", "2026-07-28")
+                         .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "server/discover",
+                                        "params": {} }))
+                         .send()
+                         .await
+                         .unwrap();
+    assert!(discover.headers().get("Mcp-Session-Id").is_none(),
+            "no session before initialize");
+    let body: Value = discover.json().await.unwrap();
+    assert_eq!(body["error"]["code"], -32601, "the probe is still answered");
+
+    let init = client.post(format!("{base}/mcp"))
+                     .json(&json!({ "jsonrpc": "2.0", "id": 2, "method": "initialize",
+                                    "params": { "protocolVersion": "2025-11-25" } }))
+                     .send()
+                     .await
+                     .unwrap();
+    let session = init.headers()["Mcp-Session-Id"].to_str()
+                                                  .unwrap()
+                                                  .to_owned();
+
+    let list = client.post(format!("{base}/mcp"))
+                     .header("Mcp-Session-Id", &session)
+                     .json(&json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list" }))
+                     .send()
+                     .await
+                     .unwrap();
+    assert_eq!(list.headers()["Mcp-Session-Id"].to_str().unwrap(),
+               session,
+               "the session initialize gave stays the session");
+
+    server.stop();
+}
