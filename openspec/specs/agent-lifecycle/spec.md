@@ -511,6 +511,10 @@ decides when its session starts on its own:
   first time the user selects it and its pane takes focus, and then stays
   running until it is deactivated, removed, or its workspace closes.
 
+An agent shown as activated SHALL be running. An agent that becomes activated
+while its workspace is open - created `active` there, or a companion of a
+running owner - SHALL start then, not when it is next selected.
+
 Activation mode SHALL NOT change what an agent is or how it runs once
 started: an activated `passive` agent is indistinguishable from an `active`
 one. Changing an agent's activation mode SHALL NOT restart it, and SHALL NOT
@@ -542,6 +546,13 @@ start or stop it.
 - **THEN** the agent keeps running, its session intact, and its restart token
   is unchanged
 
+#### Scenario: An agent created active into an open workspace starts
+
+- **WHEN** another agent creates an `active` agent with `create-agent` while
+  the workspace is open
+- **THEN** the new agent starts without being selected, and a message sent to
+  it is handled
+
 ### Requirement: Deactivating an agent
 
 The system SHALL let a running agent be deactivated: its terminal or ACP
@@ -551,12 +562,14 @@ activation mode intact.
 
 Deactivating SHALL NOT remove the agent, SHALL NOT remove its companions, and
 SHALL NOT take it out of any workspace. A deactivated agent SHALL NOT start
-again on its own for as long as its workspace stays open, with two
-exceptions: selecting it starts it, whatever its activation mode, and a
-direct message addressed to it (see `mcp-messaging`'s "Direct send activates
-a deactivated recipient") starts it the same way. Nothing else - a broadcast
-reaching it, another agent's session starting, a poll or a timer - starts a
-deactivated agent.
+again on its own for as long as its workspace stays open, with three
+exceptions: selecting it starts it, whatever its activation mode; a direct
+message addressed to it (see `mcp-messaging`'s "Direct send activates a
+deactivated recipient") starts it the same way; and restarting it from its own
+row - Restart Agent or Restart with New Conversation - starts it, with the
+conversation that restart keeps or a new one. Nothing else - a broadcast
+reaching it, Restart All, another agent's session starting, a poll or a timer
+- starts a deactivated agent.
 
 Deactivating an agent SHALL first deactivate every companion it owns, since a
 companion has no session of its own to keep once its owner's is gone.
@@ -594,6 +607,18 @@ companion has no session of its own to keep once its owner's is gone.
 - **WHEN** another agent broadcasts to its workspace and a deactivated agent
   is among the eligible recipients
 - **THEN** that agent stays stopped
+
+#### Scenario: Restarting a stopped agent from its row starts it
+
+- **WHEN** the user chooses Restart with New Conversation on an agent that is
+  not running
+- **THEN** the agent starts with a new conversation
+
+#### Scenario: Restart All does not start a stopped agent
+
+- **WHEN** the user chooses Restart All while one agent of the workspace is
+  stopped
+- **THEN** the running agents are restarted and the stopped one stays stopped
 
 ### Requirement: Benching an agent
 
@@ -672,3 +697,53 @@ deactivated, since its next session starts in its folder again.
 - **WHEN** an agent with a working directory set is deactivated and later
   activated again
 - **THEN** it has no working directory, and its git is read from its folder
+
+### Requirement: A start attaches to the agent's running adapter
+
+The system SHALL run at most one ACP adapter for an agent at a time. A start
+requested while the agent's session is connecting or connected SHALL attach to
+that session and SHALL NOT spawn another adapter, whichever path asks:
+selecting the agent, a direct message, the activation sweep, a reconnect, a
+restart or a plan step's fresh context.
+
+#### Scenario: A message arrives while the agent is connecting
+
+- **WHEN** an agent's session is connecting and a direct message to it asks
+  for it to be started
+- **THEN** no second adapter is spawned, and the message is read by the
+  session already connecting
+
+### Requirement: Teardown stops the adapter in any phase
+
+Tearing an agent's session down SHALL stop its adapter whether the session is
+connected or still connecting. A connection that is still being made SHALL be
+abandoned, and the adapter it spawned SHALL be terminated. A torn-down
+connection SHALL NOT become the agent's session, send a turn, or record its
+session id for resuming.
+
+#### Scenario: Restarting an agent that is still connecting
+
+- **WHEN** an agent is restarted while its session is still connecting
+- **THEN** the adapter that connection spawned is terminated, and only the
+  restarted session's adapter keeps running
+
+#### Scenario: A fresh-context step for an agent just woken by a message
+
+- **WHEN** a plan step that asks for a fresh context is dispatched to a
+  deactivated agent, the message starts it on its old conversation, and the
+  fresh-context restart follows before that start has connected
+- **THEN** the first start is stopped, and the agent runs one adapter, on the
+  new conversation
+
+#### Scenario: The teardown and the connection finish together
+
+- **WHEN** a session's connection completes at the same moment the session
+  is torn down
+- **THEN** the connection does not become the agent's session, and its
+  adapter is terminated
+
+#### Scenario: Closing the window while an agent connects
+
+- **WHEN** a workspace window closes while one of its agents is connecting
+- **THEN** that agent's adapter is terminated and none keeps running after
+  the window is gone
