@@ -68,11 +68,14 @@ so it needs an app-level ticker:
   frontmost app, the window comes forward as a card click would.
 - `restart_agents` only starts agents that are activated (its doc:
   "an agent that is not activated is only reset"). A scheduled run is the
-  case where the agent is usually stopped, so the run first activates it
-  (`activate_agent`, the path a message to a deactivated agent takes), then
-  calls `restart_agents(&[id], keep_conversation = false)`. That starts a
-  fresh session and queues the startup prompt (`PromptOrigin::Startup`) as a
-  manual start does.
+  case where the agent is usually stopped, so the run first marks it
+  activated with `store.set_activated(id, true)` alone, then calls
+  `restart_agents(&[id], keep_conversation = false)`. That starts exactly one
+  fresh session and queues the startup prompt (`PromptOrigin::Startup`) once,
+  as a manual start does. Not `activate_agent`: that also calls
+  `start_sessions`, so following it with a restart would spawn an adapter,
+  tear it down at once and spawn another, and could register the agent and
+  queue its startup prompt twice.
 - **Busy** at fire time means any of: a turn in progress, a pending
   permission request, a non-empty prompt queue, or an unanswered message the
   agent holds. A new conversation would discard each of those. The run is

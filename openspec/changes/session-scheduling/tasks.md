@@ -10,7 +10,7 @@
 ## 2. Scheduled start
 
 - [ ] 2.1 App-level ticker (30 s) with the due/skip/grace/missed decision as a pure, tested function
-- [ ] 2.2 On a due run: open the window without taking focus, `activate_agent`, then `restart_agents(.., false)`; skip when busy (turn, permission, queue, unanswered message) with the reason
+- [ ] 2.2 On a due run: open the window without taking focus, `store.set_activated(id, true)` (not `activate_agent`), then `restart_agents(.., false)`; skip when busy (turn, permission, queue, unanswered message) with the reason. Test: a run on a deactivated agent starts exactly one session and queues exactly one startup prompt
 - [ ] 2.3 Persist the last run started per agent in the workspace UI-state document; relaunch test
 
 ## 3. Idle shutdown
