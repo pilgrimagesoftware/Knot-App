@@ -77,7 +77,8 @@ pub fn show_checklist(store: &mut AgentStore, arguments: &Value) -> ToolCallResu
     }
 
     success(&ShowChecklistResponse { success: true,
-                                     message: format!("Checklist of {count} items shown in the artifact panel. The user's answers arrive as a message when they press Send; call get-checklist to read them at any time."), })
+                                     message: format!("Checklist of {count} {} shown in the artifact panel. The user's answers arrive as a message when they press Send; call get-checklist to read them at any time.",
+                                                      if count == 1 { "item" } else { "items" }), })
 }
 
 #[derive(Serialize)]

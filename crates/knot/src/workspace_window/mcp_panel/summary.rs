@@ -107,8 +107,7 @@ fn collapsed_text(inventory: &Inventory, dismissed: &BTreeSet<String>) -> String
         return knot_core::l10n::t("mcp.summary_all_connected");
     }
 
-    knot_core::l10n::t_with("mcp.summary_no_attention",
-                            &[("count", &rows.len().to_string())])
+    knot_core::l10n::t_count("mcp.summary_no_attention", rows.len() as u64, &[])
 }
 
 /// The names of the servers needing attention, capped, with a remainder
@@ -122,7 +121,11 @@ fn attention_text(needing: &[&ServerRow]) -> String {
     let remainder = needing.len() - shown.len();
 
     if remainder == 0 {
-        return knot_core::l10n::t_with("mcp.summary_attention", &[("names", &listed)]);
+        // The verb agrees with how many servers are named: "github needs",
+        // "github, linear need".
+        return knot_core::l10n::t_count("mcp.summary_attention",
+                                        shown.len() as u64,
+                                        &[("names", &listed)]);
     }
 
     knot_core::l10n::t_with("mcp.summary_attention_more",
