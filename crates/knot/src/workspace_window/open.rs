@@ -208,6 +208,7 @@ impl WorkspaceWindow {
                     panel_pending_context: BTreeMap::new(),
                     panel_composer_styling: BTreeMap::new(),
                     panel_mentions: BTreeMap::new(),
+                    file_finder: None,
                     panel_pending_attachments: BTreeMap::new(),
                     panel_shell_runs: Arc::new(Mutex::new(BTreeMap::new())),
                     panel_input_expanded: BTreeSet::new(),

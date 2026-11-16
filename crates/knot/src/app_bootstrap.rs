@@ -202,6 +202,8 @@ actions!(knot_app, [CloseWindow, MinimizeWindow, ZoomWindow]);
 // window's root element (`WorkspaceWindow::with_shortcut_actions`), so the
 // item is disabled wherever there is no workspace to add an agent to.
 actions!(knot_app, [NewAgent]);
+// Edit > Find File… (#5): the file finder over the selected agent's folder.
+actions!(knot_app, [FindFile]);
 
 // The Window menu's openers. Unlike the items above these are wired, and
 // enabled at all times: they are how a user gets back to a window, so an
@@ -339,6 +341,10 @@ pub(crate) fn set_app_menus(snapshot: &MenuBarSnapshot, cx: &mut App) {
             MenuItem::action("Cut", input::Cut),
             MenuItem::action("Copy", input::Copy),
             MenuItem::action("Paste", input::Paste),
+            MenuItem::separator(),
+            // Enabled only with an agent selected: the window registers its
+            // handler then, and AppKit greys out an item nothing handles.
+            MenuItem::action(knot_core::l10n::t("menu.edit.find_file"), FindFile),
         ]),
         // The navigation shortcuts. macOS still appends its own Enter Full
         // Screen below them; see the note beside the `actions!` block.
