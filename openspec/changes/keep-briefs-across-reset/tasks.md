@@ -43,5 +43,7 @@
 
 ## 5. Follow-ups
 
-- [ ] 5.1 Tell the sender that a recipient's conversation was reset and its
-      brief reopened (#405 item 4)
+- [x] 5.1 Tell the sender that a recipient's conversation was reset and its
+      brief reopened (#405 item 4): one notice per sender, as
+      `MessageKind::Notice`, never owed and never an answer; store and window
+      tests, mutation-checked
