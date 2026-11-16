@@ -68,20 +68,7 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                each with its description, capability tags, reachable tools and cost tier",
               &[("agentId", "string", "Your agent ID")],
               &["agentId"]),
-         tool(consts::DESCRIBE_AGENTS,
-              "Find agents by capability - answers 'who can do X'. Returns candidates \
-               carrying every requested tag, cheapest-idle-first, across live agents and \
-               deployable bench templates. Omit capabilities to list everything visible. \
-               No match is an empty list, not an error.",
-              &[("agentId", "string", "Your agent ID"),
-                ("capabilities",
-                 "array",
-                 "Capability tags a candidate must all carry, e.g. [\"rust\", \"testing\"]. \
-                  Omit to list every visible candidate."),
-                ("includeTemplates",
-                 "boolean",
-                 "Include deployable bench templates as well as live agents (default true)")],
-              &["agentId"]),
+         describe_agents_tool(),
          tool(consts::SEND_MESSAGE,
               "Send a message to another agent by name or ID",
               &[("from", "string", "Your agent ID"),
@@ -175,19 +162,7 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                  "boolean",
                  "If true, maximize the panel to fill the available space. Only set to true if the user explicitly requests it. Default: false")],
               &["agentId", "filePath"]),
-         tool(consts::PLAN_TASKS,
-              "Commit a plan: a small graph of tasks with dependencies. Required before \
-               dispatching work that spans more than one agent or more than one task. Cycles \
-               and dangling dependencies are rejected. Re-planning keeps the state of tasks \
-               already under way.",
-              &[("agentId", "string", "Your agent ID"),
-                ("tasks",
-                 "array",
-                 "Tasks as objects: id (unique in this plan), goal, and optionally assignee \
-                  (an agent name or ID), capabilities (tags to resolve at dispatch time), \
-                  dependsOn (ids in this same plan) and resetContext (true to start the \
-                  assignee on a fresh conversation for this task, once it is not working)")],
-              &["agentId", "tasks"]),
+         plan_tasks_tool(),
          tool(consts::DISPATCH_TASK,
               "Dispatch one ready task from your committed plan. Refused while any \
                dependency is not done, naming what it is waiting for.",
@@ -220,6 +195,87 @@ pub fn tool_catalog() -> Vec<ToolDefinition> {
                sent it.",
               &[("agentId", "string", "Your agent ID")],
               &["agentId"]),]
+}
+
+/// `definition` with `items` as the element schema of its array property
+/// `property`. Gemini's function calling rejects an array parameter without
+/// `items`, and one such tool fails the whole request, not just that tool
+/// (#431: agy's turns ended in `INVALID_ARGUMENT ... items: missing field`).
+fn with_items(mut definition: ToolDefinition, property: &str, items: serde_json::Value)
+              -> ToolDefinition {
+    if let Some(schema) = definition.input_schema.properties.get_mut(property) {
+        schema.items = Some(items);
+    }
+    definition
+}
+
+/// `describe-agents`, with `capabilities`'s element schema - see
+/// [`with_items`].
+fn describe_agents_tool() -> ToolDefinition {
+    with_items(
+               tool(
+        consts::DESCRIBE_AGENTS,
+        "Find agents by capability - answers 'who can do X'. Returns candidates \
+          carrying every requested tag, cheapest-idle-first, across live agents and \
+          deployable bench templates. Omit capabilities to list everything visible. \
+          No match is an empty list, not an error.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "capabilities",
+                "array",
+                "Capability tags a candidate must all carry, e.g. [\"rust\", \"testing\"]. \
+             Omit to list every visible candidate.",
+            ),
+            (
+                "includeTemplates",
+                "boolean",
+                "Include deployable bench templates as well as live agents (default true)",
+            ),
+        ],
+        &["agentId"],
+    ),
+               "capabilities",
+               serde_json::json!({ "type": "string" }),
+    )
+}
+
+/// `plan-tasks`, with `tasks`'s element schema - see [`with_items`].
+fn plan_tasks_tool() -> ToolDefinition {
+    with_items(
+               tool(
+        consts::PLAN_TASKS,
+        "Commit a plan: a small graph of tasks with dependencies. Required before \
+          dispatching work that spans more than one agent or more than one task. Cycles \
+          and dangling dependencies are rejected. Re-planning keeps the state of tasks \
+          already under way.",
+        &[
+            ("agentId", "string", "Your agent ID"),
+            (
+                "tasks",
+                "array",
+                "Tasks as objects: id (unique in this plan), goal, and optionally assignee \
+             (an agent name or ID), capabilities (tags to resolve at dispatch time), \
+             dependsOn (ids in this same plan) and resetContext (true to start the \
+             assignee on a fresh conversation for this task, once it is not working)",
+            ),
+        ],
+        &["agentId", "tasks"],
+    ),
+               "tasks",
+               serde_json::json!({
+                   "type": "object",
+                   "properties": {
+                       "id": { "type": "string" },
+                       "goal": { "type": "string" },
+                       "assignee": { "type": "string" },
+                       "capabilities": { "type": "array", "items": { "type": "string" } },
+                       "dependsOn": { "type": "array", "items": { "type": "string" } },
+                       "resetContext": { "type": "boolean" }
+                   },
+                   "required": ["id", "goal"]
+               }),
+    )
 }
 
 /// `show-checklist`, whose `items` array declares its element schema: some
@@ -377,3 +433,6 @@ impl ToolCatalog for McpToolCatalog {
         result
     }
 }
+
+#[cfg(test)]
+mod tests;
