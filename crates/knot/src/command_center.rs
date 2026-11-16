@@ -49,6 +49,12 @@ pub(crate) struct CommandCenterWindow {
     /// text and state are written where no notify reaches - the MCP server's
     /// thread, the hooks - so the store poll compares against this (#17).
     drawn_store_revision: u64,
+    /// Which agents had a session when this window last drew. A window
+    /// opening or closing, or a connection failing, changes it without
+    /// touching the store, so the poll compares it too (#10).
+    drawn_sessions:       BTreeMap<Uuid, bool>,
+    /// The cards' quick-prompt fields (#10).
+    quick_prompts:        crate::dashboard_quick_prompt::QuickPromptFields,
 }
 
 impl CommandCenterWindow {
@@ -75,7 +81,9 @@ impl CommandCenterWindow {
                                                              dashboard::DashboardSort::default(),
                                                          diff_stats: DiffStatsCache::default(),
                                                          read_folders: Default::default(),
-                                                         drawn_store_revision: 0 }
+                                                         drawn_store_revision: 0,
+                                                         drawn_sessions: BTreeMap::new(),
+                                                         quick_prompts: Default::default() }
                                });
                   cx.new(|cx| Root::new(view, window, cx))
               })
@@ -228,7 +236,8 @@ impl CommandCenterWindow {
     /// Diff stats come from the cache rather than from `git`: this window
     /// shows every workspace's agents, so computing them here would be a
     /// subprocess per card per frame.
-    fn dashboard_workspaces(&self, diff_stats: &BTreeMap<Uuid, Option<knot_git::DiffStats>>)
+    fn dashboard_workspaces(&self, diff_stats: &BTreeMap<Uuid, Option<knot_git::DiffStats>>,
+                            sessions: &BTreeMap<Uuid, bool>)
                             -> Vec<dashboard::DashboardWorkspace> {
         let store = self.store.lock();
         store.workspaces()
@@ -260,7 +269,8 @@ impl CommandCenterWindow {
                                                                   input_reason: agent.input_reason().map(str::to_owned),
                                 session_limit: agent.active_session_limit().cloned(),
                                                                   git_stats,
-                                                                  is_running: agent.activated }
+                                                                  has_session: sessions.get(&agent.id).copied().unwrap_or(false),
+                                                                  quick_prompt: None }
                                                 })
                                                 .collect::<Vec<_>>();
                      dashboard::DashboardWorkspace { id:        workspace.id,
@@ -293,12 +303,34 @@ impl CommandCenterWindow {
 }
 
 impl Render for CommandCenterWindow {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let muted = cx.theme().muted_foreground;
         let palette = crate::status_palette::status_palette(cx);
         self.refresh_diff_stats(cx);
         let diff_stats = self.diff_stats.snapshot();
-        let dashboard_workspaces = self.dashboard_workspaces(&diff_stats);
+        let sessions = self.sessions(cx);
+        let mut dashboard_workspaces = self.dashboard_workspaces(&diff_stats, &sessions);
+        self.drawn_sessions = sessions;
+        // Every card's field, across every section, pruned with the roster.
+        let mut fields = std::mem::take(&mut self.quick_prompts);
+        crate::dashboard_quick_prompt::attach(&mut fields,
+                                              dashboard_workspaces.iter_mut()
+                                                                  .flat_map(|workspace| {
+                                                                      workspace.agents.iter_mut()
+                                                                  }),
+                                              window,
+                                              cx,
+                                              Self::send_quick_prompt);
+        self.quick_prompts = fields;
+        // Every workspace at once, for the header (#10).
+        let header_summary =
+            crate::dashboard_summary::summary(crate::dashboard_summary::status_counts(
+                                                  dashboard_workspaces.iter()
+                                                                      .flat_map(|workspace| {
+                                                                          workspace.agents.iter()
+                                                                      }),
+                                              ),
+                                              palette);
         let weak = cx.entity().downgrade();
         // Built once and cloned per section: every card answers the same
         // three questions, and each takes the id it acts on as an argument.
@@ -339,7 +371,8 @@ impl Render for CommandCenterWindow {
                 h_flex()
                     .px_5()
                     .items_center()
-                    .justify_end()
+                    .justify_between()
+                    .child(gpui_kit::div().children(header_summary))
                     .child(dashboard::sort_picker(self.dashboard_sort, {
                         let weak = weak.clone();
                         move |sort, _window, app| {
@@ -381,7 +414,16 @@ fn spawn_store_poll(cx: &mut Context<CommandCenterWindow>) {
                 .timer(consts::REPAINT_POLL_INTERVAL)
                 .await;
               let polled = this.update(cx, |view, cx| {
-                                   if view.store_revised() {
+                                   // Locals, so neither check is skipped
+                                   // when the other is true.
+                                   let revised = view.store_revised();
+                                   let sessions = view.sessions(cx);
+                                   let sessions_changed = sessions != view.drawn_sessions;
+                                   // Recorded here as well as in render, so
+                                   // one change notifies once even before
+                                   // the window redraws.
+                                   view.drawn_sessions = sessions;
+                                   if revised || sessions_changed {
                                        cx.notify();
                                    }
                                });
@@ -392,6 +434,8 @@ fn spawn_store_poll(cx: &mut Context<CommandCenterWindow>) {
       })
       .detach();
 }
+
+mod prompts;
 
 #[cfg(test)]
 mod tests;

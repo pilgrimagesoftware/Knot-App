@@ -62,6 +62,28 @@ and git diff counts. A Running agent shows the orange status indicator with its
 current status text; a folder with uncommitted changes shows insertions,
 deletions and file counts. Sort cards by manual order, name, or status.
 
+A card shows an agent as **not running** when it has no session Knot can send
+to: it hasn't started, it was deactivated, its workspace window is closed, or
+its connection to the agent failed.
+
+### Status summary
+
+Beside the workspace's name, a summary counts its agents by state - for
+example `● 1 awaiting input  ● 2 working  ● 3 idle` - in the order that needs
+you first: awaiting input, working, idle, error, then not running. Each dot is
+the color the cards use for that state. Shell agents aren't counted.
+
+### Quick prompt
+
+Every card except a shell agent's has a one-line field at the bottom. Type a
+prompt and press **Return** to send it to that agent without opening it, or
+**Cmd+Return** to send it and open the agent. It goes the same way a prompt
+from the agent's own message box does: straight away if the agent is free, or
+into its queue if it's working, waiting on you, or held by a usage limit - the
+field says **Will queue until it can take it** when that's the case. The field
+clears once the prompt is taken, and is disabled while the agent isn't
+running.
+
 A workspace with no agents to show displays **No agents** instead of a card
 grid. Every other workspace group has an **Add Agent** tile, which opens the
 agent-creation dialog prefilled with that workspace's folder, if an agent
@@ -78,6 +100,10 @@ Window menu (or its key equivalent) or from the workspace manager's toolbar.
 - Its content scrolls when the sections and cards overflow, so every workspace
   and card stays reachable; cards are not shrunk to fit, and a short grid does
   not scroll.
+- Its header shows the status summary over every workspace's agents, and each
+  section shows its own beside its name.
+- A card's quick prompt goes to the agent through its workspace window. With
+  that window closed the agent has no session, so the field is disabled.
 - Clicking an agent card opens that agent's workspace window (or focuses it) in
   its terminal view with that agent selected; clicking a workspace heading
   opens the workspace without selecting an agent.
