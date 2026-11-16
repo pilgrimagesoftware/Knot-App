@@ -1,4 +1,37 @@
 
+## 1.39.0 - 2026-11-16
+
+### Added
+- Tell senders when an agent they briefed is reset
+- Open an agent's config files from its menu
+- Schedule and idle policy vocabulary for agents
+- Start scheduled agents from an app-level ticker
+- Stop agents that have been idle for their period
+- Schedule and idle controls in the editor, settings and sidebar
+- Port the Swift FuzzyScorer and rank @ mentions off the render path
+- Add Find File, a fuzzy file finder for the selected agent
+- Show which dashboard agents can take a prompt, and a status summary
+- Send a quick prompt from a dashboard card
+
+
+### Changed
+- Keep the tool catalog's formatting intact
+- Word the status summary through t_count
+
+
+### Documentation
+- Add brew trust step to Homebrew install (#314)
+
+
+### Fixed
+- Launch agy with --process-per-session so Knot's MCP server attaches
+- Let agy's MCP client attach Knot's tools
+- Agree counted strings with their number
+- Route a found path by view mode, and build a missing composer
+- Wait for the next run when a schedule is set after its time
+
+
+
 ## 1.38.0 - 2026-11-14
 
 ### Added
