@@ -2,6 +2,17 @@ app:
   name: "Knot"
 
 dashboard:
+  summary:
+    awaiting_one: "awaiting input"
+    awaiting_many: "awaiting input"
+    working_one: "working"
+    working_many: "working"
+    idle_one: "idle"
+    idle_many: "idle"
+    error_one: "error"
+    error_many: "errors"
+    off_one: "not running"
+    off_many: "not running"
   title: "Dashboard"
   command_center: "Command Center"
   no_agents: "No agents"

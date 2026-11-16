@@ -77,7 +77,7 @@ impl WorkspaceWindow {
                                 input_reason: agent.input_reason().map(str::to_owned),
                                 session_limit: agent.active_session_limit().cloned(),
                                 git_stats,
-                                is_running: agent.activated,
+                                has_session: self.has_session(agent.id),
                             }
                                                                })
                                                                .collect::<Vec<_>>();

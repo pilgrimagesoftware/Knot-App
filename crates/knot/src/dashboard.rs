@@ -44,10 +44,12 @@ pub(crate) struct DashboardAgent {
     /// see `knot_agents::Agent::active_session_limit`.
     pub session_limit: Option<knot_agents::SessionLimit>,
     pub git_stats:     Option<knot_git::DiffStats>,
-    /// Whether the agent has a session, as the sidebar row means it: a
-    /// `passive` agent that never started and a deactivated one are both
-    /// not running, and the card's working indicator says so.
-    pub is_running:    bool,
+    /// Whether the agent has a session a prompt can reach - a terminal
+    /// session, or a panel session connecting or ready - in a workspace
+    /// window that is open (#10). Not `activated`: closing a window drops its
+    /// sessions without clearing that, so an agent in a closed window read
+    /// as running with nothing to send to.
+    pub has_session:   bool,
 }
 
 /// One workspace's section as needed by a dashboard grid.
@@ -152,7 +154,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                                                  });
     let is_shell = agent.is_shell;
     let state = agent.state;
-    let is_running = agent.is_running;
+    let has_session = agent.has_session;
     let git_stats = agent.git_stats;
 
     // A plain clickable container, not `Button` - `Button`'s "Normal Button"
@@ -193,7 +195,7 @@ fn agent_card(agent: &DashboardAgent, muted: gpui_kit::Hsla, palette: &'static S
                            // goes blank when it is not running at all,
                            // which no colour of label says.
                            .child(div().flex_shrink_0()
-                                       .child(crate::working_indicator::render(state, is_running, palette)))
+                                       .child(crate::working_indicator::render(state, has_session, palette)))
                            .children((!is_shell).then(|| {
                                                     // A session limit is a badge, bold
                                                     // and red (#369).
@@ -308,7 +310,13 @@ pub(crate) fn workspace_section<Tap, Nav, Add>(workspace: DashboardWorkspace, is
             .child(h_flex().gap_2p5()
                            .items_center()
                            .child(div().w(px(4.)).h(px(24.)).rounded(px(3.)).bg(color))
-                           .child(title))
+                           .child(title)
+                           // The section's own summary (#10): the workspace
+                           // dashboard's only one, since it has one section.
+                           .children(crate::dashboard_summary::summary(
+                               crate::dashboard_summary::status_counts(&workspace.agents),
+                               palette,
+                           )))
             .child(if workspace.agents.is_empty() {
                        div().pl_3()
                             .text_sm()

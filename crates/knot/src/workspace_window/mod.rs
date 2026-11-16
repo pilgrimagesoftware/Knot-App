@@ -50,6 +50,7 @@ pub(crate) mod prompt_queue;
 mod pull_requests;
 mod pull_requests_actions;
 mod pull_requests_view;
+mod quick_prompt;
 mod render;
 mod repaint;
 #[cfg(test)]

@@ -2,15 +2,15 @@
 
 ## 0. Session signal
 
-- [ ] 0.1 Replace `DashboardAgent.is_running` (`activated`) with `has_session`: the workspace dashboard reads its own session maps; the Command Center reads them through `WindowRegistry::workspace_view` and a `pub(crate) WorkspaceWindow::has_session`. Feed it to the card's working indicator.
-- [ ] 0.2 Rebuild the Command Center's snapshot when a workspace window opens or closes, not only on store revisions
-- [ ] 0.3 Tests: window open with a slot, open without one, closed with `activated` set
+- [x] 0.1 Replace `DashboardAgent.is_running` (`activated`) with `has_session`: the workspace dashboard reads its own session maps; the Command Center reads them through `WindowRegistry::workspace_view` and a `pub(crate) WorkspaceWindow::has_session`. Feed it to the card's working indicator.
+- [x] 0.2 Rebuild the Command Center's snapshot when a workspace window opens or closes, not only on store revisions
+- [x] 0.3 Tests: window open with a slot, open without one, closed with `activated` set
 
 ## 1. Status summary
 
-- [ ] 1.1 `status_counts` over `DashboardAgent`, through `working_indicator::state`; unit tests for order, dropped zeros, shell agents and not-running agents
-- [ ] 1.2 Draw it beside each section's name, and in the header of the Command Center only
-- [ ] 1.3 Catalog keys per state through `l10n::pluralize`; key-resolution tests
+- [x] 1.1 `status_counts` over `DashboardAgent`, through `working_indicator::state`; unit tests for order, dropped zeros, shell agents and not-running agents
+- [x] 1.2 Draw it beside each section's name, and in the header of the Command Center only
+- [x] 1.3 Catalog keys per state through `l10n::pluralize`; key-resolution tests
 
 ## 2. Quick prompt
 
