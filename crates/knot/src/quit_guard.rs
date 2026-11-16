@@ -116,13 +116,7 @@ pub(crate) fn warning_title() -> String {
 /// One agent is named in words rather than as "1 agent", which reads as
 /// though a number were being reported when there is nothing to count.
 pub(crate) fn warning_message(count: usize) -> String {
-    if count == 1 {
-        knot_core::l10n::t("quit.working_message_one")
-    }
-    else {
-        knot_core::l10n::t_with("quit.working_message_many",
-                                &[("count", &count.to_string())])
-    }
+    knot_core::l10n::t_count("quit.working_message", count as u64, &[])
 }
 
 /// The label that goes through with the quit.
