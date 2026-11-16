@@ -99,7 +99,9 @@ impl WorkspaceWindow {
                                 header_title,
                                 persona_name,
                                 agent_type,
-                                is_running, })| {
+                                is_running,
+                                schedule_line,
+                                idle_line, })| {
                        let hint = hints.as_ref()
                                        .and_then(|hints| hints.agent(index))
                                        .map(str::to_owned);
@@ -110,7 +112,11 @@ impl WorkspaceWindow {
                                                       input_reason: input_reason.clone(),
                                                       session_limit: session_limit.clone(),
                                                       is_shell,
-                                                      status:        header_title.clone(), };
+                                                      status:        header_title.clone(),
+                                                      scheduling:    schedule_line.iter()
+                                                                                  .chain(&idle_line)
+                                                                                  .cloned()
+                                                                                  .collect(), };
                        let preview_name = name.clone();
                        let menu_folder = folder.clone();
                        let folder_name =
@@ -309,6 +315,30 @@ impl WorkspaceWindow {
                                         detail_line(
                                             gpui_kit::assets::IconName::Fan,
                                             knot_core::l10n::t("agent.autopilot"),
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // When it next starts on its own, or a
+                                    // run it missed (#404).
+                                    .children(schedule_line.clone().map(|text| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::CalendarClock,
+                                            text,
+                                            DetailLineSize::Small,
+                                            title_font_name.clone(),
+                                            title_font_size,
+                                            cx,
+                                        )
+                                    }))
+                                    // Near the end of an idle period only, so
+                                    // the sidebar does not fill with timers.
+                                    .children(idle_line.clone().map(|text| {
+                                        detail_line(
+                                            gpui_kit::assets::IconName::Timer,
+                                            text,
                                             DetailLineSize::Small,
                                             title_font_name.clone(),
                                             title_font_size,

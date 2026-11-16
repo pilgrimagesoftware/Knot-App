@@ -142,6 +142,12 @@ impl WorkspaceWindow {
                         selected_header.as_ref()
                                        .and_then(|header| header.session_limit.as_ref());
                     let palette = crate::status_palette::status_palette(cx);
+                    // The selected agent's idle countdown, while its row shows
+                    // one (#404).
+                    let idle_text = self.selected_agent
+                                        .and_then(|id| self.agent_idle.get(&id))
+                                        .and_then(|idle| idle.countdown)
+                                        .map(crate::schedule_text::idle_line);
                     let status =
                         v_flex().items_end()
                                 .gap_0p5()
@@ -158,6 +164,16 @@ impl WorkspaceWindow {
                              Tooltip::new(knot_core::l10n::t("agent.autopilot_active"))
                                  .build(window, cx)
                          }),
+                )
+                                               })
+                                               .when_some(idle_text, |row, text| {
+                                                   row.child(
+                    div().id("title-bar-idle")
+                         .debug_selector(|| "title-bar-idle".into())
+                         .child(Icon::new(gpui_kit::assets::IconName::Timer)
+                                    .xsmall()
+                                    .text_color(cx.theme().muted_foreground))
+                         .tooltip(move |window, cx| Tooltip::new(text.clone()).build(window, cx)),
                 )
                                                })
                                                .child(div().w(px(10.))

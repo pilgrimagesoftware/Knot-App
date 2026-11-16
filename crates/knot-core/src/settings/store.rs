@@ -148,6 +148,12 @@ pub struct Settings {
     /// out of what needs attention. See
     /// `openspec/specs/agent-mcp-status/spec.md`.
     pub dismissed_mcp_servers:          BTreeSet<String>,
+    /// What happens to an agent that has been idle, for every agent whose
+    /// own idle setting follows the default (#404). `None` - off - by
+    /// default; an unreadable stored value also loads as off. See
+    /// `openspec/changes/session-scheduling`.
+    #[serde(deserialize_with = "crate::schedule::lenient_idle_rule")]
+    pub idle_default:                   Option<crate::schedule::IdleRule>,
 
     /// The durable collections, each persisted as its own document rather
     /// than as a key of the preferences document - hence `skip`, which also
@@ -218,6 +224,7 @@ impl Default for Settings {
                agent_panel_compact_tool_calls: false,
                keybindings:                    super::KeybindingSettings::default(),
                dismissed_mcp_servers:          BTreeSet::new(),
+               idle_default:                   None,
                saved_agents:                   Vec::new(),
                saved_workspaces:               Vec::new(),
                workspace_ui:                   BTreeMap::new(),

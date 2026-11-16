@@ -174,6 +174,18 @@ impl WorkspaceWindow {
                                                         // Codex nearing its
                                                         // usage limit (#291).
                                                         let pane = self.with_usage_banner(pane, cx);
+                                                        // Typing, clicking or
+                                                        // scrolling in the
+                                                        // pane restarts the
+                                                        // agent's idle period
+                                                        // (#404).
+                                                        let pane = match self.selected_agent {
+                                                            Some(id) => {
+                                                                self.with_activity_capture(id,
+                                                                                           pane, cx)
+                                                            }
+                                                            None => pane,
+                                                        };
                                                         let pane =
                                                             self.with_side_panels(pane, window, cx);
                                                         v_flex().flex_1()

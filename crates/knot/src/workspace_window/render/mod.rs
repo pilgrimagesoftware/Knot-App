@@ -62,6 +62,7 @@ use crate::workspace_window::sidebar_is_compact;
 use crate::workspace_window::with_agents_menu_actions;
 use crate::workspace_window::workspace_title;
 
+mod activity_capture;
 mod agent_sections;
 mod changes_tabs;
 mod content;
@@ -106,6 +107,9 @@ impl WorkspaceWindow {
     /// disagree with the rows about which workspace this window is.
     fn frame_snapshot(&self, cx: &App) -> Option<(String, Vec<AgentRow>)> {
         let autopilot_enabled = crate::settings_global::read(cx).autopilot_enabled;
+        // Evaluating a schedule is arithmetic on the clock, not I/O (#404).
+        let now = jiff::Zoned::now();
+        let outcomes = cx.try_global::<crate::scheduled_starts::ScheduleOutcomes>();
         let store = self.store.lock();
         let title = workspace_title(&store, self.workspace_id)?;
         let workspace = store.workspaces()
@@ -138,7 +142,21 @@ impl WorkspaceWindow {
                                       header_title: agent.header_title().to_string(),
                                       persona_name,
                                       agent_type: agent.agent_type.clone(),
-                                      is_running: agent.activated }
+                                      is_running: agent.activated,
+                                      schedule_line: if agent.is_shell() {
+                                          None
+                                      }
+                                      else {
+                                          crate::schedule_text::schedule_line(
+                                              agent.schedule.as_ref(),
+                                              outcomes.and_then(|outcomes| outcomes.0.get(&agent.id).copied()),
+                                              &now,
+                                          )
+                                      },
+                                      idle_line: self.agent_idle
+                                                     .get(&agent.id)
+                                                     .and_then(|idle| idle.countdown)
+                                                     .map(crate::schedule_text::idle_line) }
                        })
                        .collect()))
     }

@@ -73,6 +73,46 @@ unregister them, and tear down their sessions. Save to Bench stores an agent as 
 Bench Agent… saves it and then closes it. Deactivate All stops every running agent, and a shell
 agent is removed on its own when its terminal process exits.
 
+## Scheduled starts and idle shutdown
+
+An agent with a startup prompt can start on its own. In the agent editor, set **Schedule** to a
+preset (every day, weekdays, chosen days, or every N hours) or to a five-field cron expression, and
+the editor shows when it next runs. When a run comes due, Knot opens the workspace window if it is
+closed, without pulling you out of another app, and starts the agent in a new conversation, so its
+startup prompt runs from a clean context.
+
+| Schedule | Runs |
+| --- | --- |
+| Every day, 09:00 | 09:00 each day |
+| Weekdays, 08:30 | 08:30 Monday to Friday |
+| Every 5 hours | 00:00, 05:00, 10:00, 15:00, 20:00, then 00:00 again |
+| Cron `30 8 * * 1-5` | 08:30 Monday to Friday |
+| Cron `0 */2 * * *` | Every two hours, on the hour |
+
+Times are in the Mac's local time zone. A run at a time skipped by a daylight-saving change runs at
+the first valid time after it, and a time that happens twice runs once.
+
+Schedules run only while Knot is running. A run missed by up to 10 minutes, because the Mac was
+asleep or Knot was still launching, runs once when Knot notices; an older one is skipped and the
+sidebar shows it as missed for an hour. A run never interrupts work: if the agent is mid-turn, has
+a permission request or a queued prompt waiting, or owes another agent a reply, that run is skipped
+and the sidebar says so. A scheduled agent's row shows its next run.
+
+**When idle** stops an agent that has done nothing for a while. Set a default in Settings >
+General > Idle agents, and override it per agent in the editor: use the default, never stop it,
+or deactivate or reset it after a number of minutes. It is off by default.
+
+An agent counts as idle only while it has no turn under way, no running subagent, no queued
+prompt, no pending permission request, no unanswered message, and no background process its latest
+turn started (such as a test run), and while nobody types, clicks or scrolls in its pane. A turn that ended
+with a question to you counts as idle; a permission request does not. Near the end of the period
+the row shows how long the agent has been idle and when it stops.
+
+Deactivating stops the session as the context menu's Deactivate does. Resetting starts a new
+conversation **without** sending the startup prompt again, so a scripted agent does not rerun its
+script every time it goes idle, and a reset agent is not reset again until it has been used.
+Neither applies to shell agents.
+
 ## The sidebar agent list
 
 Each agent has a row: its avatar and name, a state dot, and detail lines under the name - agent

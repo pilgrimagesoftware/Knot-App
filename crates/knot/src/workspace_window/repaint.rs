@@ -169,7 +169,7 @@ impl WorkspaceWindow {
         // Runs `ps` on its own much slower cadence, and only while a
         // processes section is expanded on the shown agent - see
         // `workspace_window::processes`.
-        let processes_sampled = self.process_sampling_tick();
+        let processes_sampled = self.process_sampling_tick(cx);
         // Both subagent feeds write off the main thread with no context to
         // notify from - the ACP drain on a session task, the hook route on an
         // axum worker - so a dispatch or a completion only reaches the screen
@@ -183,7 +183,11 @@ impl WorkspaceWindow {
         // exits. Lands here because `spawn_blocking` has no context to
         // notify from - see `workspace_window::mcp_panel::probe`.
         let mcp_probed = self.mcp_probe_tick(cx);
+        // Idling is checked on its own slower interval (#404). A local, so it
+        // runs every tick whatever the chain below decides.
+        let idle_changed = self.idle_tick(cx);
         if panel_states_moved
+           || idle_changed
            || fresh_contexts_started
            || session_limits_landed
            || panel_status_landed

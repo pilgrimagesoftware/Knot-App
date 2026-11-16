@@ -221,6 +221,11 @@ pub(crate) struct WorkspaceWindow {
     /// cancels it).
     pub(super) panel_prompt_input_subscriptions: BTreeMap<Uuid, Subscription>,
     pub(super) panel_prompt_queues:              BTreeMap<Uuid, Vec<QueuedPanelPrompt>>,
+    /// Each agent's idle tracking (#404); see `workspace_window::idle`.
+    /// Pruned in `teardown_session`.
+    pub(super) agent_idle:                       BTreeMap<Uuid, super::idle::AgentIdle>,
+    /// When idling was last checked, so the check runs on its own interval.
+    pub(super) idle_checked_at:                  Option<std::time::Instant>,
     /// The prompt each agent's pump has taken off its queue and is waiting
     /// on a result for.
     ///

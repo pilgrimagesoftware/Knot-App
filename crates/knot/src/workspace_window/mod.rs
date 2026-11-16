@@ -31,6 +31,7 @@ mod git_panel;
 mod handoff;
 #[cfg(test)]
 mod handoff_tests;
+pub(crate) mod idle;
 #[cfg(test)]
 mod inbox_nudge_tests;
 mod issue_filter;
@@ -57,6 +58,7 @@ mod render;
 mod repaint;
 #[cfg(test)]
 mod restart_tests;
+pub(crate) mod scheduling;
 #[cfg(test)]
 mod send_prompt_tests;
 mod session_limits;

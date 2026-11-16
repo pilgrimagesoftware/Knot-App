@@ -8,6 +8,7 @@ mod binding;
 mod dismissed_mcp_servers;
 mod prompts;
 mod pull_requests;
+mod session_scheduling;
 
 use std::fs;
 

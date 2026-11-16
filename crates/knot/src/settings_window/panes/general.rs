@@ -6,6 +6,7 @@ use gpui_kit::base::Disableable;
 use gpui_kit::base::v_flex;
 use gpui_kit::component::switch::Switch;
 use knot_core::AppearanceMode;
+use knot_core::schedule::{IdleAction, IdleRule};
 
 use crate::settings_window::SettingsWindow;
 
@@ -31,6 +32,71 @@ impl SettingsWindow {
     /// restore brought the workspaces back; gated the same way.
     pub(crate) fn reopen_workspaces_toggle_enabled(restore_layout_on_launch: bool) -> bool {
         restore_layout_on_launch
+    }
+
+    /// The idle durations offered, in minutes. A fixed list: the per-agent
+    /// override in the agent editor takes any number.
+    const IDLE_MINUTES: [u32; 7] = [15, 30, 45, 60, 90, 120, 240];
+
+    /// The idle default's action, as the picker words it. `None` is off.
+    fn idle_action_label(action: Option<IdleAction>) -> String {
+        knot_core::l10n::t(match action {
+                               None => "settings.general.idle_action_off",
+                               Some(IdleAction::Deactivate) => {
+                                   "settings.general.idle_action_deactivate"
+                               }
+                               Some(IdleAction::Reset) => "settings.general.idle_action_reset",
+                           })
+    }
+
+    fn idle_minutes_label(minutes: u32) -> String {
+        knot_core::l10n::t_with("settings.general.idle_minutes",
+                                &[("minutes", &minutes.to_string())])
+    }
+
+    /// What happens to an agent that has been idle, for every agent whose
+    /// own setting follows the default (#404).
+    fn idle_group(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+        let settings_window = cx.entity();
+        let current = crate::settings_global::read(cx).idle_default;
+        let action = current.map(IdleRule::action);
+        let minutes = current.map_or(30, IdleRule::after_minutes);
+        let actions = [None, Some(IdleAction::Deactivate), Some(IdleAction::Reset)];
+        let mut group = crate::controls::group(knot_core::l10n::t("settings.general.idle"))
+            .child(Self::row(
+                knot_core::l10n::t("settings.general.idle_action"),
+                Self::dropdown("idle-action-picker",
+                               Self::idle_action_label(action),
+                               actions.iter()
+                                      .map(|action| (Self::idle_action_label(*action).into(), *action))
+                                      .collect(),
+                               settings_window.clone(),
+                               move |view, action, _, cx| {
+                                   crate::settings_global::write(cx, |settings| {
+                                       settings.idle_default =
+                                           action.and_then(|action| IdleRule::new(minutes, action));
+                                   });
+                                   view.persist(cx);
+                               }),
+            ));
+        if let Some(action) = action {
+            group = group.child(Self::row(
+                knot_core::l10n::t("settings.general.idle_after"),
+                Self::dropdown("idle-minutes-picker",
+                               Self::idle_minutes_label(minutes),
+                               Self::IDLE_MINUTES.iter()
+                                                 .map(|minutes| (Self::idle_minutes_label(*minutes).into(), *minutes))
+                                                 .collect(),
+                               settings_window,
+                               move |view, minutes, _, cx| {
+                                   crate::settings_global::write(cx, |settings| {
+                                       settings.idle_default = IdleRule::new(*minutes, action);
+                                   });
+                                   view.persist(cx);
+                               }),
+            ));
+        }
+        group.child(Self::hint(cx, knot_core::l10n::t("settings.general.idle_hint")))
     }
 
     /// How the window looks.
@@ -235,5 +301,6 @@ impl SettingsWindow {
                 .child(self.startup_group(cx))
                 .child(self.notifications_group(cx))
                 .child(self.agent_panel_group(cx))
+                .child(self.idle_group(cx))
     }
 }

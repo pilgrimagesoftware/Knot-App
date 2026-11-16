@@ -100,7 +100,15 @@ impl WorkspaceWindow {
         // Built for a fresh session even when a prior one is named: whether
         // the adapter actually resumes is known only once it is connected,
         // and `connect_into` withholds both prompts then (#540).
-        let startup_prompt = self.startup_request(&agent, cx);
+        // An idle reset starts the new conversation without the startup
+        // prompt, or a scripted agent would run, idle, reset and run again
+        // forever (#404).
+        let startup_prompt = if self.take_withheld_startup_prompt(id) {
+            None
+        }
+        else {
+            self.startup_request(&agent, cx)
+        };
         let session_config = agent.session_config.clone();
         // Built here because this is the only place that knows both the
         // agent's id and its type; `None` for a type with no recognizer,
