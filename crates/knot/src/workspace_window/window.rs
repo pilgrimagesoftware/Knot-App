@@ -287,6 +287,9 @@ pub(crate) struct WorkspaceWindow {
     pub(super) panel_list_row_counts:            BTreeMap<Uuid, usize>,
     /// Each agent's open find bar over its conversation (#251).
     pub(super) panel_finds:                      BTreeMap<Uuid, panel::find_bar::PanelFind>,
+    /// Each agent's question card inputs and focus, while one is on screen
+    /// (#430).
+    pub(super) panel_questions:                  BTreeMap<Uuid, panel::question::QuestionCardUi>,
     /// Files/images attached via the input area's add-context control,
     /// pending the next send - cleared once the prompt is submitted.
     pub(super) panel_pending_context:            BTreeMap<Uuid, Vec<PathBuf>>,
@@ -380,11 +383,6 @@ pub(crate) struct WorkspaceWindow {
     pub(super) mcp_tools_in_flight: crate::workspace_window::mcp_panel::tools::ToolsInFlight,
     /// Where a finished tool listing reports and the poll drains.
     pub(super) mcp_tool_results: crate::workspace_window::mcp_panel::tools::ToolsResults,
-    /// Shell companions opened to hand the user an agent's own MCP flow,
-    /// mapped to the agent whose section opened them. An entry's exit is what
-    /// makes that section re-probe, so it catches up with whatever the user
-    /// did in there.
-    pub(super) mcp_handover_terminals:           BTreeMap<Uuid, Uuid>,
     /// Agents whose git panel is open. Per-agent rather than a
     /// `WorkspaceViewMode`: the panel is scoped to one agent's folder and
     /// leaves that agent's content visible, so it is not a window mode.

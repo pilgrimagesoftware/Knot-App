@@ -395,6 +395,10 @@ pub(crate) fn install_actions_and_keys(settings: &knot_core::Settings,
     // what validates a customization against the fixed ones.
     cx.bind_keys(crate::keymap::fixed_bindings().into_iter()
                                                 .map(|fixed| fixed.binding));
+    // The question card's own keys, scoped to the card like a component's
+    // bindings rather than fixed app shortcuts: Up or Space mean something
+    // only inside it (#430).
+    cx.bind_keys(crate::panel_view::question_card_key_bindings());
     crate::keymap::apply(&crate::keymap::Resolved::from_settings(&settings.keybindings),
                          cx);
     let settings_window: Rc<RefCell<Option<AnyWindowHandle>>> = Rc::new(RefCell::new(None));

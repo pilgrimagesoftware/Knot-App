@@ -19,10 +19,30 @@ fn permission(title: Option<&str>) -> PermissionRequest {
 #[test]
 fn a_pending_permission_is_awaiting_input_and_carries_its_title() {
     let mut state = PanelState::default();
-    state.pending_permission = Some(permission(Some("Allow writing to src/main.rs?")));
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission(Some("Allow writing to src/main.rs?"))));
 
     assert_eq!(acp_status(&state),
                (AgentState::Input, Some("Allow writing to src/main.rs?".to_string())));
+}
+
+/// A question card is Awaiting input too, with the question itself as what
+/// the sidebar and the notification say (#430).
+#[test]
+fn a_pending_question_is_awaiting_input_and_carries_the_question() {
+    let mut state = PanelState::default();
+    state.turn_active = true;
+    state.pending_input = Some(knot_acp::QuestionRequest { rpc_id:       serde_json::json!(7),
+                                session_id:   "sess-1".to_owned(),
+                                tool_call_id: None,
+                                message:      "Please answer the following questions.".to_owned(),
+                                fields:       vec![knot_acp::FormField { key:         "question_0".to_owned(),
+                                                                         title:       Some("Color".to_owned()),
+                                                                         description: Some("Which color?".to_owned()),
+                                                                         required:    false,
+                                                                         kind:        knot_acp::FieldKind::Boolean { default: None }, }], }.into());
+
+    assert_eq!(acp_status(&state),
+               (AgentState::Input, Some("Which color?".to_string())));
 }
 
 #[test]
@@ -31,7 +51,8 @@ fn a_pending_permission_wins_over_an_active_turn() {
     // is the one the user needs to see - `activity-detection`'s "Permission
     // request during a turn".
     let mut state = PanelState::default();
-    state.pending_permission = Some(permission(Some("Grant access?")));
+    state.pending_input =
+        Some(crate::panel_state::PendingInput::Permission(permission(Some("Grant access?"))));
     state.turn_active = true;
 
     assert_eq!(acp_status(&state).0, AgentState::Input);
@@ -43,7 +64,7 @@ fn a_permission_without_a_title_carries_no_message() {
     // one - `desktop-notifications`' "Notification uses default body without
     // a message".
     let mut state = PanelState::default();
-    state.pending_permission = Some(permission(None));
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission(None)));
 
     assert_eq!(acp_status(&state), (AgentState::Input, None));
 }
@@ -70,7 +91,8 @@ fn the_status_is_a_level_that_repeats_unchanged() {
     // request pending across many ticks is one edge, not many. Without the
     // gate this would be one notification per poll.
     let mut state = PanelState::default();
-    state.pending_permission = Some(permission(Some("Grant access?")));
+    state.pending_input =
+        Some(crate::panel_state::PendingInput::Permission(permission(Some("Grant access?"))));
 
     assert_eq!(acp_status(&state), acp_status(&state));
 }
@@ -219,7 +241,7 @@ fn any_other_failed_turn_is_idle() {
 fn a_pending_permission_wins_over_a_session_limit() {
     let mut state = PanelState::new();
     state.push_error(LIMIT_ERROR.to_string());
-    state.pending_permission = Some(permission(None));
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission(None)));
 
     assert_eq!(acp_status(&state).0, AgentState::Input);
 }

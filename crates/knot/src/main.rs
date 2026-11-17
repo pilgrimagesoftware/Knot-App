@@ -70,6 +70,8 @@ mod status_palette;
 mod store_revision;
 mod subagent_feed;
 #[cfg(test)]
+mod test_repo;
+#[cfg(test)]
 mod tests;
 mod timestamp;
 mod view_menu;

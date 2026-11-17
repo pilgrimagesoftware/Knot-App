@@ -35,16 +35,15 @@ pub struct PanelState {
     /// When the entries happened, kept across a restored session - see
     /// [`super::EntryTimes`].
     pub times:                      super::EntryTimes,
-    /// Set by a `session/request_permission` event; sending further
-    /// prompts SHALL be blocked while this is set (enforced by the caller
-    /// that owns the `AcpSession`, not this pure state).
-    pub pending_permission:         Option<PermissionRequest>,
-    /// Permission requests that arrived while [`Self::pending_permission`]
-    /// was still awaiting a decision, oldest first. An agent running tool
-    /// calls in parallel asks for several at once, and each one is waiting
-    /// on its own answer: keeping only the latest left the earlier ones
-    /// unanswered, and the agent blocked on them for good (#267).
-    pub queued_permissions:         VecDeque<PermissionRequest>,
+    /// What the agent is waiting on the user for - a permission request or
+    /// a question card - set by `session/request_permission` and
+    /// `elicitation/create`. Sending further prompts SHALL be blocked while
+    /// this is set (enforced by the caller that owns the `AcpSession`, not
+    /// this pure state).
+    pub pending_input:              Option<super::PendingInput>,
+    /// Requests that arrived while [`Self::pending_input`] was still
+    /// awaiting an answer, oldest first.
+    pub queued_inputs:              VecDeque<super::PendingInput>,
     /// Set once the session ends (normally or on error); `None` while live.
     pub ended:                      Option<SessionEndCause>,
     /// True from the user's prompt until the matching `TurnEnd`, per the
@@ -135,56 +134,6 @@ impl PanelState {
                 self.pull_request_urls.push(url);
             }
         }
-    }
-
-    /// Clears the pending permission request once the caller has sent a
-    /// decision back through the ACP client, per the "User denies a
-    /// permission request" scenario: the prompt is replaced with its
-    /// resolved state, not left pending.
-    ///
-    /// The next queued request, if any, takes its place.
-    pub fn resolve_permission(&mut self) {
-        self.pending_permission = self.queued_permissions.pop_front();
-    }
-
-    /// Records a permission request the agent is waiting on: shown at once
-    /// when nothing else is, queued behind the one on screen otherwise.
-    pub(super) fn request_permission(&mut self, request: PermissionRequest) {
-        if self.pending_permission.is_some() {
-            self.queued_permissions.push_back(request);
-        }
-        else {
-            self.pending_permission = Some(request);
-        }
-    }
-
-    /// Forgets the request with `rpc_id` once the client reports it answered,
-    /// by any path, including the ones that never touch this state: Stop's
-    /// `cancelled`, or the session ending. Without it a request answered
-    /// that way stayed pending here, and the agent showed "Awaiting input"
-    /// until its turn ended, or for good (#344).
-    ///
-    /// A request the UI already resolved is gone by now, so this is then a
-    /// no-op: it matches by id, never "whichever is showing".
-    pub(super) fn forget_permission(&mut self, rpc_id: &serde_json::Value) {
-        if self.pending_permission
-               .as_ref()
-               .is_some_and(|request| &request.rpc_id == rpc_id)
-        {
-            self.resolve_permission();
-        }
-        else {
-            self.queued_permissions
-                .retain(|request| &request.rpc_id != rpc_id);
-        }
-    }
-
-    /// Forgets every permission request: a finished turn has none left
-    /// outstanding, since the agent only ends one after each of its
-    /// requests is answered - by the user, or as `cancelled` by Stop.
-    pub(super) fn clear_permissions(&mut self) {
-        self.pending_permission = None;
-        self.queued_permissions.clear();
     }
 
     /// Resolves the most useful human-readable name for a permission request.

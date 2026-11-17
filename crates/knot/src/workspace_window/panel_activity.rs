@@ -1,7 +1,7 @@
 //! The bridge from a Panel-mode agent's ACP session to its activity tracker.
 //!
 //! A panel session reports its lifecycle as *level*: `PanelState` holds
-//! `pending_permission` and `turn_active`, and every repaint poll reads the
+//! `pending_input` and `turn_active`, and every repaint poll reads the
 //! same answer until one of them changes. [`knot_activity::Tracker`] takes
 //! *edges*: each `apply_acp_status` call is a reported transition, and
 //! `ActivityState::apply_acp_status` pushes `Effect::AwaitingInput` every time
@@ -24,7 +24,7 @@ use knot_agents::AgentState;
 use uuid::Uuid;
 
 use crate::app_support::AwaitingInput;
-use crate::panel_state::PanelState;
+use crate::panel_state::{PanelState, PendingInput};
 use crate::workspace_window::WorkspaceWindow;
 
 /// The status an ACP session is reporting, and the text to put in front of
@@ -40,8 +40,15 @@ use crate::workspace_window::WorkspaceWindow;
 /// message and the notification falls back to its default body, as
 /// `desktop-notifications` requires.
 pub(super) fn acp_status(state: &PanelState) -> (AgentState, Option<String>) {
-    if let Some(request) = state.pending_permission.as_ref() {
-        return (AgentState::Input, request.tool_call_title.clone());
+    match state.pending_input.as_ref() {
+        Some(PendingInput::Permission(request)) => {
+            return (AgentState::Input, request.tool_call_title.clone());
+        }
+        // The question itself is what the user is being asked (#430).
+        Some(PendingInput::Question(question)) => {
+            return (AgentState::Input, Some(question.request.headline().to_owned()));
+        }
+        None => {}
     }
     if state.turn_active {
         return (AgentState::Running, None);

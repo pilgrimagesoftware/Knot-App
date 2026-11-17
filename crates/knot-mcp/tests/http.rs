@@ -166,6 +166,7 @@ fn test_agent(name: &str, registered: bool) -> Agent {
             startup_prompt:          None,
             schedule:                None,
             idle_policy:             Default::default(),
+            mcp_handover:            None,
             activated:               false,
             state:                   AgentState::Idle,
             idle_since:              None,
@@ -391,6 +392,146 @@ async fn a_sessionless_probe_before_initialize_is_given_no_session() {
     assert_eq!(list.headers()["Mcp-Session-Id"].to_str().unwrap(),
                session,
                "the session initialize gave stays the session");
+
+    server.stop();
+}
+
+/// The version `initialize` answers with, for a client asking for
+/// `requested`.
+async fn negotiated(base: &str, requested: &str) -> Value {
+    let body: Value = reqwest::Client::new().post(format!("{base}/mcp"))
+                                            .json(&json!({ "jsonrpc": "2.0", "id": 1,
+                                                           "method": "initialize",
+                                                           "params": { "protocolVersion": requested,
+                                                                       "capabilities": {},
+                                                                       "clientInfo": { "name": "probe", "version": "0" } } }))
+                                            .send()
+                                            .await
+                                            .unwrap()
+                                            .json()
+                                            .await
+                                            .unwrap();
+    body["result"]["protocolVersion"].clone()
+}
+
+/// #442: the issue's own reproduction. A version the server implements is
+/// echoed; one it does not is answered with the newest it does (MCP
+/// 2025-11-25, Lifecycle, "Version Negotiation").
+#[tokio::test]
+async fn initialize_echoes_a_supported_version_and_otherwise_offers_the_newest() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+
+    assert_eq!(negotiated(&base, "2025-06-18").await, "2025-06-18");
+    assert_eq!(negotiated(&base, "2025-11-25").await, "2025-11-25");
+    assert_eq!(negotiated(&base, "2024-11-05").await, "2025-11-25");
+    assert_eq!(negotiated(&base, "2099-01-01").await, "2025-11-25");
+
+    server.stop();
+}
+
+/// After `initialize`, a request naming a version the server does not serve
+/// is refused with 400 (MCP 2025-11-25, Transports, "Protocol Version
+/// Header"). The negotiated version, no header at all, and the 2024-11-05
+/// Knot answered with before #442 are all served.
+#[tokio::test]
+async fn a_session_naming_an_unknown_protocol_version_is_refused() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+    let client = reqwest::Client::new();
+    let init = client.post(format!("{base}/mcp"))
+                     .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                                    "params": { "protocolVersion": "2025-06-18" } }))
+                     .send()
+                     .await
+                     .unwrap();
+    let session = init.headers()["Mcp-Session-Id"].to_str()
+                                                  .unwrap()
+                                                  .to_owned();
+    let list = |version: Option<&'static str>| {
+        let mut request =
+            client.post(format!("{base}/mcp"))
+                  .header("Mcp-Session-Id", &session)
+                  .json(&json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }));
+        if let Some(version) = version {
+            request = request.header("MCP-Protocol-Version", version);
+        }
+        request.send()
+    };
+
+    assert_eq!(list(Some("2025-06-18")).await.unwrap().status(), 200);
+    assert_eq!(list(None).await.unwrap().status(), 200);
+    assert_eq!(list(Some("2024-11-05")).await.unwrap().status(), 200);
+    let refused = list(Some("2099-01-01")).await.unwrap();
+    assert_eq!(refused.status(), 400);
+    let body: Value = refused.json().await.unwrap();
+    assert_eq!(body["error"]["code"], -32600);
+
+    server.stop();
+}
+
+/// `initialize` on `/mcp`, sent with `origin` as its `Origin` header, or with
+/// none.
+async fn initialize_from(base: &str, origin: Option<&str>) -> reqwest::Response {
+    let mut request = reqwest::Client::new().post(format!("{base}/mcp"))
+                                            .json(&json!({ "jsonrpc": "2.0", "id": 1,
+                                                           "method": "initialize" }));
+    if let Some(origin) = origin {
+        request = request.header("Origin", origin);
+    }
+    request.send().await.unwrap()
+}
+
+/// Streamable HTTP requires the server to validate `Origin` and answer an
+/// invalid one with 403 (MCP 2025-11-25, Transports, "Security Warning").
+/// The agents Knot launches send none, so that is served; so is a page on
+/// the loopback interface.
+#[tokio::test]
+async fn a_request_with_no_origin_or_a_loopback_origin_is_served() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+
+    for origin in [None,
+                   Some("http://localhost:3000"),
+                   Some("http://127.0.0.1"),
+                   Some("http://[::1]:8767")]
+    {
+        assert_eq!(initialize_from(&base, origin).await.status(),
+                   200,
+                   "{origin:?}");
+    }
+
+    server.stop();
+}
+
+#[tokio::test]
+async fn a_request_from_any_other_origin_is_refused() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+
+    for origin in ["https://example.com", "null"] {
+        let refused = initialize_from(&base, Some(origin)).await;
+        assert_eq!(refused.status(), 403, "{origin}");
+        let body: Value = refused.json().await.unwrap();
+        assert!(body["error"]["code"].is_i64(), "a JSON-RPC error: {body}");
+        assert!(body["id"].is_null(), "with no id: {body}");
+    }
+
+    server.stop();
+}
+
+/// The hook endpoints change agent state as `/mcp` does, so they are held to
+/// the same rule.
+#[tokio::test]
+async fn the_hook_endpoints_refuse_a_foreign_origin() {
+    let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
+    let client = reqwest::Client::new();
+
+    for path in ["/api/v1/agent/status", "/api/v1/agent/register"] {
+        let refused = client.post(format!("{base}{path}"))
+                            .header("Origin", "https://example.com")
+                            .json(&json!({}))
+                            .send()
+                            .await
+                            .unwrap();
+        assert_eq!(refused.status(), 403, "{path}");
+    }
 
     server.stop();
 }

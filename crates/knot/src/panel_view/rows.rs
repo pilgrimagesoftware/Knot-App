@@ -20,8 +20,9 @@ use crate::panel_state::PanelState;
 pub(crate) enum PanelRow {
     /// `PanelState::messages[index]`.
     Message(usize),
-    /// The pending permission prompt, when one is awaiting a decision.
-    Permission,
+    /// What the agent is waiting on the user for - the permission prompt
+    /// or the question card - when anything is pending.
+    Input,
     /// The ended-session banner, when the session has ended.
     Ended,
     /// The working indicator while the turn is active.
@@ -29,10 +30,10 @@ pub(crate) enum PanelRow {
 }
 
 /// The number of rows `state` needs the conversation list to lay out -
-/// every message, plus a permission row and/or an ended row when present.
+/// every message, plus a pending-input row and/or an ended row when present.
 pub(crate) fn row_count(state: &PanelState) -> usize {
     state.messages.len()
-    + usize::from(state.pending_permission.is_some())
+    + usize::from(state.has_pending_input())
     + usize::from(state.ended.is_some())
     + usize::from(state.turn_active)
 }
@@ -42,12 +43,12 @@ pub(crate) fn row_count(state: &PanelState) -> usize {
 /// `PanelState` and the next `sync_row_count` splice.
 pub(crate) fn row_at(state: &PanelState, index: usize) -> Option<PanelRow> {
     let messages = state.messages.len();
-    let has_permission = state.pending_permission.is_some();
+    let has_permission = state.has_pending_input();
     if index < messages {
         Some(PanelRow::Message(index))
     }
     else if index == messages && has_permission {
-        Some(PanelRow::Permission)
+        Some(PanelRow::Input)
     }
     else if index == messages + usize::from(has_permission) && state.ended.is_some() {
         Some(PanelRow::Ended)

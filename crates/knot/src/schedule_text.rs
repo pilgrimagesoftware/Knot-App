@@ -67,6 +67,7 @@ pub(crate) fn skip_key(reason: SkipReason) -> &'static str {
     match reason {
         SkipReason::TurnInProgress => "agent.schedule_skipped_turn",
         SkipReason::PermissionPending => "agent.schedule_skipped_permission",
+        SkipReason::QuestionPending => "agent.schedule_skipped_question",
         SkipReason::PromptQueued => "agent.schedule_skipped_queued",
         SkipReason::OwesReply => "agent.schedule_skipped_reply",
     }

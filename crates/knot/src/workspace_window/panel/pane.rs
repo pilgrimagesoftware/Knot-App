@@ -245,9 +245,9 @@ impl WorkspaceWindow {
             panel_session::PanelSessionSlot::Ready(handle) => {
                 let state_arc = handle.state();
                 let state = state_arc.lock();
-                let blocked = state.pending_permission.is_some();
+                let blocked = state.has_pending_input();
                 let session_arc = Arc::clone(slot);
-                let pending = state.pending_permission.clone();
+                let pending = state.pending_permission().cloned();
                 let on_decision = move |decision: knot_acp::PermissionDecision| {
                     let Some(request) = &pending
                     else {
@@ -337,6 +337,7 @@ impl WorkspaceWindow {
                                              prompt_foreground: theme.primary_foreground,
                                              compact_tool_calls:
                                                  crate::settings_global::read(cx).agent_panel_compact_tool_calls };
+                let question_slot = Arc::clone(slot);
                 drop(state);
                 drop(slot_guard);
                 // Reconcile the virtualized list with the folded state:
@@ -380,6 +381,7 @@ impl WorkspaceWindow {
                     let state = state_arc.lock();
                     self.sync_panel_find(id, &state, &panel, window, cx)
                 };
+                let question = self.question_hooks(id, &question_slot, window, cx);
                 let find_bar = find_frame.and_then(|frame| {
                                              if frame.revealed {
                                                  self.stop_following(id);
@@ -420,7 +422,8 @@ impl WorkspaceWindow {
                                     on_manual_scroll,
                                 )
                                 .with_shell(on_cancel_shell, on_discard_shell)
-                                .with_reply(on_reply),
+                                .with_reply(on_reply)
+                                .with_question(question),
                                 self.key_hints.shown().is_some(),
                             ))
                             // Shown while scrolling, per the user's macOS

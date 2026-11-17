@@ -102,6 +102,7 @@ fn every_skip_reason_has_its_own_line() {
     use super::skip_key;
     let keys = [SkipReason::TurnInProgress,
                 SkipReason::PermissionPending,
+                SkipReason::QuestionPending,
                 SkipReason::PromptQueued,
                 SkipReason::OwesReply].map(skip_key);
     for key in keys {

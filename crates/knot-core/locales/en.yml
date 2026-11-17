@@ -91,6 +91,7 @@ agent:
   # A skipped run names what a new conversation would have discarded.
   schedule_skipped_turn: "Skipped %{when}: a turn was in progress"
   schedule_skipped_permission: "Skipped %{when}: a permission request was waiting"
+  schedule_skipped_question: "Skipped %{when}: a question was waiting for an answer"
   schedule_skipped_queued: "Skipped %{when}: a prompt was queued"
   schedule_skipped_reply: "Skipped %{when}: it owed a reply"
   # Minutes, abbreviated as elsewhere (`mcp.age_minutes`), so no plural.
@@ -132,6 +133,9 @@ panel:
   turn_stopped_other: "Turn stopped: %{reason}"
   allow: "Allow"
   deny: "Deny"
+  question_submit: "Submit"
+  question_skip: "Skip"
+  question_other: "Other"
   close: "Close"
   stop: "Stop"
   running: "Running…"
