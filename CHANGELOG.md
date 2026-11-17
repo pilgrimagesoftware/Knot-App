@@ -1,4 +1,17 @@
 
+## 1.40.0 - 2026-11-17
+
+### Added
+- Answer an agent's questions in the conversation
+
+
+### Fixed
+- Negotiate the MCP protocol version on initialize
+- Reuse MCP handover terminals and clean up leftovers
+- Validate Origin on MCP requests
+
+
+
 ## 1.39.0 - 2026-11-16
 
 ### Added
