@@ -44,6 +44,19 @@ Insert prompt opens the focused panel composer's Insert Prompt list ([Prompts in
 
 With no agent selected, or outside a workspace window, these shortcuts do nothing.
 
+## Question cards
+
+These keys work while a question card has the keyboard; see [Answering an agent's question]({{ '/latest/agents/' | relative_url }}). They are not shortcuts and cannot be rebound.
+
+| Key | Action |
+| --- | --- |
+| ↑ ↓ | Move between options, and on into the next question. |
+| Tab, ⇧Tab | Next or previous field. |
+| Space | Pick an option, or check and uncheck it. |
+| Return | Pick an option and go to the next question. |
+| ⌘Return | Submit the answers. |
+| Escape | Skip the questions. In a text field, leave the field first. |
+
 ## Panels
 
 | Key | Action |

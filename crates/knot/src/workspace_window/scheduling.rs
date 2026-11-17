@@ -16,9 +16,10 @@ use crate::workspace_window::WorkspaceWindow;
 
 impl WorkspaceWindow {
     /// What starting `id` in a new conversation now would discard, if
-    /// anything: a pending permission request, a turn in progress, a queued
-    /// prompt, or a message it read and has not answered (#405). The first
-    /// that applies, in that order, is the one the sidebar names.
+    /// anything: a pending permission request or question card, a turn in
+    /// progress, a queued prompt, or a message it read and has not answered
+    /// (#405). The first that applies, in that order, is the one the
+    /// sidebar names.
     pub(crate) fn scheduled_run_blocker(&self, id: Uuid) -> Option<SkipReason> {
         let session = self.panel_sessions
                           .get(&id)
@@ -26,8 +27,11 @@ impl WorkspaceWindow {
                               PanelSessionSlot::Ready(handle) => {
                                   let state = handle.state();
                                   let state = state.lock();
-                                  if state.pending_permission.is_some() {
+                                  if state.pending_permission().is_some() {
                                       Some(SkipReason::PermissionPending)
+                                  }
+                                  else if state.pending_question().is_some() {
+                                      Some(SkipReason::QuestionPending)
                                   }
                                   else if state.turn_active {
                                       Some(SkipReason::TurnInProgress)

@@ -302,7 +302,7 @@ impl WorkspaceWindow {
         else {
             return;
         };
-        let request = handle.state().lock().pending_permission.clone();
+        let request = handle.state().lock().pending_permission().cloned();
         if let Some(request) = request.filter(|request| request.offers(decision)) {
             handle.answer_permission(&request, decision);
         }
@@ -547,7 +547,7 @@ impl WorkspaceWindow {
                     let state = state.lock();
                     // A session held by its usage limit queues the prompt
                     // instead, to go when the limit lifts (#368).
-                    let ready = state.pending_permission.is_none()
+                    let ready = !state.has_pending_input()
                                 && !state.turn_active
                                 && !state.held_by_session_limit(std::time::SystemTime::now());
                     drop(state);
@@ -633,7 +633,7 @@ impl WorkspaceWindow {
             };
             let state = handle.state();
             let state = state.lock();
-            if state.pending_permission.is_some() || state.turn_active {
+            if state.has_pending_input() || state.turn_active {
                 return None;
             }
             // Checked every tick, so a held prompt goes on the first one

@@ -1,7 +1,7 @@
 //! ACP (Agent Client Protocol) client: JSON-RPC 2.0 over a subprocess's
 //! stdio, capability negotiation, session lifecycle, streaming updates, and
-//! permission-request handling for driving an ACP-speaking agent as a
-//! structured session instead of a character stream.
+//! permission-request and form-elicitation handling for driving an ACP-speaking
+//! agent as a structured session instead of a character stream.
 //!
 //! Contract: `openspec/specs/acp-client/spec.md`. Agent-agnostic - no
 //! knowledge of `Agent`, GPUI, or per-agent-type launch rules lives here
@@ -16,7 +16,8 @@ pub use client::{AcpClient, NewSession, SessionEvent};
 pub use error::{AcpError, Result, SessionEndCause};
 pub use protocol::steering::SteerOutcome;
 pub use protocol::{
-    AgentCapabilities, AgentInfo, ConfigOption, ConfigOptionValue, MCP_SERVER_NAME,
-    PermissionDecision, PermissionOption, PermissionOptionKind, PermissionRequest, SessionUpdate,
-    StopReason, ToolCallContent,
+    AgentCapabilities, AgentInfo, AnswerValue, Choice, ConfigOption, ConfigOptionValue, FieldKind,
+    FormAnswer, FormField, MCP_SERVER_NAME, PermissionDecision, PermissionOption,
+    PermissionOptionKind, PermissionRequest, QuestionRequest, SessionUpdate, StopReason,
+    ToolCallContent,
 };

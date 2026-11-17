@@ -32,6 +32,8 @@ pub(crate) struct PanelCallbacks {
     pub(crate) on_discard_shell:       Rc<dyn Fn(Uuid)>,
     /// Quotes one finished response into the composer to reply to it.
     pub(crate) on_reply:               ReplyCallback,
+    /// The question card's controls, when the window lends them.
+    pub(crate) question:               Option<super::question_card::QuestionHooks>,
 }
 
 impl PanelCallbacks {
@@ -48,7 +50,8 @@ impl PanelCallbacks {
                on_manual_scroll:       Rc::new(on_manual_scroll),
                on_cancel_shell:        Rc::new(|_| {}),
                on_discard_shell:       Rc::new(|_| {}),
-               on_reply:               Rc::new(|_, _, _| {}), }
+               on_reply:               Rc::new(|_, _, _| {}),
+               question:               None, }
     }
 
     /// Adds the `!` command controls.
@@ -62,6 +65,14 @@ impl PanelCallbacks {
                              -> Self {
         self.on_cancel_shell = Rc::new(on_cancel);
         self.on_discard_shell = Rc::new(on_discard);
+        self
+    }
+
+    /// Adds the question card's controls (#430). Without them a card shows
+    /// its questions but cannot be answered.
+    pub(crate) fn with_question(mut self, hooks: Option<super::question_card::QuestionHooks>)
+                                -> Self {
+        self.question = hooks;
         self
     }
 

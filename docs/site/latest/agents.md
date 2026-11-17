@@ -95,7 +95,7 @@ the first valid time after it, and a time that happens twice runs once.
 Schedules run only while Knot is running. A run missed by up to 10 minutes, because the Mac was
 asleep or Knot was still launching, runs once when Knot notices; an older one is skipped and the
 sidebar shows it as missed for an hour. A run never interrupts work: if the agent is mid-turn, has
-a permission request or a queued prompt waiting, or owes another agent a reply, that run is skipped
+a permission request, a question card or a queued prompt waiting, or owes another agent a reply, that run is skipped
 and the sidebar says so. A scheduled agent's row shows its next run.
 
 **When idle** stops an agent that has done nothing for a while. Set a default in Settings >
@@ -103,9 +103,9 @@ General > Idle agents, and override it per agent in the editor: use the default,
 or deactivate or reset it after a number of minutes. It is off by default.
 
 An agent counts as idle only while it has no turn under way, no running subagent, no queued
-prompt, no pending permission request, no unanswered message, and no background process its latest
+prompt, no pending permission request or question card, no unanswered message, and no background process its latest
 turn started (such as a test run), and while nobody types, clicks or scrolls in its pane. A turn that ended
-with a question to you counts as idle; a permission request does not. Near the end of the period
+with a question to you in its reply counts as idle; a permission request or a question card does not. Near the end of the period
 the row shows how long the agent has been idle and when it stops.
 
 Deactivating stops the session as the context menu's Deactivate does. Resetting starts a new
@@ -179,7 +179,7 @@ sort the dashboard.
 |---|---|---|
 | Working | Orange | Running a turn or producing terminal output. |
 | Idle | Green | Quiet and waiting. |
-| Awaiting input | Red | Needs you - for example a permission prompt is open. |
+| Awaiting input | Red | Needs you - for example a permission prompt or a question card is open. |
 | Error | Red | The session ended with an error. |
 | Session limit | Bright red, bold badge | The agent's provider refused the turn: its session or usage limit is reached. The dot is a stronger red than Error's, and the header and dashboard card show "Session limit" as a bold white-on-red badge. The header says when it resets, if the provider said. |
 
@@ -197,7 +197,8 @@ stays dismissed until that window resets. Knot reads these figures from Codex's 
 don't show this yet: their ACP adapter doesn't report usage.
 
 An agent in Awaiting input says why when it knows: hover its state dot, or read the line under its
-dashboard card. A pending permission request shows its title (`permission requested for Bash`); a
+dashboard card. A pending permission request shows its title (`permission requested for Bash`), and a
+question card shows the question (`Which color?`); a
 wait Autopilot started says what it read in the agent's last reply (`Autopilot: the last reply asks
 you a question`). The reason goes as soon as the agent leaves Awaiting input. A session that exits non-zero, or
 a panel connection that ends with an error, moves the agent to Error. A panel agent whose turn is
@@ -261,6 +262,34 @@ prompt - leaves your place alone unless you were already at the bottom.
 The composer grows with your draft and does not scroll past its last line, so a draft cannot be
 scrolled out of view. The control bar's model and effort pickers open at a fixed width, so long
 model names fit whichever one is selected.
+
+### Answering an agent's question
+
+When Claude asks you something with set answers (its AskUserQuestion tool), the question appears as a
+card at the end of the conversation instead of in its reply. Each question shows its options with
+their descriptions: pick one, or check any number when the question allows several. Under each
+question an **Other** field takes your own answer instead, or a note beside the option you picked.
+**Submit** sends your answers; **Skip** tells Claude you skipped them and lets it carry on. Stop
+cancels the question along with the turn.
+
+An MCP server that asks for input (for example a setting or a confirmation) gets the same card, with
+a text, number or on/off field for each thing it asks. Submit stays unavailable until every required
+field is filled and every number is in range.
+
+The card takes the keyboard when it appears, and your draft in the composer is kept:
+
+| Key | On the card |
+| --- | --- |
+| ↑ ↓ | Move between options, and on into the next question. |
+| Tab, ⇧Tab | Next or previous field. |
+| Space | Pick the option, or check and uncheck it. |
+| Return | Pick the option and go to the next question. |
+| ⌘Return | Submit. |
+| Escape | Skip. In a text field, the first Escape leaves the field and keeps what you typed. |
+
+While a question card is open the agent shows Awaiting input with the question as its reason, a
+prompt you send waits in the queue, and scheduled runs and idle shutdown leave the agent alone, as
+for a permission request. If Claude withdraws the question, the card goes away by itself.
 
 ### Finding text in a conversation
 

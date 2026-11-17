@@ -17,15 +17,16 @@ impl PanelState {
     pub fn apply(&mut self, event: SessionEvent) {
         match event {
             SessionEvent::Update(update) => self.apply_update(update),
-            SessionEvent::PermissionRequest(request) => self.request_permission(request),
-            SessionEvent::PermissionResolved { rpc_id } => self.forget_permission(&rpc_id),
+            SessionEvent::PermissionRequest(request) => self.request_input(request.into()),
+            SessionEvent::Question(request) => self.request_input(request.into()),
+            SessionEvent::InputResolved { rpc_id } => self.forget_input(&rpc_id),
             // The client answers every request still pending with Deny as
             // the session ends, but reports those answers after `Ended`,
             // which is the last event the drain reads - so nothing would
             // otherwise take them off screen (#344).
             SessionEvent::Ended(cause) => {
                 self.ended = Some(cause);
-                self.clear_permissions();
+                self.clear_inputs();
             }
         }
     }
@@ -136,7 +137,7 @@ impl PanelState {
             // agent that announced work and went idle.
             SessionUpdate::TurnEnd { stop_reason } => {
                 self.turn_active = false;
-                self.clear_permissions();
+                self.clear_inputs();
                 if let Some(notice) = stop_notice(&stop_reason) {
                     self.push_notice(notice);
                 }

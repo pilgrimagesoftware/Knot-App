@@ -181,16 +181,20 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
                 }
             }
         }
-        Some(PanelRow::Permission) => {
-            let request = state.pending_permission
-                               .as_ref()
-                               .expect("row_at yields Permission only while a request is pending");
-            render_permission_prompt(state,
-                                     request,
-                                     style.permission_risk,
-                                     callbacks.on_permission_decision.clone(),
-                                     window).into_any_element()
-        }
+        Some(PanelRow::Input) => match state.pending_input.as_ref() {
+            Some(crate::panel_state::PendingInput::Permission(request)) => {
+                render_permission_prompt(state,
+                                         request,
+                                         style.permission_risk,
+                                         callbacks.on_permission_decision.clone(),
+                                         window).into_any_element()
+            }
+            Some(crate::panel_state::PendingInput::Question(question)) => {
+                super::question_card::render_question_card(question, callbacks, window).into_any_element()
+            }
+            // `row_at` yields `Input` only while something is pending.
+            None => div().into_any_element(),
+        },
         Some(PanelRow::Ended) => {
             let cause = state.ended
                              .as_ref()
@@ -223,7 +227,7 @@ fn render_row(index: usize, state: &PanelState, style: &PanelStyle, list: &ListS
 /// An inline permission request with a control for each option the agent
 /// offers, per `acp-panel-ui`'s permission-prompts requirement. Sending
 /// further prompts is blocked by the caller while this is rendered (the
-/// caller checks `PanelState::pending_permission` before calling `prompt`).
+/// caller checks `PanelState::has_pending_input` before calling `prompt`).
 ///
 /// A button carries the keystroke that answers with its option, per
 /// `permission-prompt-ui`'s keyboard-operability requirement - Allow,
