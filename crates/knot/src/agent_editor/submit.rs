@@ -93,6 +93,8 @@ impl AgentEditor {
                     capabilities,
                     cost_tier: self.cost_tier,
                     startup_prompt: self.submitted_startup_prompt(cx),
+                    // Only the MCP section opens handover terminals (#443).
+                    mcp_handover: None,
                 },
             );
             // A fork continues the source's conversation rather than
