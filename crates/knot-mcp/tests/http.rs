@@ -166,6 +166,7 @@ fn test_agent(name: &str, registered: bool) -> Agent {
             startup_prompt:          None,
             schedule:                None,
             idle_policy:             Default::default(),
+            mcp_handover:            None,
             activated:               false,
             state:                   AgentState::Idle,
             idle_since:              None,

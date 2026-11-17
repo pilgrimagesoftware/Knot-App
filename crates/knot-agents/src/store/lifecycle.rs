@@ -34,6 +34,7 @@ impl AgentStore {
                             // Set in the editor after creation (#404).
                             schedule: None,
                             idle_policy: Default::default(),
+                            mcp_handover: opts.mcp_handover,
                             // An `Active` agent is activated from birth, so
                             // it starts when its workspace next opens.
                             activated: opts.activation_mode == ActivationMode::Active,

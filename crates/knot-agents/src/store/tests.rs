@@ -3,6 +3,7 @@ mod awaiting_reason;
 mod duplicate;
 mod idle_since;
 mod lifecycle;
+mod mcp_handover;
 mod persistence;
 mod pull_requests;
 mod revision;

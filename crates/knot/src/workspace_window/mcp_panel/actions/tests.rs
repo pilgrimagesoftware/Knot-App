@@ -1,9 +1,10 @@
 //! The parts of the handover that do not need a window.
 //!
-//! Creating a companion and starting its session needs a live
-//! `WorkspaceWindow`, so what is checked here is the decision that precedes
-//! it: which binary the flow opens in, and that the shell companion path is
-//! what carries it rather than the ACP adapter.
+//! Starting the terminal's session needs a live `WorkspaceWindow`, so what is
+//! checked here is the decision that precedes it: which binary the flow opens
+//! in, and that the store's handover path carries it rather than the ACP
+//! adapter. The roster side - one terminal per owner and server, the marker,
+//! the cleanup - is tested in `knot-agents`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,16 +40,19 @@ fn sources_under(dir: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// The terminal is a shell companion - the path `acp-panel-ui` already
-/// guarantees - and never the agent's own session.
+/// The terminal comes from the store's handover path, which builds the shell
+/// companion and keeps one per owner and server (#443). What it builds is
+/// checked against the store itself in `knot-agents`'
+/// `store/tests/mcp_handover.rs`; this pins only that the window goes through
+/// it rather than creating a companion of its own.
 #[test]
-fn the_handover_opens_a_shell_companion() {
+fn the_handover_goes_through_the_store() {
     let source = actions_source();
 
-    assert!(source.contains("create_shell_companion"),
-            "the handover must use the plain-shell path");
-    assert!(source.contains("shell_command"),
-            "the flow is entered through the companion's initialization command");
+    assert!(source.contains(".open_mcp_handover(McpHandoverRequest"),
+            "the window must ask the store for the terminal, so a repeat reuses it");
+    assert!(!source.contains("store.create("),
+            "a companion created here would skip the reuse check");
 }
 
 /// The ACP adapter speaks JSON-RPC, not shell. Typing at it would corrupt the

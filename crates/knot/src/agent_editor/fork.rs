@@ -46,6 +46,9 @@ impl AgentPrefill {
                                  // the fork belongs to no one.
                                  created_by: _,
                                  is_companion: _,
+                                 // Not carried: a fork is never a handover
+                                 // terminal (#443).
+                                 mcp_handover: _,
                                  // The conversation the fork continues.
                                  session_id,
                                  // Runtime state, and the source's own resume

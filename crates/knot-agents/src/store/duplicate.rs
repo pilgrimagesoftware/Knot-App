@@ -53,6 +53,9 @@ impl AgentStore {
                     // follow their owner), and the copy belongs to no one.
                     created_by: _,
                     is_companion: _,
+                    // Not copied: only a companion carries it, and companions
+                    // are not duplicated (#443).
+                    mcp_handover: _,
                     // Runtime and conversation state: a duplicate starts
                     // fresh rather than sharing the source's session.
                     activated: _,
