@@ -2,7 +2,29 @@ use std::time::Duration;
 
 pub const DEFAULT_PORT: u16 = 8767;
 pub const DEFAULT_SESSION_TIMEOUT: Duration = Duration::from_secs(3600);
-pub const PROTOCOL_VERSION: &str = "2024-11-05";
+/// The MCP revisions this server implements, newest first. `initialize`
+/// echoes a client's requested version when it is here, and answers with the
+/// first entry otherwise (MCP 2025-11-25, Lifecycle, "Version Negotiation").
+///
+/// Both serve Streamable HTTP with `Mcp-Session-Id`, take no JSON-RPC batches
+/// and reject an unknown `MCP-Protocol-Version` header, which is what the
+/// two require of a server with Knot's feature set. 2025-03-26 is left out
+/// because it requires a server to accept batches, and 2024-11-05 because it
+/// describes the HTTP+SSE transport, which Knot does not serve.
+pub const PROTOCOL_VERSIONS: &[&str] = &["2025-11-25", "2025-06-18"];
+
+/// Versions a client may still name in `MCP-Protocol-Version` without being
+/// refused, though `initialize` never offers them. Knot answered every
+/// `initialize` with 2024-11-05 until #442, and a client that kept its session
+/// across an upgrade (the stale-session self-heal) still sends that. 2025-03-26
+/// is what the spec has a server assume when the header is missing, which
+/// Knot accepts, so naming it is accepted too.
+pub const LEGACY_PROTOCOL_VERSIONS: &[&str] = &["2025-03-26", "2024-11-05"];
+
+/// The header a client names its negotiated version in, on every request
+/// after `initialize` (MCP 2025-06-18 and later, Transports, "Protocol
+/// Version Header").
+pub const PROTOCOL_VERSION_HEADER: &str = "MCP-Protocol-Version";
 pub const SERVER_NAME: &str = "knot-mcp";
 pub const SERVER_VERSION: &str = "1.0.0";
 

@@ -2,9 +2,9 @@
 //! checked once against a real repository with a linked worktree.
 
 use std::path::PathBuf;
-use std::process::Command;
 
 use super::*;
+use crate::test_repo::{git, init};
 
 fn slug(owner: &str, repo: &str) -> RepoSlug {
     RepoSlug { owner: owner.to_owned(),
@@ -58,14 +58,6 @@ fn repositories_are_ordered_by_heading() {
     assert_eq!(labels, ["alpha", "zeta"]);
 }
 
-fn git(dir: &std::path::Path, args: &[&str]) {
-    let status = Command::new("git").args(args)
-                                    .current_dir(dir)
-                                    .output()
-                                    .expect("git runs");
-    assert!(status.status.success(), "git {args:?}: {status:?}");
-}
-
 /// The whole path against git: a repository, a linked worktree of it, a
 /// subfolder, and a folder outside git.
 #[test]
@@ -73,17 +65,8 @@ fn resolve_reads_worktrees_subfolders_and_skips_non_git_folders() {
     let root = tempfile::tempdir().expect("a temp dir");
     let main = root.path().join("widget");
     std::fs::create_dir_all(main.join("src")).unwrap();
-    git(&main, &["init", "-q", "-b", "main"]);
-    git(&main,
-        &["-c",
-          "user.name=t",
-          "-c",
-          "user.email=t@t",
-          "commit",
-          "-q",
-          "--allow-empty",
-          "-m",
-          "init"]);
+    init(&main, "main");
+    git(&main, &["commit", "-q", "--allow-empty", "-m", "init"]);
     git(&main,
         &["remote", "add", "origin", "git@github.com:acme/widget.git"]);
     let linked = root.path().join("widget-feature");
