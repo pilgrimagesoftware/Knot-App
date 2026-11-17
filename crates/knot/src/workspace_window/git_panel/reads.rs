@@ -175,13 +175,7 @@ mod tests {
     use crate::git_panel::state::{DiffOutcome, GitStatusSnapshot, Selection};
 
     fn init_repo(dir: &Path) {
-        let run = |args: &[&str]| {
-            Runner::new(dir).run(args).unwrap();
-        };
-        run(&["init", "-q", "-b", "main"]);
-        run(&["config", "user.email", "test@example.com"]);
-        run(&["config", "user.name", "Test"]);
-        run(&["config", "commit.gpgsign", "false"]);
+        crate::test_repo::init(dir, "main");
     }
 
     fn selection(path: &str, staged: bool) -> Selection {

@@ -49,15 +49,8 @@ struct Fixture {
 
 fn repository_on_main() -> TempDir {
     let dir = TempDir::new().expect("a temporary agent folder");
-    let run = |args: &[&str]| {
-        knot_git::Runner::new(dir.path()).run(args)
-                                         .expect("git runs in the test folder");
-    };
-    run(&["init", "-q", "-b", "main"]);
-    run(&["config", "user.email", "test@example.com"]);
-    run(&["config", "user.name", "Test"]);
-    run(&["config", "commit.gpgsign", "false"]);
-    run(&["commit", "-qm", "root", "--allow-empty"]);
+    crate::test_repo::init(dir.path(), "main");
+    crate::test_repo::git(dir.path(), &["commit", "-qm", "root", "--allow-empty"]);
     dir
 }
 
