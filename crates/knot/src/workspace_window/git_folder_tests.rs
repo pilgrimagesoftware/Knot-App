@@ -18,6 +18,7 @@ use parking_lot::Mutex;
 use tempfile::TempDir;
 use uuid::Uuid;
 
+use crate::test_repo;
 use crate::window_registry::WindowKey;
 use crate::window_registry::WindowRegistry;
 use crate::workspace_window::WorkspaceWindow;
@@ -28,17 +29,10 @@ const INERT_AGENT_TYPE: &str = "git-folder-test-inert";
 /// `dirty`.
 fn repository(dirty: bool) -> TempDir {
     let dir = TempDir::new().expect("a temporary repository");
-    let run = |args: &[&str]| {
-        knot_git::Runner::new(dir.path()).run(args)
-                                         .expect("git runs in the test folder");
-    };
-    run(&["init", "-q", "-b", "main"]);
-    run(&["config", "user.email", "test@example.com"]);
-    run(&["config", "user.name", "Test"]);
-    run(&["config", "commit.gpgsign", "false"]);
+    test_repo::init(dir.path(), "main");
     std::fs::write(dir.path().join("file.txt"), "one\n").expect("write the file");
-    run(&["add", "file.txt"]);
-    run(&["commit", "-qm", "root"]);
+    test_repo::git(dir.path(), &["add", "file.txt"]);
+    test_repo::git(dir.path(), &["commit", "-qm", "root"]);
     if dirty {
         std::fs::write(dir.path().join("file.txt"), "one\ntwo\n").expect("change the file");
     }
