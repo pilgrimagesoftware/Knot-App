@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use crate::consts;
 use crate::log::{Logger, Subject, describe_call, describe_caller};
+use crate::protocol_version;
 use crate::tools::{Caller, ToolCatalog};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -59,6 +60,12 @@ pub struct JsonRpcError {
     pub data:    Option<Value>,
 }
 
+/// The version an `initialize` request asks for, from
+/// `params.protocolVersion`.
+fn requested_version(request: &JsonRpcRequest) -> Option<&str> {
+    request.params.as_ref()?.get("protocolVersion")?.as_str()
+}
+
 const METHOD_NOT_FOUND: i64 = -32601;
 const INVALID_PARAMS: i64 = -32602;
 
@@ -73,7 +80,7 @@ pub async fn dispatch(request: &JsonRpcRequest, catalog: &dyn ToolCatalog, log: 
     match request.method.as_str() {
         "initialize" => JsonRpcResponse::success(request.id.clone(),
                                                  serde_json::json!({
-                                                     "protocolVersion": consts::PROTOCOL_VERSION,
+                                                     "protocolVersion": protocol_version::negotiate(requested_version(request)),
                                                      "capabilities": { "tools": { "listChanged": false } },
                                                      "serverInfo": { "name": consts::SERVER_NAME, "version": consts::SERVER_VERSION },
                                                  })),
@@ -157,7 +164,9 @@ mod tests {
                                 None,
                                 &Caller::default()).await;
         let result = response.result.unwrap();
-        assert_eq!(result["protocolVersion"], consts::PROTOCOL_VERSION);
+        assert_eq!(result["protocolVersion"],
+                   consts::PROTOCOL_VERSIONS[0],
+                   "no version asked for gets the newest");
         assert!(result["capabilities"]["tools"].is_object());
         assert_eq!(result["serverInfo"]["name"], consts::SERVER_NAME);
     }

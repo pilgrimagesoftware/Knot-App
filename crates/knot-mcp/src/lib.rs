@@ -8,6 +8,7 @@ mod error;
 mod hooks;
 mod log;
 mod probe;
+mod protocol_version;
 mod rpc;
 mod server;
 mod session;
