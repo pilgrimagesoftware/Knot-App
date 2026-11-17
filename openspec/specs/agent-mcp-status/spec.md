@@ -302,6 +302,15 @@ reflects whatever the user did.
 A row in the connected or unknown state SHALL NOT offer the action, and
 neither SHALL a row for an agent of a type with no MCP command.
 
+Repeating the action for the same agent and server SHALL show the terminal
+already opened for them rather than open another. The action SHALL show and
+start its terminal whatever the agent's activation mode.
+
+That terminal SHALL be recognisable as a handover terminal after a restart. One
+left by an earlier run SHALL NOT be restored, and one left by a window that
+closed SHALL be removed when that workspace's window opens again, before
+anything starts.
+
 #### Scenario: Delegating for a server needing authentication
 
 - **WHEN** the user invokes the action on a row reporting that the server
@@ -326,6 +335,29 @@ neither SHALL a row for an agent of a type with no MCP command.
 
 - **WHEN** a row reports its server as connected
 - **THEN** that row offers no delegated action
+
+#### Scenario: Repeating the action reuses the terminal
+
+- **WHEN** the user invokes the action twice on the same server's row
+- **THEN** one terminal exists for that agent and server, and the second
+  invocation shows it
+
+#### Scenario: A passive agent's terminal still runs
+
+- **WHEN** the user invokes the action on a row of a passive agent that is not
+  running
+- **THEN** the terminal is shown and its flow starts
+
+#### Scenario: A leftover terminal is not restored
+
+- **WHEN** Knot starts with a saved handover terminal from an earlier run
+- **THEN** the terminal is not restored, and the agent and its other companions
+  are
+
+#### Scenario: A closed window's terminal is removed when it reopens
+
+- **WHEN** a workspace window opens with a handover terminal in its workspace
+- **THEN** the terminal is removed before any session starts
 
 ### Requirement: Knot's own server row offers no delegated action
 
