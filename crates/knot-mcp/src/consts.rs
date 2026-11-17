@@ -25,6 +25,11 @@ pub const LEGACY_PROTOCOL_VERSIONS: &[&str] = &["2025-03-26", "2024-11-05"];
 /// after `initialize` (MCP 2025-06-18 and later, Transports, "Protocol
 /// Version Header").
 pub const PROTOCOL_VERSION_HEADER: &str = "MCP-Protocol-Version";
+
+/// The hosts an `Origin` header may name for the server to answer it: this
+/// machine's loopback interface, on any port. `Uri::host` keeps an IPv6
+/// address's brackets, so `[::1]` is written with them.
+pub const LOOPBACK_ORIGIN_HOSTS: &[&str] = &["localhost", "127.0.0.1", "[::1]"];
 pub const SERVER_NAME: &str = "knot-mcp";
 pub const SERVER_VERSION: &str = "1.0.0";
 
