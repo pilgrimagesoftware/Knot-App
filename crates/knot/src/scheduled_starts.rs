@@ -106,6 +106,10 @@ pub(crate) fn tick(store: &Arc<Mutex<knot_agents::AgentStore>>,
                                                                   cx)
         {
             view.update(cx, |view, cx| view.start_scheduled_run(scheduled.agent, cx));
+            // A window opened without focus never becomes the active one,
+            // which is what otherwise rebuilds the Window menu; without this
+            // nothing showed that the workspace was open (#456).
+            crate::menu_bar::refresh_menu_bar_workspaces(store, cx);
         }
         // The sidebar's clock line changes with every handled run, started
         // or not; nothing else would repaint an idle window for it.
