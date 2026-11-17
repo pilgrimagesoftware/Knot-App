@@ -15,12 +15,16 @@ use uuid::Uuid;
 use crate::consts;
 use crate::hooks::{AgentHookHandler, HookRequest};
 use crate::log::{Logger, Subject, Vitals, describe_caller, spawn_heartbeat};
+use crate::protocol_version;
 use crate::rpc::{self, JsonRpcId, JsonRpcRequest, JsonRpcResponse};
 use crate::session::McpSessionManager;
 use crate::status::{self, AgentStatusEntry};
 use crate::tools::{Caller, ToolCatalog};
 
 const SESSION_HEADER: &str = "Mcp-Session-Id";
+/// JSON-RPC 2.0 "Invalid Request": the message is well formed but cannot be
+/// served.
+const INVALID_REQUEST: i64 = -32600;
 
 /// Supplies the live agent snapshot the status endpoint serializes.
 pub type AgentsSnapshotFn = Arc<dyn Fn() -> Vec<knot_agents::Agent> + Send + Sync>;
@@ -309,8 +313,41 @@ fn sse_response(event: &str, data: &str, session_id: Option<&str>) -> Response {
     response.body(axum::body::Body::from(body)).unwrap()
 }
 
-async fn mcp_sse() -> Response {
+async fn mcp_sse(headers: HeaderMap) -> Response {
+    if let Some(refused) = refuse_unknown_protocol_version(&headers) {
+        return refused;
+    }
     sse_response("connected", "{\"status\":\"connected\"}", None)
+}
+
+/// A 400 for a request whose `MCP-Protocol-Version` header names a version
+/// the server does not serve, or `None` to carry on. A header that is not
+/// valid text counts as an invalid version.
+///
+/// Only a request that carries an `Mcp-Session-Id` is held to it: the header
+/// names the version negotiated at `initialize`, and a request with no
+/// session has negotiated nothing. Claude Code and agy both send
+/// `server/discover` with `MCP-Protocol-Version: 2026-07-28` before they
+/// initialize (#431, #442), and refusing that probe would turn their
+/// method-not-found fallback into a failed connection.
+fn refuse_unknown_protocol_version(headers: &HeaderMap) -> Option<Response> {
+    if !headers.contains_key(SESSION_HEADER) {
+        return None;
+    }
+    let version = match headers.get(consts::PROTOCOL_VERSION_HEADER)
+                               .map(HeaderValue::to_str)
+    {
+        None => None,
+        Some(Ok(version)) => Some(version),
+        Some(Err(_)) => Some(""),
+    };
+    if protocol_version::header_is_acceptable(version) {
+        return None;
+    }
+    let message = format!("Unsupported {}: {}",
+                          consts::PROTOCOL_VERSION_HEADER,
+                          version.unwrap_or_default());
+    Some(json_rpc_error_response(INVALID_REQUEST, message))
 }
 
 /// The agent a request's URL names, from `?agent=<id>`; `None` for a URL
@@ -387,6 +424,14 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
         Ok(r) => r,
         Err(e) => return json_rpc_error_response(-32700, format!("Parse error: {e}")),
     };
+    // `initialize` is where the version is chosen, so only the requests
+    // after it are held to one. A client re-initializing on an old session
+    // still names the version it is about to replace.
+    if request.method != "initialize"
+       && let Some(refused) = refuse_unknown_protocol_version(&headers)
+    {
+        return refused;
+    }
 
     let named = agent_from_query(query.as_deref());
     let (caller, response_session_id) =
