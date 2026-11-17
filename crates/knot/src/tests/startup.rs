@@ -113,3 +113,31 @@ fn initial_selection_prefers_active_agent_and_skips_stale_ids() {
     assert_eq!(initial_agent_selection(&restored), Some(second));
     assert_ne!(initial_agent_selection(&restored), Some(first));
 }
+
+/// A terminal opened to hand the user an agent's MCP flow belongs to the run
+/// that opened it (#443): one saved by an earlier run is not restored, so it
+/// cannot come back as a stray shell that re-runs the flow. Its owner and the
+/// owner's ordinary companions are.
+#[test]
+fn build_agent_store_drops_leftover_mcp_handover_terminals() {
+    let (owner_id, shell_id, handover_id) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    let owner = knot_core::SavedAgent::new(owner_id, "alpha", None, "~/alpha");
+    let mut shell = knot_core::SavedAgent::new(shell_id, "Shell", None, "~/alpha");
+    shell.created_by = Some(owner_id);
+    shell.is_companion = true;
+    let mut handover = shell.clone();
+    handover.id = handover_id;
+    handover.mcp_handover = Some("github".to_string());
+    let mut ws = workspace("Restored");
+    ws.agent_ids = vec![owner_id, handover_id, shell_id];
+
+    let mut settings = knot_core::Settings::default();
+    settings.restore_layout_on_launch = true;
+    settings.saved_agents = vec![owner, handover, shell];
+    settings.saved_workspaces = vec![ws];
+
+    let store = build_agent_store(&settings);
+    let restored: Vec<Uuid> = store.agents().iter().map(|agent| agent.id).collect();
+    assert_eq!(restored, [owner_id, shell_id]);
+    assert_eq!(store.workspaces()[0].agent_ids, [owner_id, shell_id]);
+}

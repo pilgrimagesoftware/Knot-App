@@ -377,6 +377,14 @@ for every agent and across launches. A dismissed server that connects is no long
 is listed with the others again, and if it later needs authentication or fails, it is named as
 needing attention like any other.
 
+A row that needs authentication, has failed, or is waiting for approval or disabled has an
+external-link button. It opens an "MCP" terminal beside the agent, in its folder, running the
+agent's own MCP command, and you finish there. Knot doesn't sign
+in for you. When the terminal exits, the section checks the servers again. Clicking the button
+again for the same server shows the terminal that's already open rather than opening another. The
+terminal belongs to the window that opened it: it isn't restored when Knot restarts, and if the
+window closes while it's still open, it's removed the next time that workspace opens.
+
 The selected agent's pane has a collapsible processes section, present in both views and collapsed
 by default. An artifact panel open beside the pane leaves it in place; it is hidden only while that
 panel is expanded over the content area. Expanded, it lists subagents first, then the processes running underneath the agent's

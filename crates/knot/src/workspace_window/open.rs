@@ -263,12 +263,15 @@ impl WorkspaceWindow {
                     mcp_results: Arc::new(Mutex::new(Vec::new())),
                     mcp_tools_in_flight: Arc::new(Mutex::new(BTreeSet::new())),
                     mcp_tool_results: Arc::new(Mutex::new(Vec::new())),
-                    mcp_handover_terminals: BTreeMap::new(),
                     view_mode: WorkspaceViewMode::Terminal,
                     dashboard_sort: dashboard::DashboardSort::default(),
                     error: None,
                     agent_drag: crate::workspace_window::AgentRowDrag::default(),
                 };
+                            // Before anything starts: a handover terminal
+                            // left by an earlier window would otherwise
+                            // re-run its MCP flow unasked (#443).
+                            window.remove_stale_mcp_handovers(cx);
                             // Matches the Swift reference: every agent in the
                             // workspace starts its session when the workspace
                             // window opens, not

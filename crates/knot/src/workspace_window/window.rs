@@ -383,11 +383,6 @@ pub(crate) struct WorkspaceWindow {
     pub(super) mcp_tools_in_flight: crate::workspace_window::mcp_panel::tools::ToolsInFlight,
     /// Where a finished tool listing reports and the poll drains.
     pub(super) mcp_tool_results: crate::workspace_window::mcp_panel::tools::ToolsResults,
-    /// Shell companions opened to hand the user an agent's own MCP flow,
-    /// mapped to the agent whose section opened them. An entry's exit is what
-    /// makes that section re-probe, so it catches up with whatever the user
-    /// did in there.
-    pub(super) mcp_handover_terminals:           BTreeMap<Uuid, Uuid>,
     /// Agents whose git panel is open. Per-agent rather than a
     /// `WorkspaceViewMode`: the panel is scoped to one agent's folder and
     /// leaves that agent's content visible, so it is not a window mode.
