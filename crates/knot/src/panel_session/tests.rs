@@ -53,7 +53,8 @@ async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
     let log = dir.path().join("methods.log");
     let (connecting, progress) = PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
-    let request = ConnectRequest { config:                     &stalling_prompt_adapter(),
+    let request = ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                   config:                     &stalling_prompt_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           None,
                                    mcp_url:                    None,
@@ -165,7 +166,8 @@ async fn connect_naming_a_prior_session(load: &str, resume_prompt: Option<&str>)
     let log = dir.path().join("methods.log");
     let (connecting, progress) = PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
-    let request = ConnectRequest { config:                     &logging_loading_adapter(),
+    let request = ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                   config:                     &logging_loading_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           Some("thread-7"),
                                    mcp_url:                    None,
@@ -283,7 +285,8 @@ async fn a_restored_session_keeps_its_entries_times() {
 
     let (connecting, progress) = PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
-    let request = ConnectRequest { config:                     &replaying_adapter(),
+    let request = ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                   config:                     &replaying_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           Some("thread-7"),
                                    mcp_url:                    None,
@@ -367,7 +370,8 @@ async fn restore_thread_7(store: &TimesStore, env: Vec<(String, String)>)
                           -> knot_terminal::AcpSession {
     let (connecting, progress) = PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
-    let request = ConnectRequest { config: &replaying_adapter(),
+    let request = ConnectRequest { agent_id: uuid::Uuid::nil(),
+                                   config: &replaying_adapter(),
                                    cwd: "/tmp/project",
                                    prior_session_id: Some("thread-7"),
                                    mcp_url: None,

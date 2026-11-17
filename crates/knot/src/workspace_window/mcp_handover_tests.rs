@@ -76,6 +76,7 @@ fn opening_the_workspace_removes_a_leftover_handover_terminal(cx: &mut TestAppCo
                      WorkspaceWindow::open(Arc::clone(&leftover.store),
                                            messages,
                                            leftover.workspace,
+                                           crate::workspace_window::OpenRoute::Manager,
                                            cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(leftover.workspace), cx)
                          .expect("opening a workspace registers its view")

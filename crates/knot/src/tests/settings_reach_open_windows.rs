@@ -73,7 +73,11 @@ fn enabling_compact_tool_calls_reaches_an_open_workspace_window(cx: &mut TestApp
           settings.persist_preferences().unwrap();
           settings_global::install(settings, cx);
 
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
           assert!(WindowRegistry::workspace_view(WindowKey::Workspace(id), cx).is_some(),
                   "opening a workspace should register its view");
           assert!(!settings_global::read(cx).agent_panel_compact_tool_calls,
@@ -108,7 +112,11 @@ fn disabling_compact_tool_calls_reaches_an_open_workspace_window(cx: &mut TestAp
           settings.persist_preferences().unwrap();
           settings_global::install(settings, cx);
 
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
 
           write_compact_tool_calls(false, cx);
 
@@ -133,7 +141,11 @@ fn a_preference_write_leaves_the_roster_alone(cx: &mut TestAppContext) {
           settings.saved_workspaces = store.lock().saved_workspaces();
           settings_global::install(settings, cx);
 
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
           let before = settings_global::read(cx).saved_workspaces.len();
           assert_eq!(before, 1,
                      "the surface should be holding the workspace it was given");
@@ -162,7 +174,11 @@ fn a_workspace_window_holds_no_settings_of_its_own(cx: &mut TestAppContext) {
           // `open` takes no `Settings`: there is none to hand it. That this
           // compiles is the assertion; the run below only confirms a window
           // opened without one works.
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
 
           assert!(WindowRegistry::workspace_view(WindowKey::Workspace(id), cx).is_some(),
                   "a window opened without a settings copy should still register");

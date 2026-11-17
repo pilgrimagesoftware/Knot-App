@@ -45,6 +45,7 @@ pub(crate) mod mcp_panel;
 mod menus;
 mod notifications;
 mod open;
+mod open_route;
 mod openspec_view;
 pub(crate) mod pane_focus;
 pub(crate) mod panel;
@@ -89,6 +90,7 @@ mod work_items;
 // `workspace_window::<name>`, as it did when they lived here.
 pub(crate) use chrome::*;
 pub(crate) use menus::*;
+pub(crate) use open_route::OpenRoute;
 pub(crate) use sidebar_drag::AgentRowDrag;
 #[cfg(test)]
 pub(crate) use sidebar_drag::drop_gap;

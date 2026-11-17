@@ -259,6 +259,7 @@ pub(crate) fn quit_on_terminal_signals() {
                        _ = interrupt.recv() => {}
                        _ = terminate.recv() => {}
                    }
+                   crate::app_log::flush();
                    // 128 + SIGINT, the conventional shell exit code.
                    std::process::exit(130);
                });

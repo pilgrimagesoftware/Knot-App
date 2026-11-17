@@ -237,7 +237,11 @@ fn confirming_a_model_records_it_against_the_agent(cx: &mut TestAppContext) {
           gpui_kit::init(cx);
           WindowRegistry::install(cx);
           settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace_id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                workspace_id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
           let view = WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
             .expect("opening a workspace registers its view");
 

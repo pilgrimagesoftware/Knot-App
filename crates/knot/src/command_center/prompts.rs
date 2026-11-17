@@ -80,6 +80,7 @@ impl CommandCenterWindow {
             WorkspaceWindow::open_agent(Arc::clone(&self.store),
                                         Arc::clone(&self.messages),
                                         id,
+                                        crate::workspace_window::OpenRoute::CommandCenter,
                                         cx);
         }
         cx.notify();

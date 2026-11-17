@@ -17,6 +17,9 @@ use crate::subagent_feed::SubagentSink;
 /// into: the adapter to spawn, where to run it, and the first prompt to
 /// send once it is live.
 pub struct ConnectRequest<'a> {
+    /// The agent being connected, named in the log lines that join it to
+    /// its adapter's process id (#458).
+    pub agent_id:                   uuid::Uuid,
     pub config:                     &'a AdapterConfig,
     pub cwd:                        &'a str,
     pub prior_session_id:           Option<&'a str>,
@@ -95,17 +98,28 @@ pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, request: ConnectR
     else {
         return;
     };
+    let agent_id = request.agent_id;
     let prepared = tokio::select! {
         // Fires when the `Connecting` variant holding the sender is
         // replaced. Only a retire can do that while this select runs: the
         // attempt's own outcome is published after it.
-        _ = retired => return,
+        _ = retired => {
+            eprintln!("adapter start abandoned: agent {agent_id}");
+            return;
+        }
         prepared = prepare(request, progress) => prepared,
     };
     let Prepared { handle,
                    registration_prompt, } = match prepared {
-        Ok(prepared) => prepared,
+        Ok(prepared) => {
+            let pid = prepared.handle
+                              .process_id()
+                              .map_or_else(|| "unknown".to_string(), |pid| pid.to_string());
+            eprintln!("adapter connected: agent {agent_id} pid {pid}");
+            prepared
+        }
         Err(error) => {
+            eprintln!("adapter failed to connect: agent {agent_id}: {error}");
             // Retired in the meantime: a failure nobody is waiting to see.
             let _ = PanelSessionSlot::publish(slot, PanelSessionSlot::Failed(error));
             return;

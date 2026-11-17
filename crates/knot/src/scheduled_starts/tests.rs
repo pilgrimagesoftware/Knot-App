@@ -207,9 +207,10 @@ fn opening_the_workspace_after_a_scheduled_run_reuses_its_window(cx: &mut TestAp
 
     cx.update(|cx| {
           crate::workspace_window::WorkspaceWindow::open(Arc::clone(&fixture.store),
-                                                         Arc::clone(&fixture.messages),
-                                                         fixture.workspace,
-                                                         cx)
+                                                       Arc::clone(&fixture.messages),
+                                                       fixture.workspace,
+                                                       crate::workspace_window::OpenRoute::Manager,
+                                                       cx)
       });
     cx.run_until_parked();
 

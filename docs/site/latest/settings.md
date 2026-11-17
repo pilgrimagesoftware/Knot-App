@@ -157,6 +157,14 @@ separately and neither by default; a chosen log is attached as its recent
 lines, and screenshots (PNG, JPEG or GIF, up to a fixed number) are listed by
 name with a remove control.
 
+The application log is `knot.log` in `~/Library/Logs/Knot`, with the previous
+run's kept as `knot.log.1`. Each line starts with the UTC time it was written,
+in the same format as the MCP server log, so the two can be read side by side.
+Opening, raising, closing and releasing a workspace window each write a line
+naming the workspace and how it was opened, and an agent's adapter writes lines
+when it starts, connects and ends, naming the agent and the adapter's process
+id. These lines carry ids only, never prompts or messages.
+
 An issue is public, so an attached log is scrubbed before it goes in. Knot
 replaces tool-call arguments with the tool's name, argument names and size, and
 redacts session ids, credentials (authorization headers, bearer tokens, API

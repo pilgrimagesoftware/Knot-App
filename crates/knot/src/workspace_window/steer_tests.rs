@@ -58,7 +58,8 @@ fn busy_slot(runtime: &tokio::runtime::Runtime, steers: bool, outcome: &str)
     }
     runtime.spawn(async move {
                let config = steering_adapter();
-               let request = panel_session::ConnectRequest { config: &config,
+               let request = panel_session::ConnectRequest { agent_id: uuid::Uuid::nil(),
+                                                             config: &config,
                                                              cwd: "/tmp",
                                                              prior_session_id: None,
                                                              mcp_url: None,
@@ -113,7 +114,11 @@ fn queued_behind_a_turn(steers: bool, outcome: &str, cx: &mut TestAppContext) ->
                      gpui_kit::init(cx);
                      WindowRegistry::install(cx);
                      settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-                     WorkspaceWindow::open(Arc::clone(&store), messages, workspace_id, cx);
+                     WorkspaceWindow::open(Arc::clone(&store),
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });
