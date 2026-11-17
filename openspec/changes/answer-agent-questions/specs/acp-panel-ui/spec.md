@@ -73,6 +73,22 @@ bound keystroke, read from the installed keymap.
 - **WHEN** the card has focus and the user presses Escape
 - **THEN** the form is declined
 
+### Requirement: Keys inside a question card's text field
+With focus in a question card's text or number field, typed keys SHALL edit
+the field; Return and Down SHALL move to the next field, Up and Shift-Tab to
+the previous one; Cmd-Return SHALL submit. Escape SHALL leave the field for
+the card without skipping, and a second Escape SHALL skip.
+
+#### Scenario: Return in an Other field moves on
+- **WHEN** the user types "Teal" in the first question's Other field and
+  presses Return
+- **THEN** "Teal" stays in the field and focus moves to the next question
+
+#### Scenario: One Escape does not throw away typed text
+- **WHEN** the user has typed into an Other field and presses Escape once
+- **THEN** focus leaves the field, the text is kept, and the form is not
+  declined
+
 ### Requirement: A pending question gates the session like a pending permission
 While a question card is pending, the system SHALL treat the session exactly
 as it treats a pending permission request: a prompt the user sends is queued

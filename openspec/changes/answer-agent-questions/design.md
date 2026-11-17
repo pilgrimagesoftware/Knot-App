@@ -94,18 +94,53 @@ pub struct FormField { pub key: String, pub title: Option<String>,
 pub enum FieldKind {
     Single(Vec<Choice>),   // string + oneOf/enum
     Multi(Vec<Choice>),    // array, items anyOf/oneOf/enum
-    Text { multiline: bool }, // plain string
+    Text,                 // plain string
     Number { integer: bool },
     Boolean,
 }
 pub struct Choice { pub value: String, pub title: String, pub description: Option<String> }
 ```
 
-The workspace's `serde_json` has no `preserve_order`, so a `Map` comes back
-sorted by key: `question_10` before `question_2`, and an MCP server's form in
-alphabetical order. `properties` is deserialized through a small visitor into
-`Vec<(String, Value)>`, keeping the wire order without turning the feature on
-for every map in the workspace.
+Field order depends on `serde_json`'s `preserve_order` feature. The
+transport decodes every line to a `Value` (`transport/mod.rs`, `handle_line`)
+and requests carry `params: Option<Value>`, so the order is fixed at decode
+time and nothing downstream can recover it. The app build already has the
+feature, but only through feature unification from gpui (`cargo tree -e
+features -i serde_json -p knot` shows it; `-p knot-acp` does not), so an
+order test would pass under `make test` and fail under `cargo test -p
+knot-acp`, and the behaviour would break silently if gpui dropped it.
+`knot-acp` therefore declares what it relies on:
+`serde_json = { workspace = true, features = ["preserve_order"] }`. The
+binary is unchanged (the feature is already in its graph); `knot-acp` alone
+now keeps wire order too. Carrying `RawValue` through the transport was the
+alternative and touches every message type for one request.
+
+### Schema keywords
+
+The form schema is MCP's restricted elicitation subset: a flat object of
+primitive properties.
+
+| Keyword | Handling |
+| --- | --- |
+| `type` string, number, integer, boolean | the field's input |
+| `oneOf` of `{const, title}`; legacy `enum` with optional `enumNames` | single choice; titles from `title` / `enumNames`, else the value |
+| `type: array` with `items` `anyOf` / `oneOf` / `enum` | multiple choice |
+| `title`, `description` | field label and text |
+| `required` (object level) | Submit gate |
+| `default` | prefilled value or pick |
+| `minimum` / `maximum`, `minLength` / `maxLength`, `minItems` / `maxItems` | Submit gate |
+| `format` (email, uri, date, date-time) | plain text input; not validated client-side, the requester validates |
+| anything else | ignored |
+
+Refused (`-32602`, no card): mode `url`; a property of type `object`; an
+array whose items are not a choice list; a property with neither a known
+`type` nor choices.
+
+### Session routing
+
+A request's `sessionId` must name a session this client has open (MCP-server
+forms carry one even without a `toolCallId`). A missing or unknown
+`sessionId` is refused with `-32602` and no card, as nothing could show it.
 
 A form that does not fit (mode `url`, a nested object, an unknown field type)
 is answered at once with `-32602` and no card; the adapter turns that into a
@@ -178,6 +213,11 @@ keeps its text; focus returns to it when the card goes.
   first choice, past this question's Other field (a question is a choice
   field plus its `<key>_custom` field).
 - Cmd-Return: Submit. Escape: Skip.
+
+Inside a text or number field (all single-line): typed keys edit the field;
+Return and Down move to the next field, Up and Shift-Tab to the previous one;
+Escape leaves the field to the card without skipping, so typed answers are
+not lost by a reflexive Escape, and a second Escape skips.
 
 Actions are panel-scoped (`QuestionSubmit`, `QuestionSkip`,
 `QuestionNext/Prev`), bound in the fixed keymap like the permission actions,

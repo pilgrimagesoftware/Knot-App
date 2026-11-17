@@ -30,7 +30,8 @@ and today are declined (`-32601`) without the user seeing them.
   the boundary into typed fields (single-select, multi-select, text, number,
   boolean) in the order the agent sent them; a form Knot cannot render is
   answered with an error at once, which the adapter turns into "could not
-  present the question" for the model.
+  present the question" for the model. Field order relies on `preserve_order`, which `knot-acp`
+  now declares itself.
 - **Honour `$/cancel_request`.** When the agent withdraws a pending question
   or permission request, its card goes away. Knot ignores this notification
   today, so a withdrawn permission card stays up until the turn ends.
@@ -68,4 +69,5 @@ agents keep their own TUI prompt.
 - `knot-core`: a `QuestionPending` schedule skip reason and catalog strings.
 - Specs: `acp-client`, `acp-panel-ui`, `session-scheduling`.
 - Docs: a page section on answering an agent's question.
-- No new dependencies.
+- No new dependencies. `knot-acp` declares `serde_json`'s `preserve_order`
+  feature, which the app build already has through gpui.

@@ -3,7 +3,7 @@
 ## 1. ACP client (`knot-acp`)
 
 - [ ] 1.1 `InitializeParams` sends `clientCapabilities` with `elicitation.form = {}` (no `url`); test the serialized request
-- [ ] 1.2 `protocol/elicitation.rs`: `QuestionRequest`, `FormField`, `FieldKind`, `Choice`; parse `properties` in wire order through a visitor (no `preserve_order`); fixture from the probe's AskUserQuestion request, an MCP-style form with every field type, a 12-field order test; URL mode, nested object and unknown types rejected
+- [ ] 1.2 `knot-acp`'s `serde_json` declares `preserve_order` (already in the app graph via gpui; declared so `knot-acp` does not depend on unification). `protocol/elicitation.rs`: `QuestionRequest`, `FormField`, `FieldKind`, `Choice` per the schema-keyword table; fixture from the probe's AskUserQuestion request, an MCP-style form with every field type and `enumNames`/`default`/bounds, and a 12-field order test that passes under `cargo test -p knot-acp`; url mode, nested object, non-choice array and unknown or missing session refused
 - [ ] 1.3 `QuestionAnswer::{Submitted, Skipped, Cancelled}` to `accept`/`decline`/`cancel` with typed values; empty optional fields omitted
 - [ ] 1.4 Dispatch `elicitation/create`: refuse with `-32602` when unparseable; otherwise one pending map for both kinds, `SessionEvent::Question`, resolved event generalised to `InputResolved`
 - [ ] 1.5 Stop and session end answer pending questions `cancel`; permissions unchanged

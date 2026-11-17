@@ -70,12 +70,19 @@ left out, as `decline` when the user skips, or as `cancel`.
 
 ### Requirement: Unrenderable forms are refused
 An `elicitation/create` the system cannot render (URL mode, a nested object, a
-field type outside those the system parses) SHALL be answered at once with a
-JSON-RPC invalid-params error and SHALL NOT be surfaced to the caller.
+field type outside those the system parses) or whose `sessionId` is missing or
+names no open session SHALL be answered at once with a JSON-RPC
+invalid-params error and SHALL NOT be surfaced to the caller.
 
 #### Scenario: An unrenderable form is refused without a card
 - **WHEN** the agent sends an `elicitation/create` in URL mode, or a form with
   a nested object field
+- **THEN** the system answers with an invalid-params error at once and
+  surfaces no event
+
+#### Scenario: A form for an unknown session is refused
+- **WHEN** the agent sends a form elicitation whose `sessionId` is missing or
+  is not a session the client has open
 - **THEN** the system answers with an invalid-params error at once and
   surfaces no event
 
