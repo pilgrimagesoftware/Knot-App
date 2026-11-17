@@ -190,3 +190,78 @@ fn an_agent_without_a_startup_prompt_is_never_run(cx: &mut TestAppContext) {
     assert_eq!(fixture.outcome(cx), None);
     assert!(!fixture.window_open(cx));
 }
+
+/// #456: a window a scheduled run opened is the workspace's window. Opening
+/// the workspace from the Workspace Manager afterwards raises it, rather
+/// than opening a second window that starts every agent again.
+///
+/// This half held before #456: the registry only misses a window that has
+/// closed. What failed was the closed window's sessions outliving it - see
+/// `closing_the_scheduled_window_releases_its_sessions`.
+#[gpui_kit::test]
+fn opening_the_workspace_after_a_scheduled_run_reuses_its_window(cx: &mut TestAppContext) {
+    let fixture = fixture(true, cx);
+    fixture.tick(&la(9, 1), cx);
+    let windows_after_run = cx.update(|cx| cx.windows().len());
+    let token = fixture.restart_token();
+
+    cx.update(|cx| {
+          crate::workspace_window::WorkspaceWindow::open(Arc::clone(&fixture.store),
+                                                         Arc::clone(&fixture.messages),
+                                                         fixture.workspace,
+                                                         cx)
+      });
+    cx.run_until_parked();
+
+    assert_eq!(cx.update(|cx| cx.windows().len()),
+               windows_after_run,
+               "the manager's open raises the scheduled window");
+    assert_eq!(fixture.restart_token(), token, "and restarts nothing");
+}
+
+/// #456: closing a workspace window releases its view, which is what tears
+/// down its sessions (`WorkspaceWindow`'s `Drop`). A view kept alive past
+/// its window keeps its adapters running and keeps prompting them, so the
+/// next open of the workspace runs every agent twice.
+#[gpui_kit::test]
+fn closing_the_scheduled_window_releases_its_sessions(cx: &mut TestAppContext) {
+    let fixture = fixture(true, cx);
+    fixture.tick(&la(9, 1), cx);
+    let view = cx.update(|cx| {
+                     WindowRegistry::workspace_view(WindowKey::Workspace(fixture.workspace), cx)
+                         .expect("the run opened the window")
+                         .downgrade()
+                 });
+
+    let handle = cx.update(|cx| cx.windows()[0]);
+    cx.update(|cx| {
+          handle.update(cx, |_, window, _| window.remove_window())
+                .expect("the window is open")
+      });
+    cx.run_until_parked();
+
+    assert!(view.upgrade().is_none(),
+            "the closed window's view, and with it its sessions, is gone");
+}
+
+/// #456: a window a scheduled run opened without focus is listed in the
+/// Window menu at once. It never becomes the active window, which is what
+/// otherwise rebuilds the menu, so without this the user had no sign that
+/// the workspace was open and its agents running.
+#[gpui_kit::test]
+fn a_scheduled_window_is_listed_in_the_window_menu(cx: &mut TestAppContext) {
+    let fixture = fixture(true, cx);
+    cx.update(|cx| cx.set_global(crate::menu_bar::MenuBarState::default()));
+
+    fixture.tick(&la(9, 1), cx);
+
+    let listed = cx.update(|cx| {
+                       cx.global::<crate::menu_bar::MenuBarState>()
+                         .snapshot
+                         .window
+                         .workspaces
+                         .iter()
+                         .any(|workspace| workspace.id == fixture.workspace)
+                   });
+    assert!(listed);
+}

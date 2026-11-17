@@ -310,7 +310,7 @@ impl WorkspaceWindow {
                   // view is only in scope here: `cx.open_window` hands back a
                   // handle to the `Root` wrapper, not to this.
                   WindowRegistry::register(key, window.window_handle(), Some(view.downgrade()), cx);
-                  spawn_repaint_poll(view.clone(), Arc::clone(&exited_sessions), cx);
+                  spawn_repaint_poll(view.downgrade(), Arc::clone(&exited_sessions), cx);
                   // Remember where the user puts this workspace's window.
                   // The observer fires continuously through a drag, so the
                   // store's setter reports whether the frame actually

@@ -19,10 +19,12 @@ mod agent_identity;
 mod connect;
 mod default_mode;
 mod drain;
+mod live_adapters;
 mod times_store;
 
 pub(crate) use agent_identity::AgentIdentity;
 pub use connect::{ConnectRequest, StartupRequest, connect_into};
+pub(crate) use live_adapters::claim as claim_adapter;
 pub use times_store::{TimesSaver, TimesStore};
 
 pub struct PanelSessionHandle {

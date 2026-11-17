@@ -57,9 +57,14 @@ impl WorkspaceWindow {
 
         // Taken only once a session is actually starting, so a restart of
         // an agent left stopped keeps its note for whenever it does (#405).
-        let handoff = self.panel_handoffs.remove(&id);
         let (connecting, progress) = panel_session::PanelSessionSlot::connecting();
         let slot = Arc::new(Mutex::new(connecting));
+        // Before anything is taken or spawned: another window - or a closed
+        // window's view still alive - may already run this agent (#456).
+        if !panel_session::claim_adapter(id, &slot) {
+            return;
+        }
+        let handoff = self.panel_handoffs.remove(&id);
         self.panel_sessions.insert(id, Arc::clone(&slot));
         let cwd = agent.folder.clone();
         let prior_session_id = agent.session_to_load().map(str::to_owned);

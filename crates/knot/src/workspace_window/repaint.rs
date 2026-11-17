@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 use gpui_kit::App;
-use gpui_kit::Entity;
+use gpui_kit::WeakEntity;
 use parking_lot::Mutex;
 use uuid::Uuid;
 
@@ -28,7 +28,12 @@ use crate::workspace_window::prompt_queue;
 /// on its own output and repaints itself, and hands OSC 52 clipboard writes
 /// to `terminal_pane` as events. What stays is the exited-session queue the
 /// PTY reader thread fills, and everything else in `repaint_poll_tick`.
-pub(super) fn spawn_repaint_poll(view: Entity<WorkspaceWindow>,
+///
+/// The loop holds the view weakly and ends with it (#456). Holding it
+/// strongly kept a closed window's view alive for good: its `Drop` - the
+/// only teardown of its adapters - never ran, and its poll went on
+/// prompting them, so reopening the workspace ran every agent twice.
+pub(super) fn spawn_repaint_poll(view: WeakEntity<WorkspaceWindow>,
                                  exited_sessions: Arc<Mutex<Vec<Uuid>>>, cx: &mut App) {
     cx.spawn(async move |cx| {
           loop {
@@ -36,9 +41,11 @@ pub(super) fn spawn_repaint_poll(view: Entity<WorkspaceWindow>,
                 .timer(consts::REPAINT_POLL_INTERVAL)
                 .await;
               let exited = std::mem::take(&mut *exited_sessions.lock());
-              cx.update(|app| {
-                    view.update(app, |view, cx| view.repaint_poll_tick(&exited, cx));
-                });
+              let ticked =
+                  cx.update(|app| view.update(app, |view, cx| view.repaint_poll_tick(&exited, cx)));
+              if ticked.is_err() {
+                  break;
+              }
           }
       })
       .detach();
