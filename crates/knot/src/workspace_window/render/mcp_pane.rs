@@ -405,9 +405,15 @@ impl WorkspaceWindow {
                          .cursor_pointer()
                          .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
                          .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
-                                       if let Some(agent_id) = view.selected_agent {
-                                           view.open_mcp_handover(agent_id, &server, cx);
-                                           cx.notify();
+                                       if let Some(agent_id) = view.selected_agent
+                                          && let Some(terminal) =
+                                              view.open_mcp_handover(agent_id, &server, cx)
+                                       {
+                                           // Shown and started, new or reused:
+                                           // the user asked for this terminal,
+                                           // so a passive owner must not leave
+                                           // it waiting unseen (#443).
+                                           view.reveal_agent(terminal, cx);
                                        }
                                    }))
                          .child(Icon::new(IconName::ExternalLink)

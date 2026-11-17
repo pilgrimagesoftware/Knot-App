@@ -90,6 +90,11 @@ pub struct Agent {
     pub schedule:        Option<knot_core::schedule::Schedule>,
     /// What idling does to it (#404). Durable.
     pub idle_policy:     knot_core::schedule::IdlePolicy,
+    /// The MCP server this terminal hands the user its owner's flow for
+    /// (#443); `None` on every other agent. Durable, so a leftover one is
+    /// recognisable after a restart. See
+    /// [`crate::AgentStore::open_mcp_handover`].
+    pub mcp_handover:    Option<String>,
 
     // Runtime-only
     /// Whether this agent has been activated in this run and so may start.
@@ -292,6 +297,7 @@ mod tests {
                 startup_prompt:          None,
                 schedule:                None,
                 idle_policy:             Default::default(),
+                mcp_handover:            None,
                 activated:               false,
                 state:                   AgentState::Idle,
                 idle_since:              None,

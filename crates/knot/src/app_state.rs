@@ -386,6 +386,11 @@ pub(crate) fn build_agent_store(settings: &knot_core::Settings) -> knot_agents::
     // arranged is not derivable from the roster, and `from_saved` deliberately
     // does not invent it.
     store.set_workspace_ui(settings.workspace_ui.clone());
+    // A terminal opened to hand the user an agent's MCP flow belongs to the
+    // run that opened it (#443). One saved by an earlier run would otherwise
+    // come back as a stray shell, and re-run the flow when started.
+    let ids: Vec<Uuid> = store.agents().iter().map(|agent| agent.id).collect();
+    store.remove_mcp_handovers(&ids);
 
     if settings.restore_conversation_on_launch {
         let persisted: BTreeMap<Uuid, String> =

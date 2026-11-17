@@ -35,6 +35,7 @@ pub fn from_saved(saved: &SavedAgent) -> Agent {
             startup_prompt:  saved.startup_prompt.clone(),
             schedule:        saved.schedule.clone(),
             idle_policy:     saved.idle_policy,
+            mcp_handover:    saved.mcp_handover.clone(),
 
             activated:               false,
             state:                   AgentState::Idle,
@@ -89,6 +90,7 @@ pub fn to_saved(agent: &Agent, remember_conversation: bool) -> SavedAgent {
                  startup_prompt:  agent.startup_prompt.clone(),
                  schedule:        agent.schedule.clone(),
                  idle_policy:     agent.idle_policy,
+                 mcp_handover:    agent.mcp_handover.clone(),
                  session_id:      remember_conversation.then(|| agent.session_id.clone())
                                                        .flatten(),
                  acp_session_id:  remember_conversation.then(|| agent.acp_session_id.clone())

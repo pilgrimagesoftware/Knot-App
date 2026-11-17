@@ -14,11 +14,13 @@ mod duplicate;
 mod edit;
 mod helpers;
 mod lifecycle;
+mod mcp_handover;
 mod ordering;
 mod panels;
 mod persistence;
 mod pull_requests;
 
+pub use mcp_handover::{McpHandoverRequest, McpHandoverTerminal};
 pub use persistence::AdoptedCounts;
 mod workspace;
 
@@ -56,6 +58,10 @@ pub struct CreateOptions {
     pub capabilities:    Capabilities,
     pub cost_tier:       CostTier,
     pub startup_prompt:  Option<StartupPrompt>,
+    /// Marks the new agent as the terminal handing the user its owner's MCP
+    /// flow for this server (#443). Use [`AgentStore::open_mcp_handover`]
+    /// rather than setting it here.
+    pub mcp_handover:    Option<String>,
 }
 
 /// Fields an edit may change. `name`/`avatar` always apply and never trigger
