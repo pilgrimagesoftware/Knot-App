@@ -56,12 +56,13 @@ permission allow and deny keybindings SHALL NOT answer a question card.
 - **THEN** no answer is sent and the card stays
 
 ### Requirement: Question card keys
-With a question card focused: Up and Down SHALL move between choices and on
-into the next field; Tab and Shift-Tab between fields; Space SHALL pick a
-single choice or toggle a multiple one; Return SHALL pick the focused single
-choice and move to the next question's first choice, past the Other field;
-Cmd-Return SHALL submit; Escape SHALL skip. Submit and Skip SHALL show their
-bound keystroke, read from the installed keymap.
+Focus SHALL start on the first choice of the first field. Up and Down SHALL
+move between choices and on into the next field; Tab and Shift-Tab between
+fields; Space SHALL pick a single choice or toggle a multiple one; Return
+SHALL pick the focused single choice and move to the next question's first
+choice, past the Other field; Cmd-Return SHALL submit; Escape SHALL skip.
+Submit and Skip SHALL show their bound keystroke, read from the installed
+keymap.
 
 #### Scenario: Answering from the keyboard
 - **WHEN** a card with a single-choice and a multiple-choice question appears

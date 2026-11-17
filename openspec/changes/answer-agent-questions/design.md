@@ -53,8 +53,12 @@ How the adapter reads each reply (`dist/elicitation.js`,
 
 When Claude Code withdraws the request (Stop, `session/close`, the tool
 aborted), the adapter sends `$/cancel_request` `{requestId}` and stops
-waiting; a later reply is ignored. ACP's v1 cancellation answers a cancelled
-request with error `-32800`.
+waiting; a later reply is ignored (`dist/v1/acp-agent.js`, `elicitFromClient`
+and `untilSessionClosed`). ACP's v1 cancellation
+(<https://agentclientprotocol.com/protocol/v1/cancellation>) answers a
+cancelled request with error `-32800` (`RequestError.requestCancelled` in the
+SDK's `core/jsonrpc.js`); the adapter ignores the reply, but it closes the
+request on the wire.
 
 Other adapters (string evidence only, not probed, not blocking):
 `codex-acp`, `opencode` and `gemini` binaries all contain `elicitation/create`
@@ -176,6 +180,13 @@ no per-site logic:
 | `scheduling.rs` | skip with `QuestionPending` |
 | `idle.rs` | busy, never idle-reset |
 
+While a question is pending, `session/prompt` is still outstanding, so
+`turn_active` alone would already keep the agent busy for idle shutdown and
+scheduling. The pending-input gate is still needed: it gives the specific
+skip reason, the Awaiting input status and its notification, and keeps the
+composer and steering blocked the way a permission does. Do not drop it as
+redundant with `turn_active`.
+
 Permission-only paths (`answer_selected_permission`, the allow/deny
 actions) match the `Permission` variant only, so the permission shortcuts do
 nothing while a question is on screen.
@@ -203,7 +214,8 @@ panel switches; text inputs are created on attach and dropped with the card.
 
 ## Keyboard
 
-The card takes focus when it is shown on the visible panel. The composer
+The card takes focus when it is shown on the visible panel, on the first
+choice of the first field (or the first field itself when it is not a choice). The composer
 keeps its text; focus returns to it when the card goes.
 
 - Up/Down: previous/next choice, crossing into the next field.
