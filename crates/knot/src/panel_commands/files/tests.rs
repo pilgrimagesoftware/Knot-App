@@ -5,19 +5,10 @@
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use crate::panel_commands::LookupSource;
 use crate::panel_commands::files::FolderFiles;
-
-/// Runs `git <args>` in `dir`, failing the test if git does.
-fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git").args(args)
-                                    .current_dir(dir)
-                                    .status()
-                                    .expect("git should be on PATH");
-    assert!(status.success(), "git {args:?} failed");
-}
+use crate::test_repo::{git, init};
 
 /// Writes `dir/path`, creating parents.
 fn write(dir: &Path, path: &str, contents: &str) {
@@ -33,9 +24,7 @@ fn write(dir: &Path, path: &str, contents: &str) {
 fn repository() -> tempfile::TempDir {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path();
-    git(path, &["init", "--quiet"]);
-    git(path, &["config", "user.email", "test@example.com"]);
-    git(path, &["config", "user.name", "Test"]);
+    init(path, "main");
 
     write(path, "src/lib.rs", "// tracked\n");
     write(path, ".gitignore", "target/\n");
