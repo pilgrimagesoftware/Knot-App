@@ -1,9 +1,9 @@
 //! Renders `panel_state::PanelState` as a chat-like panel: streaming
 //! messages, tool-call cards (icon by ACP `kind`, body from the call's
 //! reported content, with a diff view for diff blocks), and an inline
-//! permission prompt. Sibling to `gpui_terminal::TerminalView` (which renders
-//! a `Grid`) per design decision 5 - this renders a completely different
-//! data model.
+//! permission prompt or question card. Sibling to `gpui_terminal::TerminalView`
+//! (which renders a `Grid`) per design decision 5 - this renders a completely
+//! different data model.
 //!
 //! `style` and `callbacks` are what a render is handed, `render` is the tree
 //! itself, and `message`, `rows`, `summary_row` and `tool_call` are the pieces
@@ -18,6 +18,7 @@ mod find_text;
 mod markdown_rows;
 mod message;
 mod panel_list;
+mod question_card;
 mod render;
 mod rows;
 mod scroll;
@@ -35,6 +36,7 @@ pub(crate) use find::{
     searched_text as find_searched_text,
 };
 pub(crate) use panel_list::PanelList;
+pub(crate) use question_card::{QuestionAction, QuestionHooks, question_card_key_bindings};
 // The panel's own list is built by `PanelList::new`; only the scroll tests'
 // fixed-row probe needs the overdraw on its own.
 #[cfg(test)]

@@ -267,6 +267,13 @@ impl AcpSession {
         self.client.answer_permission(request, decision);
     }
 
+    /// Answers a pending form (`elicitation/create`) surfaced via a
+    /// `SessionEvent::Question` from this session's event stream.
+    pub fn answer_question(&self, request: &knot_acp::QuestionRequest,
+                           answer: knot_acp::FormAnswer) {
+        self.client.answer_question(request, answer);
+    }
+
     /// Closes the ACP connection. Never touches any terminal transport -
     /// the two are independent per-agent objects.
     pub async fn stop(&self) {

@@ -287,6 +287,9 @@ pub(crate) struct WorkspaceWindow {
     pub(super) panel_list_row_counts:            BTreeMap<Uuid, usize>,
     /// Each agent's open find bar over its conversation (#251).
     pub(super) panel_finds:                      BTreeMap<Uuid, panel::find_bar::PanelFind>,
+    /// Each agent's question card inputs and focus, while one is on screen
+    /// (#430).
+    pub(super) panel_questions:                  BTreeMap<Uuid, panel::question::QuestionCardUi>,
     /// Files/images attached via the input area's add-context control,
     /// pending the next send - cleared once the prompt is submitted.
     pub(super) panel_pending_context:            BTreeMap<Uuid, Vec<PathBuf>>,

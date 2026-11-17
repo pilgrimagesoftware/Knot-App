@@ -303,6 +303,7 @@ impl WorkspaceWindow {
         self.panel_lists.remove(&id);
         self.panel_list_row_counts.remove(&id);
         self.panel_finds.remove(&id);
+        self.panel_questions.remove(&id);
         self.git_read_folders.forget(id);
         self.panel_pending_context.remove(&id);
         self.panel_composer_styling.remove(&id);

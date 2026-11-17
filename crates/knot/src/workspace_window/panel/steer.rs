@@ -36,9 +36,7 @@ impl WorkspaceWindow {
         };
         let state = handle.state();
         let state = state.lock();
-        handle.session().supports_steering()
-        && state.turn_active
-        && state.pending_permission.is_none()
+        handle.session().supports_steering() && state.turn_active && !state.has_pending_input()
     }
 
     /// Steers queued entry `entry` of agent `id` into its running turn.

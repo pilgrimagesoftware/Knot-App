@@ -2,6 +2,7 @@
 
 mod permissions;
 mod pull_requests;
+mod questions;
 mod replay;
 mod shell;
 mod stop_reason;
@@ -300,10 +301,10 @@ fn permission_request_is_pending_until_resolved() {
                                       options:         Vec::new(), };
 
     state.apply(SessionEvent::PermissionRequest(request.clone()));
-    assert_eq!(state.pending_permission, Some(request));
+    assert_eq!(state.pending_permission().cloned(), Some(request));
 
-    state.resolve_permission();
-    assert_eq!(state.pending_permission, None);
+    state.resolve_input();
+    assert_eq!(state.pending_permission().cloned(), None);
 }
 
 #[test]

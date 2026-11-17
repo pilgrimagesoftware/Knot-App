@@ -396,7 +396,7 @@ async fn expect_resolved(events: &mut tokio::sync::mpsc::UnboundedReceiver<Sessi
         .await
         .expect("the resolution is reported")
         .expect("an event");
-    assert!(matches!(&event, SessionEvent::PermissionResolved { rpc_id: resolved } if resolved == rpc_id),
+    assert!(matches!(&event, SessionEvent::InputResolved { rpc_id: resolved } if resolved == rpc_id),
             "expected {rpc_id} resolved, got {event:?}");
 }
 
@@ -453,7 +453,7 @@ async fn cancelling_answers_a_pending_permission_request_as_cancelled() {
             .expect("an event"));
     }
     assert!(seen.iter().any(|event| matches!(event,
-                SessionEvent::PermissionResolved { rpc_id } if *rpc_id == permission.rpc_id)),
+                SessionEvent::InputResolved { rpc_id } if *rpc_id == permission.rpc_id)),
             "the cancelled request is reported resolved: {seen:?}");
     let texts: Vec<_> =
         seen.iter()

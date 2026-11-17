@@ -161,7 +161,7 @@ fn row_count_covers_messages_and_the_trailing_cards() {
     state.messages.push(PanelMessage::User("hi".to_string()));
     assert_eq!(row_count(&state), 1);
 
-    state.pending_permission = Some(permission_request());
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission_request()));
     assert_eq!(row_count(&state), 2);
 
     state.ended = Some(knot_acp::SessionEndCause::ProcessExited { code: Some(1) });
@@ -177,14 +177,33 @@ fn row_at_walks_messages_then_permission_then_ended() {
     state.messages.push(PanelMessage::User("a".to_string()));
     state.messages
          .push(PanelMessage::Assistant("b".to_string()));
-    state.pending_permission = Some(permission_request());
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission_request()));
     state.ended = Some(knot_acp::SessionEndCause::ProcessExited { code: None });
 
     assert_eq!(row_at(&state, 0), Some(PanelRow::Message(0)));
     assert_eq!(row_at(&state, 1), Some(PanelRow::Message(1)));
-    assert_eq!(row_at(&state, 2), Some(PanelRow::Permission));
+    assert_eq!(row_at(&state, 2), Some(PanelRow::Input));
     assert_eq!(row_at(&state, 3), Some(PanelRow::Ended));
     assert_eq!(row_at(&state, 4), None);
+}
+
+/// A question card takes the row a permission prompt would (#430).
+#[test]
+fn row_at_draws_a_pending_question_where_a_permission_goes() {
+    let mut state = PanelState::new();
+    state.messages.push(PanelMessage::User("a".to_string()));
+    state.pending_input = Some(knot_acp::QuestionRequest { rpc_id:       serde_json::json!(7),
+                                session_id:   "sess-1".to_owned(),
+                                tool_call_id: None,
+                                message:      "Please answer the following questions.".to_owned(),
+                                fields:       vec![knot_acp::FormField { key:         "question_0".to_owned(),
+                                                                         title:       Some("Color".to_owned()),
+                                                                         description: Some("Which color?".to_owned()),
+                                                                         required:    false,
+                                                                         kind:        knot_acp::FieldKind::Boolean { default: None }, }], }.into());
+
+    assert_eq!(row_count(&state), 2);
+    assert_eq!(row_at(&state, 1), Some(PanelRow::Input));
 }
 
 /// The ended row is the *last* row, not tied to a fixed index: with no
@@ -431,8 +450,8 @@ fn painted_hints(cx: &mut gpui_kit::TestAppContext) -> (bool, bool) {
       });
 
     let mut state = PanelState::new();
-    state.pending_permission = Some(permission_request());
-    let request = state.pending_permission.clone().expect("just set above");
+    state.pending_input = Some(crate::panel_state::PendingInput::Permission(permission_request()));
+    let request = state.pending_permission().cloned().expect("just set above");
 
     let window = cx.add_window(|_, _| PromptView { state, request });
     let mut cx = gpui_kit::VisualTestContext::from_window(window.into(), cx);

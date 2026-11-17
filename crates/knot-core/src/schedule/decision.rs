@@ -19,6 +19,8 @@ pub const GRACE: SignedDuration = SignedDuration::from_mins(10);
 pub enum SkipReason {
     TurnInProgress,
     PermissionPending,
+    /// A question card is waiting for an answer (#430).
+    QuestionPending,
     PromptQueued,
     /// It read a message and has not answered it (#405).
     OwesReply,

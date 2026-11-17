@@ -28,17 +28,17 @@ fn a_second_request_waits_behind_the_first_instead_of_replacing_it() {
     state.apply(SessionEvent::PermissionRequest(first.clone()));
     state.apply(SessionEvent::PermissionRequest(second.clone()));
 
-    assert_eq!(state.pending_permission,
+    assert_eq!(state.pending_permission().cloned(),
                Some(first),
                "the request on screen stays the one asked first");
 
-    state.resolve_permission();
-    assert_eq!(state.pending_permission,
+    state.resolve_input();
+    assert_eq!(state.pending_permission().cloned(),
                Some(second),
                "answering it brings up the next, which is still waiting");
 
-    state.resolve_permission();
-    assert_eq!(state.pending_permission, None);
+    state.resolve_input();
+    assert_eq!(state.pending_permission().cloned(), None);
 }
 
 /// A finished turn - including one Stop cancelled, whose requests the
@@ -54,12 +54,12 @@ fn the_end_of_a_turn_clears_every_request() {
                                                              knot_acp::StopReason::Cancelled, }));
 
     assert!(!state.turn_active);
-    assert_eq!(state.pending_permission, None);
-    assert!(state.queued_permissions.is_empty());
+    assert_eq!(state.pending_permission().cloned(), None);
+    assert!(state.queued_inputs.is_empty());
 }
 
 fn resolved(rpc_id: i64) -> SessionEvent {
-    SessionEvent::PermissionResolved { rpc_id: json!(rpc_id), }
+    SessionEvent::InputResolved { rpc_id: json!(rpc_id), }
 }
 
 /// #344: a request answered without the panel - Stop's `cancelled` - stayed
@@ -74,9 +74,9 @@ fn a_request_resolved_elsewhere_stops_being_pending() {
 
     state.apply(resolved(100));
 
-    assert_eq!(state.pending_permission, Some(second));
+    assert_eq!(state.pending_permission().cloned(), Some(second));
     state.apply(resolved(101));
-    assert_eq!(state.pending_permission, None);
+    assert_eq!(state.pending_permission().cloned(), None);
 }
 
 /// A queued request resolved first leaves the one on screen alone.
@@ -89,8 +89,8 @@ fn a_queued_request_resolved_elsewhere_leaves_the_shown_one() {
 
     state.apply(resolved(101));
 
-    assert_eq!(state.pending_permission, Some(first));
-    assert!(state.queued_permissions.is_empty());
+    assert_eq!(state.pending_permission().cloned(), Some(first));
+    assert!(state.queued_inputs.is_empty());
 }
 
 /// The panel resolves what the user answered at once, and the client's
@@ -102,11 +102,11 @@ fn a_report_for_a_request_the_panel_already_resolved_changes_nothing() {
     let (first, second) = (request(100, "tc1"), request(101, "tc2"));
     state.apply(SessionEvent::PermissionRequest(first));
     state.apply(SessionEvent::PermissionRequest(second.clone()));
-    state.resolve_permission();
+    state.resolve_input();
 
     state.apply(resolved(100));
 
-    assert_eq!(state.pending_permission, Some(second));
+    assert_eq!(state.pending_permission().cloned(), Some(second));
 }
 
 /// The client answers what is still pending as the session ends, but reports
@@ -119,6 +119,6 @@ fn an_ended_session_has_nothing_pending() {
 
     state.apply(SessionEvent::Ended(knot_acp::SessionEndCause::ProcessExited { code: Some(0) }));
 
-    assert_eq!(state.pending_permission, None);
-    assert!(state.queued_permissions.is_empty());
+    assert_eq!(state.pending_permission().cloned(), None);
+    assert!(state.queued_inputs.is_empty());
 }

@@ -174,9 +174,48 @@ impl PanelSessionHandle {
         self.session.answer_permission(request, decision);
         {
             let mut state = self.state.lock();
-            state.resolve_permission();
+            state.resolve_input();
         }
         self.dirty.store(true, Ordering::SeqCst);
+    }
+
+    /// Answers the question card on screen with Submit (`true`) or Skip.
+    /// Does nothing when no card is showing, or when Submit is unavailable
+    /// (a required field empty, a bound broken) - the button is disabled
+    /// then, and this is the same check behind it.
+    pub fn answer_question(&self, submit: bool) {
+        let answered = {
+            let mut state = self.state.lock();
+            let Some(question) = state.pending_question()
+            else {
+                return;
+            };
+            if submit && !question.can_submit() {
+                return;
+            }
+            let answer = if submit {
+                question.submitted()
+            }
+            else {
+                knot_acp::FormAnswer::Skipped
+            };
+            let request = question.request.clone();
+            state.resolve_input();
+            (request, answer)
+        };
+        // Outside the lock: the client hands the answer to the task that
+        // replies, which also reports the request resolved.
+        self.session.answer_question(&answered.0, answered.1);
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
+    /// Applies `edit` to the question card on screen, if one is, and marks
+    /// the panel for repaint when it changed anything.
+    pub fn edit_question(&self, edit: impl FnOnce(&mut crate::panel_state::QuestionState) -> bool) {
+        let changed = self.state.lock().pending_question_mut().is_some_and(edit);
+        if changed {
+            self.dirty.store(true, Ordering::SeqCst);
+        }
     }
 
     /// Turns off auto-scroll for the in-flight response, per the track

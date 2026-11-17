@@ -224,17 +224,40 @@ fn a_pending_permission_holds_steering(cx: &mut TestAppContext) {
     let fixture = queued_behind_a_turn(true, "injected", cx);
     let agent = fixture.agent;
     if let PanelSessionSlot::Ready(handle) = &*fixture.slot.lock() {
-        handle.state().lock().pending_permission =
-            Some(knot_acp::PermissionRequest { rpc_id:          serde_json::json!(9),
+        handle.state().lock().pending_input = Some(crate::panel_state::PendingInput::Permission(knot_acp::PermissionRequest { rpc_id:          serde_json::json!(9),
                                                tool_call_id:    "tc1".to_string(),
                                                tool_call_title: None,
-                                               options:         Vec::new(), });
+                                               options:         Vec::new(), }));
     }
 
     assert!(!cx.update(|cx| fixture.view.read(cx).can_steer(agent)));
     assert!(!fixture.steer(cx));
     assert_eq!(fixture.queue_texts(cx),
                vec![("also the tests".into(), false, false)]);
+}
+
+/// A question card holds steering exactly as a permission does, and a
+/// scheduled run that comes due is skipped for it, not for the turn (#430).
+#[gpui_kit::test]
+fn a_pending_question_holds_steering_and_skips_a_scheduled_run(cx: &mut TestAppContext) {
+    let fixture = queued_behind_a_turn(true, "injected", cx);
+    let agent = fixture.agent;
+    if let PanelSessionSlot::Ready(handle) = &*fixture.slot.lock() {
+        handle.state().lock().pending_input = Some(knot_acp::QuestionRequest { rpc_id:       serde_json::json!(7),
+                                session_id:   "sess-1".to_owned(),
+                                tool_call_id: None,
+                                message:      "Please answer the following questions.".to_owned(),
+                                fields:       vec![knot_acp::FormField { key:         "question_0".to_owned(),
+                                                                         title:       Some("Color".to_owned()),
+                                                                         description: Some("Which color?".to_owned()),
+                                                                         required:    false,
+                                                                         kind:        knot_acp::FieldKind::Boolean { default: None }, }], }.into());
+    }
+
+    assert!(!cx.update(|cx| fixture.view.read(cx).can_steer(agent)));
+    assert!(!fixture.steer(cx));
+    assert_eq!(cx.update(|cx| fixture.view.read(cx).scheduled_run_blocker(agent)),
+               Some(knot_core::schedule::SkipReason::QuestionPending));
 }
 
 /// `codex-acp` answers `{"outcome": "failed"}` when it cannot steer: the

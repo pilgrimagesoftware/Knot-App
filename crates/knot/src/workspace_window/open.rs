@@ -238,6 +238,7 @@ impl WorkspaceWindow {
                     panel_lists: BTreeMap::new(),
                     panel_list_row_counts: BTreeMap::new(),
                     panel_finds: BTreeMap::new(),
+                    panel_questions: BTreeMap::new(),
                     window_handle: window.window_handle(),
                     titled_as: workspace_name.clone(),
                     panel_pending_context: BTreeMap::new(),

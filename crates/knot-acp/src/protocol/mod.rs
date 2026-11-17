@@ -6,12 +6,14 @@
 //! client doesn't yet use.
 
 mod agent_info;
+pub(crate) mod elicitation;
 mod json_rpc;
 mod permission;
 pub(crate) mod steering;
 mod stop_reason;
 
 pub use agent_info::AgentInfo;
+pub use elicitation::{AnswerValue, Choice, FieldKind, FormAnswer, FormField, QuestionRequest};
 pub use json_rpc::{
     IncomingMessage, JsonRpcErrorPayload, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
 };
@@ -19,7 +21,7 @@ pub use permission::{
     PermissionDecision, PermissionOption, PermissionOptionKind, PermissionRequest,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 pub use stop_reason::StopReason;
 
 /// The ACP protocol major version this client speaks. Per `acp-client`'s
@@ -40,7 +42,32 @@ pub const MCP_SERVER_NAME: &str = "knot";
 #[derive(Debug, Clone, Serialize)]
 pub struct InitializeParams {
     #[serde(rename = "protocolVersion")]
-    pub protocol_version: u32,
+    pub protocol_version:    u32,
+    #[serde(rename = "clientCapabilities")]
+    pub client_capabilities: ClientCapabilities,
+}
+
+/// What this client can do, sent on `initialize`
+/// (<https://agentclientprotocol.com/protocol/v1/initialization>).
+///
+/// Form elicitation is advertised and URL elicitation is not: an `{}` object
+/// advertises a mode, an absent one does not. `claude-agent-acp` only offers
+/// the model its AskUserQuestion tool when `form` is present, so without it
+/// a question with choices can never reach the user (#430).
+#[derive(Debug, Clone, Serialize)]
+pub struct ClientCapabilities {
+    pub elicitation: ElicitationCapabilities,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ElicitationCapabilities {
+    pub form: Map<String, Value>,
+}
+
+impl Default for ClientCapabilities {
+    fn default() -> Self {
+        Self { elicitation: ElicitationCapabilities { form: Map::new() }, }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
