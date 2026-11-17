@@ -12,8 +12,11 @@
 //! dies never reach the file. [`flush`] closes that gap where it matters,
 //! after a panic's message and before an exit.
 
+#[cfg(unix)]
 use std::io::BufRead;
+#[cfg(unix)]
 use std::io::BufReader;
+#[cfg(unix)]
 use std::io::Read;
 use std::io::Write;
 use std::sync::OnceLock;
@@ -22,7 +25,9 @@ use std::time::Instant;
 
 use parking_lot::Condvar;
 use parking_lot::Mutex;
+#[cfg(unix)]
 use time::OffsetDateTime;
+#[cfg(unix)]
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::APP_LOG_FLUSH_TIMEOUT;
@@ -42,6 +47,8 @@ pub(super) struct Drained {
 }
 
 impl Drained {
+    // Only the stamping thread marks, and only Unix runs one.
+    #[cfg(unix)]
     fn mark(&self) {
         *self.seen.lock() += 1;
         self.changed.notify_all();
@@ -87,6 +94,9 @@ pub(super) fn redirect_through_stamper(_: std::fs::File) -> std::io::Result<()> 
     Ok(())
 }
 
+// Unix only, like `redirect_through_stamper`: elsewhere stderr is never
+// redirected, so nothing reads a pipe.
+#[cfg(unix)]
 /// Copies `input` to `output` a line at a time, each behind the time it was
 /// read, until every writer of `input` has closed it.
 ///
@@ -123,6 +133,7 @@ pub(super) fn copy_stamped(input: impl Read, mut output: impl Write, drained: &D
     }
 }
 
+#[cfg(unix)]
 /// `line`, without its newline, as the log holds it: `<time> <line>\n`.
 pub(super) fn stamped(at: OffsetDateTime, line: &[u8]) -> Vec<u8> {
     let time = at.format(&Rfc3339)
@@ -158,5 +169,6 @@ pub(crate) fn flush() {
     drained.wait_past(before, APP_LOG_FLUSH_TIMEOUT);
 }
 
-#[cfg(test)]
+// The tests drive the stamping loop through real pipes, which is Unix only.
+#[cfg(all(test, unix))]
 mod tests;
