@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::consts;
 use crate::hooks::{AgentHookHandler, HookRequest};
 use crate::log::{Logger, Subject, Vitals, describe_caller, spawn_heartbeat};
+use crate::origin;
 use crate::protocol_version;
 use crate::rpc::{self, JsonRpcId, JsonRpcRequest, JsonRpcResponse};
 use crate::session::McpSessionManager;
@@ -243,7 +244,27 @@ fn build_router(state: AppState) -> Router {
                  .route("/api/v1/agent/status",
                         get(agent_status_endpoint).post(agent_status_hook_endpoint))
                  .route("/api/v1/agent/register", post(agent_register_endpoint))
+                 .layer(axum::middleware::from_fn(refuse_foreign_origin))
                  .with_state(state)
+}
+
+/// Answers a request whose `Origin` names anything but this machine's
+/// loopback interface with 403 and a JSON-RPC error with no id, and passes
+/// every other request on (MCP 2025-11-25, Transports, "Security Warning").
+/// Every route is covered: the hook endpoints change agent state as `/mcp`
+/// does.
+async fn refuse_foreign_origin(request: axum::extract::Request, next: axum::middleware::Next)
+                               -> Response {
+    let origin = request.headers()
+                        .get(header::ORIGIN)
+                        .map(|value| value.to_str().unwrap_or_default());
+    if origin::is_allowed(origin) {
+        return next.run(request).await;
+    }
+    let response = JsonRpcResponse::error(None::<JsonRpcId>,
+                                          INVALID_REQUEST,
+                                          "Forbidden: Origin not allowed");
+    (StatusCode::FORBIDDEN, axum::Json(response)).into_response()
 }
 
 async fn health() -> &'static str {
