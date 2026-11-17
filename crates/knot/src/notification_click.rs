@@ -26,7 +26,11 @@ pub(crate) fn install(store: Arc<Mutex<knot_agents::AgentStore>>,
     cx.on_system_notification_response(move |response, cx| {
           cx.activate(true);
           if let Some(id) = notification_response_agent_id(&response) {
-              WorkspaceWindow::open_agent(Arc::clone(&store), Arc::clone(&messages), id, cx);
+              WorkspaceWindow::open_agent(Arc::clone(&store),
+                                          Arc::clone(&messages),
+                                          id,
+                                          crate::workspace_window::OpenRoute::Notification,
+                                          cx);
           }
       });
 }

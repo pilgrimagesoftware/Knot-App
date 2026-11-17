@@ -62,14 +62,17 @@ fn open_window_with_settings(cx: &mut TestAppContext, store: knot_agents::AgentS
     let store = Arc::new(Mutex::new(store));
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
 
-    let window =
-        cx.update(|cx| {
-              gpui_kit::init(cx);
-              WindowRegistry::install(cx);
-              crate::settings_global::install(settings, cx);
-              WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace_id, cx);
-              cx.windows()[0]
-          });
+    let window = cx.update(|cx| {
+                       gpui_kit::init(cx);
+                       WindowRegistry::install(cx);
+                       crate::settings_global::install(settings, cx);
+                       WorkspaceWindow::open(Arc::clone(&store),
+                                             Arc::clone(&messages),
+                                             workspace_id,
+                                             crate::workspace_window::OpenRoute::Manager,
+                                             cx);
+                       cx.windows()[0]
+                   });
     let cx = VisualTestContext::from_window(window, cx);
     cx.simulate_resize(size(px(WINDOW.0), px(WINDOW.1)));
     cx.run_until_parked();

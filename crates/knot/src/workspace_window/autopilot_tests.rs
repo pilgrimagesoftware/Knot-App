@@ -52,23 +52,24 @@ fn busy_slot(runtime: &tokio::runtime::Runtime) -> Arc<Mutex<PanelSessionSlot>> 
     let connecting = Arc::clone(&slot);
     runtime.spawn(async move {
                let config = stalling_adapter();
-               let request = panel_session::ConnectRequest { config:                     &config,
-                                                             cwd:                        "/tmp",
-                                                             prior_session_id:           None,
-                                                             mcp_url:                    None,
-                                                             registration_prompt:
-                                                                 Some("register".into()),
-                                                             resume_registration_prompt: None,
-                                                             session_config:
-                                                                 BTreeMap::new(),
-                                                             default_mode:               None,
-                                                             option_mode:                None,
-                                                             session_meta:               None,
-                                                             env:                        Vec::new(),
-                                                             args:                       Vec::new(),
-                                                             subagents:                  None,
-                                                             startup_prompt:             None,
-                                                             times:                      None, };
+               let request =
+                   panel_session::ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                                   config:                     &config,
+                                                   cwd:                        "/tmp",
+                                                   prior_session_id:           None,
+                                                   mcp_url:                    None,
+                                                   registration_prompt:
+                                                       Some("register".into()),
+                                                   resume_registration_prompt: None,
+                                                   session_config:             BTreeMap::new(),
+                                                   default_mode:               None,
+                                                   option_mode:                None,
+                                                   session_meta:               None,
+                                                   env:                        Vec::new(),
+                                                   args:                       Vec::new(),
+                                                   subagents:                  None,
+                                                   startup_prompt:             None,
+                                                   times:                      None, };
                panel_session::connect_into(&connecting, request, &progress, |_| {}).await;
            });
     for _ in 0..500 {
@@ -107,7 +108,11 @@ fn busy_agent(cx: &mut TestAppContext) -> Fixture {
                      gpui_kit::init(cx);
                      WindowRegistry::install(cx);
                      settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-                     WorkspaceWindow::open(Arc::clone(&store), messages, workspace_id, cx);
+                     WorkspaceWindow::open(Arc::clone(&store),
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });
@@ -225,7 +230,11 @@ fn notifying_window(
                      // The test platform records a notification only for an
                      // app that has an identity, as the real one has.
                      cx.set_app_identity("com.example.knot-tests", "Knot");
-                     WorkspaceWindow::open(Arc::clone(&store), messages, workspace_id, cx);
+                     WorkspaceWindow::open(Arc::clone(&store),
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });

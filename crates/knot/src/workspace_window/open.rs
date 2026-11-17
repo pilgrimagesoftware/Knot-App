@@ -27,17 +27,28 @@ use crate::window_options::reconciled_workspace_bounds;
 use crate::window_options::workspace_window_options;
 use crate::window_registry::WindowKey;
 use crate::window_registry::WindowRegistry;
+use crate::workspace_window::OpenRoute;
 use crate::workspace_window::WorkspaceViewMode;
 use crate::workspace_window::WorkspaceWindow;
 use crate::workspace_window::repaint::spawn_repaint_poll;
 use crate::workspace_window::terminal_font::TerminalFont;
 use crate::workspace_window::workspace_title;
 
+/// One request to open or raise a workspace window.
+struct OpenRequest {
+    workspace_id: Uuid,
+    select_agent: Option<Uuid>,
+    /// False opens a new window without making it key or activating the
+    /// app, and leaves an open one where it is.
+    take_focus:   bool,
+    route:        OpenRoute,
+}
+
 impl WorkspaceWindow {
     pub(crate) fn open(store: Arc<Mutex<knot_agents::AgentStore>>,
                        messages: Arc<Mutex<knot_messaging::MessageStore>>, workspace_id: Uuid,
-                       cx: &mut App) {
-        Self::open_with_selection(store, messages, workspace_id, None, cx);
+                       route: OpenRoute, cx: &mut App) {
+        Self::open_with_selection(store, messages, workspace_id, None, route, cx);
     }
 
     /// Opens the window of the workspace that holds agent `id`, with `id`
@@ -51,7 +62,7 @@ impl WorkspaceWindow {
     /// which window an agent lives in.
     pub(crate) fn open_agent(store: Arc<Mutex<knot_agents::AgentStore>>,
                              messages: Arc<Mutex<knot_messaging::MessageStore>>, id: Uuid,
-                             cx: &mut App)
+                             route: OpenRoute, cx: &mut App)
                              -> bool {
         let workspace_id = store.lock()
                                 .workspaces()
@@ -62,7 +73,7 @@ impl WorkspaceWindow {
         else {
             return false;
         };
-        Self::open_with_selection(store, messages, workspace_id, Some(id), cx);
+        Self::open_with_selection(store, messages, workspace_id, Some(id), route, cx);
         true
     }
 
@@ -73,8 +84,14 @@ impl WorkspaceWindow {
     pub(crate) fn open_with_selection(store: Arc<Mutex<knot_agents::AgentStore>>,
                                       messages: Arc<Mutex<knot_messaging::MessageStore>>,
                                       workspace_id: Uuid, select_agent: Option<Uuid>,
-                                      cx: &mut App) {
-        Self::open_window(store, messages, workspace_id, select_agent, true, cx);
+                                      route: OpenRoute, cx: &mut App) {
+        Self::open_window(store,
+                          messages,
+                          OpenRequest { workspace_id,
+                                        select_agent,
+                                        take_focus: true,
+                                        route },
+                          cx);
     }
 
     /// The workspace window for a scheduled run (#404): the open one as it
@@ -90,16 +107,24 @@ impl WorkspaceWindow {
             return Some(view);
         }
         let knot_is_active = cx.active_window().is_some();
-        Self::open_window(store, messages, workspace_id, None, knot_is_active, cx);
+        Self::open_window(store,
+                          messages,
+                          OpenRequest { workspace_id,
+                                        select_agent: None,
+                                        take_focus: knot_is_active,
+                                        route: OpenRoute::ScheduledStart },
+                          cx);
         WindowRegistry::workspace_view(key, cx)
     }
 
-    /// Opens or raises `workspace_id`'s window. `take_focus` false opens a
-    /// new window without making it key or activating the app, and leaves an
-    /// open one where it is.
+    /// Opens or raises `request`'s window, and logs which it did and why.
     fn open_window(store: Arc<Mutex<knot_agents::AgentStore>>,
-                   messages: Arc<Mutex<knot_messaging::MessageStore>>, workspace_id: Uuid,
-                   select_agent: Option<Uuid>, take_focus: bool, cx: &mut App) {
+                   messages: Arc<Mutex<knot_messaging::MessageStore>>, request: OpenRequest,
+                   cx: &mut App) {
+        let OpenRequest { workspace_id,
+                          select_agent,
+                          take_focus,
+                          route, } = request;
         // One window per workspace: a second request raises the first rather
         // than opening another, and shows the agent it named if it named one
         // (`openspec/specs/window-lifecycle`). Every route that opens a
@@ -111,6 +136,7 @@ impl WorkspaceWindow {
             return;
         }
         if WindowRegistry::activate(key, cx) {
+            eprintln!("window raised: workspace {workspace_id} via {route}");
             if let Some(requested) = select_agent
                && let Some(view) = WindowRegistry::workspace_view(key, cx)
             {
@@ -140,6 +166,18 @@ impl WorkspaceWindow {
                   // the app's bundle name for every workspace
                   // window.
                   window.set_window_title(&workspace_name);
+                  let window_id = window.window_handle().window_id();
+                  eprintln!("window opened: workspace {workspace_id} window {} via {route}",
+                            window_id.as_u64());
+                  // The view keeps the subscription, so the hook goes when
+                  // the view does and fires for this window alone.
+                  let window_closed =
+                      cx.on_window_closed(move |_, closed| {
+                            if closed == window_id {
+                                eprintln!("window closed: workspace {workspace_id} window {}",
+                                          window_id.as_u64());
+                            }
+                        });
                   // Order the new window front rather than letting it open
                   // behind whatever has focus - matching what the settings
                   // window already does when it reuses an open one.
@@ -161,6 +199,7 @@ impl WorkspaceWindow {
                             let mut window = WorkspaceWindow {
                     exited_sessions: Arc::clone(&exited_sessions),
                     window_bounds_subscription: None,
+                    _window_closed: Some(window_closed),
                     diff_stats: crate::diff_stats::DiffStatsCache::default(),
                     git_panel_open: BTreeSet::new(),
                     git_status: crate::git_panel::state::GitStatusCache::default(),

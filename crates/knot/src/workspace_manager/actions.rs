@@ -127,6 +127,10 @@ impl WorkspaceManager {
 
     pub(super) fn open(&mut self, id: Uuid, cx: &mut Context<Self>) {
         self.select(id, cx);
-        WorkspaceWindow::open(Arc::clone(&self.store), Arc::clone(&self.messages), id, cx);
+        WorkspaceWindow::open(Arc::clone(&self.store),
+                              Arc::clone(&self.messages),
+                              id,
+                              crate::workspace_window::OpenRoute::Manager,
+                              cx);
     }
 }

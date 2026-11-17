@@ -336,6 +336,11 @@ pub(crate) const APP_LOG_FILE_NAME: &str = "knot.log";
 /// The previous run's application log, kept beside the current one.
 pub(crate) const APP_LOG_PREVIOUS_FILE_NAME: &str = "knot.log.1";
 
+/// How long a panic or an exit waits for stderr's last lines to reach the
+/// application log. The stamping thread takes microseconds; this bounds a
+/// stuck one, which must not hold up a quit.
+pub(crate) const APP_LOG_FLUSH_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
+
 /// The colour a workspace gets when it has none, or when the one it has
 /// stored will not parse.
 pub(crate) const COLOR_WORKSPACE_DEFAULT: u32 = 0x1B4FB2;

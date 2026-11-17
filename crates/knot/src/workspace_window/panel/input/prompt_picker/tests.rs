@@ -83,7 +83,11 @@ fn window_with_library(cx: &mut TestAppContext, library: Vec<Prompt>) -> Fixture
                      cx.on_action(move |_: &crate::app_bootstrap::OpenPrompts, _| {
                            opened.set(opened.get() + 1)
                        });
-                     WorkspaceWindow::open(store, messages, workspace_id, cx);
+                     WorkspaceWindow::open(store,
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });

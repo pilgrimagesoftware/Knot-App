@@ -52,7 +52,8 @@ pub(in crate::workspace_window::panel) fn ready_slot(
     -> Arc<Mutex<panel_session::PanelSessionSlot>> {
     let (connecting, progress) = panel_session::PanelSessionSlot::connecting();
     let slot = Arc::new(Mutex::new(connecting));
-    let request = panel_session::ConnectRequest { config:                     &declaring_adapter(),
+    let request = panel_session::ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                                  config:                     &declaring_adapter(),
                                                   cwd:                        "/tmp",
                                                   prior_session_id:           None,
                                                   mcp_url:                    None,
@@ -103,7 +104,11 @@ fn a_panel_agents_declared_options_build_its_dropdowns(cx: &mut TestAppContext) 
           gpui_kit::init(cx);
           WindowRegistry::install(cx);
           settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace_id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                workspace_id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
       });
     let view =
         cx.update(|cx| WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx))

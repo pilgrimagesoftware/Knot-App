@@ -80,6 +80,10 @@ pub(crate) struct WorkspaceWindow {
     pub(super) exited_sessions:                  Arc<Mutex<Vec<Uuid>>>,
     /// Keeps the window-bounds observer alive for this window's lifetime.
     pub(super) window_bounds_subscription:       Option<gpui_kit::Subscription>,
+    /// Logs this window's close (#458), kept for as long as the view lives.
+    /// A close logged with no release after it is a view something still
+    /// holds - the leak #457 fixed.
+    pub(super) _window_closed:                   Option<gpui_kit::Subscription>,
     /// Which config selector's popover is open, by element id, or `None`
     /// when none is. One shared flag used to back all three: because every
     /// selector's `on_open_change` wrote it and the permission selector
@@ -489,6 +493,9 @@ impl Drop for WorkspaceWindow {
     /// orphaned adapter per panel agent - the same gap `remove_session`
     /// documents for a single agent, applied to the whole window.
     fn drop(&mut self) {
+        eprintln!("window released: workspace {} window {}",
+                  self.workspace_id,
+                  self.window_handle.window_id().as_u64());
         for (id, session) in &self.sessions {
             {
                 let mut session = session.lock();
