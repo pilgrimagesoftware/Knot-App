@@ -1,4 +1,16 @@
 
+## 1.41.0 - 2026-11-17
+
+### Added
+- Timestamp knot.log and log window and adapter lifecycle
+
+
+### Fixed
+- Stop a closed workspace window's agents
+- Gate the log stamper to Unix
+
+
+
 ## 1.40.0 - 2026-11-17
 
 ### Added
