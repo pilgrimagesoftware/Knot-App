@@ -30,9 +30,11 @@ pub struct Transport {
     next_id:   AtomicI64,
     pending: Mutex<HashMap<i64, oneshot::Sender<std::result::Result<Value, JsonRpcErrorPayload>>>>,
     events_tx: mpsc::UnboundedSender<TransportEvent>,
-    /// The spawned program's name, for prefixing request/response logs so
-    /// concurrent adapter connections can be told apart in stderr.
-    program:   String,
+    /// The spawned program's name and process id, prefixing every line this
+    /// transport logs, so concurrent adapter connections - four of the same
+    /// program started in the same second, say - can be told apart in
+    /// stderr, and joined to the app's own line naming the agent (#458).
+    tag:       String,
     /// The stdout and stderr pumps, aborted when the transport drops.
     ///
     /// Neither task may hold a strong reference back to the transport: the
@@ -46,6 +48,9 @@ pub struct Transport {
 
 impl Drop for Transport {
     fn drop(&mut self) {
+        // The child is killed on drop if it is still running, so this is the
+        // last line an adapter that never exited on its own gets.
+        eprintln!("knot-acp: [{}] released", self.tag);
         for task in self.tasks.lock().drain(..) {
             task.abort();
         }
@@ -67,7 +72,6 @@ impl Transport {
                           .map(|arg| arg.to_string_lossy().into_owned())
                           .collect::<Vec<_>>()
                           .join(" ");
-        eprintln!("knot-acp: [{program}] spawning {program} {args}");
         command.stdin(Stdio::piped())
                .stdout(Stdio::piped())
                // Piped (not discarded) and forwarded to our own stderr,
@@ -81,17 +85,27 @@ impl Transport {
                // call) leaves the adapter subprocess running as an orphan
                // instead of terminating it.
                .kill_on_drop(true);
-        let mut child = command.spawn()?;
+        // Logged once the id is known, so the line can carry it; a spawn
+        // that fails still leaves one.
+        let mut child =
+            command.spawn().inspect_err(|error| {
+                                eprintln!("knot-acp: [{program}] spawn failed: {error}");
+                            })?;
+        let tag = match child.id() {
+            Some(pid) => format!("{program} {pid}"),
+            None => program.clone(),
+        };
+        eprintln!("knot-acp: [{tag}] spawned {program} {args}");
         let stdin = child.stdin.take().expect("stdin piped");
         let stdout = child.stdout.take().expect("stdout piped");
         let stderr = child.stderr.take().expect("stderr piped");
         let (events_tx, events_rx) = mpsc::unbounded_channel();
 
-        let stderr_program = program.clone();
+        let stderr_tag = tag.clone();
         let stderr_task = tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                eprintln!("[{stderr_program}] {line}");
+                eprintln!("[{stderr_tag}] {line}");
             }
         });
 
@@ -100,7 +114,7 @@ impl Transport {
                                                    next_id: AtomicI64::new(1),
                                                    pending: Mutex::new(HashMap::new()),
                                                    events_tx,
-                                                   program,
+                                                   tag,
                                                    tasks: Mutex::new(Vec::new()) });
 
         let reader_transport = std::sync::Arc::downgrade(&transport);
@@ -139,11 +153,14 @@ impl Transport {
                 }
                 Ok(None) => {
                     let cause = transport.exit_cause().await;
+                    eprintln!("knot-acp: [{}] ended: {cause}", transport.tag);
                     transport.end_session(cause);
                     break;
                 }
                 Err(_) => {
-                    transport.end_session(SessionEndCause::BrokenPipe);
+                    let cause = SessionEndCause::BrokenPipe;
+                    eprintln!("knot-acp: [{}] ended: {cause}", transport.tag);
+                    transport.end_session(cause);
                     break;
                 }
             }
@@ -264,23 +281,23 @@ impl Transport {
         let line =
             serde_json::to_string(&request).map_err(|error| AcpError::Rpc { code:    -32700,
                                              message: error.to_string(), })?;
-        let program = &self.program;
-        eprintln!("knot-acp: [{program}] -> {method} (id {id})");
+        let tag = &self.tag;
+        eprintln!("knot-acp: [{tag}] -> {method} (id {id})");
         self.write_line(line).await?;
         match rx.await {
             Ok(Ok(value)) => {
-                eprintln!("knot-acp: [{program}] <- {method} (id {id}) ok");
+                eprintln!("knot-acp: [{tag}] <- {method} (id {id}) ok");
                 Ok(value)
             }
             Ok(Err(error)) => {
                 let message = error.described();
-                eprintln!("knot-acp: [{program}] <- {method} (id {id}) error: {} {message}",
+                eprintln!("knot-acp: [{tag}] <- {method} (id {id}) error: {} {message}",
                           error.code);
                 Err(AcpError::Rpc { code: error.code,
                                     message })
             }
             Err(_) => {
-                eprintln!("knot-acp: [{program}] <- {method} (id {id}) connection closed before a response");
+                eprintln!("knot-acp: [{tag}] <- {method} (id {id}) connection closed before a response");
                 Err(AcpError::ConnectionClosed)
             }
         }

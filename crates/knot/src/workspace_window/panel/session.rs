@@ -57,12 +57,29 @@ impl WorkspaceWindow {
 
         // Taken only once a session is actually starting, so a restart of
         // an agent left stopped keeps its note for whenever it does (#405).
-        let handoff = self.panel_handoffs.remove(&id);
         let (connecting, progress) = panel_session::PanelSessionSlot::connecting();
         let slot = Arc::new(Mutex::new(connecting));
+        // Before anything is taken or spawned: another window - or a closed
+        // window's view still alive - may already run this agent (#456).
+        if !panel_session::claim_adapter(id, &slot) {
+            return;
+        }
+        let handoff = self.panel_handoffs.remove(&id);
         self.panel_sessions.insert(id, Arc::clone(&slot));
         let cwd = agent.folder.clone();
         let prior_session_id = agent.session_to_load().map(str::to_owned);
+        // Ids only (#458). Whether it resumes, not what: CodeQL treats a
+        // session id as a secret (see the `on_session_id` callback below).
+        eprintln!("adapter starting: agent {id} type {} workspace {} window {} resume {}",
+                  agent.agent_type,
+                  self.workspace_id,
+                  self.window_handle.window_id().as_u64(),
+                  if prior_session_id.is_some() {
+                      "yes"
+                  }
+                  else {
+                      "no"
+                  });
         // How the knot instructions and persona reach this agent (#534):
         // its adapter's system channel where it has one, on every launch,
         // so the first turn is the registration request alone. Environment
@@ -173,7 +190,8 @@ impl WorkspaceWindow {
                             knot_agent_launch::merge_session_meta(options.session_meta,
                                                                   delivery.session_meta);
                         let request =
-                            panel_session::ConnectRequest { config: &adapter_config,
+                            panel_session::ConnectRequest { agent_id: id,
+                                                            config: &adapter_config,
                                                             cwd: &cwd,
                                                             prior_session_id:
                                                                 prior_session_id.as_deref(),

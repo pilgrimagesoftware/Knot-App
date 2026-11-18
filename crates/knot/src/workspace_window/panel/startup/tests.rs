@@ -58,7 +58,8 @@ fn registering_slot(runtime: &tokio::runtime::Runtime, text: &str) -> Arc<Mutex<
     runtime.spawn(async move {
                let config = stalling_adapter();
                let request =
-                   panel_session::ConnectRequest { config:                     &config,
+                   panel_session::ConnectRequest { agent_id:                   uuid::Uuid::nil(),
+                                                   config:                     &config,
                                                    cwd:                        "/tmp",
                                                    prior_session_id:           None,
                                                    mcp_url:                    None,
@@ -117,7 +118,11 @@ fn open_window(cx: &mut TestAppContext, startup_prompt: Option<StartupPrompt>) -
           gpui_kit::init(cx);
           WindowRegistry::install(cx);
           settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace_id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                workspace_id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
       });
     let view =
         cx.update(|cx| WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx))

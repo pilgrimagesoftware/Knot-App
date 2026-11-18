@@ -152,7 +152,11 @@ fn window_with_prompt(cx: &mut TestAppContext, text: &str) -> Fixture {
                      gpui_kit::init(cx);
                      WindowRegistry::install(cx);
                      crate::settings_global::install(settings, cx);
-                     WorkspaceWindow::open(store, messages, workspace_id, cx);
+                     WorkspaceWindow::open(store,
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });

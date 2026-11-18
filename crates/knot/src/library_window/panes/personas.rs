@@ -85,6 +85,7 @@ impl LibraryWindow {
         crate::workspace_window::WorkspaceWindow::open_agent(Arc::clone(&self.store),
                                                              Arc::clone(&self.messages),
                                                              id,
+                                                             crate::workspace_window::OpenRoute::Library,
                                                              cx);
     }
 

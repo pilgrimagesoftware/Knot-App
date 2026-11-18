@@ -58,7 +58,11 @@ fn window_with_conversations(count: usize, cx: &mut TestAppContext) -> Fixture {
                    WindowRegistry::install(cx);
                    crate::settings_global::install(knot_core::Settings::with_store_root(dir.path()),
                                                      cx);
-                   WorkspaceWindow::open(Arc::clone(&store), messages, workspace_id, cx);
+                   WorkspaceWindow::open(Arc::clone(&store),
+                                         messages,
+                                         workspace_id,
+                                         crate::workspace_window::OpenRoute::Manager,
+                                         cx);
                    WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                });

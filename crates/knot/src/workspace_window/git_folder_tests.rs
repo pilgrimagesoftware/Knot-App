@@ -74,6 +74,7 @@ fn fixture(cx: &mut TestAppContext) -> Fixture {
                                                    messages,
                                                    workspace_id,
                                                    Some(agent),
+                                                   crate::workspace_window::OpenRoute::Manager,
                                                    cx);
               WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")

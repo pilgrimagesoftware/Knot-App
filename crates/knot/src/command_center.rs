@@ -162,6 +162,7 @@ impl CommandCenterWindow {
                       WorkspaceWindow::open_agent(Arc::clone(&view.store),
                                                   Arc::clone(&view.messages),
                                                   id,
+                                                  crate::workspace_window::OpenRoute::CommandCenter,
                                                   cx);
                   });
         }
@@ -182,6 +183,7 @@ impl CommandCenterWindow {
                       WorkspaceWindow::open(Arc::clone(&view.store),
                                             Arc::clone(&view.messages),
                                             workspace_id,
+                                            crate::workspace_window::OpenRoute::CommandCenter,
                                             cx);
                   });
         }
@@ -211,6 +213,7 @@ impl CommandCenterWindow {
                     WorkspaceWindow::open(Arc::clone(&store),
                                           Arc::clone(&messages),
                                           workspace_id,
+                                          crate::workspace_window::OpenRoute::CommandCenter,
                                           cx);
                     if let Some(view) =
                         WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)

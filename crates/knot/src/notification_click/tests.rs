@@ -101,6 +101,7 @@ fn a_click_switches_an_open_window_to_the_agent(cx: &mut TestAppContext) {
                                                Arc::clone(&fixture.messages),
                                                workspace,
                                                Some(first),
+                                               crate::workspace_window::OpenRoute::Manager,
                                                cx)
       });
     cx.run_until_parked();

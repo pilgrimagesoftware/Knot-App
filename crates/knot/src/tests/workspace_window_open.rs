@@ -61,11 +61,19 @@ fn opening_the_same_workspace_twice_leaves_one_window(cx: &mut TestAppContext) {
           WindowRegistry::install(cx);
           crate::settings_global::install(sandboxed_settings(&dir), cx);
 
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
           assert_eq!(cx.windows().len(), 1, "the first open should make a window");
 
           for _ in 0..4 {
-              WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+              WorkspaceWindow::open(Arc::clone(&store),
+                                    Arc::clone(&messages),
+                                    id,
+                                    crate::workspace_window::OpenRoute::Manager,
+                                    cx);
           }
           assert_eq!(cx.windows().len(),
                      1,
@@ -89,8 +97,16 @@ fn two_workspaces_get_two_windows(cx: &mut TestAppContext) {
           WindowRegistry::install(cx);
           crate::settings_global::install(sandboxed_settings(&dir), cx);
 
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), first, cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), second, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                first,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                second,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
           assert_eq!(cx.windows().len(),
                      2,
                      "different workspaces keep their own windows");
@@ -131,7 +147,11 @@ fn opening_from_inside_another_windows_update_still_leaves_one_window(cx: &mut T
         let store = Arc::clone(&store);
         let messages = Arc::clone(&messages);
         host_cx.update(|_window, cx| {
-                   WorkspaceWindow::open(store, messages, id, cx);
+                   WorkspaceWindow::open(store,
+                                         messages,
+                                         id,
+                                         crate::workspace_window::OpenRoute::Manager,
+                                         cx);
                });
     }
 

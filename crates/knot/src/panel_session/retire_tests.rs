@@ -43,7 +43,8 @@ done"#,
 const HANG_GUARD: Duration = Duration::from_secs(60);
 
 fn request<'a>(config: &'a AdapterConfig, env: Vec<(String, String)>) -> ConnectRequest<'a> {
-    ConnectRequest { config,
+    ConnectRequest { agent_id: uuid::Uuid::nil(),
+                     config,
                      cwd: "/tmp",
                      prior_session_id: None,
                      mcp_url: None,

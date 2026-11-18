@@ -68,6 +68,10 @@ pub(crate) fn reopen_workspaces(store: &Arc<Mutex<knot_agents::AgentStore>>,
     }
     let reopen = store.lock().workspaces_open_at_quit();
     for workspace_id in reopen {
-        WorkspaceWindow::open(Arc::clone(store), Arc::clone(messages), workspace_id, cx);
+        WorkspaceWindow::open(Arc::clone(store),
+                              Arc::clone(messages),
+                              workspace_id,
+                              crate::workspace_window::OpenRoute::RestoreAtLaunch,
+                              cx);
     }
 }

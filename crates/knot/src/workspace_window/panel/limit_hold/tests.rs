@@ -52,7 +52,11 @@ fn a_limited_session_holds_its_prompts_until_sent_now_or_the_limit_lifts(cx: &mu
           gpui_kit::init(cx);
           WindowRegistry::install(cx);
           settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace_id, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                workspace_id,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
       });
     let view =
         cx.update(|cx| WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx))

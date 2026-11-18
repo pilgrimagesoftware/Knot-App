@@ -66,7 +66,11 @@ fn window_with(cx: &mut TestAppContext, conversation: Vec<PanelMessage>) -> Fixt
                                                                  .map(|fixed| fixed.binding));
                      WindowRegistry::install(cx);
                      crate::settings_global::install(settings, cx);
-                     WorkspaceWindow::open(store, messages, workspace_id, cx);
+                     WorkspaceWindow::open(store,
+                                           messages,
+                                           workspace_id,
+                                           crate::workspace_window::OpenRoute::Manager,
+                                           cx);
                      WindowRegistry::workspace_view(WindowKey::Workspace(workspace_id), cx)
                          .expect("opening a workspace registers its view")
                  });

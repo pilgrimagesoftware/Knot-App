@@ -61,7 +61,11 @@ fn two_open_workspaces(cx: &mut TestAppContext) -> Fixture {
               WindowRegistry::install(cx);
               crate::settings_global::install(knot_core::Settings::with_store_root(dir.path()), cx);
               let mut open = |id| {
-                  WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), id, cx);
+                  WorkspaceWindow::open(Arc::clone(&store),
+                                        Arc::clone(&messages),
+                                        id,
+                                        crate::workspace_window::OpenRoute::Manager,
+                                        cx);
                   WindowRegistry::workspace_view(WindowKey::Workspace(id), cx)
                 .expect("opening a workspace registers its view")
               };

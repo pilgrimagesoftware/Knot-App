@@ -61,7 +61,11 @@ fn open_window(cx: &mut TestAppContext, broken_store: bool) -> Fixture {
           gpui_kit::init(cx);
           WindowRegistry::install(cx);
           settings_global::install(knot_core::Settings::with_store_root(&root), cx);
-          WorkspaceWindow::open(Arc::clone(&store), Arc::clone(&messages), workspace, cx);
+          WorkspaceWindow::open(Arc::clone(&store),
+                                Arc::clone(&messages),
+                                workspace,
+                                crate::workspace_window::OpenRoute::Manager,
+                                cx);
       });
     let view = cx.update(|cx| WindowRegistry::workspace_view(WindowKey::Workspace(workspace), cx))
                  .expect("opening a workspace registers its view");

@@ -203,6 +203,8 @@ pub(crate) fn request_quit(cx: &mut App) {
 /// The normal shutdown path, unguarded. Every caller reaches it through
 /// [`request_quit`].
 fn shutdown(cx: &mut App) {
+    eprintln!("app: quitting");
+    crate::app_log::flush();
     cx.quit();
 }
 
