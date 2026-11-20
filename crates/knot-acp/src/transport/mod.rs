@@ -58,6 +58,12 @@ impl Drop for Transport {
 }
 
 impl Transport {
+    /// The program name and process id this transport prefixes its log
+    /// lines with, for callers logging about the same connection.
+    pub(crate) fn tag(&self) -> &str {
+        &self.tag
+    }
+
     /// Spawns `command` and starts the background read loop over its
     /// stdout. Returns the transport plus the event receiver for
     /// server-to-client requests, notifications, and session-end.
