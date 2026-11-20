@@ -113,6 +113,41 @@ fn a_typed_other_answer_is_sent_without_a_pick() {
                vec![("question_0_custom".to_owned(), AnswerValue::Text("Teal".to_owned()))]);
 }
 
+/// #465: one AskUserQuestion question, three options, nothing picked. The
+/// adapter marks no field required, so the schema alone let Submit send an
+/// empty `accept`, which the model reads as "The user did not answer the
+/// questions". Submit waits for a pick or "Other" text; Skip still declines.
+#[test]
+fn submit_waits_for_each_question_to_be_answered() {
+    let mut request = color_and_fruits(1);
+    request.fields.truncate(2);
+    let mut question = QuestionState::new(request);
+    assert!(!question.can_submit(), "nothing picked and no Other text");
+
+    question.set_text(1, "   ".to_owned());
+    assert!(!question.can_submit(), "blank Other text is no answer");
+
+    question.set_text(1, "Teal".to_owned());
+    assert!(question.can_submit(), "Other text answers the question");
+
+    question.set_text(1, String::new());
+    question.pick(0, 0);
+    assert!(question.can_submit(), "a pick answers the question");
+    assert_eq!(submitted(&question),
+               vec![("question_0".to_owned(), AnswerValue::Text("Red".to_owned()))]);
+}
+
+/// With two questions, answering one is not enough: the other would reach
+/// the model as unanswered.
+#[test]
+fn submit_waits_for_every_question() {
+    let mut question = QuestionState::new(color_and_fruits(1));
+    question.pick(0, 1);
+    assert!(!question.can_submit(), "the fruits question is unanswered");
+    question.toggle(2, 0);
+    assert!(question.can_submit());
+}
+
 #[test]
 fn space_toggles_a_multiple_choice_off_again() {
     let mut question = QuestionState::new(color_and_fruits(1));
