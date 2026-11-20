@@ -245,13 +245,32 @@ impl QuestionState {
             .collect()
     }
 
-    /// Whether Submit may be pressed: every field accepts what it holds.
+    /// Whether Submit may be pressed: every field accepts what it holds, and
+    /// every question with an "Other" answers through one or the other.
     pub fn can_submit(&self) -> bool {
+        let values = self.answer_values();
         self.request
             .fields
             .iter()
-            .zip(self.answer_values())
+            .zip(&values)
             .all(|(field, value)| field.accepts(value.as_ref()))
+        && self.questions_answered(&values)
+    }
+
+    /// `claude-agent-acp` marks none of AskUserQuestion's fields required, so
+    /// an accepted form with nothing picked is valid by the schema - and the
+    /// model is told "The user did not answer the questions" (#465). Skip is
+    /// how a question goes unanswered; Submit needs a pick or "Other" text.
+    fn questions_answered(&self, values: &[Option<AnswerValue>]) -> bool {
+        (0..self.request.fields.len()).filter_map(|field| {
+                                          self.other_of(field).map(|other| (field, other))
+                                      })
+                                      .all(|(field, other)| {
+                                          values.get(field).is_some_and(Option::is_some)
+                                          || matches!(values.get(other),
+                                                      Some(Some(AnswerValue::Text(text)))
+                                                          if !text.trim().is_empty())
+                                      })
     }
 
     /// Submit's answer: every filled field, in form order.

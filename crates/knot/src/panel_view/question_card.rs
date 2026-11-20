@@ -90,7 +90,11 @@ const ACCENT: u32 = 0x3B82F6;
 fn key(key: CardKey) -> QuestionAction {
     QuestionAction::Key(key)
 }
-const FOCUS_FILL: u32 = 0x3B82F633;
+/// The keyboard's place on the card is an outline, not a fill: a filled
+/// first row read as already picked, and Submit sent nothing (#465). A
+/// transparent outline on every row keeps the rows from shifting.
+const FOCUS_RING: u32 = 0x3B82F6B3;
+const NO_RING: u32 = 0x00000000;
 
 pub(super) fn render_question_card(question: &QuestionState, callbacks: &PanelCallbacks,
                                    window: &Window)
@@ -290,7 +294,13 @@ fn choice_row(stop: Stop, (on, multiple): (bool, bool),
             .rounded_sm()
             .items_start()
             .cursor_pointer()
-            .when(focus == Some(stop), |row| row.bg(rgba(FOCUS_FILL)))
+            .border_1()
+            .border_color(rgba(if focus == Some(stop) {
+                                   FOCUS_RING
+                               }
+                               else {
+                                   NO_RING
+                               }))
             .on_click(move |_: &ClickEvent, window, cx| on_action(action, window, cx))
             .child(div().text_sm().child(mark))
             .child(v_flex().min_w_0()

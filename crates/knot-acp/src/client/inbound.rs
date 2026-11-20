@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 use super::SessionEvent;
 use super::pending::{PendingInputs, PermissionAnswer, QuestionAnswer};
+use crate::protocol::FormAnswer;
 use crate::protocol::elicitation::parse_form;
 use crate::protocol::{
     JsonRpcErrorPayload, PermissionDecision, PermissionOption, PermissionRequest,
@@ -102,6 +103,8 @@ impl Inbound {
         let request = match parse_form(id.clone(), params) {
             Ok(request) if self.pending.has_session(&request.session_id) => request,
             Ok(request) => {
+                eprintln!("knot-acp: [{}] question {id} refused: unknown session",
+                          self.transport.tag());
                 let message = format!("unknown session {:?}", request.session_id);
                 let _ = self.transport
                             .respond(id, Err(error(INVALID_PARAMS, &message)))
@@ -109,21 +112,29 @@ impl Inbound {
                 return;
             }
             Err(refusal) => {
-                eprintln!("knot-acp: refused elicitation/create: {refusal}");
+                eprintln!("knot-acp: [{}] question {id} refused: {refusal}",
+                          self.transport.tag());
                 let _ = self.transport
                             .respond(id, Err(error(INVALID_PARAMS, &refusal.to_string())))
                             .await;
                 return;
             }
         };
+        // The id and the field count only: a question's text and its answer
+        // are the user's and stay out of the log.
+        eprintln!("knot-acp: [{}] question {id} received: {} field(s)",
+                  self.transport.tag(),
+                  request.fields.len());
         let answer = self.pending.add_question(id.to_string());
         let _ = self.events.send(SessionEvent::Question(request));
         tokio::spawn(async move {
             // A dropped sender only happens with the whole client gone;
             // `cancel` is what the session ending answers anyway.
-            let answer =
-                answer.await
-                      .unwrap_or(QuestionAnswer::Answered(crate::protocol::FormAnswer::Cancelled));
+            let answer = answer.await
+                               .unwrap_or(QuestionAnswer::Answered(FormAnswer::Cancelled));
+            eprintln!("knot-acp: [{}] question {id} {}",
+                      self.transport.tag(),
+                      outcome(&answer));
             let _ = self.events
                         .send(SessionEvent::InputResolved { rpc_id: id.clone() });
             let result = match answer {
@@ -132,6 +143,19 @@ impl Inbound {
             };
             let _ = self.transport.respond(id, result).await;
         });
+    }
+}
+
+/// How a question ended, for the log: what was sent back, and for a
+/// submitted form how many fields it carried - never their values.
+fn outcome(answer: &QuestionAnswer) -> String {
+    match answer {
+        QuestionAnswer::Answered(FormAnswer::Submitted(fields)) => {
+            format!("answered: {} field(s) filled", fields.len())
+        }
+        QuestionAnswer::Answered(FormAnswer::Skipped) => "declined".to_owned(),
+        QuestionAnswer::Answered(FormAnswer::Cancelled) => "cancelled".to_owned(),
+        QuestionAnswer::Withdrawn => "withdrawn by the agent".to_owned(),
     }
 }
 
