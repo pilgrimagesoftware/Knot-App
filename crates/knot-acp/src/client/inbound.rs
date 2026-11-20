@@ -135,9 +135,6 @@ impl Inbound {
             eprintln!("knot-acp: [{}] question {id} {}",
                       self.transport.tag(),
                       outcome(&answer));
-            eprintln!("knot-acp: [{}] question {id} {}",
-                      self.transport.tag(),
-                      outcome(&answer));
             let _ = self.events
                         .send(SessionEvent::InputResolved { rpc_id: id.clone() });
             let result = match answer {
