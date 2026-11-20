@@ -1,4 +1,12 @@
 
+## 1.41.1 - 2026-11-20
+
+### Fixed
+- Require an answer before a question card submits
+- Log a question's outcome once
+
+
+
 ## 1.41.0 - 2026-11-17
 
 ### Added
