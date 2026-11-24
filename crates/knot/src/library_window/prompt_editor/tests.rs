@@ -95,6 +95,42 @@ fn an_existing_prompt_opens_with_the_caret_in_its_text(cx: &mut TestAppContext) 
     assert_eq!(focus(&mut window), (false, true));
 }
 
+/// Duplicating opens the editor on the copy - an existing prompt, so it
+/// saves rather than creates - with the caret in its name, since renaming
+/// is what a copy needs first (#469).
+#[gpui_kit::test]
+fn a_duplicate_opens_on_the_copy_with_the_caret_in_its_name(cx: &mut TestAppContext) {
+    let dir = TempDir::new().expect("a temporary settings root");
+    let mut settings = knot_core::Settings::with_store_root(dir.path());
+    let original = settings.add_prompt("Review", "review it")
+                           .expect("a valid prompt");
+    cx.update(|cx| {
+          gpui_kit::init(cx);
+          crate::settings_global::install(settings, cx);
+          super::duplicate_and_edit(original, cx);
+      });
+    let handle = cx.update(|cx| *cx.windows().last().expect("the prompt editor opened"));
+    let mut window = VisualTestContext::from_window(handle, cx);
+    window.run_until_parked();
+
+    let copy = window.update(|_, cx| crate::settings_global::read(cx).prompts[1].id);
+    let editing = window.update(|window, cx| {
+                            window.root::<gpui_kit::component::Root>()
+                                  .flatten()
+                                  .and_then(|root| {
+                                      root.read(cx)
+                                          .view()
+                                          .clone()
+                                          .downcast::<super::PromptEditor>()
+                                          .ok()
+                                  })
+                                  .map(|editor| editor.read(cx).editing_id)
+                        });
+    assert_eq!(editing, Some(Some(copy)));
+    assert_ne!(copy, original);
+    assert_eq!(focus(&mut window), (true, false));
+}
+
 /// Saving redraws an open Prompts window, which draws from the settings
 /// just written. The editor no longer holds that window: it also opens from
 /// the composer's Insert Prompt list, where there is none to hand it
@@ -179,4 +215,40 @@ fn a_prompt_opened_with_text_is_new_and_starts_at_its_name(cx: &mut TestAppConte
     assert_eq!(editing, None, "a new prompt, not an edit");
     assert_eq!(name, "");
     assert_eq!(text, "review the diff");
+}
+
+/// A duplicate made outside the Prompts window - from the composer's Insert
+/// Prompt list - still redraws it with the copy's row: nothing in that
+/// window was clicked to repaint it (#469).
+#[gpui_kit::test]
+fn duplicating_redraws_the_open_prompts_window(cx: &mut TestAppContext) {
+    let dir = TempDir::new().expect("a temporary settings root");
+    let mut settings = knot_core::Settings::with_store_root(dir.path());
+    let original = settings.add_prompt("Review", "review it")
+                           .expect("a valid prompt");
+    let library =
+        cx.update(|cx| {
+              gpui_kit::init(cx);
+              crate::window_registry::WindowRegistry::install(cx);
+              crate::settings_global::install(settings, cx);
+              let store =
+                  std::sync::Arc::new(parking_lot::Mutex::new(knot_agents::AgentStore::new()));
+              crate::library_window::open_library_window(crate::library_window::Library::Prompts,
+                                                         store,
+                                                         std::sync::Arc::default(),
+                                                         cx);
+              *cx.windows().first().expect("the Prompts window")
+          });
+    let mut library = VisualTestContext::from_window(library, cx);
+    library.run_until_parked();
+    assert!(library.debug_bounds("prompt-row-1").is_none(),
+            "one prompt to start");
+
+    // `duplicate` alone: opening the editor window would repaint every
+    // window in the test platform and hide a missing refresh.
+    cx.update(|cx| super::duplicate(original, cx));
+    library.run_until_parked();
+
+    assert!(library.debug_bounds("prompt-row-1").is_some(),
+            "the copy is drawn in the Prompts window");
 }

@@ -354,3 +354,45 @@ fn a_row_offers_to_submit_its_item_to_knot_library(cx: &mut TestAppContext) {
                 "{library:?}: Review shows the file");
     }
 }
+
+/// A Prompts window row's Duplicate action (#469) puts a copy of that
+/// prompt right after it and opens the prompt editor on the copy.
+#[gpui_kit::test]
+fn a_prompt_row_duplicates_its_prompt(cx: &mut TestAppContext) {
+    let (window, original) = cx.update(|cx| {
+                                   gpui_kit::init(cx);
+                                   WindowRegistry::install(cx);
+                                   install_settings(cx);
+                                   let id =
+                                       crate::settings_global::write_persisting(cx, |settings| {
+                                           settings.add_prompt("Review", "Review it.")
+                                       }).expect("the prompt is added");
+                                   open_library_window(Library::Prompts, store(), messages(), cx);
+                                   (cx.windows().last().copied().expect("the library window"), id)
+                               });
+    let mut window = VisualTestContext::from_window(window, cx);
+    window.run_until_parked();
+
+    let button = window.debug_bounds("prompt-duplicate-0")
+                       .expect("the row's Duplicate action is drawn");
+    window.simulate_click(button.center(), gpui_kit::Modifiers::none());
+    window.run_until_parked();
+
+    let (library, editors) = window.update(|_, cx| {
+                                       let library =
+                                           crate::settings_global::read(cx).prompts.clone();
+                                       let editors = cx.windows()
+                        .into_iter()
+                        .filter_map(|window| window.downcast::<gpui_kit::component::Root>())
+                        .filter_map(|root| root.read(cx).ok()?.view().clone().downcast().ok())
+                        .map(|editor: gpui_kit::Entity<crate::library_window::PromptEditor>| {
+                            editor.read(cx).editing_id()
+                        })
+                        .collect::<Vec<_>>();
+                                       (library, editors)
+                                   });
+    assert_eq!(library.len(), 2);
+    assert_eq!(library[0].id, original);
+    assert_eq!(library[1].text, "Review it.");
+    assert_eq!(editors, [Some(library[1].id)]);
+}

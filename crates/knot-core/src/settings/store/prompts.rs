@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use super::{Settings, documents};
 use crate::error::{Error, Result};
-use crate::settings::prompts::{Prompt, StartupPrompt};
+use crate::settings::prompts::{Prompt, StartupPrompt, copy_name};
 
 /// How many saved agents and bench entries name one library prompt as their
 /// startup prompt - what the Prompts window's delete confirmation reports.
@@ -66,6 +66,29 @@ impl Settings {
         }
         self.prompts.push(prompt);
         self.persist_prompts()
+    }
+
+    /// Copy prompt `id` under a new id and a "copy" name (see
+    /// [`copy_name`]), insert it right after the original, persist the
+    /// library, and return the copy's id. Every other field - text,
+    /// description, anything added later - is copied as it stands. An
+    /// unknown id changes nothing and returns `None`.
+    pub fn duplicate_prompt(&mut self, id: Uuid) -> Result<Option<Uuid>> {
+        let Some(index) = self.prompts.iter().position(|p| p.id == id)
+        else {
+            return Ok(None);
+        };
+        let original = &self.prompts[index];
+        let name = copy_name(&original.name, |candidate| {
+            self.prompts.iter().any(|p| p.name == candidate)
+        });
+        let copy = Prompt { id: Uuid::new_v4(),
+                            name,
+                            ..original.clone() };
+        let copy_id = copy.id;
+        self.prompts.insert(index + 1, copy);
+        self.persist_prompts()?;
+        Ok(Some(copy_id))
     }
 
     /// Rewrite a prompt's name and text, keeping its id and position. Refused

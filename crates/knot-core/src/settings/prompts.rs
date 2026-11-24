@@ -45,6 +45,23 @@ impl Prompt {
     }
 }
 
+/// The name for a copy of a prompt called `name`: "`name` copy", or
+/// "`name` copy 2", "`name` copy 3"... - the first that `taken` says no
+/// prompt has yet. Names need not be unique, but two rows reading the same
+/// right after a duplicate would leave the user guessing which is the copy.
+pub(crate) fn copy_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
+    let first = crate::l10n::t_with("settings.prompts.copy_name", &[("name", name)]);
+    if !taken(&first) {
+        return first;
+    }
+    (2_u64..).map(|number| {
+                 crate::l10n::t_with("settings.prompts.copy_name_numbered",
+                                     &[("name", name), ("number", &number.to_string())])
+             })
+             .find(|candidate| !taken(candidate))
+             .unwrap_or(first)
+}
+
 /// The prompt sent as its own turn after the initialization prompt, on a
 /// fresh session.
 ///
