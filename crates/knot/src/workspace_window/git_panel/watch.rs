@@ -22,7 +22,7 @@ impl WorkspaceWindow {
     /// runtime - the UI thread has none of its own, and spawning outside one
     /// panics on the main thread at the moment the panel opens.
     pub(super) fn start_git_watch(&mut self, id: Uuid, folder: &str) {
-        if self.git_watches.contains_key(&id) {
+        if self.git.git_watches.contains_key(&id) {
             return;
         }
 
@@ -42,20 +42,20 @@ impl WorkspaceWindow {
             return;
         }
 
-        self.git_watches.insert(id, watch);
-        self.git_watch_dirty.insert(id, dirty);
+        self.git.git_watches.insert(id, watch);
+        self.git.git_watch_dirty.insert(id, dirty);
     }
 
     pub(super) fn stop_git_watch(&mut self, id: Uuid) {
-        if let Some(watch) = self.git_watches.remove(&id) {
+        if let Some(watch) = self.git.git_watches.remove(&id) {
             watch.stop();
         }
-        self.git_watch_dirty.remove(&id);
+        self.git.git_watch_dirty.remove(&id);
     }
 
     /// Suppresses `id`'s watch while the panel writes to the tree.
     pub(super) fn pause_git_watch(&self, id: Uuid) {
-        if let Some(watch) = self.git_watches.get(&id) {
+        if let Some(watch) = self.git.git_watches.get(&id) {
             watch.pause();
         }
     }
@@ -66,7 +66,7 @@ impl WorkspaceWindow {
     /// `Watch::resume` drops events for a settle window past the call, which
     /// is what covers the writes git is still flushing as its process exits.
     pub(super) fn resume_git_watch(&self, id: Uuid) {
-        if let Some(watch) = self.git_watches.get(&id) {
+        if let Some(watch) = self.git.git_watches.get(&id) {
             watch.resume();
         }
     }
@@ -78,15 +78,16 @@ impl WorkspaceWindow {
     /// flips a flag; acting on it is the poll's job - the same hand-off
     /// `exited_sessions` uses.
     pub(in crate::workspace_window) fn drain_git_watches(&mut self) -> bool {
-        let fired: Vec<Uuid> = self.git_watch_dirty
+        let fired: Vec<Uuid> = self.git
+                                   .git_watch_dirty
                                    .iter()
                                    .filter(|(_, flag)| flag.swap(false, Ordering::SeqCst))
                                    .map(|(id, _)| *id)
                                    .collect();
 
         for id in &fired {
-            self.git_status.forget(id);
-            self.git_diffs.retain(|key| key.agent != *id);
+            self.git.git_status.forget(id);
+            self.git.git_diffs.retain(|key| key.agent != *id);
         }
 
         !fired.is_empty()
@@ -95,8 +96,8 @@ impl WorkspaceWindow {
     /// Whether any panel has a read that has landed since this was last
     /// asked, for the repaint poll's dirty check.
     pub(in crate::workspace_window) fn git_panel_needs_repaint(&self) -> bool {
-        let status_changed = self.git_status.take_changed();
-        let diff_changed = self.git_diffs.take_changed();
+        let status_changed = self.git.git_status.take_changed();
+        let diff_changed = self.git.git_diffs.take_changed();
         status_changed || diff_changed
     }
 }

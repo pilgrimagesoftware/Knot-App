@@ -92,25 +92,25 @@ impl GitAction {
 
 impl WorkspaceWindow {
     pub(super) fn is_git_panel_open(&self, id: Uuid) -> bool {
-        self.git_panel_open.contains(&id)
+        self.git.git_panel_open.contains(&id)
     }
 
     /// Opens or closes `id`'s panel, starting or stopping its watch with it.
     pub(in crate::workspace_window) fn toggle_git_panel(&mut self, id: Uuid, folder: &str,
                                                         cx: &mut Context<Self>) {
-        if self.git_panel_open.remove(&id) {
+        if self.git.git_panel_open.remove(&id) {
             self.stop_git_watch(id);
             self.forget_git_state(id);
         }
         else {
-            self.git_panel_open.insert(id);
+            self.git.git_panel_open.insert(id);
             self.start_git_watch(id, folder);
         }
         cx.notify();
     }
 
     pub(super) fn close_git_panel(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        if self.git_panel_open.remove(&id) {
+        if self.git.git_panel_open.remove(&id) {
             self.stop_git_watch(id);
             self.forget_git_state(id);
         }
@@ -121,19 +121,19 @@ impl WorkspaceWindow {
     /// selected one.
     pub(super) fn select_git_row(&mut self, id: Uuid, selection: Selection,
                                  cx: &mut Context<Self>) {
-        if self.git_selection.get(&id) == Some(&selection) {
-            self.git_selection.remove(&id);
+        if self.git.git_selection.get(&id) == Some(&selection) {
+            self.git.git_selection.remove(&id);
         }
         else {
-            self.git_selection.insert(id, selection);
+            self.git.git_selection.insert(id, selection);
         }
         cx.notify();
     }
 
     /// Asks for a fresh status now rather than on the cache's cadence.
     pub(super) fn refresh_git_panel(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        self.git_status.forget(&id);
-        self.git_action_error.remove(&id);
+        self.git.git_status.forget(&id);
+        self.git.git_action_error.remove(&id);
         cx.notify();
     }
 
@@ -141,7 +141,7 @@ impl WorkspaceWindow {
                                                            cx: &mut Context<Self>) {
         let clamped = width.clamp(crate::consts::GIT_PANEL_MIN_WIDTH,
                                   crate::consts::GIT_PANEL_MAX_WIDTH);
-        self.git_panel_width.insert(id, clamped);
+        self.git.git_panel_width.insert(id, clamped);
         cx.notify();
     }
 
@@ -155,13 +155,14 @@ impl WorkspaceWindow {
                                  paths: Vec<PathBuf>, cx: &mut Context<Self>) {
         let Some(owned) = utf8_paths(&paths)
         else {
-            self.git_action_error
+            self.git
+                .git_action_error
                 .insert(id, knot_core::l10n::t("git_panel.error.path_not_utf8"));
             cx.notify();
             return;
         };
 
-        self.git_action_error.remove(&id);
+        self.git.git_action_error.remove(&id);
         self.pause_git_watch(id);
 
         let folder = folder.to_string();
@@ -177,7 +178,7 @@ impl WorkspaceWindow {
                                                    .map_err(|error| error.to_string()));
                     });
 
-        self.pending_git_actions.insert(id, outcome);
+        self.git.pending_git_actions.insert(id, outcome);
         cx.notify();
     }
 
@@ -190,13 +191,14 @@ impl WorkspaceWindow {
     /// notify.
     pub(in crate::workspace_window) fn drain_git_actions(&mut self) -> bool {
         let finished: Vec<(Uuid, Result<(), String>)> =
-            self.pending_git_actions
+            self.git
+                .pending_git_actions
                 .iter()
                 .filter_map(|(id, slot)| slot.lock().clone().map(|outcome| (*id, outcome)))
                 .collect();
 
         for (id, outcome) in &finished {
-            self.pending_git_actions.remove(id);
+            self.git.pending_git_actions.remove(id);
             self.resume_git_watch(*id);
 
             match outcome {
@@ -209,7 +211,7 @@ impl WorkspaceWindow {
                 Err(reason) => {
                     let text =
                         knot_core::l10n::t_with("git_panel.action_failed", &[("reason", reason)]);
-                    self.git_action_error.insert(*id, text);
+                    self.git.git_action_error.insert(*id, text);
                 }
             }
         }
@@ -230,7 +232,9 @@ impl WorkspaceWindow {
         // Tracked here as well as in the window: the window closing is what
         // the *user* sees, but the tree behind it still has to be re-read,
         // and the window cannot reach the panel's caches.
-        self.pending_git_commits.insert(id, Arc::clone(&outcome));
+        self.git
+            .pending_git_commits
+            .insert(id, Arc::clone(&outcome));
 
         let _runtime_guard = self.runtime.enter();
         self.runtime.spawn_blocking(move || {
@@ -248,13 +252,14 @@ impl WorkspaceWindow {
     /// window is still open showing why.
     pub(in crate::workspace_window) fn drain_git_commits(&mut self) -> bool {
         let finished: Vec<(Uuid, bool)> =
-            self.pending_git_commits
+            self.git
+                .pending_git_commits
                 .iter()
                 .filter_map(|(id, slot)| slot.lock().as_ref().map(|result| (*id, result.is_ok())))
                 .collect();
 
         for (id, succeeded) in &finished {
-            self.pending_git_commits.remove(id);
+            self.git.pending_git_commits.remove(id);
             if *succeeded {
                 self.finish_commit(*id);
             }

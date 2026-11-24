@@ -130,16 +130,16 @@ impl WorkspaceWindow {
     /// Deliberately not `measure_all`: it re-measures every row on every
     /// splice, which is the cost virtualizing exists to avoid.
     fn git_diff_list(&mut self, agent: uuid::Uuid, row_count: usize) -> ListState {
-        let known = self.git_diff_row_counts.get(&agent).copied();
-        let list = self.git_diff_lists.entry(agent).or_insert_with(|| {
-                                                       ListState::new(0,
+        let known = self.git.git_diff_row_counts.get(&agent).copied();
+        let list = self.git.git_diff_lists.entry(agent).or_insert_with(|| {
+                                                           ListState::new(0,
                                                          ListAlignment::Top,
                                                          px(consts::GIT_DIFF_LIST_OVERDRAW))
-                                                   });
+                                                       });
 
         if known != Some(row_count) {
             list.reset_with_uniform_height(row_count, px(consts::GIT_DIFF_LINE_HEIGHT));
-            self.git_diff_row_counts.insert(agent, row_count);
+            self.git.git_diff_row_counts.insert(agent, row_count);
         }
 
         list.clone()
@@ -148,8 +148,8 @@ impl WorkspaceWindow {
     /// Drops the diff list for `agent`, so a closed panel leaves nothing
     /// behind.
     pub(in crate::workspace_window) fn forget_git_diff_list(&mut self, agent: uuid::Uuid) {
-        self.git_diff_lists.remove(&agent);
-        self.git_diff_row_counts.remove(&agent);
+        self.git.git_diff_lists.remove(&agent);
+        self.git.git_diff_row_counts.remove(&agent);
     }
 }
 
