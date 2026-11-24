@@ -152,7 +152,9 @@ fn return_moves_to_the_next_field_then_inserts(cx: &mut TestAppContext) {
 fn cmd_return_inserts_from_any_field(cx: &mut TestAppContext) {
     let sheet = open(cx, "{{user_input:A|1}} {{user_input:B|2}}");
 
-    cx.simulate_keystrokes(sheet.window(), "cmd-enter");
+    // `secondary`, as the input binds it: Cmd on macOS, Ctrl elsewhere. A
+    // literal `cmd-enter` is Super-Return on Linux and matches nothing.
+    cx.simulate_keystrokes(sheet.window(), "secondary-enter");
 
     assert_eq!(*sheet.outcomes.borrow(),
                [inserted(&[("A", "1"), ("B", "2")])]);

@@ -113,7 +113,7 @@ fn a_sixth_input_takes_its_default(cx: &mut TestAppContext) {
 
     fixture.choose();
     let sheet = fixture.sheet().expect("the sheet");
-    cx.simulate_keystrokes(sheet, "cmd-enter");
+    cx.simulate_keystrokes(sheet, "secondary-enter");
 
     assert_eq!(fixture.composer(), "1 2 3 4 5 six");
 }
@@ -127,7 +127,7 @@ fn an_edit_while_the_sheet_is_open_drops_the_insert(cx: &mut TestAppContext) {
     fixture.choose();
     let sheet = fixture.sheet().expect("the sheet");
     fixture.type_into_composer("typed meanwhile");
-    cx.simulate_keystrokes(sheet, "cmd-enter");
+    cx.simulate_keystrokes(sheet, "secondary-enter");
 
     assert_eq!(fixture.composer(), "typed meanwhile");
 }
@@ -145,7 +145,7 @@ fn a_second_choice_keeps_the_open_sheet(cx: &mut TestAppContext) {
 
     assert_eq!(fixture.sheet(), Some(first));
     assert_eq!(fixture.open_windows(), windows);
-    cx.simulate_keystrokes(first, "cmd-enter");
+    cx.simulate_keystrokes(first, "secondary-enter");
     assert_eq!(fixture.composer(), "Arthur seeks ");
 }
 
