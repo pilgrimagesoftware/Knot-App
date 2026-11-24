@@ -253,7 +253,8 @@ impl WorkspaceWindow {
         // A resizable group rather than a hand-rolled drag handle: the
         // sidebar divider already works this way, and the group carries the
         // clamp, so a panel cannot be dragged past the spec's bounds.
-        let state = self.git_panel_resize
+        let state = self.git
+                        .git_panel_resize
                         .entry(id)
                         .or_insert_with(|| cx.new(|_| ResizableState::default()))
                         .clone();

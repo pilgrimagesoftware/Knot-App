@@ -57,7 +57,7 @@ impl WorkspaceWindow {
     pub(super) fn git_panel_view(&mut self, id: Uuid, folder: &str) -> PanelView {
         self.refresh_git_status(id, folder);
 
-        let snapshot = self.git_status.get(&id);
+        let snapshot = self.git.git_status.get(&id);
         let content = match snapshot {
             None => PanelContent::Loading,
             Some(GitStatusSnapshot::NotARepository) => PanelContent::NotARepository,
@@ -80,10 +80,10 @@ impl WorkspaceWindow {
 
         self.prune_git_selection(id, &content);
 
-        let selection = self.git_selection.get(&id).cloned();
+        let selection = self.git.git_selection.get(&id).cloned();
         let diff = selection.as_ref().and_then(|selection| {
                                          self.refresh_git_diff(id, folder, selection);
-                                         self.git_diffs.get(&selection.key(id))
+                                         self.git.git_diffs.get(&selection.key(id))
                                      });
 
         PanelView { agent: id,
@@ -92,7 +92,7 @@ impl WorkspaceWindow {
                     content,
                     selection,
                     diff,
-                    error: self.git_action_error.get(&id).cloned() }
+                    error: self.git.git_action_error.get(&id).cloned() }
     }
 
     /// Clears a selection whose row is no longer in the tree.
@@ -101,7 +101,7 @@ impl WorkspaceWindow {
     /// so a file that moved from one side to the other kept a diff that no
     /// longer described it.
     fn prune_git_selection(&mut self, id: Uuid, content: &PanelContent) {
-        let Some(selection) = self.git_selection.get(&id)
+        let Some(selection) = self.git.git_selection.get(&id)
         else {
             return;
         };
@@ -118,8 +118,8 @@ impl WorkspaceWindow {
 
         if !survives {
             let key = selection.key(id);
-            self.git_selection.remove(&id);
-            self.git_diffs.forget(&key);
+            self.git.git_selection.remove(&id);
+            self.git.git_diffs.forget(&key);
         }
     }
 
@@ -134,7 +134,8 @@ impl WorkspaceWindow {
     }
 
     pub(in crate::workspace_window) fn git_panel_width(&self, id: Uuid) -> f32 {
-        self.git_panel_width
+        self.git
+            .git_panel_width
             .get(&id)
             .copied()
             .unwrap_or(crate::consts::GIT_PANEL_DEFAULT_WIDTH)

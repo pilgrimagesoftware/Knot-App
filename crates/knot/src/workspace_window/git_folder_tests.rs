@@ -166,10 +166,11 @@ fn the_git_panel_and_its_watch_follow_a_changed_folder(cx: &mut TestAppContext) 
                     view.toggle_git_panel(agent, &clean, cx)
                 });
     fixture.draw_until("the clean tree's status", |view| {
-               view.git_status.get(&agent).is_some()
+               view.git.git_status.get(&agent).is_some()
            });
     let first_watch = fixture.view.read_with(&fixture.window, |view, _| {
-                                      Arc::clone(view.git_watches
+                                      Arc::clone(view.git
+                                                     .git_watches
                                                      .get(&agent)
                                                      .expect("the open panel watches its tree"))
                                   });
@@ -178,18 +179,19 @@ fn the_git_panel_and_its_watch_follow_a_changed_folder(cx: &mut TestAppContext) 
     fixture.frame();
 
     fixture.view.read_with(&fixture.window, |view, _| {
-                    let watch = view.git_watches
+                    let watch = view.git
+                                    .git_watches
                                     .get(&agent)
                                     .expect("the panel still watches a tree");
                     assert!(!Arc::ptr_eq(watch, &first_watch), "the watch moved");
                 });
     fixture.draw_until("the dirty tree's change in the panel", |view| {
-               view.git_status.holds(&agent, |status| match status {
-                                  crate::git_panel::state::GitStatusSnapshot::Loaded(repo) => {
-                                      !repo.entries.is_empty()
-                                  }
-                                  _ => false,
-                              })
+               view.git.git_status.holds(&agent, |status| match status {
+                                      crate::git_panel::state::GitStatusSnapshot::Loaded(repo) => {
+                                          !repo.entries.is_empty()
+                                      }
+                                      _ => false,
+                                  })
            });
 }
 
