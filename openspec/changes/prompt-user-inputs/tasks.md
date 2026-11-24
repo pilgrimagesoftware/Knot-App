@@ -89,7 +89,7 @@
 
 - [x] 5.1 `make fmt-check size-check declared-check lint test` passes (CI
       limit 700 lines; new files kept under the 500-line convention)
-- [ ] 5.2 (Not done by the builder: needs a human at the running app.) Manual check in the running app: insert a prompt with two inputs
+- [x] 5.2 Manual check (done by the maintainer, including dark mode) in the running app: insert a prompt with two inputs
       from the picker and from `/`, cancel once and insert once, and start
       an agent whose startup prompt has an input with a default
 
