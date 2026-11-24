@@ -42,7 +42,8 @@ CV = `Views/ContentView.swift`):
   is the full-height left column and the right column is split. In the grid,
   both dividers run the full width or height.
 - The 0.25–0.75 clamp on every divider (CV:434, 465, 486).
-- R1, R3 and R4 of the sidebar click (AM:1096-1124). ⌘ skips only R1
+- All four sidebar-click rules, R1–R4 (AM:1096-1124), with R2 and R3 in
+  swapped order (see below). ⌘ skips only R1
   (`SidebarView.swift`:78-79).
 - The companion layout for zero to three companions (AM:986-1001).
 - A new companion stepping single → split → three-pane → grid while its owner

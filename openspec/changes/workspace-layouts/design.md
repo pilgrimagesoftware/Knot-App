@@ -164,7 +164,14 @@ Conversation panels are not held: they have no PTY and reflow live.
 - Per-pane rendering factors today's stopped/panel/terminal branch into one
   `render_agent_pane(id)` that both modes use.
 
-### 8. Showing an agent in a pane activates it
+### 8. Showing an agent in a pane activates it (decided)
+
+Decided by the user on approving this proposal (#474). The spec states it
+as "Showing an agent in a pane starts it". It covers user actions only.
+Restoring a saved layout on open keeps today's rule for a restored
+selection: an agent starts only if its activation mode says so
+(`open.rs`, `activate_on_workspace_open`), so a passive agent stays stopped
+across a relaunch.
 
 Placing an agent in a pane does what selecting it does today: it activates
 the agent (`set_activated(id, true)`). A pane therefore shows a live agent,
@@ -191,8 +198,9 @@ panes can start up to three agents.
 ## Risks / Trade-offs
 
 - **[A mode change starts agents]** Filling panes activates up to three
-  agents (decision 8). → The Layout menu only fills with agents of the same
-  workspace, and the user chose the mode. It's documented in the user docs.
+  agents (decision 8, decided by the user). → The Layout menu only fills
+  with agents of the same workspace, and the user chose the mode. It's
+  documented in the user docs.
 - **[Drag hold looks rough on long drags]** Blank or clipped edges show
   while dragging, which the Swift app never did. → It is brief, it is the
   price of one PTY resize per drag, and a gpui-terminal pause can replace it

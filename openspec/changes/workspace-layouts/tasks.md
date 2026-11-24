@@ -21,13 +21,13 @@
 - [ ] 4.1 Factor the stopped, panel and terminal branch of `render/content.rs` into `render_agent_pane(id)`, and render the layout through it. Single mode must render exactly today's pane. Verify: the existing workspace-window tests pass unchanged, and `make size-check` passes.
 - [ ] 4.2 Per-pane name header in multi-pane layouts, a dimmed overlay on unfocused panes, and click-to-focus setting `selected_agent` through the one writer. Verify: a gpui test clicks pane 1 of a split and asserts `selected_agent`, the sidebar highlight and keyboard focus moved.
 - [ ] 4.3 Route every `select_agent` path (sidebar click with and without ⌘, number shortcuts, Select Agent menu) through `layout::select`, applying R1–R4. Verify: gpui tests for replacing the focused pane, focusing a shown agent or companion, ⌘-click falling to R3, and ⌘N on an agent already shown.
-- [ ] 4.5 The sidebar highlights only the focused agent's own row, including a focused companion's row. Verify: a gpui test focuses a companion's pane and asserts that its row is highlighted and the owner's is not.
 - [ ] 4.4 Side panels follow the focused agent across the whole layout area. Verify: a gpui test opens the git panel, focuses the other pane, and asserts the panel shows that agent's folder.
+- [ ] 4.5 The sidebar highlights only the focused agent's own row, including a focused companion's row. Verify: a gpui test focuses a companion's pane and asserts that its row is highlighted and the owner's is not.
 
 ## 5. Layout menu
 
 - [ ] 5.1 `render/layout_menu.rs` in the content header: shown with two or more agents in the agent view, Three Panes from three agents, Four Panes from four, current mode checked, and catalogue keys for every label. Verify: gpui tests for one, two and four agents, plus the catalogue-key test.
-- [ ] 5.2 Choosing a mode calls `layout::set_mode` and activates the agents placed in new panes. Verify: a gpui test goes from single to split and back, asserting the agents and the focused agent.
+- [ ] 5.2 Choosing a mode calls `layout::set_mode` and starts the agents placed in new panes ("Showing an agent in a pane starts it"). Verify: a gpui test goes from single to three panes with two stopped agents and asserts both are activated, then back to single, asserting the agents and the focused agent.
 
 ## 6. Terminal resize on settle
 

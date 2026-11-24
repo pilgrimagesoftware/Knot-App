@@ -68,6 +68,33 @@ diverges from the Swift app, whose panes held terminals only.
 - **THEN** one pane shows the conversation panel and the other the shell's
   live terminal, each under its agent's name
 
+### Requirement: Showing an agent in a pane starts it
+
+Placing an agent in a pane by a user action - a sidebar click, the number
+shortcut, a Layout menu choice that fills panes, or creating a companion -
+SHALL start it if it is not running, as selecting it in a single layout does.
+Restoring a saved layout SHALL NOT: a restored pane starts its agent only as
+its activation mode starts it on open, the way a restored selection does
+today, and shows the stopped view otherwise.
+
+#### Scenario: Filling a layout starts the agents it shows
+
+- **WHEN** agents B and C are not running and the user switches agent A's
+  window from Single to Three Panes
+- **THEN** B and C are started, and all three panes show live agents
+
+#### Scenario: A restored passive agent stays stopped
+
+- **WHEN** a workspace was closed in a split showing A and passive agent B,
+  and its window is reopened after a relaunch
+- **THEN** the split is restored, and B's pane shows the stopped view until
+  the user starts B
+
+#### Scenario: An agent that stops while shown
+
+- **WHEN** a split shows A and B, and B's session ends
+- **THEN** B's pane shows the stopped view and the layout is unchanged
+
 ### Requirement: Dividers
 
 Each boundary between panes SHALL be a draggable divider: one in a split, two
