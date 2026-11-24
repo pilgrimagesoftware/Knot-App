@@ -10,6 +10,14 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request makes the older run moot, so cancel
+# it and free the runner (macOS runners are the bottleneck). Pushes to
+# develop and main are never cancelled: every commit there keeps its own
+# result, and the release workflows read them.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   workspace:
     strategy:
