@@ -2,22 +2,23 @@
 
 ## 1. Grammar and expansion (`knot-agent-launch`)
 
-- [ ] 1.1 Add `user_inputs.rs` with `UserInput { label, default }`, the
-      `InputValues` newtype and `MAX_PROMPT_INPUTS = 5`, re-exported from
+- [x] 1.1 Add `user_inputs.rs` with `UserInput { label, default }`, the
+      `InputValues` newtype and `MAX_PROMPT_INPUTS = 5` (defined in
+      `consts.rs` per the crate convention, re-exported there), re-exported from
       `lib.rs`; verify `make build`
-- [ ] 1.2 Add a shared `parse_inner` (variable, input, malformed input or
-      unknown), used by both `scan` and `scan_names`. Add
+- [x] 1.2 Fold `scan` and `scan_names` into one `walk` over a shared
+      `parse_inner` (variable, input, malformed input or unknown). Add
       `PromptContext.inputs`, with `expand` falling back from value to
       default to empty. Verify unit tests in `variables/tests.rs` for each
       "User inputs" scenario (one per label, a later occurrence giving the
       default, repeated label, inputs with variables, value not expanded
       twice, blank label, escaped input)
-- [ ] 1.3 Add `user_inputs(text)` (first-seen order, first non-empty
+- [x] 1.3 Add `user_inputs(text)` (first-seen order, first non-empty
       default) and `malformed_inputs(text)`, and have `unknown_variables`
       (through `scan_names`) skip well-formed inputs and report a misspelled
       keyword; verify tests for "A user input is not unknown" and "A
       misspelled keyword is unknown"
-- [ ] 1.4 `ContextSource.inputs` moved into `PromptContext` by
+- [x] 1.4 `ContextSource.inputs` moved into `PromptContext` by
       `read_context`; the startup path passes no values. Verify
       `startup/tests.rs` cases for "A startup prompt uses the default" and
       "An input without a default is empty at startup"

@@ -55,7 +55,8 @@ impl WorkspaceWindow {
                                            agent_type: agent.agent_type.clone(),
                                            folder: agent.folder.clone(),
                                            workspace,
-                                           clipboard: String::new() }
+                                           clipboard: String::new(),
+                                           inputs: Default::default() }
     }
 
     /// Moves every `Ready` session's expanded startup prompt onto its agent's

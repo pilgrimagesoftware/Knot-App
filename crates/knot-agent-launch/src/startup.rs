@@ -18,6 +18,7 @@ use knot_core::{Prompt, StartupPrompt};
 use time::OffsetDateTime;
 use time::macros::format_description;
 
+use crate::user_inputs::InputValues;
 use crate::variables::PromptContext;
 
 /// The raw text an agent's startup prompt stands for, variables unexpanded:
@@ -47,6 +48,8 @@ pub struct ContextSource {
     pub folder:     String,
     pub workspace:  Option<String>,
     pub clipboard:  String,
+    /// The values typed into the inputs sheet; empty for a startup prompt.
+    pub inputs:     InputValues,
 }
 
 /// The context for `source`, reading its folder's branch and today's date.
@@ -61,7 +64,8 @@ pub fn read_context(source: ContextSource) -> PromptContext {
                     workspace: source.workspace.unwrap_or_default(),
                     branch,
                     date: today(),
-                    clipboard: source.clipboard }
+                    clipboard: source.clipboard,
+                    inputs: source.inputs }
 }
 
 /// The folder's current branch; the short commit id when HEAD is detached;

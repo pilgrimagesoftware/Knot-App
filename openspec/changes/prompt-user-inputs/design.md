@@ -55,9 +55,12 @@ existing trim, an inner part that starts with `user_input:` is split on the
 first `|`. Both halves are trimmed. A blank label falls through to
 `Piece::Text(whole)`, the same thing an unknown name does. Escaping and
 unclosed braces need no new code because they are handled before the inner
-part is looked at. One private `parse_inner(inner) -> Inner` (a variable, an
-input, a malformed input, or unknown) is shared by `scan` and `scan_names`,
-so the two walkers cannot disagree about what a name is.
+part is looked at. `scan` and `scan_names` fold into one private `walk`
+that emits literal text or a braced piece classified by one
+`parse_inner(inner) -> Inner` (a variable, an input, a malformed input, or
+unknown). `expand`, `unknown_variables`, `uses_variable`, `user_inputs` and
+`malformed_inputs` all read that one walk, so nothing can disagree about
+what a name is or about escaping.
 
 A label's default is the first non-empty default among its occurrences.
 "First occurrence's default" would make `{{user_input:T}} … {{user_input:T|x}}`
