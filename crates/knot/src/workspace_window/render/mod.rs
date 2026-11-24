@@ -1,10 +1,10 @@
 //! The workspace window's element tree.
 //!
-//! [`Render::render`] here is a dispatcher: it snapshots the state the
-//! frame needs out of the store once, then hands each region to the module
-//! that owns it - [`sidebar`] for the agent list, [`dashboard`] for the
-//! overview, [`title_bar`] for the header, [`content`] for the pane that
-//! fills the rest.
+//! `Render::render`, in [`root`], is a dispatcher: it snapshots the state
+//! the frame needs out of the store once ([`frame`]), then hands each region
+//! to the module that owns it - [`sidebar`] for the agent list, [`dashboard`]
+//! for the overview, [`title_bar`] for the header, [`content`] for the pane
+//! that fills the rest.
 //!
 //! Splitting it that way is not cosmetic. Every one of those regions
 //! captures the same handful of locals and builds closures over the window
