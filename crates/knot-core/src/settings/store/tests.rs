@@ -6,13 +6,14 @@
 
 mod binding;
 mod dismissed_mcp_servers;
+mod personas;
+mod preferences;
 mod prompts;
 mod pull_requests;
 mod session_scheduling;
 
 use std::fs;
 
-use serde_json::Value;
 use tempfile::TempDir;
 use tempfile::tempdir;
 
@@ -22,11 +23,18 @@ use crate::consts::{
     AGENTS_FILE, BENCH_FILE, DOCUMENT_TEMP_EXTENSION, PERSONAS_FILE, PREFERENCES_FILE,
     PROMPTS_FILE, RECENT_REPOS_FILE, WORKSPACES_FILE,
 };
-use crate::consts::{DEFAULT_PERSONAS, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN};
 use crate::settings::{PersonaState, PersonaType};
 
 fn agent_id() -> Uuid {
     Uuid::new_v4()
+}
+
+fn persona(name: &str, persona_type: PersonaType, state: PersonaState) -> Persona {
+    Persona { id: agent_id(),
+              name: name.to_string(),
+              instructions: String::new(),
+              persona_type,
+              state }
 }
 
 /// Writes `document` as the store's preferences and loads it back, so each
@@ -47,144 +55,6 @@ fn default_scalars() {
     assert!(!s.restore_conversation_on_launch);
     assert!(s.reopen_workspaces_on_launch);
     assert!(s.mcp_server_enabled);
-}
-
-/// A preferences document written before the setting existed must read as
-/// on, so an upgrade starts reopening workspaces rather than silently not.
-#[test]
-fn legacy_settings_blob_defaults_reopen_workspaces_on() {
-    let (_dir, s) = load_document(r#"{"restoreLayoutOnLaunch":true}"#);
-    assert!(s.reopen_workspaces_on_launch);
-}
-
-#[test]
-fn legacy_settings_blob_defaults_restore_conversation_off() {
-    let (_dir, s) = load_document(r#"{"restoreLayoutOnLaunch":true}"#);
-    assert!(s.restore_layout_on_launch);
-    assert!(!s.restore_conversation_on_launch);
-}
-
-#[test]
-fn persisted_sf_mono_upgrades_to_the_new_terminal_font_default() {
-    let (_dir, s) = load_document(r#"{"terminalFontName":"SF Mono"}"#);
-    assert_eq!(s.terminal_font_name, "JetBrains Mono");
-}
-
-#[test]
-fn persisted_custom_terminal_font_is_not_overridden() {
-    let (_dir, s) = load_document(r#"{"terminalFontName":"Fira Code"}"#);
-    assert_eq!(s.terminal_font_name, "Fira Code");
-}
-
-#[test]
-fn a_fresh_store_is_already_at_the_current_settings_version() {
-    assert_eq!(Settings::default().settings_version,
-               SETTINGS_VERSION_CURRENT);
-}
-
-#[test]
-fn a_document_without_the_marker_reads_as_pre_migration() {
-    // Not the container-level default, which is `SETTINGS_VERSION_CURRENT` -
-    // the field's own serde default has to win on the deserialize path, or an
-    // unmigrated document would declare itself migrated.
-    assert_eq!(preferences::de_legacy_settings_version(), 0);
-
-    let mut document: Value = serde_json::from_str("{}").unwrap();
-    let object = document.as_object_mut().unwrap();
-    assert!(!object.contains_key("settingsVersion"));
-
-    let settings: Settings = serde_json::from_value(document).unwrap();
-    assert_eq!(settings.settings_version, 0);
-}
-
-#[test]
-fn the_font_defaults_name_what_they_draw() {
-    let s = Settings::default();
-    assert_eq!(s.ui_font_name, "Adamina");
-    assert_eq!(s.ui_font_size, 16.0);
-    assert_eq!(s.title_font_name, "Manrope");
-    assert_eq!(s.title_font_size, 14.0);
-}
-
-#[test]
-fn both_customized_fonts_are_exchanged() {
-    let (_dir, s) = load_document(r#"{"uiFontName":"Helvetica Neue","uiFontSize":13,
-                                      "titleFontName":"Palatino","titleFontSize":18}"#);
-    assert_eq!(s.ui_font_name, "Palatino");
-    assert_eq!(s.ui_font_size, 18.0);
-    assert_eq!(s.title_font_name, "Helvetica Neue");
-    assert_eq!(s.title_font_size, 13.0);
-    assert_eq!(s.settings_version, SETTINGS_VERSION_CURRENT);
-}
-
-#[test]
-fn one_customized_font_moves_and_the_other_takes_the_new_default() {
-    let (_dir, s) = load_document(r#"{"titleFontName":"Palatino"}"#);
-    assert_eq!(s.ui_font_name, "Palatino");
-    // Not "Palatino" - an absent key stays absent through the exchange rather
-    // than inheriting the other's value.
-    assert_eq!(s.title_font_name, "Manrope");
-}
-
-#[test]
-fn a_document_that_customized_neither_font_keeps_the_new_defaults() {
-    let (_dir, s) = load_document(r#"{"appearanceMode":"dark"}"#);
-    assert_eq!(s.ui_font_name, "Adamina");
-    assert_eq!(s.ui_font_size, 16.0);
-    assert_eq!(s.title_font_name, "Manrope");
-    assert_eq!(s.title_font_size, 14.0);
-}
-
-#[test]
-fn the_migration_does_not_run_twice() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,
-                                      "uiFontName":"Adamina","titleFontName":"Manrope"}"#);
-    assert_eq!(s.ui_font_name, "Adamina");
-    assert_eq!(s.title_font_name, "Manrope");
-}
-
-#[test]
-fn the_migration_leaves_the_terminal_font_alone() {
-    let (_dir, s) = load_document(r#"{"terminalFontName":"Fira Code","terminalFontSize":11,
-                                      "uiFontName":"Helvetica Neue","titleFontName":"Palatino"}"#);
-    assert_eq!(s.terminal_font_name, "Fira Code");
-    assert_eq!(s.terminal_font_size, 11.0);
-}
-
-#[test]
-fn a_fresh_store_opens_the_sidebar_at_the_default_width() {
-    assert_eq!(Settings::default().sidebar_width, SIDEBAR_WIDTH_DEFAULT);
-}
-
-#[test]
-fn a_document_without_the_sidebar_width_takes_the_default() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,"mcpServerPort":9000}"#);
-    assert_eq!(s.mcp_server_port, 9000);
-    assert_eq!(s.sidebar_width, SIDEBAR_WIDTH_DEFAULT);
-}
-
-#[test]
-fn an_in_range_sidebar_width_is_honored() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,"sidebarWidth":320}"#);
-    assert_eq!(s.sidebar_width, 320.0);
-}
-
-#[test]
-fn a_sidebar_width_below_the_minimum_clamps_up() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,"sidebarWidth":40}"#);
-    assert_eq!(s.sidebar_width, SIDEBAR_WIDTH_MIN);
-}
-
-#[test]
-fn a_sidebar_width_above_the_maximum_clamps_down() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,"sidebarWidth":5000}"#);
-    assert_eq!(s.sidebar_width, SIDEBAR_WIDTH_MAX);
-}
-
-#[test]
-fn a_non_numeric_sidebar_width_leaves_the_default() {
-    let (_dir, s) = load_document(r#"{"settingsVersion":1,"sidebarWidth":"wide"}"#);
-    assert_eq!(s.sidebar_width, SIDEBAR_WIDTH_DEFAULT);
 }
 
 #[test]
@@ -428,143 +298,6 @@ fn bench_keeps_same_name_in_another_folder() {
     assert_eq!(s.bench_agents.len(), 2);
 }
 
-fn persona(name: &str, persona_type: PersonaType, state: PersonaState) -> Persona {
-    Persona { id: agent_id(),
-              name: name.to_string(),
-              instructions: String::new(),
-              persona_type,
-              state }
-}
-
-#[test]
-fn active_personas_excludes_deleted_and_sorts_ci() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    s.personas = vec![persona("beta", PersonaType::User, PersonaState::Enabled),
-                      persona("Alpha", PersonaType::User, PersonaState::Enabled),
-                      persona("gone", PersonaType::System, PersonaState::Deleted),];
-    let names: Vec<&str> = s.active_personas()
-                            .iter()
-                            .map(|p| p.name.as_str())
-                            .collect();
-    assert_eq!(names, vec!["Alpha", "beta"]);
-}
-
-#[test]
-fn default_personas_install_once() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    s.install_default_personas().unwrap();
-    assert_eq!(s.personas.len(), DEFAULT_PERSONAS.len());
-    s.install_default_personas().unwrap();
-    assert_eq!(s.personas.len(), DEFAULT_PERSONAS.len());
-}
-
-#[test]
-fn add_update_and_lookup_persona() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    let id = s.add_persona("Rookie", "be helpful").unwrap().id;
-    assert_eq!(s.personas.len(), 1);
-    assert_eq!(s.persona(id).unwrap().name, "Rookie");
-
-    s.update_persona(id, "Veteran", "be terse").unwrap();
-    let persona = s.persona(id).unwrap();
-    assert_eq!(persona.name, "Veteran");
-    assert_eq!(persona.instructions, "be terse");
-
-    s.update_persona(agent_id(), "Nobody", "").unwrap();
-    assert_eq!(s.personas.len(), 1);
-}
-
-#[test]
-fn persona_lookup_excludes_deleted() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    s.personas = vec![persona("gone", PersonaType::System, PersonaState::Deleted)];
-    assert!(s.persona(s.personas[0].id).is_none());
-}
-
-/// Both launch paths once passed the agent's own id here, so every
-/// assigned persona resolved to nothing (#519).
-#[test]
-fn persona_for_resolves_an_agents_assignment_not_its_id() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    let persona_id = s.add_persona("Rust Pro", "borrow first").unwrap().id;
-    let agent = agent_id();
-
-    assert_eq!(s.persona_for(Some(persona_id)).unwrap().name, "Rust Pro");
-    assert!(s.persona_for(None).is_none());
-    assert!(s.persona_for(Some(agent)).is_none());
-}
-
-#[test]
-fn remove_persona_soft_deletes_system_and_hard_deletes_user() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    s.personas = vec![persona("System", PersonaType::System, PersonaState::Enabled),
-                      persona("User", PersonaType::User, PersonaState::Enabled),];
-    let system_id = s.personas[0].id;
-    let user_id = s.personas[1].id;
-
-    s.remove_persona(system_id).unwrap();
-    assert_eq!(s.personas.len(), 2);
-    assert_eq!(s.personas.iter().find(|p| p.id == system_id).unwrap().state,
-               PersonaState::Deleted);
-
-    s.remove_persona(user_id).unwrap();
-    assert_eq!(s.personas.len(), 1);
-    assert!(s.personas.iter().all(|p| p.id != user_id));
-
-    s.remove_persona(agent_id()).unwrap();
-    assert_eq!(s.personas.len(), 1);
-}
-
-#[test]
-fn restore_default_personas_reverts_edits_and_adds_missing() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    let (id, name, instructions) = DEFAULT_PERSONAS[0];
-    let id = Uuid::parse_str(id).unwrap();
-    s.personas = vec![Persona { id,
-                                name: "Renamed".to_string(),
-                                instructions: "different".to_string(),
-                                persona_type: PersonaType::System,
-                                state: PersonaState::Disabled },
-                      persona("Mine", PersonaType::User, PersonaState::Enabled),];
-
-    s.restore_default_personas().unwrap();
-
-    assert_eq!(s.personas.len(),
-               DEFAULT_PERSONAS.len() + 1,
-               "the defaults plus the user's own");
-    let restored = s.personas.iter().find(|p| p.id == id).unwrap();
-    assert_eq!(restored.name, name);
-    assert_eq!(restored.instructions, instructions);
-    assert_eq!(restored.state, PersonaState::Enabled);
-    assert!(s.personas.iter().any(|p| p.name == "Mine"));
-}
-
-#[test]
-fn deleted_default_persona_not_reinstalled() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::with_store_root(dir.path());
-    let (id, _, _) = DEFAULT_PERSONAS[0];
-    s.personas = vec![Persona { id:           Uuid::parse_str(id).unwrap(),
-                                name:         "custom".to_string(),
-                                instructions: String::new(),
-                                persona_type: PersonaType::System,
-                                state:        PersonaState::Deleted, }];
-    s.install_default_personas().unwrap();
-    assert_eq!(s.personas.len(), DEFAULT_PERSONAS.len());
-    assert_eq!(s.personas
-                .iter()
-                .filter(|p| p.state == PersonaState::Deleted)
-                .count(),
-               1);
-}
-
 #[test]
 fn persist_leaves_no_temporary_file_behind() {
     let dir = tempdir().unwrap();
@@ -593,76 +326,6 @@ fn persist_replaces_a_stale_temporary_file_rather_than_reusing_it() {
     assert!(!temporary.exists());
     let reloaded = Settings::load_from_root(dir.path()).unwrap();
     assert_eq!(reloaded.ui_font_size, 17.0);
-}
-
-#[test]
-fn legacy_settings_blob_defaults_compact_tool_calls_off() {
-    let (_dir, s) = load_document(r#"{"restoreLayoutOnLaunch":true}"#);
-    assert!(!s.agent_panel_compact_tool_calls);
-}
-
-#[test]
-fn compact_tool_calls_round_trips_through_the_store() {
-    let dir = tempdir().unwrap();
-    let mut s = Settings::load_from_root(dir.path()).unwrap();
-    assert!(!s.agent_panel_compact_tool_calls);
-    s.agent_panel_compact_tool_calls = true;
-    s.persist().unwrap();
-
-    let reloaded = Settings::load_from_root(dir.path()).unwrap();
-    assert!(reloaded.agent_panel_compact_tool_calls);
-}
-
-/// The Orchestrator persona describes a *method*, never a team.
-///
-/// `agent-registry` - "A roster is obtained by query, never stored as
-/// text". A teammate named here is a copy of state that goes stale the
-/// first time an agent is added or removed, and nothing would catch it,
-/// which is the whole reason the registry exists. Checked rather than left
-/// to review, because prose drifts.
-#[test]
-fn the_orchestrator_persona_names_a_method_and_no_teammates() {
-    let (_, name, instructions) = DEFAULT_PERSONAS.iter()
-                                                  .find(|(_, name, _)| *name == "Orchestrator")
-                                                  .expect("the Orchestrator persona ships");
-    assert_eq!(*name, "Orchestrator");
-
-    // It has to point at the tools, or it describes nothing actionable.
-    for tool in ["describe-agents",
-                 "plan-tasks",
-                 "dispatch-task",
-                 "complete-task",
-                 "task-status",
-                 "send-message"]
-    {
-        assert!(instructions.contains(tool),
-                "the persona should name {tool}");
-    }
-
-    // And it must not name an agent, an agent type, or how many there are -
-    // every one of those goes stale without warning.
-    let lowered = instructions.to_lowercase();
-    for stale in ["claude", "codex", "opencode", "gemini", "copilot", "shell"] {
-        assert!(!lowered.contains(stale),
-                "the persona must not name the agent type {stale}");
-    }
-    for (_, other, _) in DEFAULT_PERSONAS.iter()
-                                         .filter(|(_, other, _)| *other != "Orchestrator")
-    {
-        assert!(!instructions.contains(other),
-                "the persona must not name {other}");
-    }
-}
-
-/// A shipped default is matched by id across installs, so two entries
-/// sharing one would overwrite each other on startup.
-#[test]
-fn every_shipped_persona_has_a_distinct_id() {
-    let mut ids: Vec<&str> = DEFAULT_PERSONAS.iter().map(|(id, _, _)| *id).collect();
-    ids.sort_unstable();
-    let count = ids.len();
-    ids.dedup();
-    assert_eq!(ids.len(), count, "two shipped personas share an id");
 }
 
 /// Task 10.3: records written before the agent registry existed carry no
