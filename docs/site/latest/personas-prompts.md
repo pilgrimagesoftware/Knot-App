@@ -52,10 +52,16 @@ editing opens an editor for the name and instructions; canceling discards the ch
 ### The Prompts window
 
 It lists every library prompt in the order added, with its name and a truncated,
-single-line text preview, and offers per-row edit and delete and an "Add Prompt…".
+single-line text preview, and offers per-row edit, duplicate and delete and an "Add Prompt…".
 Adding and editing share one editor with a name field and a multi-line text field;
 save stays disabled while either field is blank, and the editor lists the prompt
 variables, inserting a chosen one at the caret.
+
+Duplicate (the copy icon) adds a copy of the prompt right after it, with the same text
+and description and the name "Review copy" for a prompt named "Review", or "Review copy
+2", "Review copy 3" and so on if that name is taken. The copy is saved straight away and
+opens in the editor with the caret in its name, ready to rename; canceling the editor
+keeps the copy as made.
 
 A prompt's name and text must be non-empty after trimming, the text may span several
 lines and is stored exactly as entered, and every change is persisted before success.
@@ -175,6 +181,41 @@ anything that edits prompt text flags it as a warning without blocking save. A b
 before `{% raw %}{{{% endraw %}` writes a literal `{% raw %}{{{% endraw %}` and suppresses expansion, and an
 unclosed `{% raw %}{{{% endraw %}` is left as typed.
 
+## User inputs
+
+A library prompt can ask you for values when you insert it into a composer. Write an
+input as `{% raw %}{{user_input:Label}}{% endraw %}`, or give it a default with
+`{% raw %}{{user_input:Label|default}}{% endraw %}`:
+
+```text
+{% raw %}Review PR {{user_input:PR number}} on {{branch}}.
+Focus on {{user_input:Focus|correctness and tests}}.{% endraw %}
+```
+
+Inserting that prompt (from Insert Prompt or the `/` lookup) opens a sheet titled with the
+prompt's name, with one field per input: `PR number` empty, `Focus` prefilled with its
+default. Insert replaces each input with what you typed; the variables expand as usual.
+
+- **Keys:** the first field has focus with its text selected. Tab and Shift-Tab move between
+  fields, Return moves to the next field and inserts from the last one, Cmd-Return inserts
+  from any field, and Esc cancels.
+- **Cancel** inserts nothing and leaves the composer as it was.
+- **Empty values** are allowed. A field you clear inserts nothing, not its default.
+- **Repeated labels** are asked for once, and the value is used everywhere the label appears.
+  The default is the first non-empty one any occurrence gives.
+- **At most five inputs** are asked for. Any more use their defaults (or nothing), and the
+  sheet says how many. The Prompts editor warns about a prompt with more than five.
+- A prompt with no inputs inserts straight away, without a sheet.
+- If you edit the composer while the sheet is open, Insert inserts nothing, so your edit
+  isn't overwritten.
+
+Inputs follow the variables' rules: whitespace inside the braces is allowed, a backslash before
+`{% raw %}{{{% endraw %}` writes it literally, and typed values are never expanded again. An input with
+a blank label is left as typed, and the editor flags it.
+
+A startup prompt is sent without you present, so it never asks for inputs. Each input expands to
+its default, or to nothing, and the agent editor warns about inputs that have no default.
+
 ## Prompts in the panel
 
 Typing `/` in a panel composer opens the lookup, listing the built-in panel commands,
@@ -206,7 +247,8 @@ companions have no composer and no Insert Prompt button.
 The list also adds and edits prompts without a trip to the Prompts window. The + beside
 the search field, or New Prompt… at the foot of the list, opens the prompt editor on a
 blank prompt. The pencil on a prompt's row opens that prompt in the editor with the caret
-in its text, ready to change; the composer is left as it was.
+in its text, ready to change; the copy icon beside it duplicates the prompt and opens the
+copy, as Duplicate does in the Prompts window. Either way the composer is left as it was.
 
 ## Source contracts
 

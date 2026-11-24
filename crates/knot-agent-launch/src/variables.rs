@@ -1,6 +1,7 @@
 //! Prompt variables: the closed set of `{{name}}` placeholders a library
-//! prompt or a custom startup prompt may use, and the one scanner that both
-//! expands them and reports the names it does not know.
+//! prompt or a custom startup prompt may use, the user inputs
+//! (`crate::user_inputs`) that share their braces, and the one walker that
+//! both expands them and reports the names it does not know.
 //!
 //! Contract: `openspec/specs/prompt-library/spec.md`, "Prompt variables" and
 //! "Unknown variables and escaping".
@@ -13,6 +14,11 @@
 
 use std::fmt;
 use std::str::FromStr;
+
+use crate::user_inputs::DEFAULT_SEPARATOR;
+use crate::user_inputs::InputValues;
+use crate::user_inputs::KEYWORD;
+use crate::user_inputs::user_inputs;
 
 /// Opens a variable.
 const OPEN: &str = "{{";
@@ -107,6 +113,9 @@ pub struct PromptContext {
     /// The clipboard's text when the prompt was chosen; empty when it held
     /// none, and always empty for a startup prompt.
     pub clipboard:  String,
+    /// What the user typed into the inputs sheet. Empty for a startup
+    /// prompt, so every input there takes its default or nothing.
+    pub inputs:     InputValues,
 }
 
 impl PromptContext {
@@ -125,25 +134,44 @@ impl PromptContext {
     }
 }
 
-/// `text` with every known variable replaced by its value.
+/// `text` with every known variable and every input replaced by its value.
 ///
 /// A single left-to-right pass: values are appended to the output and never
 /// rescanned, so a value holding `{{date}}` stays literal by construction.
+/// An input takes the typed value, else its label's default - the first
+/// non-empty one in the text, whichever occurrence gives it - else nothing.
 pub fn expand(text: &str, context: &PromptContext) -> String {
+    let defaults = user_inputs(text);
     let mut out = String::with_capacity(text.len());
-    scan(text, |piece| match piece {
+    walk(text, |piece| match piece {
         Piece::Text(text) => out.push_str(text),
-        Piece::Variable(variable) => out.push_str(&context.value(variable)),
+        Piece::Braced { inner: Inner::Variable(variable),
+                        .. } => out.push_str(&context.value(variable)),
+        Piece::Braced { inner: Inner::Input { label, .. },
+                        .. } => {
+            let value =
+                context.inputs.get(label).or_else(|| {
+                                             defaults.iter()
+                                                     .find(|input| input.label == label)
+                                                     .and_then(|input| input.default.as_deref())
+                                         });
+            out.push_str(value.unwrap_or_default());
+        }
+        Piece::Braced { whole, .. } => out.push_str(whole),
     });
     out
 }
 
 /// The names in `text` that look like variables but are not one, each once,
-/// in the order they first appear - what the editors warn about.
+/// in the order they first appear - what the editors warn about. A
+/// well-formed input is not unknown, and a blank-label one is reported by
+/// [`crate::malformed_inputs`] instead.
 pub fn unknown_variables(text: &str) -> Vec<String> {
     let mut unknown: Vec<String> = Vec::new();
-    scan_names(text, |name| {
-        if name.parse::<PromptVariable>().is_err() && !unknown.iter().any(|seen| seen == name) {
+    walk_inner(text, |inner| {
+        if let Inner::Unknown(name) = inner
+           && !unknown.iter().any(|seen| seen == name)
+        {
             unknown.push(name.to_string());
         }
     });
@@ -154,21 +182,63 @@ pub fn unknown_variables(text: &str) -> Vec<String> {
 /// startup-prompt editor checks to warn that `{{clipboard}}` is empty there.
 pub fn uses_variable(text: &str, variable: PromptVariable) -> bool {
     let mut used = false;
-    scan(text, |piece| {
-        if matches!(piece, Piece::Variable(found) if found == variable) {
+    walk_inner(text, |inner| {
+        if matches!(inner, Inner::Variable(found) if found == variable) {
             used = true;
         }
     });
     used
 }
 
-enum Piece<'a> {
-    Text(&'a str),
+/// What the text between a pair of unescaped braces is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Inner<'a> {
     Variable(PromptVariable),
+    /// `user_input:` with a non-blank label; `default` is `None` when absent
+    /// or empty.
+    Input {
+        label:   &'a str,
+        default: Option<&'a str>,
+    },
+    /// `user_input:` with a blank label: left as typed.
+    MalformedInput,
+    /// Anything else: left as typed.
+    Unknown(&'a str),
 }
 
-/// Walk `text`, handing each literal run and each known variable to `emit`.
-fn scan<'a>(text: &'a str, mut emit: impl FnMut(Piece<'a>)) {
+/// Classify the text between the braces. The one place a name is decided,
+/// so expansion and the editors' warnings cannot disagree.
+fn parse_inner(raw: &str) -> Inner<'_> {
+    let name = raw.trim();
+    if let Some(rest) = name.strip_prefix(KEYWORD) {
+        let (label, default) = match rest.split_once(DEFAULT_SEPARATOR) {
+            Some((label, default)) => {
+                (label.trim(), Some(default.trim()).filter(|d| !d.is_empty()))
+            }
+            None => (rest.trim(), None),
+        };
+        if label.is_empty() {
+            return Inner::MalformedInput;
+        }
+        return Inner::Input { label, default };
+    }
+    match name.parse::<PromptVariable>() {
+        Ok(variable) => Inner::Variable(variable),
+        Err(_) => Inner::Unknown(name),
+    }
+}
+
+enum Piece<'a> {
+    /// Literal text, written as is.
+    Text(&'a str),
+    /// A closed pair of braces: `whole` is how it was typed, braces and all.
+    Braced { whole: &'a str, inner: Inner<'a> },
+}
+
+/// Walk `text`, handing each literal run and each closed pair of unescaped
+/// braces to `emit`. The only walker: escaping (`\{{`) and unclosed braces
+/// are decided here and nowhere else.
+fn walk<'a>(text: &'a str, mut emit: impl FnMut(Piece<'a>)) {
     let mut rest = text;
     while let Some(open) = rest.find(OPEN) {
         let (before, from_open) = rest.split_at(open);
@@ -187,33 +257,20 @@ fn scan<'a>(text: &'a str, mut emit: impl FnMut(Piece<'a>)) {
             return;
         };
         let whole = &from_open[..OPEN.len() + close + CLOSE.len()];
-        match inner[..close].trim().parse::<PromptVariable>() {
-            Ok(variable) => emit(Piece::Variable(variable)),
-            Err(_) => emit(Piece::Text(whole)),
-        }
+        emit(Piece::Braced { whole,
+                             inner: parse_inner(&inner[..close]) });
         rest = &from_open[whole.len()..];
     }
     emit(Piece::Text(rest));
 }
 
-/// Walk `text`, handing every trimmed name found between unescaped braces to
-/// `found`, known or not. Shares [`scan`]'s escaping and unclosed-brace rules.
-fn scan_names<'a>(text: &'a str, mut found: impl FnMut(&'a str)) {
-    let mut rest = text;
-    while let Some(open) = rest.find(OPEN) {
-        let (before, from_open) = rest.split_at(open);
-        let inner = &from_open[OPEN.len()..];
-        if before.ends_with(ESCAPE) {
-            rest = inner;
-            continue;
+/// [`walk`], keeping only what sits between the braces.
+pub(crate) fn walk_inner<'a>(text: &'a str, mut found: impl FnMut(Inner<'a>)) {
+    walk(text, |piece| {
+        if let Piece::Braced { inner, .. } = piece {
+            found(inner);
         }
-        let Some(close) = inner.find(CLOSE)
-        else {
-            return;
-        };
-        found(inner[..close].trim());
-        rest = &inner[close + CLOSE.len()..];
-    }
+    });
 }
 
 #[cfg(test)]

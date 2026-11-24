@@ -206,6 +206,7 @@ panel:
     new_prompt: "New Prompt…"
     add: "Add Prompt…"
     edit: "Edit Prompt…"
+    duplicate: "Duplicate Prompt…"
   # The input area's session-config dropdowns. One render path serves the
   # permission, model and effort axes, so the copy names no axis: only the
   # model list is long enough to need searching, but all three share it.
@@ -363,6 +364,11 @@ settings:
     add: "Add Prompt…"
     edit: "Edit prompt"
     delete: "Delete prompt"
+    duplicate: "Duplicate prompt"
+    # The name a duplicated prompt gets; the numbered form once that name
+    # is taken (#469).
+    copy_name: "%{name} copy"
+    copy_name_numbered: "%{name} copy %{number}"
     delete_title: "Delete Prompt"
     delete_body: "\"%{name}\" is the startup prompt of %{agents} and %{bench}. They will launch without a startup prompt. Delete it?"
     import_from_library: "Import from Library…"
@@ -1257,6 +1263,18 @@ prompt_variables:
   date: "today's date"
   clipboard: "the clipboard's text"
   clipboard_in_startup: "{{clipboard}} is always empty in a startup prompt, which is sent without you choosing it."
+  user_input: "a value you type when inserting the prompt"
+  malformed_input: "A {{user_input:}} has no label, so it is left as typed."
+  too_many_inputs: "Only the first %{max} inputs are asked for; the rest use their defaults."
+  inputs_in_startup: "No default, so empty in a startup prompt: %{names}"
+
+# The sheet that asks for a library prompt's user inputs when it is
+# inserted into a composer (#239). Its title is the prompt's name.
+prompt_inputs:
+  insert: "Insert"
+  cancel: "Cancel"
+  more_defaulted_one: "%{count} more input will use its default."
+  more_defaulted_other: "%{count} more inputs will use their defaults."
 
 # The banner over a Codex agent's pane when its usage allowance is nearly
 # spent (#291). `when` is the reset as a local date and time.
