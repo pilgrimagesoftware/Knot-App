@@ -11,6 +11,10 @@
 //! once, from whichever way it closes - Insert, Cancel, Esc, the window's
 //! close button, or its owner going away - so the caller has one place to
 //! tidy up and refocus.
+//!
+//! Mounted in [`Root`] like every window: Root is what gives the sheet the
+//! theme's font and text colour, so without it labels and typed text draw
+//! black on the dark background.
 
 use gpui_kit::App;
 use gpui_kit::AppContext;
@@ -29,6 +33,7 @@ use gpui_kit::WindowHandle;
 use gpui_kit::base::h_flex;
 use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::Root;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::Escape;
@@ -42,6 +47,7 @@ use knot_agent_launch::InputValues;
 use knot_agent_launch::MAX_PROMPT_INPUTS;
 use knot_agent_launch::UserInput;
 
+use crate::app_support::observe_system_appearance;
 use crate::window_options::prompt_inputs_window_options;
 
 /// How the sheet closed.
@@ -79,14 +85,29 @@ pub(in crate::workspace_window) struct PromptInputsSheet {
 
 /// Opens the sheet for `request`. `on_close` runs exactly once, when the
 /// sheet closes for any reason.
-pub(in crate::workspace_window) fn open_prompt_inputs_sheet(
-    request: SheetRequest, on_close: impl FnOnce(SheetOutcome, &mut App) + 'static, cx: &mut App)
-    -> Option<WindowHandle<PromptInputsSheet>> {
+pub(in crate::workspace_window) fn open_prompt_inputs_sheet(request: SheetRequest,
+                                                            on_close: impl FnOnce(SheetOutcome,
+                                                                   &mut App)
+                                                            + 'static,
+                                                            cx: &mut App)
+                                                            -> Option<WindowHandle<Root>> {
     let options = prompt_inputs_window_options(request.title, cx);
     cx.open_window(options, move |window, cx| {
-          cx.new(|cx| PromptInputsSheet::new(request.inputs, Box::new(on_close), window, cx))
+          // Every window tracks the OS appearance, so a light/dark flip
+          // re-resolves the system palette and repaints.
+          observe_system_appearance(window);
+          let sheet =
+              cx.new(|cx| PromptInputsSheet::new(request.inputs, Box::new(on_close), window, cx));
+          cx.new(|cx| Root::new(sheet, window, cx))
       })
       .ok()
+}
+
+/// The sheet a window from [`open_prompt_inputs_sheet`] shows; `None` once
+/// the window has gone.
+pub(in crate::workspace_window) fn sheet_in(handle: WindowHandle<Root>, cx: &App)
+                                            -> Option<Entity<PromptInputsSheet>> {
+    handle.read(cx).ok()?.view().clone().downcast().ok()
 }
 
 impl PromptInputsSheet {

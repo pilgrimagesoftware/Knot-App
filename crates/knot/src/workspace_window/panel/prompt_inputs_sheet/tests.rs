@@ -6,9 +6,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use gpui_kit::AnyWindowHandle;
+use gpui_kit::App;
 use gpui_kit::Focusable;
 use gpui_kit::TestAppContext;
+use gpui_kit::WeakEntity;
+use gpui_kit::Window;
 use gpui_kit::WindowHandle;
+use gpui_kit::component::Root;
 use knot_agent_launch::InputValues;
 use knot_agent_launch::user_inputs;
 
@@ -17,15 +21,29 @@ use super::SheetOutcome;
 use super::SheetRequest;
 use super::more_inputs_note;
 use super::open_prompt_inputs_sheet;
+use super::sheet_in;
 
 struct Sheet {
-    handle:   WindowHandle<PromptInputsSheet>,
+    handle:   WindowHandle<Root>,
+    /// Weak, as nothing but its window holds the sheet in the app: a strong
+    /// one here would outlive the window and keep its release from firing.
+    sheet:    WeakEntity<PromptInputsSheet>,
     outcomes: Rc<RefCell<Vec<SheetOutcome>>>,
 }
 
 impl Sheet {
     fn window(&self) -> AnyWindowHandle {
         self.handle.into()
+    }
+
+    /// Reads the sheet with its window, while the window is open.
+    fn read<R>(&self, cx: &mut TestAppContext,
+               read: impl FnOnce(&PromptInputsSheet, &Window, &App) -> R)
+               -> R {
+        let sheet = self.sheet.upgrade().expect("the sheet is alive");
+        self.handle
+            .update(cx, |_, window, cx| read(sheet.read(cx), window, cx))
+            .expect("the sheet is open")
     }
 }
 
@@ -44,28 +62,29 @@ fn open(cx: &mut TestAppContext, text: &str) -> Sheet {
           })
           .expect("the sheet opens");
     cx.run_until_parked();
-    Sheet { handle, outcomes }
+    let sheet = cx.update(|cx| sheet_in(handle, cx))
+                  .expect("the window shows the sheet")
+                  .downgrade();
+    Sheet { handle,
+            sheet,
+            outcomes }
 }
 
 fn values(sheet: &Sheet, cx: &mut TestAppContext) -> Vec<String> {
-    sheet.handle
-         .update(cx, |sheet, _, cx| {
+    sheet.read(cx, |sheet, _, cx| {
              sheet.field_states()
                   .iter()
                   .map(|state| state.read(cx).value().to_string())
                   .collect()
          })
-         .expect("the sheet is open")
 }
 
 fn focused_field(sheet: &Sheet, cx: &mut TestAppContext) -> Option<usize> {
-    sheet.handle
-         .update(cx, |sheet, window, cx| {
+    sheet.read(cx, |sheet, window, cx| {
              sheet.field_states()
                   .iter()
                   .position(|state| state.focus_handle(cx).is_focused(window))
          })
-         .expect("the sheet is open")
 }
 
 fn is_open(sheet: &Sheet, cx: &mut TestAppContext) -> bool {
@@ -82,9 +101,7 @@ fn one_field_per_input_in_order_prefilled_with_the_first_focused(cx: &mut TestAp
     let sheet = open(cx,
                      "{{user_input:Branch|develop}} {{user_input:Name}} {{user_input:Branch}}");
 
-    let labels = sheet.handle
-                      .update(cx, |sheet, _, _| sheet.labels())
-                      .unwrap();
+    let labels = sheet.read(cx, |sheet, _, _| sheet.labels());
     assert_eq!(labels, ["Branch", "Name"]);
     assert_eq!(values(&sheet, cx), ["develop", ""]);
     assert_eq!(focused_field(&sheet, cx), Some(0));
@@ -99,17 +116,13 @@ fn one_field_per_input_in_order_prefilled_with_the_first_focused(cx: &mut TestAp
 fn past_five_inputs_the_rest_are_noted_not_shown(cx: &mut TestAppContext) {
     let five = open(cx,
                     "{{user_input:A}}{{user_input:B}}{{user_input:C}}{{user_input:D}}{{user_input:E}}");
-    assert_eq!(five.handle
-                   .update(cx, |sheet, _, _| (sheet.labels().len(), sheet.more()))
-                   .unwrap(),
+    assert_eq!(five.read(cx, |sheet, _, _| (sheet.labels().len(), sheet.more())),
                (5, 0));
     assert_eq!(more_inputs_note(0), None);
 
     let six = open(cx,
                    "{{user_input:A}}{{user_input:B}}{{user_input:C}}{{user_input:D}}{{user_input:E}}{{user_input:F|six}}");
-    assert_eq!(six.handle
-                  .update(cx, |sheet, _, _| (sheet.labels().len(), sheet.more()))
-                  .unwrap(),
+    assert_eq!(six.read(cx, |sheet, _, _| (sheet.labels().len(), sheet.more())),
                (5, 1));
     let note = more_inputs_note(1).expect("a note for one more input");
     assert!(note.contains('1'),

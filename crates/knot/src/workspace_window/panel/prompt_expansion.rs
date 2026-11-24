@@ -38,6 +38,7 @@ use crate::workspace_window::panel::prompt::PanelInputState;
 use crate::workspace_window::panel::prompt_inputs_sheet::SheetOutcome;
 use crate::workspace_window::panel::prompt_inputs_sheet::SheetRequest;
 use crate::workspace_window::panel::prompt_inputs_sheet::open_prompt_inputs_sheet;
+use crate::workspace_window::panel::prompt_inputs_sheet::sheet_in;
 
 /// Everything captured when a prompt is chosen, carried unchanged across the
 /// inputs sheet so the expansion that finally runs sees the clipboard and
@@ -145,11 +146,15 @@ impl WorkspaceWindow {
         // The sheet closes, inserting nothing, when the workspace window goes.
         // An agent torn down while it is open closes it through
         // `close_orphaned_prompt_inputs_sheets`.
-        let _ = handle.update(cx, |sheet, window, cx| {
-                          sheet.keep(cx.observe_release_in(&owner, window, |_, _, window, _| {
-                                           window.remove_window()
-                                       }));
-                      });
+        if let Some(sheet) = sheet_in(handle, cx) {
+            let _ = handle.update(cx, |_, window, cx| {
+                              let closes =
+                                  cx.observe_release_in(&owner, window, |_, _, window, _| {
+                                        window.remove_window()
+                                    });
+                              sheet.update(cx, |sheet, _| sheet.keep(closes));
+                          });
+        }
         self.prompt_inputs_sheets.insert(id, handle);
     }
 }
