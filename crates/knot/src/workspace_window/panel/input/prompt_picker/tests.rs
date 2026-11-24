@@ -380,6 +380,32 @@ fn a_rows_pencil_edits_that_prompt_and_inserts_nothing(cx: &mut TestAppContext) 
     assert!(fixture.nothing_sent());
 }
 
+/// "Duplicating a prompt from the list" (#469): a row's copy icon puts a
+/// copy right after that prompt and opens the editor on the copy, closing
+/// the list and leaving the composer alone.
+#[gpui_kit::test]
+fn a_rows_copy_icon_duplicates_that_prompt_and_edits_the_copy(cx: &mut TestAppContext) {
+    let review = prompt("Review", "review it");
+    let gate = prompt("Run the gate", "make");
+    let mut fixture = window_with_library(cx, vec![review.clone(), gate.clone()]);
+    fixture.compose("keep me", 7..7);
+    fixture.open();
+
+    fixture.click("panel-prompt-picker-duplicate-0");
+
+    let library = fixture.window
+                         .update(|_, cx| crate::settings_global::read(cx).prompts.clone());
+    assert_eq!(library.len(), 3);
+    let copy = &library[1];
+    assert_eq!((library[0].id, library[2].id), (review.id, gate.id));
+    assert_ne!(copy.id, review.id);
+    assert_eq!(copy.text, review.text);
+    assert_eq!(fixture.editors(), [Some(copy.id)]);
+    assert!(!fixture.is_open());
+    assert_eq!(fixture.composer().0, "keep me");
+    assert!(fixture.nothing_sent());
+}
+
 /// "Adding a prompt from the list" (#317, #321): the "+" beside the search
 /// field and the "New Prompt…" row each open a blank editor and close the
 /// list, whether or not the library holds anything yet.
@@ -407,7 +433,8 @@ fn the_plus_and_the_new_prompt_row_open_a_blank_editor(cx: &mut TestAppContext) 
 fn the_add_and_edit_copy_resolves() {
     for key in ["panel.prompt_picker.new_prompt",
                 "panel.prompt_picker.add",
-                "panel.prompt_picker.edit"]
+                "panel.prompt_picker.edit",
+                "panel.prompt_picker.duplicate"]
     {
         assert_ne!(knot_core::l10n::t(key), key, "{key} must resolve");
     }

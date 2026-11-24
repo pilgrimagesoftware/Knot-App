@@ -1,11 +1,13 @@
 //! Adding and editing prompts from the Insert Prompt list (#317, #321): a
 //! "+" beside the search field and a "New Prompt…" row at the foot of the
 //! list open a blank prompt editor, and a pencil on each row opens that
-//! prompt with the caret in its text.
+//! prompt with the caret in its text. A copy icon beside the pencil
+//! duplicates the prompt and opens the editor on the copy with the caret in
+//! its name (#469).
 //!
 //! Contract: `openspec/specs/prompt-library/spec.md`, "Adding a prompt from
-//! the Insert Prompt list" and "Editing a prompt from the Insert Prompt
-//! list".
+//! the Insert Prompt list", "Editing a prompt from the Insert Prompt list"
+//! and "Duplicating a prompt from the Insert Prompt list".
 //!
 //! Each closes the list first. The editor is a window of its own, so focus
 //! goes there rather than back to the composer, and the composer is left as
@@ -42,6 +44,17 @@ impl WorkspaceWindow {
         // the editor opens a window of its own.
         cx.defer(move |cx| crate::library_window::open_prompt_editor(prompt, cx));
     }
+
+    /// Closes the list, duplicates prompt `id`, and opens the prompt editor
+    /// on the copy.
+    pub(in crate::workspace_window) fn duplicate_from_prompt_picker(&mut self, id: uuid::Uuid,
+                                                                    window: &mut Window,
+                                                                    cx: &mut Context<Self>) {
+        self.close_prompt_picker(false, window, cx);
+        // Deferred for the same reason as the edit: the editor is a window
+        // of its own, and the library write goes through the app global.
+        cx.defer(move |cx| crate::library_window::duplicate_and_edit(id, cx));
+    }
 }
 
 /// The "+" beside the search field: a new prompt.
@@ -75,6 +88,24 @@ pub(super) fn edit_button(key: u64, index: usize, prompt: Prompt, view: &Entity<
             app.stop_propagation();
             let prompt = prompt.clone();
             view.update(app, |view, cx| view.edit_from_prompt_picker(Some(prompt), window, cx));
+        })
+}
+
+/// A row's copy icon: a duplicate of that prompt, in the editor. Like the
+/// pencil, it stops the click so the row does not also insert the prompt.
+pub(super) fn duplicate_button(key: u64, index: usize, id: uuid::Uuid,
+                               view: &Entity<WorkspaceWindow>)
+                               -> Button {
+    let view = view.clone();
+    Button::new(("panel-prompt-picker-duplicate", key.wrapping_add(index as u64)))
+        .icon(Icon::default().path("icons/copy.svg"))
+        .tooltip(knot_core::l10n::t("panel.prompt_picker.duplicate"))
+        .ghost()
+        .xsmall()
+        .debug_selector(move || format!("panel-prompt-picker-duplicate-{index}"))
+        .on_click(move |_, window, app| {
+            app.stop_propagation();
+            view.update(app, |view, cx| view.duplicate_from_prompt_picker(id, window, cx));
         })
 }
 
