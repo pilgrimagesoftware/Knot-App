@@ -1,4 +1,5 @@
-//! The Prompts window: the prompt library, with add, edit and delete.
+//! The Prompts window: the prompt library, with add, edit, duplicate and
+//! delete.
 //!
 //! Contract: `openspec/specs/library-windows/spec.md`, "Prompts window".
 //!
@@ -24,7 +25,7 @@ use knot_core::{Prompt, PromptReferences, StartupPrompt};
 use knot_library::ContributionKind;
 use uuid::Uuid;
 
-use super::super::prompt_editor::open_prompt_editor;
+use super::super::prompt_editor::{duplicate_and_edit, open_prompt_editor};
 use super::super::submit::{Submission, open_submit_dialog};
 use crate::library_window::LibraryWindow;
 
@@ -75,6 +76,18 @@ impl LibraryWindow {
                        let prompt = prompt.clone();
                        move |_, _, app| open_prompt_editor(Some(prompt.clone()), app)
                    });
+        let duplicate = crate::controls::icon_button(("prompt-duplicate", index),
+                                                     "icons/copy.svg",
+                                                     knot_core::l10n::t("settings.prompts.duplicate"),
+                                                     false).debug_selector(move || {
+                                                               format!("prompt-duplicate-{index}")
+                                                           })
+                                                           .on_click({
+                                                               let id = prompt.id;
+                                                               move |_, _, app| {
+                                                                   duplicate_and_edit(id, app)
+                                                               }
+                                                           });
         let submit =
             crate::controls::icon_button(("prompt-submit", index),
                                          "icons/git-pull-request-arrow.svg",
@@ -120,6 +133,7 @@ impl LibraryWindow {
                                .gap_1()
                                .child(submit)
                                .child(edit)
+                               .child(duplicate)
                                .child(delete))
     }
 

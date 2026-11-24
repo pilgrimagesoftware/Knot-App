@@ -372,6 +372,8 @@ impl RenderOnce for PickerContent {
                                                                     index,
                                                                     prompt.clone(),
                                                                     &view))
+                                           .child(edit::duplicate_button(key, index, prompt.id,
+                                                                         &view))
                                            .into_any_element()
                        })
                        .collect()

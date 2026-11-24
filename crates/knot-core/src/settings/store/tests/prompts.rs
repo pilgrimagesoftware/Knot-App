@@ -239,3 +239,60 @@ fn a_prompt_saved_before_descriptions_reads_without_one() {
     assert!(!serde_json::to_string(&prompt).unwrap()
                                            .contains("description"));
 }
+
+#[test]
+fn duplicating_inserts_a_renamed_copy_after_the_original_and_persists_it() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+    let first = s.add_prompt("Review", "review {{branch}}\nthoroughly")
+                 .unwrap();
+    s.set_prompt_description(first, "Reviews the branch")
+     .unwrap();
+    let last = s.add_prompt("Gate", "make").unwrap();
+
+    let copy = s.duplicate_prompt(first)
+                .unwrap()
+                .expect("a copy of a known prompt");
+
+    let back = Settings::load_from_root(dir.path()).unwrap();
+    let ids: Vec<_> = back.prompts.iter().map(|p| p.id).collect();
+    assert_eq!(ids,
+               [first, copy, last],
+               "the copy goes right after the original");
+    let (original, duplicate) = (back.prompt(first).unwrap(), back.prompt(copy).unwrap());
+    assert_ne!(copy, first);
+    assert_ne!(duplicate.name, original.name);
+    assert!(duplicate.name.contains("Review"));
+    assert_eq!(duplicate.text, original.text);
+    assert_eq!(duplicate.description, original.description);
+}
+
+#[test]
+fn duplicating_twice_gives_each_copy_its_own_name() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+    let id = s.add_prompt("Review", "text").unwrap();
+
+    let a = s.duplicate_prompt(id).unwrap().unwrap();
+    let b = s.duplicate_prompt(id).unwrap().unwrap();
+
+    let names: Vec<&str> = s.prompts.iter().map(|p| p.name.as_str()).collect();
+    let mut unique = names.clone();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), 3, "no two rows share a name: {names:?}");
+    // The newest copy sits directly after the original, the older one after it.
+    assert_eq!(s.prompts.iter().map(|p| p.id).collect::<Vec<_>>(),
+               [id, b, a]);
+}
+
+#[test]
+fn duplicating_an_unknown_prompt_changes_and_writes_nothing() {
+    let dir = tempdir().unwrap();
+    let mut s = Settings::with_store_root(dir.path());
+
+    assert_eq!(s.duplicate_prompt(Uuid::new_v4()).unwrap(), None);
+
+    assert!(s.prompts.is_empty());
+    assert!(!dir.path().join(PROMPTS_FILE).exists());
+}

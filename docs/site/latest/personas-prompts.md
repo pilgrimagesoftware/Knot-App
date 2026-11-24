@@ -52,10 +52,16 @@ editing opens an editor for the name and instructions; canceling discards the ch
 ### The Prompts window
 
 It lists every library prompt in the order added, with its name and a truncated,
-single-line text preview, and offers per-row edit and delete and an "Add Prompt…".
+single-line text preview, and offers per-row edit, duplicate and delete and an "Add Prompt…".
 Adding and editing share one editor with a name field and a multi-line text field;
 save stays disabled while either field is blank, and the editor lists the prompt
 variables, inserting a chosen one at the caret.
+
+Duplicate (the copy icon) adds a copy of the prompt right after it, with the same text
+and description and the name "Review copy" for a prompt named "Review", or "Review copy
+2", "Review copy 3" and so on if that name is taken. The copy is saved straight away and
+opens in the editor with the caret in its name, ready to rename; canceling the editor
+keeps the copy as made.
 
 A prompt's name and text must be non-empty after trimming, the text may span several
 lines and is stored exactly as entered, and every change is persisted before success.
@@ -206,7 +212,8 @@ companions have no composer and no Insert Prompt button.
 The list also adds and edits prompts without a trip to the Prompts window. The + beside
 the search field, or New Prompt… at the foot of the list, opens the prompt editor on a
 blank prompt. The pencil on a prompt's row opens that prompt in the editor with the caret
-in its text, ready to change; the composer is left as it was.
+in its text, ready to change; the copy icon beside it duplicates the prompt and opens the
+copy, as Duplicate does in the Prompts window. Either way the composer is left as it was.
 
 ## Source contracts
 
