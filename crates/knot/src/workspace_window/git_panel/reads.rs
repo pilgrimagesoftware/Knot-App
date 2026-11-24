@@ -29,7 +29,8 @@ impl WorkspaceWindow {
     /// aged out.
     pub(in crate::workspace_window) fn refresh_git_status(&mut self, id: Uuid, folder: &str) {
         self.follow_git_folder(id, folder);
-        let Some(writer) = self.git_status
+        let Some(writer) = self.git
+                               .git_status
                                .claim_refresh(id, consts::GIT_STATUS_MAX_AGE)
         else {
             return;
@@ -44,7 +45,8 @@ impl WorkspaceWindow {
     pub(in crate::workspace_window) fn refresh_git_diff(&mut self, id: Uuid, folder: &str,
                                                         selection: &Selection) {
         self.follow_git_folder(id, folder);
-        let Some(writer) = self.git_diffs
+        let Some(writer) = self.git
+                               .git_diffs
                                .claim_refresh(selection.key(id), consts::GIT_DIFF_MAX_AGE)
         else {
             return;
@@ -90,12 +92,12 @@ impl WorkspaceWindow {
     /// every agent and every file the window has ever shown keeps an entry
     /// for the window's whole life.
     pub(in crate::workspace_window) fn forget_git_state(&mut self, id: Uuid) {
-        self.git_status.forget(&id);
-        self.git_diffs.retain(|key| key.agent != id);
-        self.git_selection.remove(&id);
-        self.git_action_error.remove(&id);
-        self.git_panel_width.remove(&id);
-        self.git_panel_resize.remove(&id);
+        self.git.git_status.forget(&id);
+        self.git.git_diffs.retain(|key| key.agent != id);
+        self.git.git_selection.remove(&id);
+        self.git.git_action_error.remove(&id);
+        self.git.git_panel_width.remove(&id);
+        self.git.git_panel_resize.remove(&id);
         self.forget_git_diff_list(id);
         self.forget_artifact_panel(id);
     }
@@ -111,12 +113,12 @@ impl WorkspaceWindow {
     /// watch is moved to the new folder. An unchanged folder is a string
     /// compare.
     pub(in crate::workspace_window) fn follow_git_folder(&mut self, id: Uuid, folder: &str) {
-        if !self.git_read_folders.moved(id, folder) {
+        if !self.git.git_read_folders.moved(id, folder) {
             return;
         }
         self.invalidate_git_state(id);
-        self.git_selection.remove(&id);
-        if self.git_watches.contains_key(&id) {
+        self.git.git_selection.remove(&id);
+        if self.git.git_watches.contains_key(&id) {
             self.stop_git_watch(id);
             self.start_git_watch(id, folder);
         }
@@ -130,8 +132,8 @@ impl WorkspaceWindow {
     /// disagree. `diff_stats` goes too, so the agent's dashboard card follows
     /// a commit rather than showing pre-commit counts until it ages out.
     pub(in crate::workspace_window) fn invalidate_git_state(&mut self, id: Uuid) {
-        self.git_status.forget(&id);
-        self.git_diffs.retain(|key| key.agent != id);
+        self.git.git_status.forget(&id);
+        self.git.git_diffs.retain(|key| key.agent != id);
         self.diff_stats.forget(&id);
     }
 }
