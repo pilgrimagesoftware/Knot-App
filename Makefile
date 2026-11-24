@@ -11,7 +11,7 @@ all: fmt-check size-check declared-check lint test build
 
 # The largest a Rust source file may get before it has to be split. See
 # scripts/check-file-size.sh for why this is enforced rather than advised.
-RUST_FILE_LINE_LIMIT ?= 700
+RUST_FILE_LINE_LIMIT ?= 500
 
 size-check:
 	@./scripts/check-file-size.sh $(RUST_FILE_LINE_LIMIT)
