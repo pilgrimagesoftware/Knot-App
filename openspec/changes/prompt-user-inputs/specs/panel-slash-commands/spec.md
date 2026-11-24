@@ -8,16 +8,20 @@ expanded for the selected agent (see `prompt-library` - Prompt variables),
 and leave the rest of the buffer untouched.
 
 A prompt that has user inputs SHALL first ask for them (see
-`prompt-library` - Inserting a prompt with inputs asks for them), and the
-lookup SHALL close when the sheet opens. Insert SHALL replace the token with
-the expanded text. Cancel SHALL leave the token as typed, with the caret
-after it.
+`prompt-library` - Inserting a prompt with inputs asks for them). Insert
+SHALL replace the token with the expanded text. Cancel SHALL leave the token
+as typed, with the caret after it, and the lookup SHALL stay dismissed for
+that token.
 
 Expansion SHALL NOT block the window on I/O (resolving `branch` reads the
 repository). The composer SHALL stay responsive while it resolves, and the
-text SHALL be inserted at the token's position once it has. If the user edits
-the token or dismisses the lookup before resolution completes, or edits the
-composer while the inputs sheet is open, nothing SHALL be inserted.
+text SHALL be inserted at the token's position once it has.
+
+Choosing a library prompt's entry SHALL dismiss the lookup, as choosing any
+entry does. That dismissal SHALL NOT discard the insertion. An insertion
+SHALL be discarded only if the composer's text changes before it lands: the
+user edits the token or anything else in the buffer while the expansion
+resolves or while the inputs sheet is open.
 
 The expanded text SHALL be ordinary composer text: the user can edit it
 before sending, and nothing is sent by the insertion itself.

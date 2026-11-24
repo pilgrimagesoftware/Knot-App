@@ -13,9 +13,10 @@ variables) with what each expands to, and choosing one SHALL insert it at the
 text field's caret. The list SHALL end with a user-input entry (see
 `prompt-library` - User inputs). Choosing it SHALL insert
 `{{user_input:}}` with the caret before the closing braces, ready for a
-label. The editor SHALL flag unknown variable names and malformed user
-inputs as warnings without disabling save (see `prompt-library` - Unknown
-variables and escaping).
+label. The editor SHALL flag unknown variable names, malformed user inputs,
+and more than five inputs as warnings without disabling save (see
+`prompt-library` - Unknown variables and escaping, and At most five inputs
+are asked for).
 
 Deleting a prompt that no agent or bench entry references SHALL happen
 immediately. Deleting one that is referenced SHALL first ask for
@@ -56,6 +57,11 @@ prompt afterwards.
 
 - **WHEN** the prompt's text holds `{{user_input:}}` and the user saves
 - **THEN** the editor shows a malformed-input warning, and the save succeeds
+
+#### Scenario: More than five inputs are flagged but saveable
+
+- **WHEN** the prompt's text has six distinct inputs and the user saves
+- **THEN** the editor shows the five-input warning, and the save succeeds
 
 #### Scenario: Canceling an edit discards changes
 

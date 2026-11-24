@@ -21,6 +21,9 @@ the prompt is inserted into a composer.
   default. Insert substitutes the values; Cancel inserts nothing and leaves the
   composer as it was. A prompt with no inputs inserts directly, as it does now.
 - Repeating a label asks for it once and uses the value at every occurrence.
+- The sheet asks for at most five inputs. Any more expand to their defaults,
+  with a note in the sheet saying so, and the Prompts editor warns about a
+  prompt that has more than five.
 - Values are inserted literally and never expanded again, like every other
   variable value.
 - Startup prompts are sent without the user present, so they never open the

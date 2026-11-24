@@ -7,7 +7,9 @@ Prompt text already has one placeholder syntax, the prompt variables
 `crates/knot-agent-launch/src/variables.rs`: a closed `PromptVariable` enum, a
 pure single-pass `expand(text, &PromptContext)`, and `unknown_variables` /
 `uses_variable` for the editors' warnings. Escaping (`\{{`), whitespace inside
-the braces and unclosed braces are handled by the one private `scan`.
+the braces and unclosed braces are handled by two private walkers that share
+those rules. `scan` drives `expand` and `uses_variable`, and `scan_names`
+drives `unknown_variables`. Both need the `user_input:` change.
 
 Library prompt text reaches a composer through exactly one function,
 `WorkspaceWindow::expand_library_prompt`
@@ -53,7 +55,14 @@ existing trim, an inner part that starts with `user_input:` is split on the
 first `|`. Both halves are trimmed. A blank label falls through to
 `Piece::Text(whole)`, the same thing an unknown name does. Escaping and
 unclosed braces need no new code because they are handled before the inner
-part is looked at.
+part is looked at. One private `parse_inner(inner) -> Inner` (a variable, an
+input, a malformed input, or unknown) is shared by `scan` and `scan_names`,
+so the two walkers cannot disagree about what a name is.
+
+A label's default is the first non-empty default among its occurrences.
+"First occurrence's default" would make `{{user_input:T}} … {{user_input:T|x}}`
+lose the `x` its author wrote, and an empty default (`T|`) carries no value
+anyway.
 
 Alternatives considered:
 
@@ -76,8 +85,15 @@ gives both behaviours:
 - The composer path fills the map from the sheet. Every label is present, so
   a field the user emptied expands to empty, not to the default.
 - The startup path leaves the map empty, so every input gets its default or
-  nothing. `startup.rs` and `connect.rs` need no change beyond
-  `..Default::default()`.
+  nothing.
+
+The values travel in `ContextSource`, the same way `clipboard` does:
+`ContextSource` gains `inputs: InputValues`, and `read_context` moves it
+into the `PromptContext` it builds. That is a struct literal
+(`startup.rs:57`), so `startup.rs` changes by one field on each struct. The
+startup path in `panel_session` builds its `ContextSource` with
+`..Default::default()` or an explicit empty `InputValues`. The composer path
+sets it from the sheet, beside the clipboard it already sets.
 
 `expand` stays one left-to-right pass, so a value holding `{{folder}}` stays
 literal by construction, as it does for variables today.
@@ -116,8 +132,37 @@ single-line inputs. Return, Tab, Cmd-Return and Esc are handled with
 `on_action`, the way `broadcast_sheet` handles `Escape`.
 
 The `WorkspaceWindow` keeps `prompt_inputs_sheets: HashMap<Uuid, WindowHandle>`
-per agent composer. A second choose activates the open sheet instead of
-opening another, and the entry is removed when the sheet closes either way.
+per agent composer. Choosing any prompt with inputs while that composer's
+sheet is open activates the open sheet and drops the new choice. The open
+sheet keeps its prompt and the values typed so far, and replacing them
+silently would lose that work. The entry is removed when the sheet closes
+either way.
+
+Lifetime: the sheet holds only a `WeakEntity<WorkspaceWindow>` and the agent
+id. When an agent is removed, its map entry is taken and that window is
+closed. When the workspace window closes, every sheet in the map is closed.
+If a sheet outlives both somehow, its Insert finds the weak entity gone and
+closes without inserting anything.
+
+Focus: Insert and Cancel both call `activate_window` on the workspace window
+handle, then focus the composer's input. The focus lands after the sheet
+closes, so the composer gets the key window back.
+
+### Five-input cap
+
+`MAX_PROMPT_INPUTS = 5` lives in `knot-agent-launch/src/user_inputs.rs`
+(the crate's `consts.rs` holds launch strings, while this constant belongs
+to the input model it limits). The sheet is built from
+`user_inputs(text).into_iter().take(MAX_PROMPT_INPUTS)`. The left-out
+inputs are simply not put into `InputValues`, so `expand`'s
+value → default → empty fallback gives them the startup rule with no extra
+code. The note under the fields is `t_count("prompt_inputs.more_defaulted",
+n)`, with `_one` and `_other` forms. The Prompts editor warns through
+`prompt_text::too_many_inputs_warning`.
+
+A cap keeps the sheet a fixed, small size without scrolling. Inputs past the
+cap degrade to the unattended behaviour instead of being refused, so an
+imported prompt with more inputs still inserts.
 
 Because the sheet is a separate window, the user can still type in the
 composer while it is open. The existing snapshot rule covers this: Insert
@@ -127,9 +172,12 @@ the app's convention for dialogs. It would also need a focus trap that gpui-kit
 does not provide.
 
 `/` lookup: the lookup already closes when an entry is chosen, and Cancel
-writes nothing, so the token stays as typed. `lookup.rs` (498 lines, at the
-limit) does not change. `prompt_picker.rs` (449 lines) does not either: both
-already call `expand_library_prompt` with their target range.
+writes nothing, so the token stays as typed. `lookup.rs` (498 lines) and
+`prompt_picker.rs` (449 lines) do not change: both already call
+`expand_library_prompt` with their target range. Two limits apply. CI's
+`make size-check` fails a file over 700 lines (`RUST_FILE_LINE_LIMIT`), and
+CLAUDE.md's convention is 500. `lookup.rs` is two lines under the
+convention, so new code goes in new files, each kept under 500 lines.
 
 ### Editors
 
@@ -154,7 +202,7 @@ New keys in `crates/knot-core/locales/en.yml`: the sheet's Insert and Cancel
 buttons, the user-input list entry and its description, the malformed-input
 warning and the startup "empty in startup prompts" warning. The sheet's title
 is the prompt's name, which is user data, so it has no key. Each new key gets
-a `tests/l10n_catalog.rs` entry, because a missing key renders the key
+an entry in `crates/knot/src/tests/l10n_catalog.rs`, because a missing key renders the key
 itself.
 
 ## Risks / Trade-offs

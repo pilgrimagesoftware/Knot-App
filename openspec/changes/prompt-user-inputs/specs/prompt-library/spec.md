@@ -28,8 +28,9 @@ prompt variables' rules (see "Unknown variables and escaping"): `\{{` before
 A prompt's inputs SHALL be its distinct labels in the order each first
 appears. Labels SHALL be compared exactly, after trimming, and
 case-sensitively. Every occurrence of a label SHALL expand to the same value.
-When occurrences of one label give different defaults, the first
-occurrence's default SHALL be used.
+A label's default SHALL be the first non-empty default any of its
+occurrences gives, in text order, whether or not the first occurrence gives
+one. An empty default (`Label|`) SHALL count as no default.
 
 An input's value SHALL be inserted literally, like a variable's value. A
 value that contains `{{` SHALL NOT be expanded again.
@@ -44,6 +45,11 @@ The Swift app has no user inputs.
 - **WHEN** the text is `Fix {{user_input:Ticket}} and close {{user_input:Ticket}} on {{user_input:Branch|main}}`
 - **THEN** the prompt's inputs are `Ticket` with no default, then `Branch`
   with default `main`
+
+#### Scenario: A later occurrence can give the default
+
+- **WHEN** the text is `{{user_input:T}} then {{user_input:T|x}} then {{user_input:T|y}}`
+- **THEN** the prompt has one input, `T`, with default `x`
 
 #### Scenario: A repeated label uses one value
 
@@ -102,16 +108,45 @@ Insert SHALL close the sheet, expand the prompt's variables and inputs, and
 insert the result as described in "Choosing a prompt from the Insert Prompt
 list" or `panel-slash-commands` "Inserting a library prompt expands its
 text". Cancel SHALL close the sheet and insert nothing. The composer's text
-and selection SHALL then be as they were before the prompt was chosen, and
-focus SHALL return to the composer.
+and selection SHALL then be as they were before the prompt was chosen. On
+both Insert and Cancel the workspace window SHALL be activated and its
+composer focused.
 
 `{{clipboard}}` SHALL be captured when the prompt is chosen, before the
 sheet opens (see "The clipboard is captured when a prompt is chosen").
 
 If the composer's text changes while the sheet is open, Insert SHALL insert
-nothing, as for an edit made while the expansion resolves. Only one inputs
-sheet SHALL be open per composer. Choosing another prompt while one is open
-SHALL bring the open sheet to the front instead of opening a second sheet.
+nothing, as for an edit made while the expansion resolves.
+
+Only one inputs sheet SHALL be open per composer. Choosing any prompt with
+inputs, the same one or another, while a sheet is open SHALL bring the open
+sheet to the front and drop the new choice: nothing is inserted for it and
+the open sheet keeps its prompt and values. Choosing a prompt without inputs
+while a sheet is open SHALL insert as usual. The open sheet's own Insert
+then finds the composer changed and inserts nothing.
+
+When the agent whose composer opened a sheet is removed, or the workspace
+window holding that composer closes, the sheet SHALL close and insert
+nothing.
+
+#### Scenario: A second choice brings the open sheet forward
+
+- **WHEN** the sheet for prompt "Quest" is open and the user chooses the
+  prompt "Review", which has inputs, from the same composer
+- **THEN** no second sheet opens, the "Quest" sheet comes to the front with
+  its values unchanged, and nothing is inserted for "Review"
+
+#### Scenario: Removing the agent closes its sheet
+
+- **WHEN** an inputs sheet is open for agent Ada's composer and Ada is
+  removed
+- **THEN** the sheet closes and nothing is inserted
+
+#### Scenario: Cancel returns focus to the composer
+
+- **WHEN** the user presses Cancel in an inputs sheet
+- **THEN** the workspace window is active and the composer that opened the
+  sheet has focus
 
 #### Scenario: One sheet asks for every input
 
@@ -156,6 +191,37 @@ SHALL bring the open sheet to the front instead of opening a second sheet.
 - **WHEN** the sheet is open and the user types in the composer, then
   presses Insert
 - **THEN** nothing is inserted, and the user's typing is kept
+
+### Requirement: At most five inputs are asked for
+
+The inputs sheet SHALL show at most five fields: the prompt's first five
+inputs, in input order. Each input beyond the fifth SHALL expand to its
+default, or to the empty string when it has none, as in a startup prompt.
+When any inputs are left out, the sheet SHALL show a note under its fields
+saying how many inputs will use their defaults, in the singular for one and
+the plural otherwise.
+
+The Prompts window's editor SHALL warn when a prompt has more than five
+inputs, naming the limit. The warning SHALL NOT block save.
+
+#### Scenario: Five inputs are all asked for
+
+- **WHEN** the user chooses a prompt with exactly five distinct inputs
+- **THEN** the sheet shows five fields and no note
+
+#### Scenario: A sixth input uses its default
+
+- **WHEN** the user chooses a prompt whose inputs are `A` to `E`, then
+  `F|six`, enters values for `A` to `E` and presses Insert
+- **THEN** the sheet showed five fields and a note saying one more input
+  will use its default, and `F` expands to `six`
+
+#### Scenario: The editor warns past five inputs
+
+- **WHEN** the user types a prompt with six distinct inputs into the
+  Prompts window's editor
+- **THEN** a warning says only the first five inputs are asked for, and save
+  remains enabled
 
 ### Requirement: Startup prompts never ask for inputs
 
