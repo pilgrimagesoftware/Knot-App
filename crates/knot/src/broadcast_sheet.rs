@@ -13,6 +13,7 @@ use gpui_kit::base::Disableable;
 use gpui_kit::base::h_flex;
 use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::Root;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::Escape;
@@ -20,6 +21,7 @@ use gpui_kit::component::input::InputEvent;
 use gpui_kit::component::input::Textarea;
 use gpui_kit::component::input::TextareaState;
 
+use crate::app_support::observe_system_appearance;
 use crate::window_options::broadcast_window_options;
 
 /// The broadcast message sheet: one multi-line field, Cancel and Send, per
@@ -65,15 +67,17 @@ impl BroadcastSheet {
 pub(crate) fn open_broadcast_sheet(on_send: impl Fn(String, &mut Window, &mut App) + 'static,
                                    cx: &mut App) {
     let options = broadcast_window_options(cx);
-    let _ =
-        cx.open_window(options, move |window, cx| {
-              let message = cx.new(|cx| {
-                                  TextareaState::new(window, cx)
+    let _ = cx.open_window(options, move |window, cx| {
+                  // Every window tracks the OS appearance, so a light/dark flip
+                  // re-resolves the system palette and repaints.
+                  observe_system_appearance(window);
+                  let message = cx.new(|cx| {
+                                      TextareaState::new(window, cx)
                         .placeholder(knot_core::l10n::t("broadcast.placeholder"))
                         .auto_grow(4, 16)
-                              });
-              cx.new(|cx| {
-                    let subscription =
+                                  });
+                  let sheet = cx.new(|cx| {
+                                    let subscription =
                         cx.subscribe_in(&message,
                                         window,
                                         |sheet: &mut BroadcastSheet, _, event, window, cx| {
@@ -95,12 +99,14 @@ pub(crate) fn open_broadcast_sheet(on_send: impl Fn(String, &mut Window, &mut Ap
                                                 _ => {}
                                             }
                                         });
-                    message.update(cx, |state, cx| state.focus(window, cx));
-                    BroadcastSheet { message,
-                                     on_send: Box::new(on_send),
-                                     _subscription: subscription }
-                })
-          });
+                                    message.update(cx, |state, cx| state.focus(window, cx));
+                                    BroadcastSheet { message,
+                                                     on_send: Box::new(on_send),
+                                                     _subscription: subscription }
+                                });
+                  // Root gives the sheet the theme's font and text colour.
+                  cx.new(|cx| Root::new(sheet, window, cx))
+              });
 }
 
 impl Render for BroadcastSheet {

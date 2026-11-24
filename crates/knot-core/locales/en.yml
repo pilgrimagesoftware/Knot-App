@@ -1263,6 +1263,18 @@ prompt_variables:
   date: "today's date"
   clipboard: "the clipboard's text"
   clipboard_in_startup: "{{clipboard}} is always empty in a startup prompt, which is sent without you choosing it."
+  user_input: "a value you type when inserting the prompt"
+  malformed_input: "A {{user_input:}} has no label, so it is left as typed."
+  too_many_inputs: "Only the first %{max} inputs are asked for; the rest use their defaults."
+  inputs_in_startup: "No default, so empty in a startup prompt: %{names}"
+
+# The sheet that asks for a library prompt's user inputs when it is
+# inserted into a composer (#239). Its title is the prompt's name.
+prompt_inputs:
+  insert: "Insert"
+  cancel: "Cancel"
+  more_defaulted_one: "%{count} more input will use its default."
+  more_defaulted_other: "%{count} more inputs will use their defaults."
 
 # The banner over a Codex agent's pane when its usage allowance is nearly
 # spent (#291). `when` is the reset as a local date and time.

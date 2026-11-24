@@ -16,6 +16,7 @@ mod handoff;
 mod instructions;
 mod registration;
 mod startup;
+mod user_inputs;
 mod variables;
 
 pub use adapter::{AdapterConfig, InstallMethod, acp_adapter, adapter_path, adapter_path_for};
@@ -37,6 +38,7 @@ pub use registration::{
     resume_registration_prompt,
 };
 pub use startup::{ContextSource, read_context, resolve_startup_prompt};
+pub use user_inputs::{InputValues, MAX_PROMPT_INPUTS, UserInput, malformed_inputs, user_inputs};
 pub use variables::{
     PromptContext, PromptVariable, UnknownVariable, expand, unknown_variables, uses_variable,
 };

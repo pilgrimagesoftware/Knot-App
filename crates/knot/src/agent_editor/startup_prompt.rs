@@ -67,11 +67,13 @@ impl AgentEditor {
 
     /// The custom text field, the variable list that inserts into it, and
     /// the warnings naming any variable it does not recognise and flagging
-    /// `{{clipboard}}`, which is always empty in a startup prompt.
+    /// `{{clipboard}}` and inputs without a default, which are always empty
+    /// in a startup prompt.
     fn custom_startup_prompt(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let text = self.startup_custom_input.read(cx).value().to_string();
         let warnings = [crate::prompt_text::unknown_variables_warning(&text),
-                        crate::prompt_text::startup_clipboard_warning(&text)];
+                        crate::prompt_text::startup_clipboard_warning(&text),
+                        crate::prompt_text::startup_inputs_warning(&text)];
         let warning_color = cx.theme().warning;
         let target = self.startup_custom_input.clone();
         let insert = Button::new("agent-startup-prompt-variables")

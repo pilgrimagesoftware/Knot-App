@@ -60,6 +60,7 @@ mod window_actions;
 mod window_bounds;
 mod window_menu;
 mod window_registry;
+mod window_roots;
 mod workspace_dialog;
 mod workspace_manager_drag;
 mod workspace_manager_scroll;

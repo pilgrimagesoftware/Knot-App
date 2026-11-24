@@ -11,12 +11,14 @@ use gpui_kit::base::StyledExt;
 use gpui_kit::base::h_flex;
 use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::Root;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::div;
 use gpui_kit::px;
 use knot_autopilot::Classification;
 
+use crate::app_support::observe_system_appearance;
 use crate::capped_scroll::capped_scroll;
 use crate::window_options::autopilot_decision_window_options;
 
@@ -57,15 +59,21 @@ pub(crate) fn open_autopilot_decision_sheet(agent_name: String, last_message: St
     };
     let title = knot_core::l10n::t_with(title_key, &[("name", &agent_name)]);
     let options = autopilot_decision_window_options(title, cx);
-    let _ = cx.open_window(options, move |_window, cx| {
-                  cx.new(|_cx| AutopilotDecisionSheet { agent_name,
-                                                        last_message,
-                                                        on_dismiss: Box::new(on_dismiss),
-                                                        on_switch: Box::new(on_switch),
-                                                        on_continue: on_continue.map(|f| {
-                                                                                    Box::new(f)
+    let _ = cx.open_window(options, move |window, cx| {
+                  // Every window tracks the OS appearance, so a light/dark flip
+                  // re-resolves the system palette and repaints.
+                  observe_system_appearance(window);
+                  let sheet =
+                      cx.new(|_cx| AutopilotDecisionSheet { agent_name,
+                                                            last_message,
+                                                            on_dismiss: Box::new(on_dismiss),
+                                                            on_switch: Box::new(on_switch),
+                                                            on_continue: on_continue.map(|f| {
+                                                                                        Box::new(f)
                                                                                     as DialogAction
-                                                                                }) })
+                                                                                    }) });
+                  // Root gives the sheet the theme's font and text colour.
+                  cx.new(|cx| Root::new(sheet, window, cx))
               });
 }
 

@@ -235,12 +235,16 @@ impl PromptEditor {
 impl Render for PromptEditor {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (_, text) = self.fields(cx);
-        let warning = crate::prompt_text::unknown_variables_warning(&text);
+        let warnings = crate::prompt_text::library_prompt_warnings(&text);
         let target = self.text_input.clone();
         let insert = Button::new("prompt-editor-variables")
             .label(knot_core::l10n::t("prompt_variables.insert"))
             .dropdown_caret(true)
-            .dropdown_menu(move |menu, _, _| crate::prompt_text::variable_menu(menu, &target));
+            .dropdown_menu(move |menu, _, _| {
+                crate::prompt_text::with_user_input_item(crate::prompt_text::variable_menu(menu,
+                                                                                         &target),
+                                                         &target)
+            });
         let label = |key: &str| {
             div().w(px(100.))
                  .text_right()
@@ -267,7 +271,7 @@ impl Render for PromptEditor {
                                                                                                .mono_font_family
                                                                                                .clone()))
                                           .child(div().child(insert))
-                                          .children(warning.map(|warning| {
+                                          .children(warnings.into_iter().map(|warning| {
                                                                div().text_xs()
                                                                     .text_color(cx.theme().warning)
                                                                     .child(warning)
