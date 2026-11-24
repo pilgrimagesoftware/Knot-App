@@ -282,6 +282,9 @@ impl WorkspaceWindow {
         self.forget_awaiting_notification(id);
         self.panel_states.remove(&id);
         self.panel_prompt_inputs.remove(&id);
+        // Its sheet sees the entry gone on the next notify and closes,
+        // inserting nothing - there is no `cx` here to close it with.
+        self.prompt_inputs_sheets.remove(&id);
         // Both dropdowns and both of their subscriptions, keyed by agent -
         // see `forget_panel_selectors`.
         self.forget_panel_selectors(id);

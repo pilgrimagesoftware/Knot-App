@@ -229,3 +229,5 @@ fn a_copy_made_while_expanding_does_not_change_the_text(cx: &mut TestAppContext)
 
     assert_eq!(fixture.composer(), "Explain: one");
 }
+
+mod inputs;

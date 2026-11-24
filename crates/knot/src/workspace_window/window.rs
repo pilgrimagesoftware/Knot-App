@@ -204,6 +204,12 @@ pub(crate) struct WorkspaceWindow {
     /// control can grow the same entity's visible height without losing
     /// in-progress text, rather than swapping to a second entity.
     pub(super) panel_prompt_inputs: BTreeMap<Uuid, Entity<panel::prompt::PanelInputState>>,
+    /// Each composer's open inputs sheet (`prompt-library`: "Inserting a
+    /// prompt with inputs asks for them"): at most one per agent. Pruned in
+    /// `teardown_session`; the sheet watches this map and closes itself
+    /// when its entry goes.
+    pub(super) prompt_inputs_sheets:
+        BTreeMap<Uuid, gpui_kit::WindowHandle<panel::PromptInputsSheet>>,
     /// The model and effort dropdowns' state, one per panel and axis.
     ///
     /// `SelectState` holds the search query, the scroll offset and focus, so

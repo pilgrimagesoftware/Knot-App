@@ -180,3 +180,66 @@ fn a_prompt_opened_with_text_is_new_and_starts_at_its_name(cx: &mut TestAppConte
     assert_eq!(name, "");
     assert_eq!(text, "review the diff");
 }
+
+fn editor(window: &mut VisualTestContext) -> gpui_kit::Entity<super::PromptEditor> {
+    window.update(|window, cx| {
+              window.root::<gpui_kit::component::Root>()
+                    .flatten()
+                    .expect("the editor's root")
+                    .read(cx)
+                    .view()
+                    .clone()
+                    .downcast::<super::PromptEditor>()
+                    .expect("the root holds the editor")
+          })
+}
+
+/// `library-windows`: "Inserting a user input from the list" - the stub
+/// lands at the caret, with the caret where its label goes.
+#[gpui_kit::test]
+fn the_user_input_entry_inserts_a_stub_ready_for_a_label(cx: &mut TestAppContext) {
+    let (mut window, _dir) = open_editor(cx);
+    let text = editor(&mut window).read_with(&window, |editor, _| editor.text_input.clone());
+
+    window.update(|window, cx| {
+              text.update(cx, |state, cx| {
+                      state.set_value("Fix ", window, cx);
+                      state.set_selected_range(4..4, cx);
+                  });
+              crate::prompt_text::insert_user_input(&text, window, cx);
+          });
+
+    let (value, caret) = text.read_with(&window, |state, _| {
+                                 (state.value().to_string(), state.cursor())
+                             });
+    assert_eq!(value, "Fix {{user_input:}}");
+    assert_eq!(caret, "Fix {{user_input:".len());
+}
+
+/// "A blank-label input is flagged but saveable" and "More than five inputs
+/// are flagged but saveable": the warnings show and save stays enabled.
+#[gpui_kit::test]
+fn input_warnings_do_not_block_save(cx: &mut TestAppContext) {
+    let (mut window, _dir) = open_editor(cx);
+    let editor = editor(&mut window);
+    let six = "{{user_input:A}}{{user_input:B}}{{user_input:C}}{{user_input:D}}\
+               {{user_input:E}}{{user_input:F}} {{user_input:}}";
+
+    window.update(|window, cx| {
+              editor.update(cx, |editor, cx| {
+                        editor.name_input
+                              .update(cx, |state, cx| state.set_value("Many", window, cx));
+                        editor.text_input
+                              .update(cx, |state, cx| state.set_value(six, window, cx));
+                    })
+          });
+    window.run_until_parked();
+
+    let (warnings, can_save) = editor.read_with(&window, |editor, cx| {
+                                         let (_, text) = editor.fields(cx);
+                                         (crate::prompt_text::library_prompt_warnings(&text),
+                                          editor.can_save(cx))
+                                     });
+    assert_eq!(warnings.len(), 2, "{warnings:?}");
+    assert!(can_save);
+}

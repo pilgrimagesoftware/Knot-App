@@ -27,6 +27,8 @@ pub(crate) mod mentions;
 mod pane;
 pub(crate) mod prompt;
 mod prompt_expansion;
+mod prompt_inputs_sheet;
+pub(super) use prompt_inputs_sheet::PromptInputsSheet;
 pub(super) mod question;
 pub(crate) mod reply;
 mod scroll_to_latest;

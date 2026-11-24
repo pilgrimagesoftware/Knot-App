@@ -204,6 +204,17 @@ pub(crate) fn broadcast_window_options(cx: &App) -> WindowOptions {
                   cx)
 }
 
+/// The inputs sheet for a library prompt: titled with the prompt's name,
+/// tall enough for `MAX_PROMPT_INPUTS` labelled fields and the note under
+/// them, so it never scrolls.
+pub(crate) fn prompt_inputs_window_options(title: impl Into<SharedString>, cx: &App)
+                                           -> WindowOptions {
+    os_bar_window(Some(title.into()),
+                  size(px(460.), px(440.)),
+                  Some(size(px(360.), px(240.))),
+                  cx)
+}
+
 /// The Autopilot decision sheet: same shape as the broadcast sheet, titled
 /// with the agent's name rather than fixed text since it is one of several
 /// that can be open at once.
