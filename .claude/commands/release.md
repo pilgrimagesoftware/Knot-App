@@ -1,9 +1,10 @@
 ---
-description: Cut a release for this repo - run the changelog check, build the notarized artifacts, and publish the GitHub release
-argument-hint: "[version]"
+description: Cut a release - preview the git-cliff version, dispatch Prepare Release, and confirm the release PR, tag, GitHub Release, assets, cask and merge-back
+argument-hint: "[expected-version]"
 ---
 
 Invoke the `release-repo` skill for this repo.
 
-`$ARGUMENTS` is the optional target version (`x.y.z`). If omitted, the skill derives the next
-version from `CHANGELOG.md` and the current build number.
+`$ARGUMENTS` is optional: the version (`x.y.z`) the user expects. The workflow takes no version
+input - git-cliff computes it from the commits since the last tag - so the skill compares this
+against its preview and stops on a mismatch instead of overriding it.
