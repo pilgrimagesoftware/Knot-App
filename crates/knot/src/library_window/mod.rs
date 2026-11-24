@@ -26,6 +26,7 @@ pub(crate) use library::Library;
 pub(crate) use panes::personas::PersonaUser;
 #[cfg(test)]
 pub(crate) use prompt_editor::PromptEditor;
+pub(crate) use prompt_editor::duplicate_and_edit;
 pub(crate) use prompt_editor::open_prompt_editor;
 pub(crate) use prompt_editor::open_prompt_editor_with_text;
 #[cfg(test)]

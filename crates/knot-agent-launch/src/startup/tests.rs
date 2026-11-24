@@ -91,3 +91,25 @@ fn the_clipboard_is_carried_into_the_context() {
                              &read_context(source(Path::new("/nonexistent")))),
                "Context: ");
 }
+
+/// "A startup prompt uses the default" and "An input without a default is
+/// empty at startup": the startup source carries no values.
+#[test]
+fn a_startup_context_gives_inputs_their_defaults() {
+    let ctx = read_context(source(Path::new("/nonexistent")));
+
+    assert_eq!(ctx.inputs, crate::InputValues::default());
+    assert_eq!(crate::expand("Work on {{user_input:Branch|develop}}", &ctx),
+               "Work on develop");
+    assert_eq!(crate::expand("Ticket: {{user_input:Ticket}}", &ctx),
+               "Ticket: ");
+}
+
+#[test]
+fn typed_inputs_are_carried_into_the_context() {
+    let inputs: crate::InputValues = [("PR", "#466")].into_iter().collect();
+    let ctx = read_context(ContextSource { inputs: inputs.clone(),
+                                           ..source(Path::new("/nonexistent")) });
+
+    assert_eq!(ctx.inputs, inputs);
+}

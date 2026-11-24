@@ -1,95 +1,165 @@
 ---
 name: release-repo
-description: Cut a release for this repo - check the changelog, bump the build number, and trigger the release build (GitHub Actions or a local notarized build). Use when the user asks to release, cut a release, ship, or publish a new version.
+description: Cut a release of Knot - preview the version git-cliff will pick, dispatch the Prepare Release workflow, then follow the release PR, tag, GitHub Release, packaged assets, Homebrew cask and the merge back into develop until each one is confirmed. Use when the user asks to release, cut a release, ship, or publish a new version.
 metadata:
   type: engineering
 ---
 
 # Release this repo
 
-The release flow is driven by the `Makefile`. There are two paths - a GitHub Actions build
-(normal) and a local notarized build (fallback when Actions is unavailable or a signed local
-artifact is needed).
+Releases are run entirely by GitHub Actions. Nothing is built, versioned or tagged locally, and
+`CHANGELOG.md` is never edited by hand: git-cliff regenerates it from the Conventional Commits
+since the last tag. The authoritative description is `CONTRIBUTING.md` (Releases); the
+rationale is `docs/adr/0001-git-flow.md`.
 
-## Preconditions
+The chain, each step triggered by the one before:
 
-- Working tree is clean (`git diff --quiet`). `make prerelease`/`make latest` refuse to run
-  otherwise.
-- `gh` is authenticated for the GitHub Actions path.
-- For the local path: Xcode, a `Developer ID Application` certificate, and notarization
-  credentials in `.env` (`TEAM_ID`, `APPLE_ID`, app-specific password). See the Makefile header.
-- `CHANGELOG.md` has an `[Unreleased]` section with real entries - `make check-changelog` fails
-  if it is empty.
+1. **Prepare Release** (`prepare-release.yml`, manual dispatch on `develop`) computes the next
+   version with `git-cliff --bumped-version`, bumps every crate with `cargo set-version`,
+   prepends the changelog, and opens a `release/x.y.z` PR titled `Release x.y.z` against `main`
+   with auto-merge (merge commit) enabled.
+2. The release PR **auto-merges** into `main` once `main`'s required checks pass. Nobody merges
+   it by hand.
+3. **Tag Release** (`tag-release.yml`) fires on that merge and tags the merge commit `vX.Y.Z`.
+4. **Release** (`release.yml`) fires on the tag push. Its jobs: `release / publish` (workspace
+   tests, GitHub Release with git-cliff notes, merge `main` back into `develop`), `package`
+   (calls `package.yml`, attaches the assets) and `homebrew` (updates the tap's cask).
+
+Resolve `owner/repo` with `gh repo view --json nameWithOwner --jq .nameWithOwner`; below it is
+`<owner>/<repo>`. `<v>` is the version without the `v` (`1.42.0`), the tag is `v<v>`.
 
 ## Steps
 
-### 1. Decide the version
+### 1. Preconditions
 
-`make get-version` / `make get-build` print the current marketing version and build number.
-If the user named a version, set it: `make set-version VERSION=x.y.z`, commit that change on
-its own (`chore: version prep`). Otherwise the marketing version stays and only the build
-number increments.
+- `git fetch --tags origin`, then work from `origin/develop`: that is what gets released.
+- CI on the head of `develop` is green:
+  `gh run list --workflow ci.yml --branch develop --limit 1 --json conclusion,headSha`.
+- No release is already in flight: `gh pr list --base main --state open --json number,headRefName`
+  shows no `release/*` PR, and `gh run list --workflow release.yml --limit 1` is not running.
+- Do not change files for the release. There is no version-prep commit and no changelog edit.
 
-### 2. Verify before releasing
+### 2. Preview and confirm the version
 
-```bash
-make check-changelog
-make test
-```
+The workflow takes no version input; git-cliff decides from the commit types since the last
+tag (`[bump]` in `cliff.toml`):
 
-Do not proceed on untested claims - run these and read the output. Stop and report if either
-fails.
+- any `feat` -> minor bump (`1.41.1` -> `1.42.0`)
+- a breaking change (`!` or `BREAKING CHANGE:`) -> major bump
+- otherwise (`fix`, `perf`, ...) -> patch bump (`1.41.0` -> `1.41.1`)
 
-### 3a. GitHub Actions path (normal)
-
-```bash
-make prerelease   # -> triggers build.yml with release_type=prerelease
-# or
-make latest       # -> triggers build.yml with release_type=latest
-```
-
-Both run `check-changelog`, assert a clean tree, run `increment-build`, then
-`gh workflow run build.yml --ref <current-branch> -f release_type=<type>`.
-
-Watch the run: `gh run watch $(gh run list --workflow build.yml --limit 1 --json databaseId --jq '.[0].databaseId')`.
-Report the run URL and its outcome. If it fails, read the failed logs
-(`gh run view <id> --log-failed`) and report the failing step - do not blindly re-run.
-
-The `increment-build` commit is left in the working tree by the Makefile - commit and push it
-(`chore: increment build number`) so the tag and the built artifact agree.
-
-### 3b. Local notarized build path (fallback)
+Preview it on the same commit the workflow will use:
 
 ```bash
-make release      # increment-build + archive + export + sign + notarize + dmg
+git switch --detach origin/develop   # in a worktree, not the primary checkout
+git-cliff --bumped-version           # next tag, e.g. v1.42.0
+git-cliff --unreleased --bump        # the changelog section it will write
+git describe --tags --abbrev=0       # the last tag, for comparison
 ```
 
-Produces `build/Skwad.dmg` (and `build/Skwad.zip`). Then generate the Sparkle appcast and
-publish a GitHub Release:
+If `--bumped-version` prints the last tag ("There is nothing to bump"), there is nothing to
+release: stop and say so. Prepare Release would fail with "Nothing to release" anyway.
+
+If the user named a version (`$ARGUMENTS`) and it differs from the preview, stop and report
+both. The only way to change the version is the commit history (for example a `feat` commit
+for a minor bump), not a workflow input.
+
+Show the user the version and the changelog preview, and get a yes before dispatching. A
+release is public and cannot be taken back by re-running anything.
+
+### 3. Dispatch Prepare Release
 
 ```bash
-make appcast                       # -> build/appcast.xml
-gh release create v<version> build/Skwad.zip build/Skwad.dmg build/appcast.xml \
-  --title "v<version>" --notes-file <changelog excerpt or ->
+gh workflow run prepare-release.yml --ref develop
+sleep 5
+RUN=$(gh run list --workflow prepare-release.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN" --exit-status
 ```
 
-### 4. Update the changelog
+### 4. Follow the release PR
 
-Move the `[Unreleased]` entries under a new `[x.y.z] - <date>` heading in `CHANGELOG.md`,
-commit (`chore: changelog for x.y.z`), and push.
+```bash
+gh pr list --base main --head release/<v> --state all \
+  --json number,url,state,autoMergeRequest
+gh pr checks <number> --watch
+```
 
-### 5. Report back
+`autoMergeRequest` must be set (enabled by `app/psw-ci`). Wait for `state` to become `MERGED`.
+If a required check fails, the PR stays open: read the failure (`gh run view <id> --log-failed`)
+and report it. Do not merge it by hand or disable auto-merge.
 
-Version released, build number, which path was used, run/release URL, and confirmation the
-build-number and changelog commits landed on the branch.
+### 5. Confirm the tag
+
+```bash
+gh run list --workflow tag-release.yml --limit 1 --json databaseId,conclusion,headBranch
+git fetch --tags origin && git rev-parse "v<v>^{commit}"
+git rev-parse origin/main   # the tag must point at the release PR's merge commit
+```
+
+### 6. Follow the Release run
+
+```bash
+RUN=$(gh run list --workflow release.yml --event push --branch v<v> --limit 1 \
+  --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN" --exit-status
+gh run view "$RUN" --json jobs --jq '.jobs[] | "\(.name): \(.conclusion)"'
+```
+
+All of `release / publish`, `package / Package (macOS)`, `package / Archive (Linux)`,
+`package / Archive (Windows)` and `homebrew` must succeed. The macOS package takes the longest.
+
+### 7. Check the assets
+
+```bash
+gh release view v<v> --json url,isDraft,isPrerelease,assets --jq '.url, (.assets[].name)'
+```
+
+Expected, all seven:
+
+- `Knot_<v>_aarch64.dmg`
+- `Knot_<v>_aarch64.cdx.json` (CycloneDX SBOM)
+- `SHA256SUMS` (covers the DMG and the SBOM)
+- `Knot_<v>_x86_64-unknown-linux-gnu.tar.gz` and its `.sha256`
+- `Knot_<v>_x86_64-pc-windows-msvc.zip` and its `.sha256`
+
+To check the checksums: `gh release download v<v> --pattern 'Knot_*_aarch64.*' --pattern SHA256SUMS`
+into an empty temp directory, then `shasum -a 256 -c SHA256SUMS` there.
+
+### 8. Check the merge-back and the cask
+
+```bash
+git fetch origin
+git merge-base --is-ancestor origin/main origin/develop && echo "main is merged into develop"
+git log -1 --format=%s origin/develop   # chore(release): merge main into develop after v<v>
+gh api repos/<owner>/homebrew-tap/contents/Casks/knot-ai.rb --jq .content | base64 -d \
+  | grep -E '^\s*(version|sha256)'
+```
+
+The cask's `version` must be `<v>` and its `sha256` must match the DMG's line in `SHA256SUMS`.
+
+### 9. Report back
+
+Version and tag, release PR number, the Release URL, the run IDs, the asset list, and
+confirmation of the merge-back and the cask. If anything is missing, say which step and why.
 
 ## When it fails
 
-- **`check-changelog` fails**: the `[Unreleased]` section is empty - add entries first.
-- **`make prerelease`/`latest` aborts on "uncommitted changes"**: commit or stash, then retry.
-- **Actions run fails at notarization**: credentials in the workflow secrets are wrong or
-  expired - not something to retry blindly.
-- **`gh` TLS/certificate error**: sandboxed-network restriction, not a GitHub outage - retry
-  the `gh` call outside the sandbox.
+- **Prepare Release: "Nothing to release"**: no releasable commits since the last tag (step 2
+  should have caught it). Nothing to retry.
+- **Release PR sits open**: a required check on `main` failed, or a ruleset blocks the merge.
+  Read the check log and report; fixes go to `develop` through a normal PR, then run Prepare
+  Release again (it reuses or recreates the `release/<v>` branch).
+- **Tag Release didn't run or failed**: the PR was closed without merging, or the PSW CI App
+  secrets (`PSW_CI_APP_ID`, `PSW_CI_PRIVATE_KEY`) are missing or the App lost access.
+- **A Release job failed**: read `gh run view <id> --log-failed` first. Re-running the failed
+  jobs (`gh run rerun <id> --failed`) is fine for a runner fault; a code or config fault needs a
+  fix and a new release. `release.yml` also has a `workflow_dispatch` with a `tag` input
+  (`gh workflow run release.yml -f tag=v<v>`) for re-running against an existing tag; ask first.
+- **Package unsigned**: the Apple secrets aren't set; the DMG still builds with an ad-hoc
+  signature. Report it, don't treat it as a failure of the release.
+- **Merge-back missing**: `release / publish` failed after publishing. Report it; don't merge
+  `main` into `develop` by hand without the user.
+- **`gh` TLS/certificate error**: a sandboxed-network restriction, not a GitHub outage. Retry the
+  `gh` call outside the sandbox.
 
 Report which step failed and why, not just "the release didn't work."

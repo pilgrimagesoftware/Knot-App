@@ -98,8 +98,13 @@ its save action SHALL be disabled while either field is blank.
 
 The editor SHALL list the prompt variables (see `prompt-library` - Prompt
 variables) with what each expands to, and choosing one SHALL insert it at the
-text field's caret. It SHALL flag unknown variable names as warnings without
-disabling save (see `prompt-library` - Unknown variables and escaping).
+text field's caret. The list SHALL end with a user-input entry (see
+`prompt-library` - User inputs). Choosing it SHALL insert
+`{{user_input:}}` with the caret before the closing braces, ready for a
+label. The editor SHALL flag unknown variable names, malformed user inputs,
+and more than five inputs as warnings without disabling save (see
+`prompt-library` - Unknown variables and escaping, and At most five inputs
+are asked for).
 
 Deleting a prompt that no agent or bench entry references SHALL happen
 immediately. Deleting one that is referenced SHALL first ask for
@@ -129,6 +134,22 @@ prompt afterwards.
 - **WHEN** the user places the caret in the text field and chooses
   `folder.name` from the variable list
 - **THEN** `{{folder.name}}` is inserted at the caret
+
+#### Scenario: Inserting a user input from the list
+
+- **WHEN** the user places the caret in the text field and chooses the
+  user-input entry
+- **THEN** `{{user_input:}}` is inserted, with the caret after `user_input:`
+
+#### Scenario: A blank-label input is flagged but saveable
+
+- **WHEN** the prompt's text holds `{{user_input:}}` and the user saves
+- **THEN** the editor shows a malformed-input warning, and the save succeeds
+
+#### Scenario: More than five inputs are flagged but saveable
+
+- **WHEN** the prompt's text has six distinct inputs and the user saves
+- **THEN** the editor shows the five-input warning, and the save succeeds
 
 #### Scenario: Canceling an edit discards changes
 
@@ -265,3 +286,25 @@ clipboard, and the user SHALL be told which happened.
 
 - **WHEN** a new file is too long to carry in the page's address
 - **THEN** the file is on the clipboard and the new-file page opens empty
+
+### Requirement: Duplicating a prompt from the Prompts window
+
+Each row of the Prompts window SHALL carry a Duplicate action beside its edit
+and delete actions. It SHALL duplicate the prompt (see `prompt-library` -
+Library operations), show the copy in the list right after the original, and
+open the prompt editor on the copy with the caret in its name.
+
+The copy SHALL be in the library before the editor opens. The editor SHALL
+treat it as an existing prompt: its confirm action SHALL be "Save", and
+canceling SHALL leave the copy as it was made.
+
+#### Scenario: Duplicating a prompt
+
+- **WHEN** the user clicks Duplicate on "Review"
+- **THEN** "Review copy" appears right after "Review", and the prompt editor
+  opens on it with the caret in its name
+
+#### Scenario: Canceling the copy's editor keeps the copy
+
+- **WHEN** the user duplicates "Review" and cancels the editor that opens
+- **THEN** "Review copy" stays in the library, unchanged

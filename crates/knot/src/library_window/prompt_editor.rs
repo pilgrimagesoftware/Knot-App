@@ -71,19 +71,65 @@ pub(crate) fn open_prompt_editor(prompt: Option<knot_core::Prompt>, cx: &mut App
     let editing_id = prompt.as_ref().map(|p| p.id);
     let name = prompt.as_ref().map(|p| p.name.clone()).unwrap_or_default();
     let text = prompt.as_ref().map(|p| p.text.clone()).unwrap_or_default();
-    open(editing_id, name, text, cx);
+    let caret = if editing_id.is_some() {
+        Caret::Text
+    }
+    else {
+        Caret::Name
+    };
+    open(editing_id, name, text, caret, cx);
+}
+
+/// Opens the prompt editor on `copy`, a duplicate already in the library,
+/// with the caret in its name: renaming is the first thing a copy needs
+/// (#469). It is an existing prompt, so the editor saves rather than
+/// creates, and canceling keeps the copy as it was made.
+fn open_prompt_editor_on_copy(copy: knot_core::Prompt, cx: &mut App) {
+    open(Some(copy.id), copy.name, copy.text, Caret::Name, cx);
+}
+
+/// Duplicates library prompt `id` (`prompt-library`, "Duplicating a
+/// prompt") and opens the editor on the copy.
+pub(crate) fn duplicate_and_edit(id: Uuid, cx: &mut App) {
+    if let Some(copy) = duplicate(id, cx) {
+        open_prompt_editor_on_copy(copy, cx);
+    }
+}
+
+/// Duplicates library prompt `id` and redraws an open Prompts window, which
+/// gains the copy's row whether the duplicate came from it or from the
+/// Insert Prompt list. Returns the copy; `None` for an unknown id, or when
+/// the library can't be written, which is logged like the Prompts window's
+/// delete.
+fn duplicate(id: Uuid, cx: &mut App) -> Option<knot_core::Prompt> {
+    let copy = crate::settings_global::write_persisting(cx, |settings| {
+        Ok(settings.duplicate_prompt(id)?
+                   .and_then(|copy| settings.prompt(copy).cloned()))
+    });
+    WindowRegistry::refresh(WindowKey::Prompts, cx);
+    copy.unwrap_or_else(|error| {
+            eprintln!("failed to duplicate the prompt: {error}");
+            None
+        })
+}
+
+/// Which field the editor's caret starts in.
+#[derive(Clone, Copy)]
+enum Caret {
+    Name,
+    Text,
 }
 
 /// Opens the prompt editor on a new prompt whose text is `text`, with the
 /// caret in its empty name: a prompt the user sent, being saved to the
 /// library (#42).
 pub(crate) fn open_prompt_editor_with_text(text: String, cx: &mut App) {
-    open(None, String::new(), text, cx);
+    open(None, String::new(), text, Caret::Name, cx);
 }
 
 /// The editor's window, editing `editing_id`'s prompt or a new one, with its
-/// fields starting at `name` and `text`.
-fn open(editing_id: Option<Uuid>, name: String, text: String, cx: &mut App) {
+/// fields starting at `name` and `text` and the caret in `caret`.
+fn open(editing_id: Option<Uuid>, name: String, text: String, caret: Caret, cx: &mut App) {
     let title = if editing_id.is_some() {
         knot_core::l10n::t("settings.prompt_editor.title_edit")
     }
@@ -103,11 +149,9 @@ fn open(editing_id: Option<Uuid>, name: String, text: String, cx: &mut App) {
                             .placeholder(knot_core::l10n::t("settings.prompt_editor.text_placeholder"))
                             .default_value(text)
                                      });
-                  if editing_id.is_some() {
-                      text_input.update(cx, |state, cx| state.focus(window, cx));
-                  }
-                  else {
-                      name_input.update(cx, |state, cx| state.focus(window, cx));
+                  match caret {
+                      Caret::Text => text_input.update(cx, |state, cx| state.focus(window, cx)),
+                      Caret::Name => name_input.update(cx, |state, cx| state.focus(window, cx)),
                   }
                   let view = cx.new(|cx| {
                                    // Both fields gate the save button and the text
@@ -191,12 +235,16 @@ impl PromptEditor {
 impl Render for PromptEditor {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (_, text) = self.fields(cx);
-        let warning = crate::prompt_text::unknown_variables_warning(&text);
+        let warnings = crate::prompt_text::library_prompt_warnings(&text);
         let target = self.text_input.clone();
         let insert = Button::new("prompt-editor-variables")
             .label(knot_core::l10n::t("prompt_variables.insert"))
             .dropdown_caret(true)
-            .dropdown_menu(move |menu, _, _| crate::prompt_text::variable_menu(menu, &target));
+            .dropdown_menu(move |menu, _, _| {
+                crate::prompt_text::with_user_input_item(crate::prompt_text::variable_menu(menu,
+                                                                                         &target),
+                                                         &target)
+            });
         let label = |key: &str| {
             div().w(px(100.))
                  .text_right()
@@ -223,7 +271,7 @@ impl Render for PromptEditor {
                                                                                                .mono_font_family
                                                                                                .clone()))
                                           .child(div().child(insert))
-                                          .children(warning.map(|warning| {
+                                          .children(warnings.into_iter().map(|warning| {
                                                                div().text_xs()
                                                                     .text_color(cx.theme().warning)
                                                                     .child(warning)

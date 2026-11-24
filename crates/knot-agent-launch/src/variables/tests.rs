@@ -1,4 +1,5 @@
 use super::*;
+use crate::user_inputs::InputValues;
 
 fn context() -> PromptContext {
     PromptContext { agent_name: "Knot 3".into(),
@@ -8,7 +9,8 @@ fn context() -> PromptContext {
                     workspace:  "Main".into(),
                     branch:     "471-restart".into(),
                     date:       "2026-09-25".into(),
-                    clipboard:  "panic at main.rs:12".into(), }
+                    clipboard:  "panic at main.rs:12".into(),
+                    inputs:     InputValues::default(), }
 }
 
 #[test]
@@ -96,4 +98,67 @@ fn uses_variable_skips_escaped_and_unknown_names() {
     assert!(uses_variable("Context: {{ clipboard }}", PromptVariable::Clipboard));
     assert!(!uses_variable(r"\{{clipboard}} {{clipboards}}", PromptVariable::Clipboard));
     assert!(!uses_variable("{{branch}}", PromptVariable::Clipboard));
+}
+
+/// `prompt-library` "User inputs": an input expands to the typed value, the
+/// label's default, or nothing, in one pass with the variables.
+#[test]
+fn inputs_expand_with_the_variables() {
+    let ctx = PromptContext { inputs: [("PR", "#466")].into_iter().collect(),
+                              branch: "main".into(),
+                              ..context() };
+    assert_eq!(expand("Review {{user_input:PR}} on {{branch}}", &ctx),
+               "Review #466 on main");
+}
+
+#[test]
+fn a_repeated_label_uses_one_value() {
+    let ctx = PromptContext { inputs: [("Name", "knot")].into_iter().collect(),
+                              ..context() };
+    assert_eq!(expand("{{user_input:Name}} / {{ user_input: Name }}", &ctx),
+               "knot / knot");
+}
+
+#[test]
+fn an_input_without_a_value_takes_the_labels_default() {
+    let ctx = context();
+    assert_eq!(expand("Work on {{user_input:Branch|develop}}", &ctx),
+               "Work on develop");
+    assert_eq!(expand("Ticket: {{user_input:Ticket}}", &ctx), "Ticket: ");
+    // The label's default is the first non-empty one, so an earlier
+    // occurrence without one still gets it.
+    assert_eq!(expand("{{user_input:T}} {{user_input:T|x}} {{user_input:T|y}}",
+                      &ctx),
+               "x x x");
+}
+
+#[test]
+fn a_typed_empty_value_beats_the_default() {
+    let ctx = PromptContext { inputs: [("Branch", "")].into_iter().collect(),
+                              ..context() };
+    assert_eq!(expand("[{{user_input:Branch|develop}}]", &ctx), "[]");
+}
+
+#[test]
+fn an_input_value_is_not_expanded_twice() {
+    let ctx = PromptContext { inputs: [("X", "{{folder}}")].into_iter().collect(),
+                              ..context() };
+    assert_eq!(expand("{{user_input:X}}", &ctx), "{{folder}}");
+}
+
+#[test]
+fn a_blank_label_and_an_escaped_input_are_left_as_typed() {
+    assert_eq!(expand("{{user_input: }}", &context()), "{{user_input: }}");
+    assert_eq!(expand("{{user_input:|x}}", &context()), "{{user_input:|x}}");
+    assert_eq!(expand(r"\{{user_input:Name}}", &context()),
+               "{{user_input:Name}}");
+}
+
+/// "A user input is not unknown" and "A misspelled keyword is unknown".
+#[test]
+fn inputs_are_not_unknown_but_a_misspelled_keyword_is() {
+    assert!(unknown_variables("{{user_input:Ticket}} {{user_input:T|x}}").is_empty());
+    assert!(unknown_variables("{{user_input:}}").is_empty());
+    assert_eq!(unknown_variables("{{user-input:Ticket}} {{User_input:T}}"),
+               ["user-input:Ticket", "User_input:T"]);
 }

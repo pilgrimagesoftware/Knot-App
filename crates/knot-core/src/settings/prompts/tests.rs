@@ -36,3 +36,33 @@ fn blank_custom_text_is_none() {
     assert_eq!(StartupPrompt::custom("go"),
                Some(StartupPrompt::Custom("go".into())));
 }
+
+#[test]
+fn copy_name_numbers_past_names_already_taken() {
+    let first = copy_name("Review", |_| false);
+    assert_ne!(first, "Review");
+    assert!(first.contains("Review"),
+            "the copy keeps the original's name: {first}");
+
+    let second = copy_name("Review", |candidate| candidate == first);
+    assert_ne!(second, first);
+    assert!(second.contains("Review") && second.contains('2'),
+            "the first numbered form is 2: {second}");
+
+    let third = copy_name("Review", |candidate| {
+        candidate == first || candidate == second
+    });
+    assert!(third.contains('3'), "{third}");
+}
+
+#[test]
+fn copy_name_keys_resolve() {
+    for key in ["settings.prompts.copy_name",
+                "settings.prompts.copy_name_numbered"]
+    {
+        assert_ne!(crate::l10n::t(key), key, "{key} must resolve");
+    }
+    assert!(crate::l10n::t_with("settings.prompts.copy_name_numbered",
+                                &[("name", "x"), ("number", "7")]).contains('7'),
+            "the number must survive substitution");
+}

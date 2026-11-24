@@ -142,3 +142,9 @@ pub const CODEX_PROFILE_KEY: &str = "profile";
 /// system channel, and the conversation has its context.
 pub const RESUME_REGISTRATION_PROMPT: &str =
     "Knot restarted. Call register-agent with your knot agent ID; nothing else is needed.";
+
+/// The most user inputs the inputs sheet asks for; inputs past this expand
+/// to their default, as in a startup prompt. A fixed size keeps the sheet
+/// small enough to need no scrolling. Re-exported as
+/// `user_inputs::MAX_PROMPT_INPUTS`.
+pub const MAX_PROMPT_INPUTS: usize = 5;
