@@ -142,20 +142,26 @@ impl WorkspaceWindow {
         else {
             return;
         };
-        // The sheet closes, inserting nothing, when its entry leaves the map
-        // (the agent was torn down) or the workspace window goes.
+        // The sheet closes, inserting nothing, when the workspace window goes.
+        // An agent torn down while it is open closes it through
+        // `close_orphaned_prompt_inputs_sheets`.
         let _ = handle.update(cx, |sheet, window, cx| {
-                          sheet.keep(cx.observe_in(&owner, window, move |_, owner, window, cx| {
-                                           if !owner.read(cx).prompt_inputs_sheets.contains_key(&id)
-                                           {
-                                               window.remove_window();
-                                           }
-                                       }));
                           sheet.keep(cx.observe_release_in(&owner, window, |_, _, window, _| {
                                            window.remove_window()
                                        }));
                       });
         self.prompt_inputs_sheets.insert(id, handle);
+    }
+}
+
+impl WorkspaceWindow {
+    /// Close every sheet whose composer `teardown_session` removed. Each
+    /// closes as a cancel, so its `on_close` runs and finds no entry left.
+    pub(in crate::workspace_window) fn close_orphaned_prompt_inputs_sheets(&mut self,
+                                                                           cx: &mut App) {
+        for sheet in std::mem::take(&mut self.orphaned_prompt_inputs_sheets) {
+            let _ = sheet.update(cx, |_, window, _| window.remove_window());
+        }
     }
 }
 

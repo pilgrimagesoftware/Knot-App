@@ -149,7 +149,25 @@ fn a_second_choice_keeps_the_open_sheet(cx: &mut TestAppContext) {
     assert_eq!(fixture.composer(), "Arthur seeks ");
 }
 
-/// "Removing the agent closes its sheet".
+impl Fixture {
+    /// Let the repaint poll tick, as it does on its own timer.
+    fn tick(&mut self) {
+        // The app installs this at startup; the poll's menu refresh reads it.
+        self.window
+            .update(|_, cx| cx.set_global(crate::menu_bar::MenuBarState::default()));
+        self.window
+            .executor()
+            .advance_clock(crate::consts::REPAINT_POLL_INTERVAL * 2);
+        self.window.run_until_parked();
+    }
+
+    fn is_open(&mut self, sheet: AnyWindowHandle) -> bool {
+        self.window.update(|_, cx| cx.windows().contains(&sheet))
+    }
+}
+
+/// "Removing the agent closes its sheet". The removal does not notify:
+/// the close must not ride on a redraw some caller happens to ask for.
 #[gpui_kit::test]
 fn removing_the_agent_closes_its_sheet(cx: &mut TestAppContext) {
     let mut fixture = window_with_prompt(cx, QUEST);
@@ -157,14 +175,49 @@ fn removing_the_agent_closes_its_sheet(cx: &mut TestAppContext) {
     let sheet = fixture.sheet().expect("the sheet");
 
     let agent = fixture.agent;
-    fixture.view.update(&mut fixture.window, |view, cx| {
-                    view.remove_agent_unpersisted(agent);
-                    cx.notify();
+    fixture.view.update(&mut fixture.window, |view, _| {
+                    view.remove_agent_unpersisted(agent)
                 });
-    fixture.window.run_until_parked();
+    fixture.tick();
 
-    assert!(!fixture.window.update(|_, cx| cx.windows().contains(&sheet)));
+    assert!(!fixture.is_open(sheet));
     assert_eq!(fixture.composer(), "");
+}
+
+/// "Deactivating the agent closes its sheet", again without a notify.
+#[gpui_kit::test]
+fn deactivating_the_agent_closes_its_sheet(cx: &mut TestAppContext) {
+    let mut fixture = window_with_prompt(cx, QUEST);
+    fixture.choose();
+    let sheet = fixture.sheet().expect("the sheet");
+
+    let agent = fixture.agent;
+    fixture.view
+           .update(&mut fixture.window, |view, _| view.deactivate_agent(agent));
+    fixture.tick();
+
+    assert!(!fixture.is_open(sheet));
+    assert_eq!(fixture.composer(), "");
+}
+
+/// "Closing the workspace window closes its sheets".
+#[gpui_kit::test]
+fn closing_the_workspace_window_closes_its_sheet(cx: &mut TestAppContext) {
+    let mut fixture = window_with_prompt(cx, QUEST);
+    fixture.choose();
+    let sheet = fixture.sheet().expect("the sheet");
+
+    // Only the window holds the view, as in the app: the fixture's handle
+    // would otherwise keep it alive past the close.
+    let super::Fixture { mut window,
+                         view,
+                         _dir,
+                         .. } = fixture;
+    drop(view);
+    window.update(|window, _| window.remove_window());
+    cx.run_until_parked();
+
+    assert!(!cx.update(|cx| cx.windows().contains(&sheet)));
 }
 
 /// `panel-slash-commands`: "Inputs are asked for before the token is

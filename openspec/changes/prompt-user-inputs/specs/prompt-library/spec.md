@@ -125,9 +125,11 @@ the open sheet keeps its prompt and values. Choosing a prompt without inputs
 while a sheet is open SHALL insert as usual. The open sheet's own Insert
 then finds the composer changed and inserts nothing.
 
-When the agent whose composer opened a sheet is removed, or the workspace
-window holding that composer closes, the sheet SHALL close and insert
-nothing.
+When anything takes away the composer that opened a sheet, the sheet SHALL
+close and insert nothing: removing, deactivating or moving its agent to
+another window, or closing the workspace window holding that composer. The
+close SHALL NOT wait on an unrelated redraw. Restarting the agent keeps its
+composer, so its sheet SHALL stay open.
 
 #### Scenario: A second choice brings the open sheet forward
 
@@ -140,6 +142,18 @@ nothing.
 
 - **WHEN** an inputs sheet is open for agent Ada's composer and Ada is
   removed
+- **THEN** the sheet closes and nothing is inserted
+
+#### Scenario: Deactivating the agent closes its sheet
+
+- **WHEN** an inputs sheet is open for agent Ada's composer and Ada is
+  deactivated
+- **THEN** the sheet closes and nothing is inserted
+
+#### Scenario: Closing the workspace window closes its sheets
+
+- **WHEN** an inputs sheet is open and the workspace window holding its
+  composer closes
 - **THEN** the sheet closes and nothing is inserted
 
 #### Scenario: Cancel returns focus to the composer

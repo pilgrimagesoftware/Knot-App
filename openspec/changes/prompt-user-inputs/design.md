@@ -141,11 +141,20 @@ sheet keeps its prompt and the values typed so far, and replacing them
 silently would lose that work. The entry is removed when the sheet closes
 either way.
 
-Lifetime: the sheet holds only a `WeakEntity<WorkspaceWindow>` and the agent
-id. When an agent is removed, its map entry is taken and that window is
-closed. When the workspace window closes, every sheet in the map is closed.
-If a sheet outlives both somehow, its Insert finds the weak entity gone and
-closes without inserting anything.
+Lifetime: anything that takes the composer away goes through
+`teardown_session` (removal, deactivation, moving to another window).
+That function has no `cx` to close a window with, so it moves the sheet's
+handle from the map into `orphaned_prompt_inputs_sheets`, and
+`repaint_poll_tick` closes those on its next tick. The poll runs on a timer
+whether anything notifies or not. An earlier version had the sheet observe
+the workspace and close on its next notify, which closed it only because
+the callers happened to notify. That is the "rode on someone else's notify"
+hazard in `rust-structure.md`, and the teardown tests remove or deactivate
+without notifying to pin it. Restart keeps the composer (it removes the
+session, not `panel_prompt_inputs`), so a sheet stays open across one. When
+the workspace window closes, the sheet observes the view's release
+(`observe_release_in`) and closes. A sheet's `on_close` holds only a
+`WeakEntity`, so one that outlives the view still closes without inserting.
 
 Focus: Insert and Cancel both call `activate_window` on the workspace window
 handle, then focus the composer's input. The focus lands after the sheet
@@ -153,9 +162,9 @@ closes, so the composer gets the key window back.
 
 ### Five-input cap
 
-`MAX_PROMPT_INPUTS = 5` lives in `knot-agent-launch/src/user_inputs.rs`
-(the crate's `consts.rs` holds launch strings, while this constant belongs
-to the input model it limits). The sheet is built from
+`MAX_PROMPT_INPUTS = 5` is defined in `knot-agent-launch/src/consts.rs`,
+per the workspace's one-`consts.rs`-per-crate rule, and re-exported from
+`user_inputs.rs` (and the crate root) beside the input model it limits. The sheet is built from
 `user_inputs(text).into_iter().take(MAX_PROMPT_INPUTS)`. The left-out
 inputs are simply not put into `InputValues`, so `expand`'s
 value → default → empty fallback gives them the startup rule with no extra

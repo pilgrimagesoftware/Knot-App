@@ -261,6 +261,7 @@ impl WorkspaceWindow {
                     panel_phases: BTreeMap::new(),
                     panel_prompt_inputs: BTreeMap::new(),
                     prompt_inputs_sheets: BTreeMap::new(),
+                    orphaned_prompt_inputs_sheets: Vec::new(),
                     panel_selectors: BTreeMap::new(),
                     panel_selector_subscriptions: BTreeMap::new(),
                     panel_selector_items: BTreeMap::new(),

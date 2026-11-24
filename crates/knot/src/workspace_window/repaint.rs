@@ -55,6 +55,8 @@ impl WorkspaceWindow {
     /// One tick of the poll, with the ids of any sessions whose process
     /// exited since the last one.
     fn repaint_poll_tick(&mut self, exited: &[Uuid], cx: &mut gpui_kit::Context<Self>) {
+        // Sheets `teardown_session` orphaned on an earlier tick or action.
+        self.close_orphaned_prompt_inputs_sheets(cx);
         // A shell companion whose process exited has nothing left to show,
         // so close it rather than leaving a dead pane that looks hung.
         for id in exited {
