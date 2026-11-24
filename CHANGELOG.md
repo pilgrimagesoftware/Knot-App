@@ -1,4 +1,25 @@
 
+## 1.42.0 - 2026-11-24
+
+### Added
+- Parse user inputs in prompt text
+- Ask for a library prompt's user inputs in one sheet
+- Duplicate a library prompt
+
+
+### Documentation
+- Document user inputs on library prompts
+- Rewrite release skill around the release workflows
+
+
+### Fixed
+- Close an orphaned inputs sheet from the repaint poll
+- Mount the prompt inputs sheet in Root
+- Mount the broadcast sheet in Root
+- Mount the autopilot decision sheet in Root
+
+
+
 ## 1.41.1 - 2026-11-20
 
 ### Fixed
