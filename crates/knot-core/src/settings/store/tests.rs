@@ -12,6 +12,7 @@ mod session_scheduling;
 
 use std::fs;
 
+use serde_json::Value;
 use tempfile::TempDir;
 use tempfile::tempdir;
 
@@ -21,6 +22,8 @@ use crate::consts::{
     AGENTS_FILE, BENCH_FILE, DOCUMENT_TEMP_EXTENSION, PERSONAS_FILE, PREFERENCES_FILE,
     PROMPTS_FILE, RECENT_REPOS_FILE, WORKSPACES_FILE,
 };
+use crate::consts::{DEFAULT_PERSONAS, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN};
+use crate::settings::{PersonaState, PersonaType};
 
 fn agent_id() -> Uuid {
     Uuid::new_v4()
@@ -84,7 +87,7 @@ fn a_document_without_the_marker_reads_as_pre_migration() {
     // Not the container-level default, which is `SETTINGS_VERSION_CURRENT` -
     // the field's own serde default has to win on the deserialize path, or an
     // unmigrated document would declare itself migrated.
-    assert_eq!(de_legacy_settings_version(), 0);
+    assert_eq!(preferences::de_legacy_settings_version(), 0);
 
     let mut document: Value = serde_json::from_str("{}").unwrap();
     let object = document.as_object_mut().unwrap();
