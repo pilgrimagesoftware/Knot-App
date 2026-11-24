@@ -7,7 +7,7 @@
 
 ## 2. Layout rules (`knot-agents`)
 
-- [ ] 2.1 `store/layout.rs`: `select`, `set_mode`, `add_companion`, `remove` and `normalize` as pure functions over the UI state, the agent order and companions. Verify: one unit test per `workspace-layouts` scenario in "Changing the layout mode", "Selecting an agent from the sidebar", "Companion layout", "A new companion opens beside its creator", "Removal collapses the layout" and "The saved layout is restored".
+- [ ] 2.1 `store/layout.rs`: `select`, `set_mode`, `add_companion`, `remove` and `normalize` as pure functions over the UI state, the agent order and companions. Verify: one unit test per `workspace-layouts` scenario in "Changing the layout mode", "Selecting an agent from the sidebar", "Companion layout", "A new companion opens beside its creator", "A companion whose owner is not shown", "Moving an agent to another workspace", "Removal collapses the layout" and "The saved layout is restored".
 - [ ] 2.2 Wire `AgentStore::remove`, `move_to_workspace` and `create_shell_companion` through those rules, and drop the `UNWIRED(#321)` markers on the layout setters. Verify: store tests check that removing a pane's agent collapses the mode, that a move leaves the target layout alone, and that a companion opens beside its owner.
 - [ ] 2.3 Normalize every workspace's UI state when the store loads it. Verify: a test loads a grid with a missing agent and gets three-pane, and a test with a stale focused index gets it clamped.
 
@@ -20,7 +20,8 @@
 
 - [ ] 4.1 Factor the stopped, panel and terminal branch of `render/content.rs` into `render_agent_pane(id)`, and render the layout through it. Single mode must render exactly today's pane. Verify: the existing workspace-window tests pass unchanged, and `make size-check` passes.
 - [ ] 4.2 Per-pane name header in multi-pane layouts, a dimmed overlay on unfocused panes, and click-to-focus setting `selected_agent` through the one writer. Verify: a gpui test clicks pane 1 of a split and asserts `selected_agent`, the sidebar highlight and keyboard focus moved.
-- [ ] 4.3 Route every `select_agent` path (sidebar click with and without ⌘, number shortcuts, Select Agent menu) through `layout::select`. Verify: gpui tests for replacing the focused pane, focusing a shown agent, and companion layout on click.
+- [ ] 4.3 Route every `select_agent` path (sidebar click with and without ⌘, number shortcuts, Select Agent menu) through `layout::select`, applying R1–R4. Verify: gpui tests for replacing the focused pane, focusing a shown agent or companion, ⌘-click falling to R3, and ⌘N on an agent already shown.
+- [ ] 4.5 The sidebar highlights only the focused agent's own row, including a focused companion's row. Verify: a gpui test focuses a companion's pane and asserts that its row is highlighted and the owner's is not.
 - [ ] 4.4 Side panels follow the focused agent across the whole layout area. Verify: a gpui test opens the git panel, focuses the other pane, and asserts the panel shows that agent's folder.
 
 ## 5. Layout menu
@@ -35,7 +36,7 @@
 
 ## 7. Companions and removal in the window
 
-- [ ] 7.1 New Shell Companion, New Companion… and the MCP create path show the companion beside its owner, with the companion focused. Verify: gpui tests from single and from a split, matching `agent-list-ui`'s "Create a companion".
+- [ ] 7.1 New Shell Companion, New Companion… and the MCP create path show the companion beside a shown owner, with the companion focused. A user-created companion of an owner that isn't shown gives an owner+companion split, and an MCP-created one leaves the layout alone. Verify: gpui tests from single, from a split, from a split not showing the owner (both origins), matching `agent-list-ui`'s "Create a companion".
 - [ ] 7.2 Removing an agent, and a shell companion's process exiting, collapse the window's layout and leave `selected_agent` on a shown agent. Verify: a gpui test removes the focused pane's agent from a three-pane layout.
 
 ## 8. Docs and gate

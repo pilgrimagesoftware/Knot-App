@@ -2,7 +2,9 @@
 
 ## Context
 
-See proposal.md for the motivation. Current state, from the code:
+See proposal.md for the motivation. Swift citations use the proposal's
+abbreviations (AM, CV, relative to `skwad/Skwad`). Current state, from the
+code:
 
 - `WorkspaceUiState` (`knot-core/src/settings/records.rs`) already carries
   the following fields, and `settings-persistence` already persists them in
@@ -30,7 +32,9 @@ See proposal.md for the motivation. Current state, from the code:
 - gpui-base's `ResizablePanelGroup` sizes panels in pixels, one group per
   axis. It emits `ResizablePanelEvent::Resized` from `done_resizing`, on
   drag end.
-- `render/mod.rs` is at 655 of 700 lines.
+- `render/mod.rs` is at 655 of 700 lines. The limit that applies is 700,
+  the one `make size-check` enforces (`RUST_FILE_LINE_LIMIT`). The 500 in
+  `CLAUDE.md` is stale, and fixing that line is outside this change.
 
 ## Goals / Non-Goals
 
@@ -72,7 +76,8 @@ agent order and a companion lookup:
 
 - `select(agent, skip_companions)`
 - `set_mode(mode)`
-- `add_companion(owner, companion)`
+- `add_companion(owner, companion, origin)`, where `origin` is `User` or
+  `Other` and decides the owner-not-shown case
 - `remove(agent)`
 - `normalize()`
 
@@ -135,9 +140,11 @@ does not resize. On release the hold is dropped, so the next prepaint fits
 once, and the PTY gets one resize.
 
 During the drag, a pane that grows shows its background beyond the old
-grid, and a pane that shrinks clips it. That matches the Swift app, which
-moved the frames live and relaid the terminal out on drag end. Conversation
-panels are not held: they have no PTY and reflow live.
+grid, and a pane that shrinks clips it. This is new behaviour, not a port.
+The Swift app relays its terminals out on every drag frame and only nudges
+them again on drag end (CV:428-440). #8 asks for one resize on settle, so
+that a full-screen program isn't redrawn on every frame of a drag.
+Conversation panels are not held: they have no PTY and reflow live.
 
 - Alternative: a "pause fitting" flag on gpui-terminal's view. Cleaner, but
   gpui-terminal is a separate MIT repo shared with Fernrohr. It can replace
@@ -174,9 +181,9 @@ panes can start up to three agents.
   one click both focuses the pane and lands in the terminal or the
   composer.
 - The focused pane's input or terminal takes the keyboard focus handle.
-- Unfocused panes get a translucent overlay that does not take events. The
-  overlay colour comes from the theme, and its opacity is a constant in
-  `consts.rs`.
+- Unfocused panes get a black overlay at 0.1 opacity that does not take
+  events. The value is the Swift app's (`Theme.swift`:15), kept as
+  `UNFOCUSED_PANE_OVERLAY_OPACITY` in `consts.rs`.
 - The per-pane name header is shown only in multi-pane layouts. The window's
   64 px content header keeps showing the focused agent, and holds the
   Layout menu.
@@ -187,8 +194,9 @@ panes can start up to three agents.
   agents (decision 8). → The Layout menu only fills with agents of the same
   workspace, and the user chose the mode. It's documented in the user docs.
 - **[Drag hold looks rough on long drags]** Blank or clipped edges show
-  while dragging. → It is brief, matches the reference, and is replaceable
-  by a gpui-terminal pause later (decision 6).
+  while dragging, which the Swift app never did. → It is brief, it is the
+  price of one PTY resize per drag, and a gpui-terminal pause can replace it
+  later without changing behaviour (decision 6).
 - **[Per-frame resize on window resize remains]** A window resize still
   refits on every frame, as today. → Out of scope; the spec only covers
   divider drags.

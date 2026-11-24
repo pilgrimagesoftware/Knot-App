@@ -23,59 +23,104 @@ layout it cannot draw and breaks two requirements it claims to meet (#8).
 - One pane is focused. The focused pane's agent is the window's selected
   agent: the sidebar highlights it, and the menus, shortcuts, git panel and
   artifact panel act on it.
-- Sidebar selection follows the Swift rules: show a companion layout, focus
-  an agent already in a pane, or replace the focused pane.
-- Creating a companion opens it next to its owner. Removing an agent
-  collapses the layout.
+- Sidebar clicks and the agent number shortcut apply four ordered rules
+  (R1–R4): show a companion layout, focus an agent already in a pane, show
+  the agent alone after a companion layout, or replace the focused pane.
+  These are Swift's rules with two of them swapped; see below.
+- Creating a companion opens it next to a shown owner. Removing an agent, or
+  moving it to another workspace, collapses the layout.
 - A terminal keeps its grid size while a divider is dragged, and is resized
   once when the drag ends, so the PTY is not resized on every frame.
 - The persisted layout is restored as saved and checked on load.
 
 ### Carried over from the Swift app
 
-Read from `skwad` (`Views/ContentView.swift`, `Models/AgentManager.swift`,
-`Views/Terminal/SplitDividerView.swift`), not inferred:
+Read from `skwad/Skwad`, not inferred (AM = `Models/AgentManager.swift`,
+CV = `Views/ContentView.swift`):
 
-- The five modes and their pane geometry. In three-pane, pane 0 is the
-  full-height left column and the right column is split. In the grid, both
-  dividers run the full width or height.
-- The 0.25–0.75 clamp on every divider. Terminals resize on drag end.
-- The Layout menu's fill and trim rules.
-- Sidebar selection, including ⌘-click to skip the companion layout.
-- Companion creation stepping single → split → three-pane → grid. In a full
-  grid, the new agent replaces another agent's pane, starting from the last.
-- Removal collapsing grid → three-pane → split → single.
-- A dimmed overlay on unfocused panes.
+- The five modes and their pane geometry (CV:599-639). In three-pane, pane 0
+  is the full-height left column and the right column is split. In the grid,
+  both dividers run the full width or height.
+- The 0.25–0.75 clamp on every divider (CV:434, 465, 486).
+- R1, R3 and R4 of the sidebar click (AM:1096-1124). ⌘ skips only R1
+  (`SidebarView.swift`:78-79).
+- The companion layout for zero to three companions (AM:986-1001).
+- A new companion stepping single → split → three-pane → grid while its owner
+  is shown. In a full grid, it replaces the last pane that is not the
+  owner's (AM:1024-1079).
+- Removal collapsing grid → three-pane → split → single (AM:737-772). Owners'
+  companions are removed first (AM:719-723), which `agent-lifecycle`
+  already requires.
+- A dimmed overlay on unfocused panes, black at 0.1 opacity
+  (`Theme.swift`:15).
 
 ### Deliberately dropped or changed
 
-- **Detached workspace window**: dropped. In Rust every workspace already
+Each item below is a divergence from the Swift app, with the reason.
+
+- **Terminals hold their size during a drag** (new). In Swift a drag sets
+  the ratio live (CV:428-435), so panes and terminals relay out on every
+  frame. Drag end only adds a resize nudge (CV:436-440). Here a terminal
+  keeps its grid until the drag ends and is resized once. #8 asks for this:
+  a PTY resize per frame makes every program in it redraw on every frame.
+- **Layout menu fill and focus** (changed, CV:817-887). Swift fills a split
+  only from exactly one shown agent, fills three-pane and grid only below
+  three, never moves `focusedPaneIndex`, and takes Single's agent at an
+  unchecked index. Here every mode fills any shortfall in sidebar order, and
+  focus stays on its agent or else falls to pane 0. That way a mode always
+  shows as many agents as it has panes, and focus always points at a pane.
+- **Four-pane with three agents** (dropped). Swift can enter a grid with an
+  empty fourth slot (CV:876-887). Here a mode is offered only when the
+  workspace has enough agents to fill it, so no pane is ever empty.
+- **Sidebar click order** (changed). Swift checks R3, "pane 0's agent has
+  companions", before R2, "already shown" (AM:1103-1116). Its sidebar has no
+  companion rows (`SidebarView.swift`:54), so a shown companion is never
+  clicked there. Rust lists companion rows, and clicking a shown companion
+  must focus it, not reset the layout.
+- **Row highlight** (changed). Swift highlights the owner's row when a
+  companion is focused (AM:391-394), because the companion has no row. Here
+  the focused agent's own row is highlighted.
+- **Agent number shortcut** (changed). Swift's `selectAgentAtIndex` counts
+  only non-companion agents and focuses a shown agent's pane
+  (AM:1153-1168). Here the shortcut counts the sidebar's rows as
+  `keybindings` already specifies, and acts as a plain click on that row.
+  Swift's next/previous-agent cycling (AM:1126-1151) is not ported; the port
+  has no such shortcut (`app-menu`, "The View menu lists the navigation
+  shortcuts").
+- **Companion while its owner is not shown** (changed). Swift's MCP path
+  re-lays out only when the owner is shown (`MCP/AgentCoordinator.swift`:613).
+  Its UI paths (`AgentSheet.swift`:614, AM:830) step the current layout even
+  when the owner is not in it, which can show a companion without its owner.
+  Here a companion the user creates shows owner and companion as a split. A
+  companion created any other way leaves the layout alone, because the user
+  may be looking at something else.
+- **Moving an agent to another workspace** (changed, AM:926-945). Swift only
+  strips the id from the source's active list, which can leave a split with
+  one agent, and never touches the target. Here the source collapses as on
+  removal, and the target shows the agent only if it showed nothing, as the
+  port's store already does today.
+- **Detached workspace window** (dropped). In Rust every workspace already
   has its own window (`window-lifecycle`, "A workspace has at most one
   window"), so there is nothing to detach. The stored `is_detached` stays
   as opaque data.
-- **Launch override**: Swift replaces the current workspace's saved layout
-  with a companion layout at launch. Here the saved layout is restored.
-- **Deferred saves**: Swift saves layout changes only when something else
-  saves. Here every layout change is persisted; a divider's ratio is saved
-  on drag end.
-- **Four-pane with three agents**: Swift can enter a grid with an empty
-  fourth slot. Here a mode is offered only when the workspace has enough
-  agents to fill it, so no pane is ever empty.
-- **No bounds check on the focused pane**: Swift can index past the end of
-  its active list. Here the focused pane is always clamped to the panes
-  that exist.
-- **Clicking a companion that is shown**: Swift checks "pane 0's agent has
-  companions" before "already shown", so the click shows the agent alone.
-  Its sidebar has no companion rows, so that path never runs there. Rust
-  lists companions as rows, so an agent already shown is focused first.
-- **Panel-mode agents**: Swift panes only hold terminals. A Rust pane holds
-  whatever the agent shows: its terminal, its conversation panel, or the
-  stopped view.
+- **Launch override** (dropped). Swift replaces the current workspace's
+  saved layout with a companion layout at launch (AM:86-90). Here the saved
+  layout is restored.
+- **Deferred saves** (changed). Swift saves layout changes only when
+  something else saves (AM:187-188). Here every layout change is persisted,
+  and a divider's ratio is saved on drag end.
+- **Focused-pane bounds** (changed). Swift can index past the end of its
+  active list (AM:1121). Here the focused pane is always clamped to the
+  panes that exist.
+- **Panel-mode agents** (new). Swift panes hold terminals only. A Rust pane
+  holds whatever the agent shows: its terminal, its conversation panel, or
+  the stopped view.
 
 ### Non-goals
 
-- Keyboard shortcuts or View menu items for layouts. The Swift app has none
-  either.
+- Keyboard shortcuts or View menu items for layouts. Swift has none either:
+  its layout toggle is a menu only (CV:815).
+- Next/previous-agent cycling shortcuts. See above.
 - Dropping an agent onto a pane.
 - Per-pane git or artifact panels. Both stay window-level, following the
   focused agent.

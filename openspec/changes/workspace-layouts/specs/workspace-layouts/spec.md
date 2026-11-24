@@ -118,8 +118,8 @@ leaves a pane empty.
 Choosing a mode SHALL keep the agents already in panes in their order. It
 SHALL drop the agents past the new pane count, or fill the new panes with the
 workspace's other agents in sidebar order. Choosing Single SHALL keep only the
-focused pane's agent. The focused pane SHALL stay on its agent when that
-agent is still shown, and otherwise move to pane 0.
+focused pane's agent. Focus SHALL stay on its agent if still shown, else pane
+0. Swift fills only some shortfalls and never moves focus.
 
 #### Scenario: Single to split fills from the sidebar
 
@@ -150,12 +150,15 @@ focused one.
 
 ### Requirement: Selecting an agent from the sidebar
 
-Clicking an agent row SHALL, in order: show the agent with its companions
-when it has some, pane 0 is focused and ⌘ is not held; otherwise focus its
-pane if it is shown; otherwise show it alone if pane 0's agent has
-companions; otherwise put it in the focused pane, replacing that agent. The
-Swift app checks pane 0's companions before a shown agent; its sidebar lists
-no companion rows to click.
+Clicking an agent row SHALL apply the first rule that matches:
+
+1. R1: the agent has companions, pane 0 is focused, and ⌘ is not held: show
+   its companion layout.
+2. R2: the agent is in a pane: focus that pane.
+3. R3: pane 0's agent has companions: show the clicked agent alone.
+4. R4: put it in the focused pane, replacing that pane's agent.
+
+⌘ skips only R1. The Swift app checks R3 before R2.
 
 #### Scenario: Replacing the focused pane
 
@@ -175,10 +178,40 @@ no companion rows to click.
   clicks S's row
 - **THEN** the layout is unchanged and S's pane is focused
 
+#### Scenario: ⌘-click skips only the companion layout
+
+- **WHEN** owner A and its companion S are shown with A in pane 0, and the
+  user ⌘-clicks owner B, which has companions
+- **THEN** R1 is skipped and R3 applies: B is shown alone
+
 #### Scenario: Leaving a companion layout
 
 - **WHEN** owner A and its companion S are shown and the user clicks C
 - **THEN** C is shown alone
+
+### Requirement: The sidebar highlights the focused agent's row
+
+The sidebar SHALL highlight the row of the focused pane's agent, and no other
+row. A focused companion SHALL highlight its own row, not its owner's. The
+Swift app highlights the owner instead, since it lists no companion rows.
+
+#### Scenario: A focused companion
+
+- **WHEN** owner A and its companion S are shown and S's pane is focused
+- **THEN** S's row is highlighted and A's is not
+
+### Requirement: Selecting an agent by number in a layout
+
+The agent-number shortcut (`keybindings`, "Selecting an agent by number")
+SHALL act exactly as a click on that row without ⌘, applying the rules of
+"Selecting an agent from the sidebar". Rows are counted as the sidebar shows
+them, companion rows included. The Swift app counts only non-companion rows.
+
+#### Scenario: The number of an agent already shown
+
+- **WHEN** the sidebar lists A, B, C, a split shows A (focused) and B, and the
+  user presses ⌘2
+- **THEN** the layout is unchanged and B's pane is focused
 
 ### Requirement: Companion layout
 
@@ -195,8 +228,9 @@ companions.
 
 ### Requirement: A new companion opens beside its creator
 
-Creating a companion SHALL show it beside its owner. From single, the layout
-SHALL become split vertical with owner and companion. From a split it SHALL
+Creating a companion while its owner is in a pane SHALL show it beside the
+owner. From single, the layout SHALL become split vertical with owner and
+companion. From a split it SHALL
 become three-pane and from three-pane a grid, adding the companion as the
 last pane. In a full grid the companion SHALL replace the last pane that is
 not its owner's. The companion's pane SHALL be focused.
@@ -209,18 +243,47 @@ not its owner's. The companion's pane SHALL be focused.
 
 #### Scenario: From a full grid
 
-- **WHEN** a grid shows A, B, C, D with D's owner not shown, and a companion
-  of A is created
-- **THEN** the companion replaces D in pane 3 and is focused
+- **WHEN** a grid shows A, B, C, D in panes 0 to 3, and a companion of A is
+  created
+- **THEN** the companion replaces D in pane 3, the last pane that is not A's,
+  and is focused
+
+#### Scenario: The owner holds the last pane
+
+- **WHEN** a grid shows B, C, D, A in panes 0 to 3, and a companion of A is
+  created
+- **THEN** the companion replaces D in pane 2 and is focused
+
+### Requirement: A companion whose owner is not shown
+
+When the owner is in no pane, a companion the user creates (the agent row's
+New Shell Companion or New Companion…) SHALL replace the layout with a split
+vertical of owner and companion, the companion focused. A companion created
+any other way, such as by an agent over MCP, SHALL leave the layout
+unchanged; it appears in the sidebar only.
+
+#### Scenario: Created from the row of an owner that is not shown
+
+- **WHEN** a split shows B and C, and the user chooses New Shell Companion on
+  owner A's row
+- **THEN** a split vertical shows A and the companion, with the companion
+  focused
+
+#### Scenario: Created over MCP while the user looks elsewhere
+
+- **WHEN** a split shows B and C, and agent A creates a companion for itself
+  over MCP
+- **THEN** the split still shows B and C, and the companion is listed in the
+  sidebar after A
 
 ### Requirement: Removal collapses the layout
 
-Removing an agent that is in a pane SHALL remove its pane. A grid or
-three-pane left with three agents SHALL become three-pane, and with two a
-split vertical. A split left with one agent, or any layout left with fewer
-than two, SHALL become single. The focused pane SHALL be clamped to the panes
-that remain. A single layout whose agent is removed SHALL show the
-workspace's first remaining agent.
+Removing an agent that is in a pane SHALL remove its pane: a grid left with
+three agents SHALL become three-pane, any multi-pane layout left with two a
+split vertical, and any layout left with fewer than two single. The focused
+pane SHALL be clamped to the panes that remain. A single layout whose agent
+is removed SHALL show the workspace's first remaining agent. An owner's
+companions are removed first (`agent-lifecycle`, "Agent removal").
 
 #### Scenario: Grid loses a pane
 
@@ -236,7 +299,8 @@ workspace's first remaining agent.
 
 Moving an agent to another workspace SHALL remove it from its old
 workspace's layout as removal does, and SHALL NOT change the new workspace's
-layout except to show the agent when the new workspace showed nothing.
+layout except to show the agent when the new workspace showed nothing. Swift
+neither collapses the old layout nor touches the new one.
 
 #### Scenario: Moved out of a split
 
@@ -248,7 +312,8 @@ layout except to show the agent when the new workspace showed nothing.
 During a divider drag, a terminal in a pane SHALL keep its row and column
 count. When the drag ends, every terminal in a pane whose size changed SHALL
 be resized once to fit, and its program SHALL see the new size. A
-conversation panel SHALL reflow live, since it has no program to resize.
+conversation panel SHALL reflow live. This is new: Swift relays terminals out
+on every drag frame.
 
 #### Scenario: One resize per drag
 
