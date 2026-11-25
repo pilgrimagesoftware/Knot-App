@@ -11,9 +11,6 @@
 mod client_token;
 mod shared;
 
-// UNWIRED(mcp-auth task 6.1): the MCP tab's regenerate button is the
-// caller; until it lands, only the tests use these.
-#[allow(unused_imports)]
 pub(crate) use client_token::{ClientTokenStore, regenerate};
 pub(crate) use client_token::{KeychainTokenStore, LoadedClientToken, load_or_create};
 pub(crate) use shared::{ClientToken, McpCredentials};

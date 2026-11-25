@@ -187,6 +187,10 @@ pub(crate) struct WorkspaceWindow {
     /// The process's MCP credentials: panel launches issue an agent's pair
     /// into it and retiring the panel session revokes it (D8).
     pub(super) mcp_credentials:                  crate::mcp_credentials::McpCredentials,
+    /// This workspace's agents whose MCP requests have been refused since
+    /// they last authenticated, as the repaint poll last read them; drawn
+    /// as a notice over their panes (D10).
+    pub(super) mcp_unavailable:                  std::collections::BTreeSet<Uuid>,
     /// The lifecycle phase each panel session was in the last time the
     /// repaint poll looked, so a slot moving between phases repaints - see
     /// `panel_needs_repaint`.

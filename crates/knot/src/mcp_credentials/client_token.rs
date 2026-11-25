@@ -23,8 +23,6 @@ pub(crate) struct LoadedClientToken {
     /// Why this token is not the stored one, or will not outlast this
     /// launch: the store could not be read, or the token could not be
     /// saved. For the MCP tab to show; `None` when all is well.
-    // UNWIRED(mcp-auth task 6.1): the MCP tab shows it; tests read it now.
-    #[allow(dead_code)]
     pub(crate) problem: Option<String>,
 }
 
@@ -57,8 +55,6 @@ pub(crate) fn load_or_create(store: &dyn ClientTokenStore, registry: &Credential
 
 /// A new client token, saved and made the registry's, which revokes the
 /// previous one in the same step.
-// UNWIRED(mcp-auth task 6.1): called from the MCP tab's regenerate button.
-#[allow(dead_code)]
 pub(crate) fn regenerate(store: &dyn ClientTokenStore, registry: &CredentialRegistry)
                          -> LoadedClientToken {
     let loaded = fresh(store);

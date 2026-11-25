@@ -137,6 +137,8 @@ impl WorkspaceWindow {
         // thread, often for an agent that is not the caller and is doing
         // nothing - no streaming turn, nothing else to repaint for it (#17).
         let store_revised = self.store_revised();
+        // Refusals are counted on the MCP server's thread (D10).
+        let mcp_unavailable_changed = self.poll_mcp_unavailable();
         // The Changes view's repositories, issues and OpenSpec changes land
         // from `spawn_blocking` the same way, and the issues wait for the
         // repositories: without this the Issues tab would sit on its first
@@ -217,6 +219,7 @@ impl WorkspaceWindow {
            || pull_request_states_changed
            || pull_requests_expiring
            || store_revised
+           || mcp_unavailable_changed
            || work_items_landed
            || codex_usage_landed
            || git_actions_landed

@@ -154,21 +154,61 @@ fn the_displayed_mcp_url_is_the_one_knot_gives_its_own_agents() {
                knot_agent_launch::mcp_url(&settings));
 }
 
+/// `mcp-auth` 6.1: each command carries the client token in its client's
+/// own syntax, checked against each CLI's `mcp add --help`.
 #[test]
-fn mcp_install_command_matches_swift_reference_per_agent() {
+fn mcp_install_command_carries_the_token_per_agent() {
     // The real URL, path included: this command is copied verbatim.
     let url = "http://127.0.0.1:8767/mcp";
-    assert_eq!(SettingsWindow::mcp_install_command("claude", url),
-               "claude mcp add --transport http --scope user knot http://127.0.0.1:8767/mcp");
-    assert_eq!(SettingsWindow::mcp_install_command("codex", url),
-               "codex mcp add knot --url http://127.0.0.1:8767/mcp");
-    assert_eq!(SettingsWindow::mcp_install_command("opencode", url),
+    let token = "knot_c_TOKEN";
+    assert_eq!(SettingsWindow::mcp_install_command("claude", url, token),
+               "claude mcp add --transport http --scope user knot http://127.0.0.1:8767/mcp \
+                --header \"Authorization: Bearer knot_c_TOKEN\"");
+    assert_eq!(SettingsWindow::mcp_install_command("codex", url, token),
+               "codex mcp add knot --url http://127.0.0.1:8767/mcp --bearer-token-env-var \
+                KNOT_MCP_CLIENT_TOKEN");
+    assert_eq!(SettingsWindow::mcp_install_command("opencode", url, token),
                "opencode mcp add");
-    assert_eq!(SettingsWindow::mcp_install_command("gemini", url),
-               "gemini mcp add --transport http knot http://127.0.0.1:8767/mcp --scope user");
-    assert_eq!(SettingsWindow::mcp_install_command("antigravity", url),
-               "agy mcp add knot http://127.0.0.1:8767/mcp");
-    assert_eq!(SettingsWindow::mcp_install_command("copilot", url), "");
+    assert_eq!(SettingsWindow::mcp_install_command("gemini", url, token),
+               "gemini mcp add --transport http knot http://127.0.0.1:8767/mcp --scope user \
+                --header \"Authorization: Bearer knot_c_TOKEN\"");
+    assert_eq!(SettingsWindow::mcp_install_command("antigravity", url, token),
+               "agy mcp add --header \"Authorization: Bearer knot_c_TOKEN\" knot \
+                http://127.0.0.1:8767/mcp");
+    assert_eq!(SettingsWindow::mcp_install_command("copilot", url, token),
+               "");
+}
+
+#[test]
+fn the_client_token_is_shown_masked() {
+    let token = knot_mcp::Secret::generate(knot_mcp::CredentialKind::Client);
+    let masked = SettingsWindow::masked_token(token.expose());
+
+    assert!(masked.starts_with("knot_c_"));
+    assert!(token.expose().ends_with(&masked[masked.len() - 4..]));
+    assert!(!masked.contains(&token.expose()[7..20]),
+            "the body is hidden: {masked}");
+}
+
+#[test]
+fn refusals_are_reported_in_total_and_by_launched_agent() {
+    let agent = uuid::Uuid::new_v4();
+    let refusals = [(knot_mcp::RefusalSource::Agent(agent), 2),
+                    (knot_mcp::RefusalSource::UserAgent("curl/8".into()), 1)];
+
+    let lines = SettingsWindow::mcp_refusal_lines(&refusals, |id| {
+        (id == agent).then(|| "Builder".to_owned())
+    });
+
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert!(lines[0].contains('3'), "{lines:?}");
+    assert!(lines[1].contains("Builder") && lines[1].contains('2'),
+            "{lines:?}");
+    let none = SettingsWindow::mcp_refusal_lines(&[], |_| None);
+    assert_eq!(none.len(), 1);
+    for line in lines.iter().chain(&none) {
+        assert!(!line.contains("settings.mcp."), "the keys resolve: {line}");
+    }
 }
 
 #[test]

@@ -99,7 +99,7 @@ references (D1–D10) point to design.md.
 
 ## 6. Settings, panel and docs (`knot`, `docs/site`)
 
-- [ ] 6.1 MCP tab:
+- [x] 6.1 MCP tab:
   - masked token with copy, and regenerate with a confirmation;
   - install commands with the header per client, each CLI's syntax checked
     against its current version;
@@ -108,7 +108,7 @@ references (D1–D10) point to design.md.
 
   Verify: gpui tests for mask and copy, regenerate (the old token refused),
   and the command text per type. Assert l10n keys.
-- [ ] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
+- [x] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
   connection was refused (D10). Verify: a panel test.
 - [ ] 6.3 Docs: the MCP setup page (token, client configuration storage,
   re-running the install command after upgrading) and `coordination.md`.
