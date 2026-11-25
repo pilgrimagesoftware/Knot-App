@@ -21,6 +21,7 @@ use knot_core::LayoutMode;
 
 use super::layout_test_support::Fixture;
 use super::layout_test_support::Spec;
+use super::layout_test_support::open;
 use super::layout_test_support::open_as;
 
 const SPLIT: Spec<'static> = Spec { agents:     &["A", "B"],
@@ -99,4 +100,35 @@ fn terminals_keep_their_grid_during_a_drag_and_resize_once_on_release(cx: &mut T
      .simulate_mouse_move(point(grab.x + px(300.), grab.y), None, Modifiers::none());
     settle(&mut f);
     assert_eq!((grid(&mut f, "A"), grid(&mut f, "B")), (a1, b1));
+}
+
+#[gpui_kit::test]
+fn a_panel_pane_tracks_the_divider_during_a_drag(cx: &mut TestAppContext) {
+    let mut f = open(&SPLIT, cx);
+    settle(&mut f);
+    let width = |f: &mut Fixture, selector: &'static str| {
+        f.window
+         .debug_bounds(selector)
+         .unwrap_or_else(|| panic!("{selector} was never painted"))
+         .size
+         .width
+    };
+    let (left0, right0) = (width(&mut f, "layout-pane-0"), width(&mut f, "layout-pane-1"));
+
+    let grab = f.window
+                .debug_bounds("layout-divider-primary")
+                .expect("a split draws its divider")
+                .center();
+    f.window
+     .simulate_mouse_down(grab, MouseButton::Left, Modifiers::none());
+    f.window
+     .simulate_mouse_move(point(grab.x + px(100.), grab.y),
+                          MouseButton::Left,
+                          Modifiers::none());
+    settle(&mut f);
+
+    let (left1, right1) = (width(&mut f, "layout-pane-0"), width(&mut f, "layout-pane-1"));
+    assert!(left1 > left0 + px(90.),
+            "the left pane grew with the divider mid-drag");
+    assert!(right1 < right0 - px(90.), "the right pane shrank with it");
 }
