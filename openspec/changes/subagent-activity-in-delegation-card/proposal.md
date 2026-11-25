@@ -20,8 +20,9 @@ table, which then failed to render.
   calls · 3 commands run"), and lists the activity in order while open. Each
   nested tool call is a card with its own open/closed state.
 - An update that arrives before its delegation card moves into the card when
-  the card arrives later in the turn. Anything still waiting when the turn or
-  the session ends is shown in the conversation rather than dropped.
+  the card arrives later in the turn. Anything still waiting when the turn
+  ends (normally or in an error) or the session ends is shown in the
+  conversation rather than dropped.
 - The subagent's final report stays the delegation's own result, as before.
 - This is the interim path until Knot takes subagents over ACP's dedicated
   subagent channel (#15).
@@ -40,7 +41,8 @@ None.
 ### Modified Capabilities
 
 - `acp-panel-ui`: adds "A subagent's activity stays inside its delegation
-  card".
+  card", "A delegation card counts and lists its subagent's activity" and "A
+  subagent report ahead of its delegation card is held, never dropped".
 
 ## Impact
 

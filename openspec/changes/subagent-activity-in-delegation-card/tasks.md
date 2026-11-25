@@ -7,6 +7,7 @@
 ## 2. Panel state
 
 - [x] 2.1 Route by `claudeCode.parentToolUseId` in `fold`: nest under the delegation card, hold until it arrives, release at turn or session end. Card lookups by id reach nested cards. Verify: `panel_state/tests/subagents.rs` replays the reported interleaving (mid-word) and asserts one main segment with the table intact and the subagent items nested in order. With routing disabled, the segment and nesting tests fail.
+- [x] 2.2 Release held items when a turn ends in an error (`push_error`) and, as a guard, when the next turn starts. Verify: `updates_held_when_a_turn_ends_in_an_error_stay_in_that_turn`, which fails with the `push_error` release removed.
 
 ## 3. Panel view
 

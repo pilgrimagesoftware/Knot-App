@@ -183,6 +183,10 @@ impl PanelState {
         // The first live prompt ends a restored session's replay, so the
         // replayed entries can take their logged times now.
         self.times.go_live(&self.messages, &mut self.sent_at);
+        // Every way a turn ends releases what it held; this keeps a held
+        // report from crossing into the new turn even if a future one does
+        // not.
+        self.release_subagent_orphans();
         self.push_message(PanelMessage::User(text));
         self.turn_active = true;
         self.turn_started_at = Some(SystemTime::now());
@@ -241,6 +245,9 @@ impl PanelState {
                 .and_then(|limit| limit.lifts_at(std::time::SystemTime::now()));
         self.push_message(PanelMessage::Error(text));
         self.turn_active = false;
+        // The turn is over, so a subagent report still waiting for its card
+        // belongs to this turn's conversation, not the next one's.
+        self.release_subagent_orphans();
     }
 
     /// Whether a prompt to this session waits for its usage limit to lift

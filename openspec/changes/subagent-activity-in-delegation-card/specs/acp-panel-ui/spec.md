@@ -5,9 +5,7 @@
 When an agent reports a tool call or text as made by a subagent it launched
 (claude-agent-acp: `_meta.claudeCode.parentToolUseId`), the panel SHALL show it
 inside the card of the delegation call with that id, never in the
-conversation, so the main agent's reply stays one piece. A report that
-arrives before its card SHALL move into the card if the card arrives later in
-the turn, and otherwise SHALL appear in the conversation.
+conversation, so the main agent's reply stays one piece.
 
 #### Scenario: A subagent runs while the main agent writes
 
@@ -15,18 +13,6 @@ the turn, and otherwise SHALL appear in the conversation.
   it launched reports tool calls and text between the reply's chunks
 - **THEN** the reply is one message with the table intact, and the subagent's
   tool calls and text appear in order inside the delegation card
-
-#### Scenario: A report ahead of its delegation card
-
-- **WHEN** a subagent's tool call arrives before the delegation card that
-  launched it, in the same turn
-- **THEN** the tool call moves into that card when the card arrives
-
-#### Scenario: A delegation card that never arrives
-
-- **WHEN** a turn ends while a subagent's report is still waiting for its
-  delegation card
-- **THEN** the report is shown in the conversation rather than dropped
 
 #### Scenario: A background subagent after the turn
 
@@ -52,3 +38,29 @@ as a card with its own open/closed state.
 - **WHEN** the user opens a nested tool call inside an open delegation card
 - **THEN** that call's output shows, and the delegation card and its other
   nested calls keep their own state
+
+### Requirement: A subagent report ahead of its delegation card is held, never dropped
+
+A subagent's report that arrives before its delegation card SHALL move into
+the card if the card arrives later in the turn. One still waiting SHALL appear
+in the conversation when the turn ends, normally or in an error, or when the
+session ends.
+
+#### Scenario: A report ahead of its delegation card
+
+- **WHEN** a subagent's tool call arrives before the delegation card that
+  launched it, in the same turn
+- **THEN** the tool call moves into that card when the card arrives
+
+#### Scenario: A delegation card that never arrives
+
+- **WHEN** a turn ends while a subagent's report is still waiting for its
+  delegation card
+- **THEN** the report is shown in the conversation rather than dropped
+
+#### Scenario: A turn that ends in an error
+
+- **WHEN** a turn the agent answers with an error ends while a subagent's
+  report is still waiting for its delegation card
+- **THEN** the report is shown in that turn's conversation, before the next
+  prompt

@@ -20,8 +20,10 @@ update anyway.
 ### Hold, then adopt or release
 
 A parent that hasn't arrived yet is held in order while the turn runs, and
-adopted when its card is pushed. On turn end or session end, anything held is
-placed in the conversation. That way an update is never lost, even if the
+adopted when its card is pushed. Anything still held is placed in the
+conversation when the turn ends - on `TurnEnd`, or on the error response that
+ends a turn with no `TurnEnd` - and when the session ends. Starting a new turn
+releases too, so nothing held can cross into the next turn. That way an update is never lost, even if the
 adapter's ordering changes.
 
 ### Render inside the existing card

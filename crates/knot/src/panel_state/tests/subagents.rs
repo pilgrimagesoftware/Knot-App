@@ -153,6 +153,31 @@ fn updates_whose_delegation_never_arrives_are_placed_at_the_turns_end() {
     assert!(assistant_messages(&state).contains(&"orphaned prose"));
 }
 
+/// A turn the agent answered with an error ends with no `TurnEnd`; what it
+/// held is placed in that turn, ahead of the next prompt (#497 review).
+#[test]
+fn updates_held_when_a_turn_ends_in_an_error_stay_in_that_turn() {
+    let mut state = PanelState::new();
+    state.push_user_message("go".to_string());
+    state.apply(subagent_call("toolu_bash_1"));
+
+    state.push_error("the adapter refused the prompt".to_string());
+
+    let card_at = state.messages
+                       .iter()
+                       .position(|message| {
+                           matches!(message, PanelMessage::ToolCall(card) if card.id == "toolu_bash_1")
+                       })
+                       .expect("placed in the conversation when the turn ended");
+    state.push_user_message("again".to_string());
+    let next_prompt_at = state.messages
+                              .iter()
+                              .rposition(|message| matches!(message, PanelMessage::User(_)))
+                              .expect("the next prompt");
+    assert!(card_at < next_prompt_at,
+            "in the errored turn, not the next");
+}
+
 /// A background subagent keeps reporting after the turn that launched it
 /// ended; its card is known, so its updates still nest.
 #[test]
