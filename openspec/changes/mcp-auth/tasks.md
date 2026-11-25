@@ -87,13 +87,13 @@ references (D1–D10) point to design.md.
 
 ## 5. Confirmation (`knot-mcp-tools`, `knot`)
 
-- [ ] 5.1 `create-agent` with a shell `shellCommand`, and worktree creation
+- [x] 5.1 `create-agent` with a shell `shellCommand`, and worktree creation
   with a canonical destination outside the repository's parent, wait on a
   confirmation request to the UI (D9), with a timeout constant in
   `consts.rs`. A denial or timeout is a tool error with nothing created.
   Verify: tool tests for confirm, deny and timeout, and for a plain shell and
   a sibling worktree going through with no prompt.
-- [ ] 5.2 Confirmation dialog naming the requesting agent, the command and
+- [x] 5.2 Confirmation dialog naming the requesting agent, the command and
   the folder. Verify: a gpui test that confirm and deny resolve the request.
   Assert l10n keys.
 

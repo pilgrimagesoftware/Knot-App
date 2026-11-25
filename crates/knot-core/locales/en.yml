@@ -1318,3 +1318,16 @@ finder:
   matching: "Matching files…"
   no_matches: "No matching files"
   too_many: "Too many files to list (50,000+ limit)"
+# The dialog an MCP call waits on when it would run a command the user did
+# not write, or put a worktree outside its repository's parent folder
+# (`openspec/changes/mcp-auth/design.md` D9). %{agent} is the requesting
+# agent's name, %{command} the shell command, %{folder} where it would run.
+mcp_confirm:
+  title: "Allow this agent's request?"
+  command_body: "%{agent} wants to start a shell agent that runs:\n\n%{command}\n\nin %{folder}"
+  worktree_body: "%{agent} wants to create a worktree in %{folder}, outside the repository's folder."
+  # Added under the command when that agent's folder is also a distant
+  # worktree.
+  distant_note: "This folder is a new worktree outside the repository's folder."
+  allow: "Allow"
+  deny: "Deny"

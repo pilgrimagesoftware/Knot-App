@@ -60,6 +60,7 @@ mod layout_select_tests;
 mod layout_test_support;
 #[cfg(test)]
 mod layout_tests;
+mod mcp_confirmations;
 #[cfg(test)]
 mod mcp_credentials_tests;
 #[cfg(test)]

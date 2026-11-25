@@ -83,6 +83,8 @@ impl WorkspaceWindow {
         // Before the repaint checks below, so an agent started here has its
         // slot in place when they run.
         let activated = self.activate_messaged_agents(cx);
+        // MCP calls waiting on the user (D9). The dialog repaints itself.
+        self.show_mcp_confirmations(cx);
         // After the queue: an agent activated anywhere else - created over
         // MCP, a companion, a selection - but not started is started here,
         // so a lit row is always a running agent (#316, #320). A local, so
