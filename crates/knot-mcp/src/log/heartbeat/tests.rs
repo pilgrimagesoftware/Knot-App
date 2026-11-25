@@ -24,8 +24,10 @@ async fn a_heartbeat_carries_every_vital() {
     let root = TempDir::new().expect("temp dir");
     let (log, _task) = Logger::spawn(root.path().join(consts::LOG_FILE_NAME));
     let vitals = vitals(log, consts::HEARTBEAT_INTERVAL);
-    vitals.sessions.create_session(Uuid::new_v4());
-    vitals.sessions.create_session(Uuid::new_v4());
+    vitals.sessions
+          .create_session(crate::Principal::Agent(Uuid::new_v4()));
+    vitals.sessions
+          .create_session(crate::Principal::Agent(Uuid::new_v4()));
     vitals.served.store(7, Ordering::Relaxed);
 
     let text = line(&vitals);
