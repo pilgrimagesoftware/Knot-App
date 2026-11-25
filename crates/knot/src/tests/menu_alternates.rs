@@ -77,7 +77,9 @@ fn the_menu_bar_lists_each_alternate_below_its_primary() {
          (AgentMenuEntry::RestartAgent, AgentMenuEntry::RestartWithNewConversation)]
     {
         let at = entries.iter().position(|entry| *entry == primary);
-        assert_eq!(at.map(|at| entries.get(at + 1)), Some(Some(&alternate)), "{entries:?}");
+        assert_eq!(at.map(|at| entries.get(at + 1)),
+                   Some(Some(&alternate)),
+                   "{entries:?}");
     }
 }
 
@@ -87,7 +89,9 @@ fn the_sidebar_offers_restart_all_and_deactivate_all_alternates() {
                Some(AgentListBackgroundEntry::RestartAllNewConversations));
     assert_eq!(AgentListBackgroundEntry::DeactivateAll.shift_alternate(true),
                Some(AgentListBackgroundEntry::DeactivateAllNewSessions));
-    for entry in [AgentListBackgroundEntry::RestartAll, AgentListBackgroundEntry::DeactivateAll] {
+    for entry in [AgentListBackgroundEntry::RestartAll,
+                  AgentListBackgroundEntry::DeactivateAll]
+    {
         assert_eq!(entry.shift_alternate(false), None, "{entry:?}");
     }
     for entry in [AgentListBackgroundEntry::NewAgent,

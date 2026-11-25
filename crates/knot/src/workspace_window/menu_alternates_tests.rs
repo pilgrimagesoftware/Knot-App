@@ -266,7 +266,8 @@ fn the_sidebar_offers_deactivate_all_with_new_sessions(cx: &mut TestAppContext) 
     fixture.window.simulate_click(at, Modifiers::shift());
     fixture.window.run_until_parked();
     fixture.shift(false);
-    assert!(fixture.is_activated("A"), "nothing runs before the confirmation");
+    assert!(fixture.is_activated("A"),
+            "nothing runs before the confirmation");
     fixture.confirm();
     for name in ["A", "B"] {
         assert!(!fixture.is_activated(name), "{name}");

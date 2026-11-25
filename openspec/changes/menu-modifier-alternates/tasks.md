@@ -4,18 +4,18 @@ Sections 1-5 ship in #506. Section 6 ships in a stacked draft PR.
 
 ## 1. Model
 
-- [ ] 1.1 `AgentMenuEntry`: add Deactivate with New Session (label key, menu
+- [x] 1.1 `AgentMenuEntry`: add Deactivate with New Session (label key, menu
   bar action), and `shift_alternate(facts)`: Restart Agent → Restart with
   New Conversation, Deactivate → Deactivate with New Session, offered only
   for a non-companion, non-shell agent with restored conversations on
   (`AgentMenuFacts::restores_conversations`).
-- [ ] 1.2 `agent_context_menu_entries` lists primaries only; the menu bar's
+- [x] 1.2 `agent_context_menu_entries` lists primaries only; the menu bar's
   list (option A until section 6) puts each alternate directly below its
   primary.
-- [ ] 1.3 Sidebar: Restart All → Restart All with New Conversations,
+- [x] 1.3 Sidebar: Restart All → Restart All with New Conversations,
   Deactivate All → Deactivate All with New Sessions, under the same rule,
   disabled with their primary.
-- [ ] 1.4 Unit tests: the folded list, the menu bar list, no alternate for a
+- [x] 1.4 Unit tests: the folded list, the menu bar list, no alternate for a
   shell, a companion or with the setting off, the sidebar alternates, every
   new label resolves.
 
@@ -33,30 +33,30 @@ Sections 1-5 ship in #506. Section 6 ships in a stacked draft PR.
 
 ## 3. Window actions and confirmations
 
-- [ ] 3.1 Deactivate with New Session: confirm, then `deactivate_fresh`,
+- [x] 3.1 Deactivate with New Session: confirm, then `deactivate_fresh`,
   tear the sessions down, persist.
-- [ ] 3.2 Restart All with New Conversations and Deactivate All with New
+- [x] 3.2 Restart All with New Conversations and Deactivate All with New
   Sessions: confirm with their own keys, then run per agent.
-- [ ] 3.3 Window test: Deactivate with New Session, then select: the agent
+- [x] 3.3 Window test: Deactivate with New Session, then select: the agent
   starts without a session to load.
 
 ## 4. Context menu rendering
 
-- [ ] 4.1 An alternate line as `PopupMenuItem::element`: title from
+- [x] 4.1 An alternate line as `PopupMenuItem::element`: title from
   `window.modifiers().shift`, a muted ⇧ in the trailing column, handler
   reading `window.modifiers()`. Shared by the row and sidebar menus.
-- [ ] 4.2 Root `on_modifiers_changed`: `window.refresh()` when Shift changes.
-- [ ] 4.3 Bind `shift-enter` to `Confirm` in the `PopupMenu` context.
-- [ ] 4.4 gpui tests, each failing with its fix reverted: the title swaps on a
+- [x] 4.2 Root `on_modifiers_changed`: `window.refresh()` when Shift changes.
+- [x] 4.3 Bind `shift-enter` to `Confirm` in the `PopupMenu` context.
+- [x] 4.4 gpui tests, each failing with its fix reverted: the title swaps on a
   simulated Shift change; a Shift-click runs the alternate; Shift-Return
   runs the alternate; a shell's line does not swap; no ⇧ with the setting
   off.
 
 ## 5. Docs and gate (#506)
 
-- [ ] 5.1 `docs/site/latest`: the ⇧ marker and the alternates in the agent
+- [x] 5.1 `docs/site/latest`: the ⇧ marker and the alternates in the agent
   and sidebar menus.
-- [ ] 5.2 `openspec validate menu-modifier-alternates --strict`.
+- [x] 5.2 `openspec validate menu-modifier-alternates --strict`.
 - [ ] 5.3 `make fmt-check size-check declared-check lint test`; CI green on
   ubuntu, macOS and windows.
 
