@@ -57,6 +57,21 @@ impl Fixture {
                      .debug_bounds(selector)
                      .expect("the row is painted")
                      .center();
+        self.right_click_at(at);
+    }
+
+    /// Right-clicks the sidebar's empty space below `last`'s row.
+    fn right_click_sidebar_below(&mut self, last: &str) {
+        let selector: &'static str =
+            Box::leak(format!("workspace-agent-row-{}", self.row(last)).into_boxed_str());
+        let row = self.window
+                      .debug_bounds(selector)
+                      .expect("the row is painted");
+        let at = gpui_kit::point(row.center().x, row.bottom() + gpui_kit::px(40.));
+        self.right_click_at(at);
+    }
+
+    fn right_click_at(&mut self, at: gpui_kit::Point<gpui_kit::Pixels>) {
         self.window
             .simulate_event(MouseDownEvent { button:      MouseButton::Right,
                                              position:    at,
@@ -209,4 +224,63 @@ fn no_alternate_lines_without_restored_conversations(cx: &mut TestAppContext) {
     {
         assert!(!fixture.shows_line(&label(entry)), "{entry:?}");
     }
+}
+
+#[gpui_kit::test]
+fn selecting_after_deactivate_with_new_session_starts_fresh(cx: &mut TestAppContext) {
+    let mut fixture = open(AGENTS, cx);
+    fixture.prepare("A", true);
+    fixture.right_click_row("A");
+    fixture.shift(true);
+    let at = fixture.line_center(&label(AgentMenuEntry::DeactivateWithNewSession));
+    fixture.window.simulate_click(at, Modifiers::shift());
+    fixture.window.run_until_parked();
+    fixture.shift(false);
+    fixture.confirm();
+
+    fixture.click_row("A", Modifiers::none());
+    assert!(fixture.is_activated("A"));
+    let to_load = fixture.store
+                         .lock()
+                         .agent(fixture.id("A"))
+                         .and_then(|agent| agent.session_to_load().map(str::to_owned));
+    assert_eq!(to_load, None, "the next start is a new session");
+}
+
+#[gpui_kit::test]
+fn the_sidebar_offers_deactivate_all_with_new_sessions(cx: &mut TestAppContext) {
+    let mut fixture = open(AGENTS, cx);
+    fixture.prepare("A", true);
+    fixture.prepare("B", true);
+    fixture.right_click_sidebar_below("B");
+    let restart_all = crate::app_state::AgentListBackgroundEntry::RestartAll;
+    let deactivate_all = crate::app_state::AgentListBackgroundEntry::DeactivateAll;
+    let restart_new = restart_all.shift_alternate(true).expect("an alternate");
+    let deactivate_new = deactivate_all.shift_alternate(true).expect("an alternate");
+    assert!(fixture.shows_line(&restart_all.label().expect("a label")));
+    assert!(fixture.shows_line(&deactivate_all.label().expect("a label")));
+
+    fixture.shift(true);
+    assert!(fixture.shows_line(&restart_new.label().expect("a label")));
+    let at = fixture.line_center(&deactivate_new.label().expect("a label"));
+    fixture.window.simulate_click(at, Modifiers::shift());
+    fixture.window.run_until_parked();
+    fixture.shift(false);
+    assert!(fixture.is_activated("A"), "nothing runs before the confirmation");
+    fixture.confirm();
+    for name in ["A", "B"] {
+        assert!(!fixture.is_activated(name), "{name}");
+        assert_eq!(fixture.acp_session(name), None, "{name}");
+    }
+}
+
+#[gpui_kit::test]
+fn the_sidebar_has_no_alternates_without_restored_conversations(cx: &mut TestAppContext) {
+    let mut fixture = open(AGENTS, cx);
+    fixture.prepare("A", false);
+    fixture.right_click_sidebar_below("B");
+    fixture.shift(true);
+    let restart_all = crate::app_state::AgentListBackgroundEntry::RestartAll;
+    assert!(!fixture.shows_line(&restart_all.label().expect("a label")));
+    assert!(!fixture.shows_line(&knot_core::l10n::t("menu.sidebar.restart_all_new_conversations")));
 }

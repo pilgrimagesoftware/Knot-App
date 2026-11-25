@@ -31,6 +31,7 @@ mod markdown_view;
 mod mcp_lifetime;
 mod mcp_state_row;
 mod mcp_supervision;
+mod menu_alternates;
 mod menu_key_equivalents;
 mod notifications;
 mod pane_focus;
