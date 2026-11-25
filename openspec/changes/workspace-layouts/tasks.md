@@ -13,8 +13,8 @@
 
 ## 3. Geometry and divider (`knot`)
 
-- [ ] 3.1 `render/layout.rs`: `pane_rects` and `divider_rects` for all five modes. The three-pane secondary divider spans the right column only, and the grid's dividers run full length. Verify: unit tests for each mode at ratios 0.5 and 0.3/0.7, and clamping at 0.1 and 0.9.
-- [ ] 3.2 `render/divider.rs`: 12 px hit area, 1 px line and a resize cursor for each direction. Window-level drag state with the clamped ratio set live, and persistence only on release. Verify: a gpui test drags a split divider past 25% and asserts the ratio is 0.25 and the UI-state document was written once, after release.
+- [x] 3.1 `render/layout.rs`: `pane_rects` and `divider_rects` for all five modes. The three-pane secondary divider spans the right column only, and the grid's dividers run full length. Verify: unit tests for each mode at ratios 0.5 and 0.3/0.7, and clamping at 0.1 and 0.9.
+- [x] 3.2 `render/divider.rs`: 12 px hit area, 1 px line and a resize cursor for each direction. Window-level drag state with the clamped ratio set live, and persistence only on release. Verify: a gpui test drags a split divider past 25% and asserts the ratio is 0.25 and the UI-state document was written once, after release. (The test asserts the document is unchanged through every mid-drag move, holds 0.25 after release, and is not rewritten by later moves or a second release; it cannot count identical rewrites, but `end_divider_drag` takes the drag state before its single `persist_workspace_ui` call.)
 
 ## 4. Panes in the workspace window
 

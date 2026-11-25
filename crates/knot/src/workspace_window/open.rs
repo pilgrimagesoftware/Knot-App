@@ -231,6 +231,7 @@ impl WorkspaceWindow {
                     start_requested: std::collections::BTreeSet::new(),
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
+                    divider_drag: None,
                     selected_agent,
                     sessions: BTreeMap::new(),
                     terminal_panes: BTreeMap::new(),
