@@ -139,3 +139,33 @@ fn a_saved_token_reports_no_problem() {
     assert!(load_or_create(&failing, &registry).problem.is_some(),
             "an unsaved token says so");
 }
+
+/// B3's review of #521: off macOS the token is kept in a file, so it does
+/// not change every launch - and only its owner can read it.
+#[test]
+fn a_file_store_keeps_the_token_across_launches_for_its_owner_only() {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let store = FileTokenStore { path: dir.path().join("nested/mcp-client-token"), };
+    assert_eq!(store.load(), Ok(None), "absent before the first launch");
+
+    let first = load_or_create(&store, &CredentialRegistry::new());
+    assert!(first.problem.is_none());
+    let again = load_or_create(&store, &CredentialRegistry::new());
+    assert_eq!(again.token, first.token,
+               "the next launch reads the same token");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&store.path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+}
+
+#[test]
+fn an_unreadable_token_file_is_an_error_not_an_absence() {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    // A directory where the file should be cannot be read as one.
+    let store = FileTokenStore { path: dir.path().to_path_buf(), };
+    assert!(store.load().is_err());
+}

@@ -76,14 +76,57 @@ fn fresh(store: &dyn ClientTokenStore) -> LoadedClientToken {
     LoadedClientToken { token, problem }
 }
 
-/// The macOS Keychain, as a generic password under
-/// [`crate::consts::MCP_CLIENT_TOKEN_SERVICE`]. Elsewhere there is no
-/// Keychain, so the token lasts one launch.
+/// Where this platform keeps the client token: the macOS Keychain, as a
+/// generic password under [`crate::consts::MCP_CLIENT_TOKEN_SERVICE`]; on
+/// other platforms, which Knot has no secret store for, a [`FileTokenStore`]
+/// at [`knot_core::mcp_client_token_path`], readable by its owner only.
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct KeychainTokenStore;
+pub(crate) struct PlatformTokenStore;
+
+/// The client token in a file, written with owner-only permissions (0600).
+// Off macOS it is the platform store; on macOS only its tests build it.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+#[derive(Debug, Clone)]
+pub(crate) struct FileTokenStore {
+    pub(crate) path: std::path::PathBuf,
+}
+
+impl ClientTokenStore for FileTokenStore {
+    fn load(&self) -> Result<Option<String>, String> {
+        match std::fs::read_to_string(&self.path) {
+            Ok(text) => Ok(Some(text.trim().to_owned())),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
+    /// Written to a sibling with owner-only permissions from the moment it
+    /// exists, then renamed over the old file, so no reader ever sees a
+    /// half-written token or a world-readable one.
+    fn save(&self, token: &Secret) -> Result<(), String> {
+        use std::io::Write as _;
+        let directory = self.path
+                            .parent()
+                            .ok_or_else(|| "the token file has no directory".to_owned())?;
+        std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
+        let staging = self.path.with_extension("tmp");
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&staging).map_err(|error| error.to_string())?;
+        file.write_all(token.expose().as_bytes())
+            .and_then(|()| file.sync_all())
+            .map_err(|error| error.to_string())?;
+        std::fs::rename(&staging, &self.path).map_err(|error| error.to_string())
+    }
+}
 
 #[cfg(target_os = "macos")]
-impl ClientTokenStore for KeychainTokenStore {
+impl ClientTokenStore for PlatformTokenStore {
     fn load(&self) -> Result<Option<String>, String> {
         use crate::consts::{
             KEYCHAIN_ITEM_NOT_FOUND, MCP_CLIENT_TOKEN_ACCOUNT, MCP_CLIENT_TOKEN_SERVICE,
@@ -109,12 +152,22 @@ impl ClientTokenStore for KeychainTokenStore {
 }
 
 #[cfg(not(target_os = "macos"))]
-impl ClientTokenStore for KeychainTokenStore {
+impl ClientTokenStore for PlatformTokenStore {
     fn load(&self) -> Result<Option<String>, String> {
-        Ok(None)
+        Self::file()?.load()
     }
 
-    fn save(&self, _token: &Secret) -> Result<(), String> {
-        Ok(())
+    fn save(&self, token: &Secret) -> Result<(), String> {
+        Self::file()?.save(token)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+impl PlatformTokenStore {
+    fn file() -> Result<FileTokenStore, String> {
+        knot_core::mcp_client_token_path().map(|path| FileTokenStore { path })
+                                          .ok_or_else(|| {
+                                              "no home directory to keep the token in".to_owned()
+                                          })
     }
 }
