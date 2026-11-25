@@ -13,8 +13,10 @@ use knot_core::LayoutMode;
 
 use super::layout_test_support::Spec;
 use super::layout_test_support::open;
+use super::render::layout_menu::icon;
 use super::render::layout_menu::label_key;
 use super::render::layout_menu::layout_choices;
+use super::render::layout_menu::tooltip;
 
 fn modes(agents: usize, current: LayoutMode) -> Vec<LayoutMode> {
     layout_choices(agents, current).into_iter()
@@ -67,8 +69,32 @@ fn every_label_key_resolves_in_the_catalogue() {
         assert!(!seen.contains(&label), "{key} repeats another label");
         seen.push(label);
     }
-    let menu = knot_core::l10n::t("layout.menu");
-    assert_ne!(menu, "layout.menu", "layout.menu must resolve");
+}
+
+/// The button shows the current mode, so no two modes may share an icon.
+/// `icon` is an exhaustive match: a new mode fails to compile without one.
+#[test]
+fn every_mode_has_its_own_icon() {
+    let mut seen = Vec::new();
+    for mode in LayoutMode::ALL {
+        let path = icon(*mode).path();
+        assert!(!seen.contains(&path),
+                "{mode:?} repeats another mode's icon");
+        seen.push(path);
+    }
+}
+
+/// The tooltip resolves and names the current mode.
+#[test]
+fn the_tooltip_names_the_current_mode() {
+    for mode in LayoutMode::ALL {
+        let text = tooltip(*mode);
+        assert!(!text.contains("layout.menu_tooltip"),
+                "the tooltip key must resolve");
+        assert!(!text.contains("%{mode}"), "the mode must be substituted");
+        assert!(text.contains(&knot_core::l10n::t(label_key(*mode))),
+                "{text:?} must name {mode:?}");
+    }
 }
 
 fn roster(names: &'static [&'static str], mode: LayoutMode, panes: &'static [&'static str])

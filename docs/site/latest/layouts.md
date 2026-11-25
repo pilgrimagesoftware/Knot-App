@@ -14,8 +14,10 @@ the window reopens.
 
 ## The Layout menu
 
-The **Layout** menu in the window's content header appears when the workspace
-has two or more agents and the agent view is showing. It lists:
+The Layout menu in the window's content header appears when the workspace
+has two or more agents and the agent view is showing. Its button is an icon of
+the current layout; hover it to see the layout's name. The menu lists each
+layout with its icon:
 
 - **Single**: one pane.
 - **Split Vertical**: two panes side by side.
