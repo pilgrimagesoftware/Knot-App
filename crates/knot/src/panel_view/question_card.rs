@@ -52,7 +52,7 @@ pub(crate) fn question_card_key_bindings() -> Vec<KeyBinding> {
          KeyBinding::new("shift-tab", QuestionPreviousField, context),
          KeyBinding::new("space", QuestionToggle, context),
          KeyBinding::new("enter", QuestionChoose, context),
-         KeyBinding::new("cmd-enter", QuestionSubmit, context),
+         KeyBinding::new("secondary-enter", QuestionSubmit, context),
          KeyBinding::new("escape", QuestionSkip, context)]
 }
 
