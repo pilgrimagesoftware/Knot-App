@@ -73,9 +73,20 @@ impl RefusalLog {
         let user_agents = counts.keys()
                                 .filter(|key| matches!(key, RefusalSource::UserAgent(_)))
                                 .count();
+        // Agents are counted only while they hold a pair (the caller filters
+        // the hint), which bounds them by the agents running; the cap is the
+        // backstop if that ever stops holding.
+        let agents = counts.keys()
+                           .filter(|key| matches!(key, RefusalSource::Agent(_)))
+                           .count();
         let source = match source {
             RefusalSource::UserAgent(_)
                 if !counts.contains_key(&source) && user_agents >= consts::REFUSAL_SOURCES_MAX =>
+            {
+                RefusalSource::Other
+            }
+            RefusalSource::Agent(_)
+                if !counts.contains_key(&source) && agents >= consts::REFUSAL_AGENTS_MAX =>
             {
                 RefusalSource::Other
             }

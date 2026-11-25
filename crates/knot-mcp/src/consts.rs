@@ -123,3 +123,8 @@ pub const TRANSCRIPT_TAIL_BYTES: u64 = 8 * 1024 * 1024;
 /// directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`). A hook's
 /// `transcript_path` is read only inside it.
 pub const CLAUDE_TRANSCRIPTS_DIR: &str = "projects";
+
+/// How many agents the refusal table counts by name. Only agents holding a
+/// pair are named, so this is a backstop; past it, refusals are counted
+/// under one overflow entry.
+pub const REFUSAL_AGENTS_MAX: usize = 256;

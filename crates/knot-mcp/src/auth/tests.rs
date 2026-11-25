@@ -196,3 +196,17 @@ fn the_refusal_table_stops_growing_at_its_cap() {
     assert_eq!(log.total(), (consts::REFUSAL_SOURCES_MAX + 10) as u64);
     assert!(snapshot.contains(&(RefusalSource::Other, 10)));
 }
+
+/// B3's review of #521: whatever the caller passes, the table has a hard
+/// size.
+#[test]
+fn the_refusal_table_has_a_hard_cap_on_named_agents() {
+    let log = RefusalLog::new();
+    for _ in 0..consts::REFUSAL_AGENTS_MAX + 50 {
+        log.record(RefusalSource::Agent(Uuid::new_v4()));
+    }
+    let snapshot = log.snapshot();
+
+    assert_eq!(snapshot.len(), consts::REFUSAL_AGENTS_MAX + 1);
+    assert!(snapshot.contains(&(RefusalSource::Other, 50)));
+}
