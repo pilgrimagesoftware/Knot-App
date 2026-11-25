@@ -9,6 +9,7 @@
 use gpui_kit::{App, Context};
 use uuid::Uuid;
 
+use crate::app_state::agent_selection_for_workspace;
 use crate::app_support::Activation;
 use crate::workspace_window::WorkspaceViewMode;
 use crate::workspace_window::WorkspaceWindow;
@@ -27,6 +28,9 @@ impl WorkspaceWindow {
     pub(super) fn remove_agent(&mut self, id: Uuid, cx: &App) {
         self.remove_agent_unpersisted(id);
         self.persist_agents(cx);
+        // The removal collapsed the layout in the store; a relaunch must not
+        // bring the removed agent's pane back.
+        self.persist_workspace_ui(cx);
     }
 
     /// The removal itself, without writing settings back out.
@@ -36,11 +40,21 @@ impl WorkspaceWindow {
     /// copy of the teardown cascade going out of step with this one.
     pub(super) fn remove_agent_unpersisted(&mut self, id: Uuid) {
         let removed = self.store.lock().remove(id);
+        let mut lost_selection = false;
         for removed_agent in removed {
             self.teardown_session(removed_agent.id);
             if self.selected_agent == Some(removed_agent.id) {
                 self.selected_agent = None;
+                lost_selection = true;
             }
+        }
+        // The store has already collapsed the layout around the removed
+        // panes (`workspace-layouts`, "Removal collapses the layout"), so the
+        // selection moves to what it now focuses rather than to nothing.
+        // Nothing is started: nobody asked for this agent to be shown.
+        if lost_selection {
+            let store = self.store.lock();
+            self.selected_agent = agent_selection_for_workspace(&store, self.workspace_id);
         }
     }
 
@@ -335,6 +349,7 @@ impl WorkspaceWindow {
             self.remove_agent_unpersisted(id);
         }
         self.persist_agents(cx);
+        self.persist_workspace_ui(cx);
     }
 
     /// Deactivates every running agent in the workspace. An agent that is

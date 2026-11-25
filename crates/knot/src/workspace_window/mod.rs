@@ -51,6 +51,8 @@ mod layout_hold_tests;
 mod layout_menu_tests;
 #[cfg(test)]
 mod layout_panes_tests;
+#[cfg(test)]
+mod layout_removal_tests;
 mod layout_select;
 #[cfg(test)]
 mod layout_select_tests;
