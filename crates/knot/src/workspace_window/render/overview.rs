@@ -109,10 +109,8 @@ impl WorkspaceWindow {
                 move |id: Uuid, _window: &mut Window, app: &mut gpui_kit::App| {
                     if let Some(entity) = weak.upgrade() {
                         entity.update(app, |view, cx| {
-                                  view.select_agent(id);
+                                  view.select_agent(id, false, cx);
                                   view.view_mode = WorkspaceViewMode::Terminal;
-                                  view.ensure_session(id, cx);
-                                  view.ensure_panel_session(id, cx);
                                   cx.notify();
                               });
                     }

@@ -196,6 +196,7 @@ impl WorkspaceWindow {
                             else {
                                 cx.theme().transparent
                             })
+                            .map(|row| mark_selected_row(row, selected, index))
                             // A stopped agent's row is dimmed as a whole, so a
                             // workspace of mixed agents reads at a glance. The
                             // state dot cannot carry this: its four values say what
@@ -255,8 +256,16 @@ impl WorkspaceWindow {
                                                         title_font_size,
                                                         cx)
                             })
-                            .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
-                                            view.select_agent(id);
+                            .on_click(cx.listener(move |view, event: &ClickEvent, _window, cx| {
+                                            // The platform's secondary modifier
+                                            // (⌘ on macOS, Ctrl elsewhere),
+                                            // which is what the rest of the
+                                            // app's shortcuts read, so ⌘-click
+                                            // on a Mac and Ctrl-click on
+                                            // Linux skip the companion layout.
+                                            view.select_agent(id,
+                                                              event.modifiers().secondary(),
+                                                              cx);
                                             // Leave the dashboard, the same way
                                             // tapping an
                                             // agent card does - selecting a row
@@ -265,8 +274,6 @@ impl WorkspaceWindow {
                                             // the selection
                                             // without ever showing the session.
                                             view.view_mode = WorkspaceViewMode::Terminal;
-                                            view.ensure_session(id, cx);
-                                            view.ensure_panel_session(id, cx);
                                             cx.notify();
                                         }))
                             .context_menu({
@@ -285,4 +292,23 @@ impl WorkspaceWindow {
               .map(gpui_kit::IntoElement::into_any_element)
               .collect()
     }
+}
+
+/// Adds what lets a test see that `row` is the highlighted one, which is
+/// otherwise only a background colour. Nothing in a release build.
+#[cfg(test)]
+fn mark_selected_row<E: ParentElement>(row: E, selected: bool, index: usize) -> E {
+    if selected {
+        row.child(div().absolute()
+                       .size_0()
+                       .debug_selector(move || format!("workspace-agent-selected-{index}")))
+    }
+    else {
+        row
+    }
+}
+
+#[cfg(not(test))]
+fn mark_selected_row<E>(row: E, _selected: bool, _index: usize) -> E {
+    row
 }

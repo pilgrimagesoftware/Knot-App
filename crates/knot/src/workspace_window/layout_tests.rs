@@ -1,9 +1,8 @@
 //! A divider drag in a real window: the ratio follows the pointer live,
 //! stops at the bound, and reaches disk once, on release.
 //!
-//! No panes are drawn by the layout yet (task 4.1), so the window still
-//! shows the one selected agent under the divider. What is driven here is
-//! the divider and the drag state, which do not depend on the panes.
+//! The panes are drawn too, but what is driven here is the divider and the
+//! drag state; `layout_panes_tests` covers where the panes sit.
 //!
 //! Each `Settings` is rooted at a temporary directory, as
 //! `tests/workspace_window_open.rs` requires: `persist_workspace_ui` writes

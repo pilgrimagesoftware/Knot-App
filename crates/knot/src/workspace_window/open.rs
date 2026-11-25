@@ -232,6 +232,7 @@ impl WorkspaceWindow {
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
                     divider_drag: None,
+                    frame_layout: None,
                     selected_agent,
                     sessions: BTreeMap::new(),
                     terminal_panes: BTreeMap::new(),
@@ -313,6 +314,7 @@ impl WorkspaceWindow {
                                          .find(|workspace| workspace.id == workspace_id)
                                          .map(|workspace| workspace.agent_ids.clone())
                                 }.unwrap_or_default();
+                            let mut requested_layout = None;
                             {
                                 let mut store = window.store.lock();
                                 // The workspace's `active` agents start
@@ -325,9 +327,25 @@ impl WorkspaceWindow {
                                 // whatever its mode. The workspace's own
                                 // restored selection is not, so a `passive`
                                 // agent stays stopped across a relaunch.
+                                //
+                                // It goes through the layout's selection rules
+                                // like a sidebar click, so a restored split
+                                // that does not show it gains it in a pane,
+                                // and what that placed starts too.
                                 if let Some(requested) = select_agent {
                                     store.set_activated(requested, true);
+                                    let change =
+                                        store.select_in_layout(workspace_id, requested, false);
+                                    for placed in change.placed() {
+                                        store.set_activated(placed, true);
+                                    }
+                                    requested_layout = Some(change);
                                 }
+                            }
+                            // Written after the guard is released, the same
+                            // blocking-I/O rule `persist_workspace_ui` keeps.
+                            if requested_layout.is_some_and(|change| change.changed()) {
+                                window.persist_workspace_ui(cx);
                             }
                             for id in agent_ids {
                                 window.ensure_session(id, cx);

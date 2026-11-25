@@ -15,6 +15,7 @@ MCP server. This is the latest documentation.
 
 - [Installation]({{ '/latest/install/' | relative_url }}) - download or build Knot, and the macOS quarantine and signing notes.
 - [Workspaces]({{ '/latest/workspaces/' | relative_url }}) - create a workspace, open its window, and use the dashboard and Command Center.
+- [Layouts]({{ '/latest/layouts/' | relative_url }}) - show several agents at once in split, three-pane and four-pane layouts.
 - [Agents]({{ '/latest/agents/' | relative_url }}) - add an agent, pick a type, and work with its lifecycle, status, and conversation panel.
 
 ## Using Knot

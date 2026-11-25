@@ -7,6 +7,7 @@ versions:
       - index
       - install
       - workspaces
+      - layouts
       - agents
       - coordination
       - git-worktrees
@@ -22,6 +23,8 @@ versions:
         path: install/
       - title: Workspaces
         path: workspaces/
+      - title: Layouts
+        path: layouts/
       - title: Agents
         path: agents/
       - title: Coordination
