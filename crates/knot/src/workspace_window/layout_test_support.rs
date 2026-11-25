@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use gpui_kit::Entity;
+use gpui_kit::Focusable;
 use gpui_kit::Modifiers;
 use gpui_kit::TestAppContext;
 use gpui_kit::VisualTestContext;
@@ -172,6 +173,13 @@ impl Fixture {
              .expect("a row for the agent")
     }
 
+    /// Whether `name`'s sidebar row is the highlighted one.
+    pub(super) fn row_highlighted(&mut self, name: &str) -> bool {
+        let selector: &'static str =
+            Box::leak(format!("workspace-agent-selected-{}", self.row(name)).into_boxed_str());
+        self.window.debug_bounds(selector).is_some()
+    }
+
     /// Clicks `name`'s sidebar row with `modifiers` held.
     pub(super) fn click_row(&mut self, name: &str, modifiers: Modifiers) {
         let selector: &'static str =
@@ -182,6 +190,16 @@ impl Fixture {
                      .center();
         self.window.simulate_click(at, modifiers);
         self.window.run_until_parked();
+    }
+
+    /// Whether `name`'s composer holds keyboard focus.
+    pub(super) fn composer_focused(&mut self, name: &str) -> bool {
+        let id = self.id(name);
+        self.view.update_in(&mut self.window, |view, window, cx| {
+                     view.panel_prompt_input(id, window, cx)
+                         .focus_handle(cx)
+                         .is_focused(window)
+                 })
     }
 
     pub(super) fn press(&mut self, action: impl gpui_kit::Action) {

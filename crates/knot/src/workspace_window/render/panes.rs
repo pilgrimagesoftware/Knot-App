@@ -13,7 +13,8 @@
 //! square, so a pane and the divider beside it cannot disagree about where the
 //! boundary is, and nothing has to measure the box before it can be drawn.
 //!
-//! Not here: the divider element and its drag, and the side panels.
+//! Not here: a pane's frame (`pane_frame`), the divider element and its drag,
+//! and the side panels.
 
 use gpui_kit::AnyElement;
 use gpui_kit::Context;
@@ -26,13 +27,13 @@ use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::div;
 use gpui_kit::px;
-use gpui_kit::relative;
 use gpui_kit::size;
 use knot_core::LayoutMode;
 use knot_core::WorkspaceUiState;
 use uuid::Uuid;
 
 use super::layout::pane_rects;
+use super::pane_frame::PaneSlot;
 use crate::workspace_window::WorkspaceWindow;
 
 impl WorkspaceWindow {
@@ -88,6 +89,13 @@ impl WorkspaceWindow {
                                ui.split_ratio,
                                secondary,
                                size(px(1.), px(1.)));
+        let focus = usize::try_from(ui.focused_pane_index).unwrap_or(0);
+        // The one writer (`layout_select`) keeps these equal, and
+        // `sync_selection_with_layout` restores it at the top of every frame,
+        // so a difference here is a second writer.
+        debug_assert_eq!(self.selected_agent,
+                         ui.active_agent_ids.get(focus).copied(),
+                         "selected_agent must be the focused pane's agent");
         let mut area = div().id("layout-area")
                             .debug_selector(|| "layout-area".to_string())
                             .size_full()
@@ -103,15 +111,12 @@ impl WorkspaceWindow {
                 content
             };
             let content = self.with_activity_capture(id, content, cx);
-            area = area.child(div().id(("layout-pane", index))
-                                   .debug_selector(move || format!("layout-pane-{index}"))
-                                   .absolute()
-                                   .left(relative(f32::from(rect.origin.x)))
-                                   .top(relative(f32::from(rect.origin.y)))
-                                   .w(relative(f32::from(rect.size.width)))
-                                   .h(relative(f32::from(rect.size.height)))
-                                   .overflow_hidden()
-                                   .child(content));
+            area = area.child(self.pane_frame(&PaneSlot { index,
+                                                          agent: id,
+                                                          rect,
+                                                          focused: index == focus },
+                                              content,
+                                              cx));
         }
         area.into_any_element()
     }

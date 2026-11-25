@@ -101,3 +101,122 @@ fn the_ratio_moves_the_panes(cx: &mut TestAppContext) {
     assert_fractions(pane(&mut f, 0), area, (0., 0., 0.3, 1.));
     assert_fractions(pane(&mut f, 1), area, (0.3, 0., 0.7, 1.));
 }
+
+fn split(cx: &mut TestAppContext) -> Fixture {
+    open(&Spec { agents:     &["A", "B", "C"],
+                 companions: &[],
+                 mode:       LayoutMode::SplitVertical,
+                 panes:      &["A", "B"],
+                 focus:      0, },
+         cx)
+}
+
+#[gpui_kit::test]
+fn each_pane_of_a_multi_pane_layout_shows_its_agents_name(cx: &mut TestAppContext) {
+    let mut f = split(cx);
+    assert!(f.window.debug_bounds("layout-pane-header-0").is_some());
+    assert!(f.window.debug_bounds("layout-pane-header-1").is_some());
+    let header = f.window.debug_bounds("layout-pane-header-0").unwrap();
+    let pane = pane(&mut f, 0);
+    assert_eq!(header.origin, pane.origin, "the name is above the content");
+}
+
+#[gpui_kit::test]
+fn a_single_layout_has_no_pane_header(cx: &mut TestAppContext) {
+    let mut f = four(LayoutMode::Single, &["A"], cx);
+    assert!(f.window.debug_bounds("layout-pane-header-0").is_none());
+}
+
+#[gpui_kit::test]
+fn only_the_unfocused_panes_are_dimmed(cx: &mut TestAppContext) {
+    let mut f = split(cx);
+    assert!(f.window.debug_bounds("layout-pane-dim-0").is_none(),
+            "pane 0 is focused");
+    let dim = f.window
+               .debug_bounds("layout-pane-dim-1")
+               .expect("pane 1 is dimmed");
+    assert_eq!(dim, pane(&mut f, 1), "the overlay covers the whole pane");
+}
+
+#[gpui_kit::test]
+fn clicking_a_pane_selects_its_agent_and_takes_keyboard_focus(cx: &mut TestAppContext) {
+    let mut f = split(cx);
+    // A is running, so its pane has a composer to focus; B is stopped, and
+    // starts when the click focuses it.
+    f.store.lock().set_activated(f.id("A"), true);
+    f.view.update(&mut f.window, |_, cx| cx.notify());
+    f.window.run_until_parked();
+    assert!(f.composer_focused("A"),
+            "the focused pane's input has focus");
+    assert!(f.row_highlighted("A"));
+
+    let inside = pane(&mut f, 1).center();
+    f.window.simulate_click(inside, gpui_kit::Modifiers::none());
+    f.window.run_until_parked();
+
+    assert_eq!(f.selected().as_deref(), Some("B"));
+    assert_eq!(f.ui().focused_pane_index, 1);
+    assert!(f.row_highlighted("B"));
+    assert!(!f.row_highlighted("A"));
+    assert!(f.composer_focused("B"),
+            "keyboard focus moved with the pane");
+    assert!(f.window.debug_bounds("layout-pane-dim-0").is_some(),
+            "the pane that lost focus is dimmed");
+    assert!(f.window.debug_bounds("layout-pane-dim-1").is_none());
+    assert!(f.is_activated("B"),
+            "focusing a pane selects it, which starts it");
+}
+
+#[gpui_kit::test]
+fn a_click_in_the_focused_pane_changes_nothing(cx: &mut TestAppContext) {
+    let mut f = split(cx);
+    let before = std::fs::read_to_string(&f.document).ok();
+    let inside = pane(&mut f, 0).center();
+    f.window.simulate_click(inside, gpui_kit::Modifiers::none());
+    f.window.run_until_parked();
+    assert_eq!(f.ui().focused_pane_index, 0);
+    assert!(!f.is_activated("A"),
+            "a click that moves nothing starts nothing");
+    assert_eq!(std::fs::read_to_string(&f.document).ok(), before);
+}
+
+#[gpui_kit::test]
+fn grabbing_a_divider_does_not_move_the_focus(cx: &mut TestAppContext) {
+    let mut f = split(cx);
+    let grab = f.window
+                .debug_bounds("layout-divider-primary")
+                .expect("a split draws its divider")
+                .center();
+    f.window.simulate_mouse_down(grab,
+                                 gpui_kit::MouseButton::Left,
+                                 gpui_kit::Modifiers::none());
+    f.window.simulate_mouse_up(grab,
+                               gpui_kit::MouseButton::Left,
+                               gpui_kit::Modifiers::none());
+    f.window.run_until_parked();
+    assert_eq!(f.ui().focused_pane_index, 0);
+    assert_eq!(f.selected().as_deref(), Some("A"));
+}
+
+/// A layout the store changed without the window - an agent creating a
+/// companion over MCP is one way - moves the focus, and the selection follows
+/// it on the next frame, so `selected_agent` is still the focused pane's.
+#[gpui_kit::test]
+fn a_layout_changed_by_the_store_brings_the_selection_with_it(cx: &mut TestAppContext) {
+    let mut f = open(&Spec { agents:     &["A", "B"],
+                             companions: &[],
+                             mode:       LayoutMode::SplitVertical,
+                             panes:      &["A", "B"],
+                             focus:      0, },
+                     cx);
+    let owner = f.id("A");
+    let shell = f.store.lock().create_shell_companion(owner).unwrap();
+    f.view.update(&mut f.window, |_, cx| cx.notify());
+    f.window.run_until_parked();
+
+    assert_eq!(f.ui().layout_mode, LayoutMode::ThreePane);
+    let selected = f.view.read_with(&f.window, |view, _| view.selected_agent);
+    assert_eq!(selected,
+               Some(shell),
+               "the new companion is the focused pane");
+}

@@ -196,6 +196,7 @@ impl WorkspaceWindow {
                             else {
                                 cx.theme().transparent
                             })
+                            .map(|row| mark_selected_row(row, selected, index))
                             // A stopped agent's row is dimmed as a whole, so a
                             // workspace of mixed agents reads at a glance. The
                             // state dot cannot carry this: its four values say what
@@ -291,4 +292,23 @@ impl WorkspaceWindow {
               .map(gpui_kit::IntoElement::into_any_element)
               .collect()
     }
+}
+
+/// Adds what lets a test see that `row` is the highlighted one, which is
+/// otherwise only a background colour. Nothing in a release build.
+#[cfg(test)]
+fn mark_selected_row<E: ParentElement>(row: E, selected: bool, index: usize) -> E {
+    if selected {
+        row.child(div().absolute()
+                       .size_0()
+                       .debug_selector(move || format!("workspace-agent-selected-{index}")))
+    }
+    else {
+        row
+    }
+}
+
+#[cfg(not(test))]
+fn mark_selected_row<E>(row: E, _selected: bool, _index: usize) -> E {
+    row
 }

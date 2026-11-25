@@ -78,6 +78,20 @@ impl WorkspaceWindow {
         }
     }
 
+    /// Focuses pane `index`, as clicking in it does: its agent becomes the
+    /// selection and, if it is stopped, starts, as selecting it would.
+    pub(super) fn focus_pane(&mut self, index: usize, cx: &mut Context<Self>) {
+        let change = self.store
+                         .lock()
+                         .focus_layout_pane(self.workspace_id, index);
+        // A click in the pane that already has focus is not news: it must
+        // not start a stopped agent or write the document.
+        if change.changed() {
+            self.adopt_layout(&change, Showing::Start, cx);
+            cx.notify();
+        }
+    }
+
     /// Carries `change` over to the window: `selected_agent` becomes the
     /// focused pane's agent, the agents it names are started per `showing`,
     /// and a changed layout is written to disk.
