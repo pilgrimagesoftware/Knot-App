@@ -148,3 +148,10 @@ pub const RESUME_REGISTRATION_PROMPT: &str =
 /// small enough to need no scrolling. Re-exported as
 /// `user_inputs::MAX_PROMPT_INPUTS`.
 pub const MAX_PROMPT_INPUTS: usize = 5;
+
+/// The environment variable a shell agent's terminal carries its folder in.
+/// The initialization line `cd`s to `"$KNOT_AGENT_FOLDER"` rather than to
+/// the folder's name: that line is typed into the terminal, where the line
+/// editor acts on control characters before the shell sees any quoting, so
+/// no folder name may be part of it. Set by `knot-terminal` on the PTY.
+pub const AGENT_FOLDER_ENV: &str = "KNOT_AGENT_FOLDER";

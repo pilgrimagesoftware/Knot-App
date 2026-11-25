@@ -1,6 +1,7 @@
 use knot_core::Settings;
 
 use crate::adapter::AdapterConfig;
+use crate::consts::AGENT_FOLDER_ENV;
 
 #[derive(Debug, Clone, Default)]
 pub struct LaunchRequest<'a> {
@@ -58,28 +59,26 @@ pub fn plan_launch(request: &LaunchRequest<'_>) -> LaunchPlan {
     LaunchPlan::Terminal(build_agent_command(request))
 }
 
-/// Build the terminal initialization command: `cd` into `folder`, clear the
-/// screen, then (for a non-empty `agent_command`) run it. The leading space
-/// suppresses shell history under `ignorespace`. Shell agents only - no
-/// `KNOT_AGENT_ID` is set (shell agents do not register with MCP).
+/// Build the terminal initialization command: `cd` into the agent's folder,
+/// clear the screen, then (for a non-empty `agent_command`) run it. The
+/// leading space suppresses shell history under `ignorespace`. Shell agents
+/// only - no `KNOT_AGENT_ID` is set (shell agents do not register with MCP).
 ///
-/// The PTY already starts in `folder`; the `cd` re-asserts it after a shell
-/// startup file that changes directory. `folder` goes through
-/// [`posix_quote`], so the shell reads it as one literal word whatever
-/// characters the folder's name holds.
-pub fn build_initialization_command(folder: &str, agent_command: &str) -> String {
-    let folder = posix_quote(folder);
+/// The folder is read from [`AGENT_FOLDER_ENV`], which the terminal sets on
+/// the PTY, and never written into the line. The line is typed into the
+/// terminal, and the line editor acts on control characters (`Ctrl-U`, a
+/// carriage return) before the shell parses anything, so no quoting of a
+/// name typed there can keep it one word.
+///
+/// The PTY already starts in the folder; the `cd` stays because the user's
+/// own shell reads their startup files first, and one that changes
+/// directory would otherwise leave the agent somewhere else.
+pub fn build_initialization_command(agent_command: &str) -> String {
+    let cd = format!(" cd -- \"${AGENT_FOLDER_ENV}\" && clear");
     if agent_command.is_empty() {
-        return format!(" cd {folder} && clear");
+        return cd;
     }
-    format!(" cd {folder} && clear && {agent_command}")
-}
-
-/// `text` as one single-quoted POSIX shell word: inside single quotes nothing
-/// is special, and a `'` in `text` closes the quote, adds an escaped `'` and
-/// reopens it.
-pub fn posix_quote(text: &str) -> String {
-    format!("'{}'", text.replace('\'', "'\\''"))
+    format!("{cd} && {agent_command}")
 }
 
 #[cfg(test)]
@@ -102,36 +101,31 @@ mod tests {
 
     #[test]
     fn shell_agent_wrapper_with_no_custom_command() {
-        let cmd = build_initialization_command("/tmp/repo", "");
-        assert_eq!(cmd, " cd '/tmp/repo' && clear");
+        let cmd = build_initialization_command("");
+        assert_eq!(cmd, " cd -- \"$KNOT_AGENT_FOLDER\" && clear");
     }
 
     #[test]
     fn shell_agent_wrapper_with_a_custom_command() {
-        let cmd = build_initialization_command("/tmp/repo", "htop");
-        assert_eq!(cmd, " cd '/tmp/repo' && clear && htop");
+        let cmd = build_initialization_command("htop");
+        assert_eq!(cmd, " cd -- \"$KNOT_AGENT_FOLDER\" && clear && htop");
     }
 
-    #[test]
-    fn a_folder_is_quoted_as_one_word() {
-        assert_eq!(posix_quote("/tmp/repo"), "'/tmp/repo'");
-        assert_eq!(posix_quote("/tmp/it's"), "'/tmp/it'\\''s'");
-    }
-
-    /// The command run by a real POSIX shell, in a folder whose name holds a
-    /// quote and a command substitution: the shell ends up in that folder and
-    /// treats the name as text.
+    /// The command run by a real POSIX shell, with the folder in the
+    /// environment and a name holding a quote, a substitution and a leading
+    /// dash: the shell ends up in that folder and treats the name as text.
     #[cfg(unix)]
     #[test]
-    fn a_folder_name_with_quotes_and_substitutions_is_only_a_name() {
+    fn a_folder_name_from_the_environment_is_only_a_name() {
         let root = tempfile::tempdir().expect("a temporary directory");
-        let folder = root.path().join("it's $(touch marker) `touch marker2`");
+        let folder = root.path().join("-it's $(touch marker) `touch marker2`");
         std::fs::create_dir(&folder).expect("the folder");
-        let command = build_initialization_command(folder.to_str().expect("utf-8"), "pwd");
+        let command = build_initialization_command("pwd");
         // `clear` needs a terminal; stand it in with a no-op.
         let output =
             std::process::Command::new("/bin/sh").arg("-c")
                                                  .arg(format!("clear() {{ :; }};{command}"))
+                                                 .env(AGENT_FOLDER_ENV, &folder)
                                                  .current_dir(root.path())
                                                  .output()
                                                  .expect("sh runs");

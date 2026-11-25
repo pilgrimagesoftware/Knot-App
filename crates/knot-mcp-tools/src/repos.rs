@@ -5,7 +5,7 @@ use knot_discovery::RepoInfo;
 use knot_git::{Repository, worktree::is_working_tree};
 use knot_mcp::ToolCallResult;
 
-use crate::args::{optional_str, require_str};
+use crate::args::{optional_str, path_text, require_path, require_str};
 use crate::responses::{
     CreateWorktreeResponse, ListReposResponse, ListWorktreesResponse, RepoInfoResponse,
     WorktreeInfoResponse, success,
@@ -50,7 +50,7 @@ pub fn list_worktrees(repos: &[RepoInfo], arguments: &serde_json::Value) -> Tool
 }
 
 pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
-    let repo_path = match require_str(arguments, "repoPath") {
+    let repo_path = match require_path(arguments, "repoPath") {
         Ok(v) => v,
         Err(err) => return err,
     };
@@ -60,6 +60,9 @@ pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
     };
 
     let requested = optional_str(arguments, "path").filter(|path| !path.is_empty());
+    if let Some(Err(error)) = requested.map(|path| path_text("path", path)) {
+        return error;
+    }
     match create_worktree_path(repo_path, branch_name, requested) {
         Ok(path) => {
             let path = path.display().to_string();
@@ -165,6 +168,20 @@ mod tests {
 
         assert_eq!(result.is_error, None);
         assert!(result.content[0].text.contains("\"worktrees\": []"));
+    }
+
+    #[test]
+    fn create_worktree_refuses_a_path_with_a_control_character() {
+        for (key, arguments) in [("repoPath", json!({"repoPath": "/tmp/a\rb", "branchName": "b"})),
+                                 ("path",
+                                  json!({"repoPath": "/tmp/x", "branchName": "b", "path": "/tmp/\u{15}w"}))]
+        {
+            let result = create_worktree(&arguments);
+            assert_eq!(result.is_error, Some(true), "{key}");
+            assert!(result.content[0].text.contains("control character"),
+                    "{}",
+                    result.content[0].text);
+        }
     }
 
     #[test]

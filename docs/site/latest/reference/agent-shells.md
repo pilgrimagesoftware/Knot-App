@@ -26,6 +26,13 @@ if [[ -n $KNOT_AGENT ]]; then
 fi
 ```
 
+## `KNOT_AGENT_FOLDER`
+
+Holds the agent's folder. The terminal starts there, and once your rc files
+have run, Knot types `cd -- "$KNOT_AGENT_FOLDER"` so the agent starts in its
+folder even if your rc files change directory. The folder's name is never typed
+into the terminal itself.
+
 ## `TERM` and `COLORTERM`
 
 Every agent terminal starts with `TERM=xterm-256color` and

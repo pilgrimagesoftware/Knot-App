@@ -26,6 +26,7 @@ pub use builders::{
     mcp_url, mcp_url_for_port, plan_launch,
 };
 pub use capabilities::{keeps_mcp_query, supports_inline_registration};
+pub use consts::AGENT_FOLDER_ENV;
 pub use default_mode::{DefaultMode, unconfigured_default_mode};
 pub use escape::persona_prompt;
 pub use handoff::{OpenThread, handoff_note, reset_notice};

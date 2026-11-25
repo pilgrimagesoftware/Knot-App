@@ -32,8 +32,7 @@ impl SessionPlan {
         let request = LaunchRequest { agent_type:    &config.agent.agent_type,
                                       shell_command: config.agent.shell_command.as_deref(), };
         let agent_command = build_agent_command(&request);
-        let initialization_command =
-            build_initialization_command(&config.agent.folder, &agent_command);
+        let initialization_command = build_initialization_command(&agent_command);
         Self { agent_command,
                initialization_command }
     }

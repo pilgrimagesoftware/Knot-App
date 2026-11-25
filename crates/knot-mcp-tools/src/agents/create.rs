@@ -3,7 +3,7 @@ use knot_core::BenchAgent;
 use knot_mcp::ToolCallResult;
 use uuid::Uuid;
 
-use crate::args::{optional_bool, optional_str, require_str};
+use crate::args::{optional_bool, optional_str, path_text, require_str};
 use crate::lookup::agent_not_found;
 use crate::responses::{CreateAgentResponse, success};
 
@@ -136,6 +136,14 @@ pub fn create_agent(store: &mut AgentStore, arguments: &serde_json::Value,
     else {
         return ToolCallResult::error("Missing required parameter: repoPath");
     };
+    // After the bench fallback, so a template's folder is held to the same
+    // rule as one the caller passed.
+    if let Err(error) = path_text("repoPath", &repo_path) {
+        return error;
+    }
+    if let Some(Err(error)) = worktree_path.map(|path| path_text("worktreePath", path)) {
+        return error;
+    }
     let folder = match (create_worktree, branch_name) {
         (true, Some(branch)) => {
             match crate::repos::create_worktree_path(&repo_path, branch, worktree_path) {
