@@ -385,6 +385,38 @@ impl PanelState {
         self.tool_call_collapsed.insert(id.to_string(), !collapsed);
     }
 
+    /// Puts every tool call back to its collapsed form (#488,
+    /// `collapsed-tool-call-summary`, "Collapsing every tool call at once"):
+    /// each summary run the user opened returns to its line, and each card
+    /// drawn open - by the user, or by default because it is running or
+    /// failed - collapses, nested subagent cards included.
+    ///
+    /// Only the user's open/closed choices change, as recorded overrides; the
+    /// conversation itself does not. A card that arrives afterwards follows
+    /// its own default, and each card or run can be opened again by hand.
+    pub fn collapse_all_tool_calls(&mut self) {
+        self.tool_run_expanded.clear();
+        let mut open = Vec::new();
+        for message in &self.messages {
+            if let PanelMessage::ToolCall(card) = message {
+                self.collect_open_cards(card, &mut open);
+            }
+        }
+        for id in open {
+            self.tool_call_collapsed.insert(id, true);
+        }
+    }
+
+    /// The ids of `card` and the cards nested under it that draw open.
+    fn collect_open_cards(&self, card: &ToolCallCard, open: &mut Vec<String>) {
+        if !self.is_collapsed(card) {
+            open.push(card.id.clone());
+        }
+        for child in card.subagent_tool_calls() {
+            self.collect_open_cards(child, open);
+        }
+    }
+
     /// Whether the run headed by `head_id` is drawn as its individual
     /// cards despite compact mode - the inspection path the spec requires
     /// compact rendering to keep.

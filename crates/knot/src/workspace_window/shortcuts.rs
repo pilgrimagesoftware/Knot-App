@@ -17,12 +17,15 @@ use crate::workspace_window::WorkspaceWindow;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ShortcutAvailability {
     /// How many Select agent N shortcuts have an agent to select.
-    pub(crate) agents:           usize,
-    pub(crate) focus_input:      bool,
-    pub(crate) jump_to_bottom:   bool,
+    pub(crate) agents:              usize,
+    pub(crate) focus_input:         bool,
+    pub(crate) jump_to_bottom:      bool,
+    /// Collapse Tool Calls (#488): on the same terms as Jump to Bottom, a
+    /// conversation on screen.
+    pub(crate) collapse_tool_calls: bool,
     /// The selected agent has an artifact panel shown, or one closed that
     /// can be reopened - the two states Toggle Artifacts moves between.
-    pub(crate) toggle_artifacts: bool,
+    pub(crate) toggle_artifacts:    bool,
 }
 
 impl WorkspaceWindow {
@@ -45,6 +48,8 @@ impl WorkspaceWindow {
         ShortcutAvailability { agents,
                                focus_input: selected.is_some(),
                                jump_to_bottom: !self.view_mode.is_takeover() && has_conversation,
+                               collapse_tool_calls: !self.view_mode.is_takeover()
+                                                    && has_conversation,
                                toggle_artifacts }
     }
 
@@ -102,6 +107,14 @@ impl WorkspaceWindow {
         };
         let el = if available.jump_to_bottom {
             el.on_action(cx.listener(|view, _: &JumpToBottom, _, cx| view.jump_to_bottom(cx)))
+        }
+        else {
+            el
+        };
+        let el = if available.collapse_tool_calls {
+            el.on_action(cx.listener(|view, _: &crate::app_bootstrap::CollapseToolCalls, _, cx| {
+                               view.collapse_tool_calls(cx)
+                           }))
         }
         else {
             el
@@ -172,6 +185,25 @@ impl WorkspaceWindow {
            && let crate::panel_session::PanelSessionSlot::Ready(handle) = &*slot.lock()
         {
             handle.set_tracking(true);
+        }
+        cx.notify();
+    }
+
+    /// Collapses every tool call in the selected agent's conversation (#488).
+    /// Nothing for an agent with no conversation on screen, as for
+    /// [`Self::jump_to_bottom`].
+    pub(crate) fn collapse_tool_calls(&mut self, cx: &mut Context<Self>) {
+        if self.view_mode.is_takeover() {
+            return;
+        }
+        let Some(id) = self.selected_agent
+        else {
+            return;
+        };
+        if let Some(slot) = self.panel_sessions.get(&id)
+           && let crate::panel_session::PanelSessionSlot::Ready(handle) = &*slot.lock()
+        {
+            handle.collapse_all_tool_calls();
         }
         cx.notify();
     }

@@ -99,6 +99,17 @@ fn a_fixed_shortcut_cannot_be_taken() {
                                          holder: knot_core::l10n::t("keymap.fixed.close_window"), }));
 }
 
+/// Collapse Tool Calls' fixed key (#488) is taken like any other, as ⌥⌘C on
+/// macOS and Ctrl+Alt+C elsewhere.
+#[test]
+fn the_collapse_tool_calls_key_cannot_be_taken() {
+    let candidate =
+        Resolved::defaults().with_chord(Shortcut::FocusAgentInput, chord("secondary-alt-c"));
+    assert_eq!(validate(&candidate, Shortcut::FocusAgentInput),
+               Err(Rejection::Conflict { chord:  chord("secondary-alt-c"),
+                                         holder: knot_core::l10n::t("menu.view.collapse_tool_calls"), }));
+}
+
 /// ⌘T is New Agent's fixed key (`app-menu`), so recording it is a conflict.
 #[test]
 fn the_new_agent_key_cannot_be_taken() {

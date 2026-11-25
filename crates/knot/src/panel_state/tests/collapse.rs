@@ -119,3 +119,56 @@ fn a_reloaded_conversation_collapses_a_call_the_previous_one_had_open() {
 
     assert!(reloaded.is_collapsed(card(&reloaded, 0)));
 }
+
+/// Collapse Tool Calls (#488): every card drawn open goes back to its
+/// header - running and failed ones open by default, one the user opened,
+/// one nested under a delegation - and an opened summary run returns to its
+/// line.
+#[test]
+fn collapsing_all_closes_every_open_card_and_every_opened_run() {
+    let mut state = PanelState::new();
+    state.apply(tool_call_start("running", "execute"));
+    state.apply(tool_call_start("failed", "execute"));
+    state.apply(tool_call_update("failed", Some("failed"), Vec::new()));
+    state.apply(tool_call_start("opened", "execute"));
+    state.apply(tool_call_update("opened", Some("completed"), Vec::new()));
+    state.toggle_tool_call("opened");
+    let PanelMessage::ToolCall(delegation) = &mut state.messages[0]
+    else {
+        panic!("a tool call");
+    };
+    let mut nested = delegation.as_ref().clone();
+    nested.id = "nested".to_owned();
+    delegation.subagent
+              .push(SubagentItem::ToolCall(Box::new(nested)));
+    state.toggle_tool_run("running".to_owned());
+    for id in ["running", "failed", "opened", "nested"] {
+        assert!(!state.is_collapsed(state.tool_call(id).expect(id)),
+                "{id} starts open");
+    }
+
+    state.collapse_all_tool_calls();
+
+    for id in ["running", "failed", "opened", "nested"] {
+        assert!(state.is_collapsed(state.tool_call(id).expect(id)),
+                "{id} is collapsed");
+    }
+    assert!(!state.is_tool_run_expanded("running"),
+            "the opened run is back to its line");
+}
+
+/// Only the user's open/closed choices change: the conversation keeps every
+/// card, and a call that arrives afterwards follows its own default.
+#[test]
+fn collapsing_all_changes_no_message_and_leaves_later_calls_to_their_default() {
+    let mut state = PanelState::new();
+    state.apply(tool_call_start("first", "execute"));
+    let before = state.messages.clone();
+
+    state.collapse_all_tool_calls();
+    assert_eq!(state.messages, before);
+
+    state.apply(tool_call_start("later", "execute"));
+    assert!(!state.is_collapsed(state.tool_call("later").expect("later")),
+            "a running call that arrives afterwards is open");
+}

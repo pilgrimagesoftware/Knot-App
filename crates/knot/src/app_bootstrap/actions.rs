@@ -22,6 +22,12 @@ actions!(knot_app,
           PanelOpenPermissionSelector,
           PanelFind]);
 
+// View > Collapse Tool Calls (#488): every tool call in the selected agent's
+// conversation back to its collapsed form. Fixed rather than configurable,
+// beside the panel's other fixed keys; enabled by the workspace window while
+// a conversation is shown, like Jump to Bottom.
+actions!(knot_app, [CollapseToolCalls]);
+
 // UNWIRED: the standard-menu items the port has not implemented yet. They
 // exist as named actions rather than `NoAction` only so each can carry its
 // own key equivalent - a menu item's shortcut is looked up by action, so

@@ -98,6 +98,10 @@ pub(crate) fn view_menu(snapshot: &ViewMenuSnapshot) -> Menu {
         // closed and reopenable (`artifact-panel`).
         MenuItem::action(knot_core::l10n::t("menu.view.artifacts"), ToggleArtifacts)
             .checked(snapshot.window.as_ref().is_some_and(|window| window.artifacts_shown)),
+        // After Artifacts, which `app-menu` keeps directly after Jump to
+        // Bottom; enabled on Jump to Bottom's terms (#488).
+        MenuItem::action(knot_core::l10n::t("menu.view.collapse_tool_calls"),
+                         crate::app_bootstrap::CollapseToolCalls),
         MenuItem::separator(),
         select_agent_submenu(snapshot.window.as_ref()),
         // Sets off the Enter Full Screen item macOS appends after the last
