@@ -305,6 +305,31 @@ unchanged; it appears in the sidebar only.
 - **THEN** the split still shows B and C, and the companion is listed in the
   sidebar after A
 
+### Requirement: The MCP handover terminal is a user's companion
+
+The terminal Knot opens to hand the user an agent's MCP flow (the MCP pane's
+manage action) SHALL be laid out as a companion the user creates, both when it
+is created and when an existing one is opened again: beside its owner when the
+owner is in a pane, otherwise as a split vertical of owner and terminal, the
+terminal focused. Revealing it SHALL then keep that layout.
+
+#### Scenario: Opened from a split
+
+- **WHEN** a split shows A and B, and the user opens A's MCP handover terminal
+- **THEN** a three-pane layout shows A, B and the terminal, the terminal
+  focused
+
+#### Scenario: Opened from single
+
+- **WHEN** A is shown alone, and the user opens A's MCP handover terminal
+- **THEN** a split vertical shows A and the terminal, the terminal focused
+
+#### Scenario: Opened again after it left the layout
+
+- **WHEN** a split shows A and B, and A's handover terminal exists but is in
+  no pane, and the user opens it again
+- **THEN** a three-pane layout shows A, B and the terminal
+
 ### Requirement: Removal collapses the layout
 
 Removing an agent that is in a pane SHALL remove its pane: a grid left with

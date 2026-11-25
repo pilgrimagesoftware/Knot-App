@@ -172,3 +172,89 @@ fn an_mcp_companion_opens_beside_a_shown_owner_and_takes_focus(cx: &mut TestAppC
                    "the selection follows the store's focus");
     }
 }
+
+/// Opens `owner`'s MCP handover terminal and reveals it, as the MCP pane's
+/// action does (`render/mcp_pane.rs`): the store opens it, the window shows it.
+///
+/// The terminal is a shell, which revealing would start - a PTY thread the
+/// test scheduler rejects as nondeterministic. So before the reveal it takes
+/// the fixture's inert type, the one every other agent here has. Where a
+/// companion goes depends on its owner and origin, never on its type.
+fn open_and_reveal_handover(f: &mut Fixture, owner: &str) -> Uuid {
+    let owner = f.id(owner);
+    let terminal = f.store
+                    .lock()
+                    .open_mcp_handover(knot_agents::McpHandoverRequest { owner,
+                                                                         server: "linear",
+                                                                         command: "true",
+                                                                         name: "MCP" })
+                    .expect("the handover terminal opens")
+                    .id();
+    {
+        let mut store = f.store.lock();
+        let agent = store.agent(terminal).expect("the terminal").clone();
+        store.edit(terminal,
+                   knot_agents::EditRequest { name: agent.name,
+                                              avatar: agent.avatar,
+                                              agent_type: Some("layout-test-inert".into()),
+                                              activation_mode: agent.activation_mode,
+                                              ..Default::default() })
+             .expect("the terminal takes the inert type");
+    }
+    f.view
+     .update(&mut f.window, |view, cx| view.reveal_agent(terminal, cx));
+    f.window.run_until_parked();
+    terminal
+}
+
+/// #500: revealing the handover terminal from a split keeps the split - it
+/// opens beside its owner as a user's companion, not alone by rule R3.
+#[gpui_kit::test]
+fn revealing_the_handover_terminal_keeps_a_split(cx: &mut TestAppContext) {
+    let mut f = split(0, cx);
+    let terminal = open_and_reveal_handover(&mut f, "A");
+
+    let ui = f.ui();
+    assert_eq!(ui.layout_mode, LayoutMode::ThreePane);
+    assert_eq!(ui.active_agent_ids, [f.id("A"), f.id("B"), terminal]);
+    assert_eq!(selected_id(&mut f), Some(terminal));
+}
+
+/// From a single pane it opens beside its owner too, as the user's own
+/// companions do ("A new companion opens beside its creator", from single).
+#[gpui_kit::test]
+fn revealing_the_handover_terminal_from_single_shows_it_beside_its_owner(cx: &mut TestAppContext) {
+    let mut f = open(&Spec { agents:     &["A", "B"],
+                             companions: &[],
+                             mode:       LayoutMode::Single,
+                             panes:      &["A"],
+                             focus:      0, },
+                     cx);
+    let terminal = open_and_reveal_handover(&mut f, "A");
+
+    let ui = f.ui();
+    assert_eq!(ui.layout_mode, LayoutMode::SplitVertical);
+    assert_eq!(ui.active_agent_ids, [f.id("A"), terminal]);
+    assert_eq!(selected_id(&mut f), Some(terminal));
+}
+
+/// Opened again after it left the layout, the same terminal comes back
+/// beside its owner rather than replacing the split.
+#[gpui_kit::test]
+fn reopening_a_handover_terminal_that_left_the_layout_keeps_the_split(cx: &mut TestAppContext) {
+    let mut f = split(0, cx);
+    let terminal = open_and_reveal_handover(&mut f, "A");
+    // The user puts the split back without it.
+    let (a, b) = (f.id("A"), f.id("B"));
+    f.store
+     .lock()
+     .set_workspace_layout(f.workspace, LayoutMode::SplitVertical, vec![a, b]);
+    f.store.lock().set_workspace_focused_pane(f.workspace, 0);
+
+    let again = open_and_reveal_handover(&mut f, "A");
+
+    assert_eq!(again, terminal, "the same terminal");
+    let ui = f.ui();
+    assert_eq!(ui.layout_mode, LayoutMode::ThreePane);
+    assert_eq!(ui.active_agent_ids, [f.id("A"), f.id("B"), terminal]);
+}
