@@ -33,7 +33,10 @@ pub(super) fn panel_style() -> PanelStyle {
                  markdown_font_size: px(14.),
                  mono_font_family:   "Menlo".into(),
                  ui_font_family:     "Helvetica".into(),
-                 title_font_family:  "Helvetica".into(),
+                 markdown_style:
+                     crate::markdown_view::MarkdownStyle::new(&gpui_kit::component::Theme::default(),
+                                                              "Helvetica".into(),
+                                                              px(14.)),
                  danger_color:       Hsla::default(),
                  info_color:         Hsla::default(),
                  border_color:       Hsla::default(),

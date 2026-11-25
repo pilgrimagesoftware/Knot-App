@@ -24,6 +24,7 @@ mod l10n_catalog_library_import;
 mod l10n_scheduling;
 mod layout_model;
 mod library_windows;
+mod markdown_selection;
 mod markdown_tables;
 mod markdown_view;
 mod mcp_lifetime;

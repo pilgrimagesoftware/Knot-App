@@ -128,8 +128,7 @@ impl WorkspaceWindow {
                                 ("markdown-pane-body", id.as_u128() as u64),
                                 body,
                                 cx.theme().font_family.clone(),
-                                crate::settings_global::read(cx).title_font_name.clone().into(),
-                                px(crate::settings_global::read(cx).markdown_font_size as f32),
+                                &crate::markdown_view::MarkdownStyle::from_settings(cx),
                             )))
             .into_any_element()
     }
@@ -325,10 +324,8 @@ impl WorkspaceWindow {
                                                                     as f32),
                                              mono_font_family: theme.mono_font_family.clone(),
                                              ui_font_family: theme.font_family.clone(),
-                                             title_font_family: crate::settings_global::read(cx)
-                                                                    .title_font_name
-                                                                    .clone()
-                                                                    .into(),
+                                             markdown_style:
+                                                 crate::markdown_view::MarkdownStyle::from_settings(cx),
                                              danger_color: theme.danger,
                                              info_color: theme.info,
                                              border_color: theme.border,
