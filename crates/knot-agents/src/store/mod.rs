@@ -13,6 +13,7 @@ mod bench;
 mod checklist;
 mod duplicate;
 mod edit;
+mod fresh_session;
 mod helpers;
 pub mod layout;
 mod lifecycle;
@@ -269,10 +270,6 @@ impl AgentStore {
 
     pub fn set_session_id(&mut self, id: Uuid, session_id: String) {
         self.update(id, |agent| agent.session_id = Some(session_id));
-    }
-
-    pub fn set_acp_session_id(&mut self, id: Uuid, session_id: String) {
-        self.update(id, |agent| agent.acp_session_id = Some(session_id));
     }
 
     pub fn apply_acp_session_outcomes(&mut self, outcomes: &BTreeMap<Uuid, Option<String>>) {

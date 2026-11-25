@@ -7,12 +7,17 @@
 //! not here - it lives in [`crate::app_state`], where it is pure and tested.
 
 mod agent_row;
+mod agent_row_actions;
+mod alternate_line;
 mod menu_bar;
 #[cfg(test)]
 mod move_tests;
 mod sidebar;
 
 pub(crate) use agent_row::*;
+pub(crate) use alternate_line::alternate_line_key_bindings;
+#[cfg(test)]
+pub(in crate::workspace_window) use alternate_line::line_selector;
 use gpui_kit::App;
 use gpui_kit::SharedString;
 use gpui_kit::Window;

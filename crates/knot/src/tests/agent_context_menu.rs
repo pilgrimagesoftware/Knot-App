@@ -18,17 +18,18 @@ use crate::workspace_window::agent_menu_facts;
 
 #[test]
 fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
-    let facts = AgentMenuFacts { is_companion:         false,
-                                 is_shell:             false,
-                                 has_move_targets:     true,
-                                 has_markdown_history: true,
-                                 has_config_files:     true,
-                                 is_running:           true,
-                                 is_panel_mode:        true,
-                                 can_lock:             true,
-                                 can_unlock:           false,
-                                 can_autopilot_off:    true,
-                                 can_autopilot_on:     false, };
+    let facts = AgentMenuFacts { is_companion:           false,
+                                 is_shell:               false,
+                                 has_move_targets:       true,
+                                 has_markdown_history:   true,
+                                 has_config_files:       true,
+                                 is_running:             true,
+                                 is_panel_mode:          true,
+                                 can_lock:               true,
+                                 can_unlock:             false,
+                                 can_autopilot_off:      true,
+                                 can_autopilot_on:       false,
+                                 restores_conversations: true, };
     assert_eq!(agent_context_menu_entries(facts),
                vec![AgentMenuEntry::NewCompanion,
                     AgentMenuEntry::NewShellCompanion,
@@ -50,6 +51,7 @@ fn agent_context_menu_matches_the_swift_reference_order_for_a_full_menu() {
                     AgentMenuEntry::LockAgent,
                     AgentMenuEntry::AutopilotOff,
                     AgentMenuEntry::Deactivate,
+                    AgentMenuEntry::DeactivateWithNewSession,
                     AgentMenuEntry::RestartAgent,
                     AgentMenuEntry::RestartWithNewConversation,
                     AgentMenuEntry::RemoveAgent]);
@@ -95,7 +97,8 @@ fn agent_menu_facts_read_panel_mode_off_the_agents_view_mode() {
 /// other half it is.
 #[test]
 fn restart_with_new_conversation_follows_restart_agent() {
-    let entries = agent_context_menu_entries(AgentMenuFacts::default());
+    let entries =
+        agent_context_menu_entries(AgentMenuFacts::default().with_restored_conversations(true));
     let restart = entries.iter()
                          .position(|entry| *entry == AgentMenuEntry::RestartAgent);
     let new_conversation =
@@ -122,17 +125,18 @@ fn restart_with_new_conversation_is_for_owners_that_are_not_shells() {
 
 #[test]
 fn agent_context_menu_omits_companion_actions_for_companions() {
-    let facts = AgentMenuFacts { is_companion:         true,
-                                 is_shell:             true,
-                                 has_move_targets:     true,
-                                 has_markdown_history: false,
-                                 has_config_files:     false,
-                                 is_running:           false,
-                                 is_panel_mode:        false,
-                                 can_lock:             true,
-                                 can_unlock:           false,
-                                 can_autopilot_off:    true,
-                                 can_autopilot_on:     false, };
+    let facts = AgentMenuFacts { is_companion:           true,
+                                 is_shell:               true,
+                                 has_move_targets:       true,
+                                 has_markdown_history:   false,
+                                 has_config_files:       false,
+                                 is_running:             false,
+                                 is_panel_mode:          false,
+                                 can_lock:               true,
+                                 can_unlock:             false,
+                                 can_autopilot_off:      true,
+                                 can_autopilot_on:       false,
+                                 restores_conversations: true, };
     assert_eq!(agent_context_menu_entries(facts),
                vec![AgentMenuEntry::EditAgent,
                     AgentMenuEntry::Separator,
@@ -348,7 +352,8 @@ fn agent_context_menu_never_emits_a_stray_divider() {
                                                      can_lock: !locked,
                                                      can_unlock: locked,
                                                      can_autopilot_off: !locked,
-                                                     can_autopilot_on: locked };
+                                                     can_autopilot_on: locked,
+                                                     restores_conversations: true };
                         let entries = agent_context_menu_entries(facts);
                         assert_ne!(entries.first(),
                                    Some(&AgentMenuEntry::Separator),
