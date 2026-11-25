@@ -110,7 +110,7 @@ references (D1–D10) point to design.md.
   and the command text per type. Assert l10n keys.
 - [x] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
   connection was refused (D10). Verify: a panel test.
-- [ ] 6.3 Docs: the MCP setup page (token, client configuration storage,
+- [x] 6.3 Docs: the MCP setup page (token, client configuration storage,
   re-running the install command after upgrading) and `coordination.md`.
   Add a release-notes line through the changelog flow.
 

@@ -1,10 +1,9 @@
 # Design
 
-> **Decision record candidate.** Adding authentication to the MCP control
-> plane, with separately scoped credentials (a tool credential and a hook
-> credential per agent, plus a persistent client token) rather than a single
-> per-launch token, is a lasting architectural decision. Record it as such
-> when the change is accepted.
+> **Recorded as ADR-0010** (`docs/adr/0010-scoped-mcp-credentials.md`):
+> separately scoped credentials (a tool credential and a hook credential per
+> agent, plus a persistent client token) rather than a single per-launch
+> token.
 
 ## Context
 
