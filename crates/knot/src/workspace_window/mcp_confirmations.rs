@@ -57,13 +57,18 @@ impl WorkspaceWindow {
 }
 
 /// The dialog's text for `request`.
+///
+/// Every value from the call is shown through [`visible`], so a command or
+/// path cannot hide part of itself from the person approving it.
 pub(in crate::workspace_window) fn body(request: &ConfirmationRequest) -> String {
-    let folder = request.folder.display().to_string();
+    let folder = visible(&request.folder.display().to_string());
+    let agent = visible(&request.requester_name);
     match &request.command {
         Some(command) => {
+            let command = visible(command);
             let mut body = knot_core::l10n::t_with("mcp_confirm.command_body",
-                                                   &[("agent", &request.requester_name),
-                                                     ("command", command),
+                                                   &[("agent", &agent),
+                                                     ("command", &command),
                                                      ("folder", &folder)]).to_string();
             if request.distant_worktree {
                 body.push_str("\n\n");
@@ -71,12 +76,37 @@ pub(in crate::workspace_window) fn body(request: &ConfirmationRequest) -> String
             }
             body
         }
-        None => {
-            knot_core::l10n::t_with("mcp_confirm.worktree_body",
-                                    &[("agent", &request.requester_name), ("folder", &folder)])
-            .to_string()
+        None => knot_core::l10n::t_with("mcp_confirm.worktree_body",
+                                        &[("agent", &agent), ("folder", &folder)]).to_string(),
+    }
+}
+
+/// `text` with every character that could hide or rearrange what is shown
+/// written out as `\u{..}`: C0 controls and DEL (a carriage return or a run
+/// of backspaces can overwrite the visible command), C1 controls, and the
+/// Unicode format characters that reorder or hide text - bidirectional
+/// overrides and isolates, zero-width characters, and the byte-order mark
+/// (security review of #516).
+pub(in crate::workspace_window) fn visible(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for character in text.chars() {
+        if hides_text(character) {
+            out.push_str(&format!("\\u{{{:x}}}", u32::from(character)));
+        }
+        else {
+            out.push(character);
         }
     }
+    out
+}
+
+fn hides_text(character: char) -> bool {
+    character.is_control()
+    || matches!(character,
+                '\u{200b}'..='\u{200f}'
+                | '\u{2028}'..='\u{202e}'
+                | '\u{2060}'..='\u{2069}'
+                | '\u{feff}')
 }
 
 /// Shows `pending`'s dialog in `window`. The answer is taken once: the

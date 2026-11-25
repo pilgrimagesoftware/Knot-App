@@ -107,3 +107,34 @@ fn the_body_names_the_agent_the_command_and_the_folder() {
             "{body}");
     assert!(!body.contains("mcp_confirm."), "{body}");
 }
+
+/// Security review of #516: a command cannot hide part of itself from the
+/// person approving it - control and format characters are written out.
+#[test]
+fn control_and_format_characters_are_shown_not_obeyed() {
+    let mut request = request(Uuid::new_v4());
+    request.command = Some("echo safe\r\x1b[2Krm -rf ~\u{202e}txt.sh\u{7f}".to_owned());
+    request.folder = PathBuf::from("/tmp/pro\u{200b}ject\u{0}");
+    request.requester_name = "Build\u{2066}er".to_owned();
+
+    let body = super::body(&request);
+
+    for hidden in ['\r', '\u{1b}', '\u{202e}', '\u{7f}', '\u{200b}', '\u{0}', '\u{2066}'] {
+        assert!(!body.contains(hidden),
+                "{hidden:?} reached the dialog: {body:?}");
+    }
+    for shown in ["\\u{d}",
+                  "\\u{1b}",
+                  "\\u{202e}",
+                  "\\u{7f}",
+                  "\\u{200b}",
+                  "\\u{0}",
+                  "\\u{2066}"]
+    {
+        assert!(body.contains(shown), "{shown} missing: {body}");
+    }
+    assert!(body.contains("rm -rf ~"),
+            "the visible text is kept: {body}");
+    // The template's own line breaks are the dialog's, not the command's.
+    assert_eq!(super::visible("make\ntest"), "make\\u{a}test");
+}
