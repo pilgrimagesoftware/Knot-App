@@ -26,6 +26,7 @@ use gpui_kit::{
 };
 use parking_lot::Mutex;
 
+use crate::app_support::observe_system_appearance;
 use crate::window_options::commit_window_options;
 
 /// Where a commit reports back. `None` while it is still running, so the
@@ -107,6 +108,9 @@ pub(crate) fn open_commit_window(on_commit: impl Fn(String, CommitOutcome, &mut 
                                  cx: &mut App) {
     let options = commit_window_options(cx);
     let _ = cx.open_window(options, move |window, cx| {
+                  // Every window tracks the OS appearance, so a light/dark flip
+                  // re-resolves the system palette and repaints (#480).
+                  observe_system_appearance(window);
                   let message = cx.new(|cx| {
                                       TextareaState::new(window, cx)
                         .placeholder(knot_core::l10n::t("git_panel.commit_placeholder"))
