@@ -68,7 +68,11 @@ impl WorkspaceWindow {
         // the agent's previous pair, and an agent another window is running
         // must keep its own. Before the spawn, so no adapter of this agent
         // ever runs on a pair that is not current (D8).
-        let credentials = mcp_url.is_some().then(|| self.mcp_credentials.issue(id));
+        // Only for an adapter checked to send the header; any other reaches
+        // Knot as an external client until it is (D3).
+        let credentials = (mcp_url.is_some()
+                           && knot_core::agent_type::sends_mcp_headers(&agent.agent_type))
+                          .then(|| self.mcp_credentials.issue(id));
         let hook_env = credentials.as_ref()
                                   .map(|pair| {
                                       super::mcp_launch::hook_environment(id,

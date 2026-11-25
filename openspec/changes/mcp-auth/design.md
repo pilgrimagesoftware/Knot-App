@@ -105,7 +105,8 @@ every command the agent runs, so it should not be able to call tools. So:
   own children is up to the adapter. It is recorded below and re-checked when
   adapters are updated (task 4.1).
 
-**Per-adapter header feasibility (verified live on 2026-11-25).**
+**Per-adapter header feasibility (verified live on 2026-11-25, and re-run
+with `scripts/acp-header-probe.py` for task 4.1 against the same versions).**
 
 Method: each adapter was driven over ACP stdio with `session/new`, using an
 `http` `mcpServers` entry whose header held a dummy bearer value, against a
@@ -117,7 +118,7 @@ searched for the dummy value and for `--mcp-config`.
 |---|---|---|---|---|---|
 | Claude | `claude-agent-acp` 0.112.0, SDK 0.3.331 | yes | yes, all requests | no | The adapter's `cliDelivery()` sends MCP servers in the CLI's stdin initialize message. It switches to `--mcp-config` argv only when `CLAUDE_CODE_EXECUTABLE` is set in the adapter's environment, or when the session's extra args name `settings` or `sdk-url`. Knot passes users' Claude options as `extraArgs`, so a user option can select the argv path (see below). |
 | Codex | `codex-acp` 2.12.0 | yes | yes, all requests | no | |
-| Antigravity | `agy` 1.5.17 (`acp --process-per-session`) | yes | yes on POST; **not** on the SSE `GET /mcp` | no | Without a header, the stream GET will get 401. Task 4.1 checks that agy keeps working on POST alone. Report upstream if it does not. |
+| Antigravity | `agy` 1.5.17 (`acp --process-per-session`) | yes | yes on POST; **not** on the SSE `GET /mcp` | no | The stream GET gets 401. Re-checked in task 4.1 with the stub answering that GET with 401: agy went on to `tools/list` with the header, so it works on POST alone. The refused GET is still counted against agy's `?agent=` hint, so D10's panel notice also requires that the agent holds no live credential-bound session. |
 | Copilot | `copilot --acp` | — | not verified | not verified | The CLI was not installed on the verification machine. Verify in task 4.1 before Copilot gets the tool credential. Until verified, a Copilot agent uses the D5 `External` path. |
 | Gemini, OpenCode | — | no | — | — | No HTTP MCP in ACP, so no automatic path. They stay `External` (D5) until a stdio-bridge follow-up. |
 

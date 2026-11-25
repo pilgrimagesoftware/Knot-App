@@ -230,3 +230,21 @@ fn an_unknown_type_invokes_everything_with_a_slash() {
     assert_eq!(invocation("nothing-by-that-name"), Invocation::SLASH);
     assert!(!Invocation::SLASH.separate_skills());
 }
+
+/// `mcp-auth` D3: only adapters checked with `scripts/acp-header-probe.py`
+/// are handed an agent's tool credential in their MCP headers.
+#[test]
+fn only_probed_adapters_are_given_the_mcp_credential() {
+    for id in ["claude", "codex", "antigravity"] {
+        assert!(sends_mcp_headers(id), "{id}");
+    }
+    for id in ["copilot",
+               "gemini",
+               "opencode",
+               "shell",
+               "custom1",
+               "unknown-type"]
+    {
+        assert!(!sends_mcp_headers(id), "{id}");
+    }
+}
