@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::{GEMINI_TMP_DIR, MAX_SESSIONS};
-use crate::files::{remove_if_present, write_atomically};
+use crate::files::{remove_inside, write_atomically};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, maybe_text, resolve_title};
@@ -180,7 +180,7 @@ impl HistoryProvider for GeminiProvider {
 fn delete_in(project_dir: &Path, id: &str) -> crate::Result<()> {
     let chats_dir = project_dir.join("chats");
     if let Some(chat_file) = find_chat_file(&chats_dir, id) {
-        remove_if_present(&chat_file)?;
+        remove_inside(&chats_dir, &chat_file)?;
     }
 
     let logs_path = project_dir.join("logs.json");

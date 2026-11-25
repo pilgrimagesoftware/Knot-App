@@ -9,7 +9,7 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 use crate::consts::{CLAUDE_PROJECTS_DIR, MAX_SESSIONS};
-use crate::files::remove_if_present;
+use crate::files::{check_session_id, remove_inside};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, jsonl_entries, maybe_text};
@@ -173,9 +173,13 @@ impl HistoryProvider for ClaudeProvider {
 /// Deletes session `id` from the Claude project directory `dir`: its
 /// transcript, and the directory of the same name Claude keeps beside it.
 /// That one is a directory, which `remove_file` never removed.
+///
+/// `id` must be one plain path component, and both removals stay inside
+/// `dir` once resolved.
 fn delete_in(dir: &Path, id: &str) -> crate::Result<()> {
-    remove_if_present(&dir.join(format!("{id}.jsonl")))?;
-    remove_if_present(&dir.join(id))?;
+    check_session_id(id)?;
+    remove_inside(dir, &dir.join(format!("{id}.jsonl")))?;
+    remove_inside(dir, &dir.join(id))?;
     Ok(())
 }
 
@@ -256,5 +260,24 @@ mod tests {
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
         assert!(result.is_err());
         assert!(dir.join("abc.jsonl").exists());
+    }
+
+    /// An id that is not one plain path component is refused before anything
+    /// is joined onto the directory, and nothing outside it is removed.
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("root");
+        fs::create_dir(&dir).unwrap();
+        fs::create_dir(tmp.path().join("victim")).unwrap();
+        fs::write(tmp.path().join("victim.jsonl"), "x").unwrap();
+
+        for id in ["../victim", "sub/../../victim", "a/b", "", "..", "a\\b"] {
+            assert!(matches!(delete_in(&dir, id),
+                             Err(crate::HistoryError::InvalidSessionId(_))),
+                    "{id:?}");
+        }
+        assert!(tmp.path().join("victim").exists());
+        assert!(tmp.path().join("victim.jsonl").exists());
     }
 }

@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::{COPILOT_SESSION_STATE_DIR, MAX_SESSIONS};
-use crate::files::remove_if_present;
+use crate::files::{check_session_id, remove_inside};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, jsonl_entries, maybe_text, resolve_title};
@@ -131,7 +131,8 @@ impl HistoryProvider for CopilotProvider {
 
 /// Deletes session `id`'s state directory under Copilot's `base`.
 fn delete_in(base: &std::path::Path, id: &str) -> crate::Result<()> {
-    Ok(remove_if_present(&base.join(id))?)
+    check_session_id(id)?;
+    remove_inside(base, &base.join(id))
 }
 
 #[cfg(test)]
@@ -190,5 +191,24 @@ mod tests {
         fs::set_permissions(&base, fs::Permissions::from_mode(0o755)).unwrap();
         assert!(result.is_err());
         assert!(base.join("s1").exists());
+    }
+
+    /// An id that is not one plain path component is refused before anything
+    /// is joined onto the directory, and nothing outside it is removed.
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("root");
+        fs::create_dir(&base).unwrap();
+        fs::create_dir(tmp.path().join("victim")).unwrap();
+        fs::write(tmp.path().join("victim.jsonl"), "x").unwrap();
+
+        for id in ["../victim", "sub/../../victim", "a/b", "", "..", "a\\b"] {
+            assert!(matches!(delete_in(&base, id),
+                             Err(crate::HistoryError::InvalidSessionId(_))),
+                    "{id:?}");
+        }
+        assert!(tmp.path().join("victim").exists());
+        assert!(tmp.path().join("victim.jsonl").exists());
     }
 }

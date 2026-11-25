@@ -7,8 +7,8 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Deserialize;
 use time::OffsetDateTime;
 
-use crate::consts::{CODEX_DB_PATH, MAX_SESSIONS};
-use crate::files::remove_if_present;
+use crate::consts::{CODEX_DB_PATH, CODEX_SESSIONS_DIR, MAX_SESSIONS};
+use crate::files::checked_file_inside;
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, jsonl_entries, maybe_text, resolve_title};
@@ -42,7 +42,12 @@ fn db_path() -> Option<PathBuf> {
 /// Database first: if archiving fails - a database Codex holds locked, say -
 /// the file is still there and the session still whole. The other order left
 /// a listed row pointing at a deleted file.
-fn delete_in(db: &Path, id: &str) -> crate::Result<()> {
+///
+/// The rollout path is Codex's record, so it is removed only if it is a
+/// regular file inside `sessions` once resolved - checked before anything
+/// changes, so a row naming anything else archives nothing and removes
+/// nothing.
+fn delete_in(db: &Path, sessions: &Path, id: &str) -> crate::Result<()> {
     if !db.exists() {
         return Ok(());
     }
@@ -51,9 +56,18 @@ fn delete_in(db: &Path, id: &str) -> crate::Result<()> {
                                  params![id],
                                  |row| row.get::<_, String>(0))
                       .optional()?;
+    let rollout = match rollout {
+        Some(rollout) => checked_file_inside(sessions, Path::new(&rollout))?,
+        None => None,
+    };
     conn.execute("UPDATE threads SET archived = 1 WHERE id = ?1", params![id])?;
     if let Some(rollout) = rollout {
-        remove_if_present(Path::new(&rollout))?;
+        match fs::remove_file(&rollout) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                return Err(error.into());
+            }
+            _ => {}
+        }
     }
     Ok(())
 }
@@ -117,9 +131,9 @@ impl HistoryProvider for CodexProvider {
     }
 
     fn delete_session(&self, id: &str, _folder: &str) -> crate::Result<()> {
-        match db_path() {
-            Some(path) => delete_in(&path, id),
-            None => Ok(()),
+        match (db_path(), home_dir()) {
+            (Some(path), Some(home)) => delete_in(&path, &home.join(CODEX_SESSIONS_DIR), id),
+            _ => Ok(()),
         }
     }
 }
@@ -215,7 +229,7 @@ mod tests {
                      params![rollout.to_str().unwrap()])
             .unwrap();
 
-        delete_in(&db, "t1").unwrap();
+        delete_in(&db, tmp.path(), "t1").unwrap();
 
         assert!(!rollout.exists());
         let archived: i64 = conn.query_row("SELECT archived FROM threads WHERE id = 't1'",
@@ -239,13 +253,59 @@ mod tests {
                      params![rollout.to_str().unwrap()])
             .unwrap();
 
-        assert!(delete_in(&db, "t1").is_err());
+        assert!(delete_in(&db, tmp.path(), "t1").is_err());
         assert!(rollout.exists(), "the file outlives a failed archive");
     }
 
     #[test]
     fn a_missing_database_has_nothing_to_delete() {
         let tmp = tempfile::tempdir().unwrap();
-        delete_in(&tmp.path().join("absent.sqlite"), "t1").unwrap();
+        delete_in(&tmp.path().join("absent.sqlite"), tmp.path(), "t1").unwrap();
+    }
+
+    fn archived(conn: &Connection) -> i64 {
+        conn.query_row("SELECT archived FROM threads WHERE id = 't1'", [], |row| {
+                row.get(0)
+            })
+            .unwrap()
+    }
+
+    /// A row whose rollout path is a directory: refused before anything
+    /// changes - not archived, nothing removed.
+    #[test]
+    fn a_rollout_that_is_a_directory_is_refused() {
+        let sessions = tempfile::tempdir().unwrap();
+        let db = sessions.path().join("state_5.sqlite");
+        let rollout = sessions.path().join("t1");
+        fs::create_dir_all(rollout.join("inner")).unwrap();
+        let conn = threads_db(&db, true);
+        conn.execute("INSERT INTO threads VALUES ('t1', ?1, 'first task', 200, '/proj', 0)",
+                     params![rollout.to_str().unwrap()])
+            .unwrap();
+
+        assert!(matches!(delete_in(&db, sessions.path(), "t1"),
+                         Err(crate::HistoryError::NotAFile(_))));
+        assert!(rollout.join("inner").exists());
+        assert_eq!(archived(&conn), 0);
+    }
+
+    /// A row whose rollout path is outside Codex's sessions directory:
+    /// refused, the file is untouched and the row not archived.
+    #[test]
+    fn a_rollout_outside_the_sessions_directory_is_refused() {
+        let sessions = tempfile::tempdir().unwrap();
+        let elsewhere = tempfile::tempdir().unwrap();
+        let db = sessions.path().join("state_5.sqlite");
+        let rollout = elsewhere.path().join("t1.jsonl");
+        fs::write(&rollout, "{}").unwrap();
+        let conn = threads_db(&db, true);
+        conn.execute("INSERT INTO threads VALUES ('t1', ?1, 'first task', 200, '/proj', 0)",
+                     params![rollout.to_str().unwrap()])
+            .unwrap();
+
+        assert!(matches!(delete_in(&db, sessions.path(), "t1"),
+                         Err(crate::HistoryError::OutsideHistory(_))));
+        assert!(rollout.exists());
+        assert_eq!(archived(&conn), 0);
     }
 }

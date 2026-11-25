@@ -58,6 +58,8 @@ impl HistoryCache {
         else {
             return Ok(());
         };
+        // Before any provider joins it onto a directory.
+        crate::files::check_session_id(id)?;
         let deleted = p.delete_session(id, folder);
         self.refresh(agent_type, folder);
         deleted
@@ -100,5 +102,14 @@ mod tests {
         let cache = HistoryCache::new();
         cache.delete_session("shell", "id", "/proj").unwrap();
         assert_eq!(cache.get("shell", "/proj"), Vec::new());
+    }
+
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused_before_any_provider() {
+        let cache = HistoryCache::new();
+        for id in ["../x", "a/b"] {
+            assert!(matches!(cache.delete_session("claude", id, "/proj"),
+                             Err(crate::HistoryError::InvalidSessionId(_))));
+        }
     }
 }
