@@ -19,11 +19,12 @@ use gpui_kit::TestAppContext;
 use gpui_kit::VisualTestContext;
 use gpui_kit::Window;
 use gpui_kit::WindowOptions;
+use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::Root;
 use gpui_kit::div;
 use gpui_kit::px;
 
-use crate::markdown_view::markdown_view;
+use crate::markdown_view::{MarkdownStyle, markdown_view};
 
 const TABLE: &str = "\
 | Fix | Notes |
@@ -53,12 +54,13 @@ struct TableProbe {
 }
 
 impl Render for TableProbe {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div().w(px(self.width)).child(markdown_view("table-probe",
                                                     self.source,
                                                     "Helvetica".into(),
-                                                    "Helvetica".into(),
-                                                    px(14.)))
+                                                    &MarkdownStyle::new(cx.theme(),
+                                                                        "Helvetica".into(),
+                                                                        px(14.))))
     }
 }
 
