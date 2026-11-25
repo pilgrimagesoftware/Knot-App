@@ -21,6 +21,7 @@ mod frame;
 mod issues_pane;
 mod issues_toolbar;
 pub(super) mod layout;
+pub(super) mod layout_menu;
 pub(super) mod mcp_pane;
 mod openspec_pane;
 mod openspec_toolbar;

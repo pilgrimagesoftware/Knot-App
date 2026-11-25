@@ -92,6 +92,14 @@ impl WorkspaceWindow {
         }
     }
 
+    /// The user chose `mode` from the Layout menu. The store fills or drops
+    /// panes; the window then adopts the result, which starts every agent the
+    /// choice placed in a pane and saves the layout.
+    pub(super) fn set_layout_mode(&mut self, mode: LayoutMode, cx: &mut Context<Self>) {
+        let change = self.store.lock().set_layout_mode(self.workspace_id, mode);
+        self.adopt_layout(&change, Showing::Start, cx);
+    }
+
     /// Carries `change` over to the window: `selected_agent` becomes the
     /// focused pane's agent, the agents it names are started per `showing`,
     /// and a changed layout is written to disk.

@@ -26,8 +26,8 @@
 
 ## 5. Layout menu
 
-- [ ] 5.1 `render/layout_menu.rs` in the content header: shown with two or more agents in the agent view, Three Panes from three agents, Four Panes from four, current mode checked, and catalogue keys for every label. Verify: gpui tests for one, two and four agents, plus the catalogue-key test.
-- [ ] 5.2 Choosing a mode calls `layout::set_mode` and starts the agents placed in new panes ("Showing an agent in a pane starts it"). Verify: a gpui test goes from single to three panes with two stopped agents and asserts both are activated, then back to single, asserting the agents and the focused agent.
+- [x] 5.1 `render/layout_menu.rs` in the content header: shown with two or more agents in the agent view, Three Panes from three agents, Four Panes from four, current mode checked, and catalogue keys for every label. Verify: gpui tests for one, two and four agents, plus the catalogue-key test. (`layout_menu_tests.rs`: `layout_choices` is the list the popup is built from, asserted for 0 to 9 agents and the checked mode; gpui tests assert the button is drawn for two and four agents and absent for one agent and on the dashboard; the catalogue test asserts every label key and `layout.menu` resolve. The popup's own items are built when it opens and are not inspected.)
+- [x] 5.2 Choosing a mode calls `layout::set_mode` and starts the agents placed in new panes ("Showing an agent in a pane starts it"). Verify: a gpui test goes from single to three panes with two stopped agents and asserts both are activated, then back to single, asserting the agents and the focused agent. (`layout_menu_tests.rs` calls `set_layout_mode`, which the popup's click handler calls: single to three panes starts both stopped agents, and after focusing pane 2, Single shows only that agent and selects it. Uses the store's `set_layout_mode`, which wraps `layout::set_mode`.)
 
 ## 6. Terminal resize on settle
 

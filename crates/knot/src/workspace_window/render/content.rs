@@ -75,6 +75,7 @@ impl WorkspaceWindow {
                                                      .child(h_flex().flex_shrink_0()
                                                                     .items_center()
                                                                     .gap_2()
+                                                                    .children(self.layout_menu(cx))
                                                                     .child(title_bar_right))
                                          }))
                 .child(dashboard_content.unwrap_or_else(|| {
