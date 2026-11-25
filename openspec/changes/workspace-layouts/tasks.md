@@ -36,7 +36,7 @@
 
 ## 7. Companions and removal in the window
 
-- [ ] 7.1 New Shell Companion, New Companion… and the MCP create path show the companion beside a shown owner, with the companion focused. A user-created companion of an owner that isn't shown gives an owner+companion split, and an MCP-created one leaves the layout alone. Verify: gpui tests from single, from a split, from a split not showing the owner (both origins), matching `agent-list-ui`'s "Create a companion".
+- [x] 7.1 New Shell Companion, New Companion… and the MCP create path show the companion beside a shown owner, with the companion focused. A user-created companion of an owner that isn't shown gives an owner+companion split, and an MCP-created one leaves the layout alone. Verify: gpui tests from single, from a split, from a split not showing the owner (both origins), matching `agent-list-ui`'s "Create a companion". (`layout_companion_tests.rs`: New Shell Companion is dispatched as the menu action, from single and from a split; New Companion... is the editor's callback `show_created_companion`, tested with a User companion beside a shown owner and of an owner that isn't shown; MCP origin is tested for a shown owner (single and split) and for an owner that isn't shown. The MCP handover terminal keeps origin None: no spec says it opens beside its owner, and `agent-mcp-status` says only that the action shows and starts it, which `reveal_agent` does through the selection rules.)
 - [ ] 7.2 Removing an agent, and a shell companion's process exiting, collapse the window's layout and leave `selected_agent` on a shown agent. Verify: a gpui test removes the focused pane's agent from a three-pane layout.
 
 ## 8. Docs and gate
