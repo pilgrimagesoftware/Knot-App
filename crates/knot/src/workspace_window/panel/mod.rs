@@ -18,6 +18,8 @@
 //! not by type.
 
 mod attachments;
+#[cfg(test)]
+mod collapse_tests;
 pub(super) mod find_bar;
 pub(crate) mod input;
 mod limit_hold;

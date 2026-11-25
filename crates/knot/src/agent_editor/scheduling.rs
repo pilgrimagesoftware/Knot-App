@@ -286,8 +286,8 @@ impl AgentEditor {
                                              self.schedule_controls(cx)).into_any_element()];
         let status = match self.submitted_scheduling(cx) {
             Ok((Some(schedule), _)) => {
-                next_run(&schedule, &jiff::Zoned::now()).map(|next| {
-                    let when = crate::schedule_text::when_text(&next, &jiff::Zoned::now());
+                next_run(&schedule, &jiff::ZonedDateTime::now()).map(|next| {
+                    let when = crate::schedule_text::when_text(&next, &jiff::ZonedDateTime::now());
                     div().text_xs()
                          .text_color(cx.theme().muted_foreground)
                          .child(knot_core::l10n::t_with("agent.schedule_next", &[("when", &when)]))

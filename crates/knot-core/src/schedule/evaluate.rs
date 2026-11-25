@@ -8,7 +8,7 @@
 use croner::Cron;
 use croner::errors::CronError;
 use croner::parser::{CronParser, Seconds, Year};
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 
 use super::definition::{Preset, Schedule, WeekdaySet};
 
@@ -25,14 +25,14 @@ pub(super) fn parse_cron(expression: &str) -> Result<Cron, CronError> {
 /// The first run of `schedule` strictly after `after`, in `after`'s time
 /// zone, or `None` for a schedule that cannot run.
 #[must_use]
-pub fn next_run(schedule: &Schedule, after: &Zoned) -> Option<Zoned> {
+pub fn next_run(schedule: &Schedule, after: &ZonedDateTime) -> Option<ZonedDateTime> {
     let cron = cron_for(schedule)?;
     cron.find_next_occurrence(after, false).ok()
 }
 
 /// The latest run of `schedule` at or before `at`, or `None`.
 #[must_use]
-pub(super) fn previous_run(schedule: &Schedule, at: &Zoned) -> Option<Zoned> {
+pub(super) fn previous_run(schedule: &Schedule, at: &ZonedDateTime) -> Option<ZonedDateTime> {
     let cron = cron_for(schedule)?;
     cron.find_previous_occurrence(at, true).ok()
 }

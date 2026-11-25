@@ -51,9 +51,9 @@ fn setting_a_schedule_moves_the_revision_only_when_it_changes() {
     assert_ne!(store.revision(), after);
 }
 
-fn la(day: i8, hour: i8, minute: i8) -> jiff::Zoned {
+fn la(day: i8, hour: i8, minute: i8) -> jiff::ZonedDateTime {
     jiff::civil::date(2026, 11, day).at(hour, minute, 0, 0)
-                                    .to_zoned(jiff::tz::TimeZone::get("America/Los_Angeles")
+                                    .to_zoned_datetime(jiff::tz::TimeZone::get("America/Los_Angeles")
                                                   .expect("tzdb has LA"))
                                     .expect("a valid local time")
 }

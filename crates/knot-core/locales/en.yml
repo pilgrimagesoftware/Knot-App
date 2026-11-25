@@ -485,6 +485,9 @@ menu:
     pull_requests: "Changes"
     focus_agent_input: "Focus Agent Input"
     jump_to_bottom: "Jump to Bottom"
+    # Every tool call in the selected agent's conversation back to its
+    # collapsed form (#488).
+    collapse_all_tool_calls: "Collapse All Tool Calls"
     # Shows or hides the selected agent's artifact panel; checked while it is
     # shown.
     artifacts: "Artifacts"
@@ -519,16 +522,23 @@ menu:
     autopilot_off: "Turn Off Autopilot"
     autopilot_on: "Turn On Autopilot"
     deactivate: "Deactivate"
+    deactivate_new_session: "Deactivate with New Session"
     restart_agent: "Restart Agent"
     restart_new_conversation: "Restart with New Conversation"
     remove_agent: "Remove Agent"
-    # What the two confirming row actions ask before they run.
+    # The muted marker on a line whose title changes while Shift is held.
+    # A glyph on every platform, not the word: it marks the line, it is not
+    # a key hint to read out.
+    shift_marker: "⇧"
+    # What the confirming row actions ask before they run.
     confirm:
       restart_title: "Restart Agent"
       restart_body: "Restart \"%{name}\"? Its session will be cleared."
       restart_keep_body: "Restart \"%{name}\"? It will resume its current conversation."
       restart_new_title: "Restart with New Conversation"
       restart_new_body: "Restart \"%{name}\" in a new conversation? Its current conversation will not be resumed."
+      deactivate_new_title: "Deactivate with New Session"
+      deactivate_new_body: "Deactivate \"%{name}\" and start a new session next time? Its current conversation will not be resumed."
       remove_title: "Remove Agent"
       remove_body: "Remove \"%{name}\"? This closes its session and cannot be undone."
       bench_title: "Bench Agent"
@@ -542,6 +552,8 @@ menu:
     restart_all: "Restart All"
     close_all: "Close All"
     deactivate_all: "Deactivate All"
+    restart_all_new_conversations: "Restart All with New Conversations"
+    deactivate_all_new_sessions: "Deactivate All with New Sessions"
     broadcast: "Broadcast to All Agents…"
     # The bulk actions' confirmations. %{agents} is a localized count and
     # noun together ("1 agent", "3 agents"), so the sentence can put them
@@ -550,6 +562,10 @@ menu:
       restart_all_title: "Restart All"
       restart_all_body: "Restart %{agents}? Every session is cleared and cannot be recovered."
       restart_all_keep_body: "Restart %{agents}? Each will resume its current conversation."
+      restart_all_new_title: "Restart All with New Conversations"
+      restart_all_new_body: "Restart %{agents} in new conversations? No current conversation will be resumed."
+      deactivate_all_new_title: "Deactivate All with New Sessions"
+      deactivate_all_new_body: "Deactivate %{agents} and start new sessions next time? No current conversation will be resumed."
       close_all_title: "Close All"
       close_all_body: "Close %{agents}? This closes every session and cannot be undone."
 
