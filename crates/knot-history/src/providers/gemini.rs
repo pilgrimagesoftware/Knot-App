@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::{GEMINI_TMP_DIR, MAX_SESSIONS};
+use crate::files::{remove_if_present, write_atomically};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, maybe_text, resolve_title};
@@ -162,35 +163,40 @@ impl HistoryProvider for GeminiProvider {
               .collect()
     }
 
-    fn delete_session(&self, id: &str, folder: &str) {
-        let Some(project_dir) = find_project_dir(folder)
-        else {
-            return;
-        };
-
-        let chats_dir = project_dir.join("chats");
-        if let Some(chat_file) = find_chat_file(&chats_dir, id) {
-            let _ = fs::remove_file(chat_file);
-        }
-
-        let logs_path = project_dir.join("logs.json");
-        let Ok(content) = fs::read_to_string(&logs_path)
-        else {
-            return;
-        };
-        // `Value`, not `LogEntry`: this path writes the file back out, and
-        // every entry it keeps has to survive the round trip byte for byte.
-        // Parsing into a struct would silently drop whatever fields Gemini
-        // records that Knot does not model.
-        let Ok(mut entries) = serde_json::from_str::<Vec<Value>>(&content)
-        else {
-            return;
-        };
-        entries.retain(|entry| entry.get("sessionId").and_then(Value::as_str) != Some(id));
-        if let Ok(updated) = serde_json::to_string_pretty(&entries) {
-            let _ = fs::write(&logs_path, updated);
+    fn delete_session(&self, id: &str, folder: &str) -> crate::Result<()> {
+        match find_project_dir(folder) {
+            Some(project_dir) => delete_in(&project_dir, id),
+            None => Ok(()),
         }
     }
+}
+
+/// Deletes session `id` from the Gemini project directory `project_dir`: its
+/// chat file, then its entries in `logs.json`.
+///
+/// `logs.json` holds every session's entries, so it is rewritten through a
+/// temporary and a rename: a failure part way leaves it as it was rather
+/// than truncated, which would lose every other session.
+fn delete_in(project_dir: &Path, id: &str) -> crate::Result<()> {
+    let chats_dir = project_dir.join("chats");
+    if let Some(chat_file) = find_chat_file(&chats_dir, id) {
+        remove_if_present(&chat_file)?;
+    }
+
+    let logs_path = project_dir.join("logs.json");
+    let content = match fs::read_to_string(&logs_path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    // `Value`, not `LogEntry`: this path writes the file back out, and every
+    // entry it keeps has to survive the round trip byte for byte. Parsing into
+    // a struct would silently drop whatever fields Gemini records that Knot
+    // does not model.
+    let mut entries = serde_json::from_str::<Vec<Value>>(&content)?;
+    entries.retain(|entry| entry.get("sessionId").and_then(Value::as_str) != Some(id));
+    write_atomically(&logs_path, &serde_json::to_string_pretty(&entries)?)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -264,5 +270,49 @@ mod tests {
 
         let title = title_from_chat_file(&chats_dir.join("session-2024-01-01T00-00-abcdef12.json"));
         assert_eq!(title.as_deref(), Some("the real title"));
+    }
+
+    const LOGS: &str = r#"[{"sessionId":"s1","type":"user","message":"one","timestamp":"2024-01-01T00:00:00Z","extra":1},{"sessionId":"s2","type":"user","message":"two","timestamp":"2024-01-02T00:00:00Z"}]"#;
+
+    #[test]
+    fn delete_drops_the_sessions_entries_and_keeps_the_rest() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project_dir = setup_project(tmp.path(), "/proj");
+        fs::write(project_dir.join("logs.json"), LOGS).unwrap();
+
+        delete_in(&project_dir, "s1").unwrap();
+
+        let kept: Vec<Value> =
+            serde_json::from_str(&fs::read_to_string(project_dir.join("logs.json")).unwrap())
+                .unwrap();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0]["sessionId"], "s2");
+    }
+
+    /// The rewrite cannot complete (a directory is in the temporary's way):
+    /// the error comes back and `logs.json` - every other session's entries
+    /// included - is exactly as it was.
+    #[test]
+    fn a_failed_rewrite_leaves_logs_json_intact() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project_dir = setup_project(tmp.path(), "/proj");
+        let logs = project_dir.join("logs.json");
+        fs::write(&logs, LOGS).unwrap();
+        fs::create_dir(logs.with_extension(crate::consts::REWRITE_TEMP_EXTENSION)).unwrap();
+
+        assert!(delete_in(&project_dir, "s1").is_err());
+
+        assert_eq!(fs::read_to_string(&logs).unwrap(), LOGS);
+    }
+
+    #[test]
+    fn an_unreadable_logs_json_is_an_error_and_is_left_alone() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project_dir = setup_project(tmp.path(), "/proj");
+        fs::write(project_dir.join("logs.json"), "not json").unwrap();
+
+        assert!(delete_in(&project_dir, "s1").is_err());
+        assert_eq!(fs::read_to_string(project_dir.join("logs.json")).unwrap(),
+                   "not json");
     }
 }

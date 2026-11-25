@@ -1,13 +1,14 @@
 //! Codex provider: `~/.codex/state_5.sqlite`, `threads` table.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, OpenFlags, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Deserialize;
 use time::OffsetDateTime;
 
 use crate::consts::{CODEX_DB_PATH, MAX_SESSIONS};
+use crate::files::remove_if_present;
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, jsonl_entries, maybe_text, resolve_title};
@@ -33,6 +34,28 @@ struct Payload {
 
 fn db_path() -> Option<PathBuf> {
     Some(home_dir()?.join(CODEX_DB_PATH))
+}
+
+/// Deletes session `id` from the Codex database at `db`: archives its row,
+/// then removes its rollout file.
+///
+/// Database first: if archiving fails - a database Codex holds locked, say -
+/// the file is still there and the session still whole. The other order left
+/// a listed row pointing at a deleted file.
+fn delete_in(db: &Path, id: &str) -> crate::Result<()> {
+    if !db.exists() {
+        return Ok(());
+    }
+    let conn = Connection::open(db)?;
+    let rollout = conn.query_row("SELECT rollout_path FROM threads WHERE id = ?1",
+                                 params![id],
+                                 |row| row.get::<_, String>(0))
+                      .optional()?;
+    conn.execute("UPDATE threads SET archived = 1 WHERE id = ?1", params![id])?;
+    if let Some(rollout) = rollout {
+        remove_if_present(Path::new(&rollout))?;
+    }
+    Ok(())
 }
 
 /// Parse a Codex rollout JSONL file for the first real `user_message`.
@@ -93,27 +116,11 @@ impl HistoryProvider for CodexProvider {
             .collect()
     }
 
-    fn delete_session(&self, id: &str, _folder: &str) {
-        let Some(path) = db_path()
-        else {
-            return;
-        };
-        if !path.exists() {
-            return;
+    fn delete_session(&self, id: &str, _folder: &str) -> crate::Result<()> {
+        match db_path() {
+            Some(path) => delete_in(&path, id),
+            None => Ok(()),
         }
-        let Ok(conn) = Connection::open(&path)
-        else {
-            return;
-        };
-
-        if let Ok(rollout_path) = conn.query_row("SELECT rollout_path FROM threads WHERE id = ?1",
-                                                 params![id],
-                                                 |row| row.get::<_, String>(0))
-        {
-            let _ = fs::remove_file(rollout_path);
-        }
-
-        let _ = conn.execute("UPDATE threads SET archived = 1 WHERE id = ?1", params![id]);
     }
 }
 
@@ -182,43 +189,63 @@ mod tests {
         assert_eq!(ids, vec!["t1", "t2"]);
     }
 
+    fn threads_db(path: &Path, with_archived_column: bool) -> Connection {
+        let conn = Connection::open(path).unwrap();
+        let archived = if with_archived_column {
+            ", archived INTEGER NOT NULL DEFAULT 0"
+        }
+        else {
+            ""
+        };
+        conn.execute_batch(&format!("CREATE TABLE threads (id TEXT PRIMARY KEY, rollout_path TEXT \
+                                     NOT NULL, title TEXT NOT NULL, updated_at INTEGER NOT NULL, \
+                                     cwd TEXT NOT NULL{archived});"))
+            .unwrap();
+        conn
+    }
+
     #[test]
     fn delete_marks_archived_and_removes_rollout() {
         let tmp = tempfile::tempdir().unwrap();
-        let db_path = tmp.path().join("state_5.sqlite");
-        let rollout_path = tmp.path().join("t1.jsonl");
-        fs::write(&rollout_path, "{}").unwrap();
-
-        let conn = Connection::open(&db_path).unwrap();
-        conn.execute_batch(
-                           "CREATE TABLE threads (
-                id TEXT PRIMARY KEY,
-                rollout_path TEXT NOT NULL,
-                title TEXT NOT NULL,
-                updated_at INTEGER NOT NULL,
-                cwd TEXT NOT NULL,
-                archived INTEGER NOT NULL DEFAULT 0
-            );",
-        )
-            .unwrap();
+        let db = tmp.path().join("state_5.sqlite");
+        let rollout = tmp.path().join("t1.jsonl");
+        fs::write(&rollout, "{}").unwrap();
+        let conn = threads_db(&db, true);
         conn.execute("INSERT INTO threads VALUES ('t1', ?1, 'first task', 200, '/proj', 0)",
-                     params![rollout_path.to_str().unwrap()])
+                     params![rollout.to_str().unwrap()])
             .unwrap();
 
-        if let Ok(path) = conn.query_row("SELECT rollout_path FROM threads WHERE id = 't1'",
-                                         [],
-                                         |row| row.get::<_, String>(0))
-        {
-            fs::remove_file(&path).unwrap();
-        }
-        conn.execute("UPDATE threads SET archived = 1 WHERE id = 't1'", [])
-            .unwrap();
+        delete_in(&db, "t1").unwrap();
 
-        assert!(!rollout_path.exists());
+        assert!(!rollout.exists());
         let archived: i64 = conn.query_row("SELECT archived FROM threads WHERE id = 't1'",
                                            [],
                                            |row| row.get(0))
                                 .unwrap();
         assert_eq!(archived, 1);
+    }
+
+    /// Archiving fails (here the table has no `archived` column, as a database
+    /// Codex holds locked fails too): the error comes back, and the rollout
+    /// file is still there, so the session is still whole.
+    #[test]
+    fn a_failed_archive_keeps_the_rollout_and_reports_the_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("state_5.sqlite");
+        let rollout = tmp.path().join("t1.jsonl");
+        fs::write(&rollout, "{}").unwrap();
+        let conn = threads_db(&db, false);
+        conn.execute("INSERT INTO threads VALUES ('t1', ?1, 'first task', 200, '/proj')",
+                     params![rollout.to_str().unwrap()])
+            .unwrap();
+
+        assert!(delete_in(&db, "t1").is_err());
+        assert!(rollout.exists(), "the file outlives a failed archive");
+    }
+
+    #[test]
+    fn a_missing_database_has_nothing_to_delete() {
+        let tmp = tempfile::tempdir().unwrap();
+        delete_in(&tmp.path().join("absent.sqlite"), "t1").unwrap();
     }
 }

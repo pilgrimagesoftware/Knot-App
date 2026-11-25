@@ -103,9 +103,19 @@ reloading.
 ### Requirement: Delete then backfill
 
 Deleting a session SHALL remove its files via the provider and then refresh the
-`(agent type, folder)` cache so the list reflects the removal.
+`(agent type, folder)` cache so the list reflects the removal. A delete that
+fails SHALL return its error rather than report success; files already gone
+SHALL count as deleted. A file another tool owns and that holds other
+sessions (Gemini's `logs.json`) SHALL be rewritten whole or left as it was,
+and Codex's database row SHALL be archived before its rollout file is removed.
 
 #### Scenario: List shrinks after delete
 
 - **WHEN** a session is deleted
 - **THEN** a subsequent read of that key no longer includes it
+
+#### Scenario: A delete that fails
+
+- **WHEN** a session's files cannot be removed or rewritten
+- **THEN** the delete returns an error, the files it could not change are as
+  they were, and the list still shows the session

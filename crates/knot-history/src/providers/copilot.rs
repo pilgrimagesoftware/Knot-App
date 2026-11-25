@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::{COPILOT_SESSION_STATE_DIR, MAX_SESSIONS};
+use crate::files::remove_if_present;
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, jsonl_entries, maybe_text, resolve_title};
@@ -120,13 +121,17 @@ impl HistoryProvider for CopilotProvider {
         summaries
     }
 
-    fn delete_session(&self, id: &str, _folder: &str) {
-        let Some(base) = base_dir()
-        else {
-            return;
-        };
-        let _ = fs::remove_dir_all(base.join(id));
+    fn delete_session(&self, id: &str, _folder: &str) -> crate::Result<()> {
+        match base_dir() {
+            Some(base) => delete_in(&base, id),
+            None => Ok(()),
+        }
     }
+}
+
+/// Deletes session `id`'s state directory under Copilot's `base`.
+fn delete_in(base: &std::path::Path, id: &str) -> crate::Result<()> {
+    Ok(remove_if_present(&base.join(id))?)
 }
 
 #[cfg(test)]
@@ -167,5 +172,23 @@ mod tests {
 
         assert_eq!(title_from_events(&events_path).as_deref(),
                    Some("the real title"));
+    }
+
+    /// A session directory that cannot be removed (its parent is read-only)
+    /// is an error, not a delete reported as done.
+    #[cfg(unix)]
+    #[test]
+    fn a_session_that_cannot_be_removed_is_an_error() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("session-state");
+        fs::create_dir_all(base.join("s1")).unwrap();
+        fs::set_permissions(&base, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = delete_in(&base, "s1");
+
+        fs::set_permissions(&base, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(result.is_err());
+        assert!(base.join("s1").exists());
     }
 }
