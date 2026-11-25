@@ -13,6 +13,7 @@ mod checklist;
 mod duplicate;
 mod edit;
 mod helpers;
+pub mod layout;
 mod lifecycle;
 mod mcp_handover;
 mod ordering;

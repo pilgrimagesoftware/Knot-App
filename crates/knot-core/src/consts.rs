@@ -19,6 +19,15 @@ pub const WORKSPACES_FILE: &str = "workspaces.json";
 /// `LayoutMode::Single`, the enum's default.)
 pub const WORKSPACE_SPLIT_RATIO_DEFAULT: f64 = 0.5;
 
+/// The nearest a layout divider may sit to either edge of a workspace
+/// window's content area, as a fraction of it (`workspace-layouts`,
+/// "Dividers"). Shared by the store, which clamps a saved ratio on load, and
+/// the window, which clamps a drag, so there is one source for the bounds.
+pub const WORKSPACE_SPLIT_RATIO_MIN: f64 = 0.25;
+
+/// The far bound of [`WORKSPACE_SPLIT_RATIO_MIN`].
+pub const WORKSPACE_SPLIT_RATIO_MAX: f64 = 0.75;
+
 /// Per-workspace UI state, keyed by workspace id.
 ///
 /// Not a collection: a lookup table the app writes about itself. Every read
