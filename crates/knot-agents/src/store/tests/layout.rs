@@ -2,7 +2,9 @@
 //! a new companion, and a saved layout loading. The rules themselves are
 //! tested in `layout/tests.rs`; this covers that every path reaches them.
 
-use knot_core::LayoutMode;
+use std::collections::BTreeMap;
+
+use knot_core::{LayoutMode, WorkspaceUiState};
 
 use super::super::*;
 use crate::CompanionOrigin;
@@ -153,4 +155,41 @@ fn a_companion_created_another_way_leaves_the_layout_alone_unless_the_owner_is_s
     let beside = companion(&mut store, b, Some(CompanionOrigin::Other));
     assert_eq!(store.workspace_ui(workspace).active_agent_ids,
                vec![b, c, beside]);
+}
+
+#[test]
+fn a_grid_with_a_missing_agent_loads_as_three_pane() {
+    let (mut store, workspace, [a, b, _c, d]) = grid();
+    // The saved grid names an agent this store does not hold in pane 2.
+    let ui = WorkspaceUiState { layout_mode: LayoutMode::GridFourPane,
+                                active_agent_ids: vec![a, b, Uuid::new_v4(), d],
+                                ..Default::default() };
+    store.set_workspace_ui(BTreeMap::from([(workspace, ui)]));
+    let ui = store.workspace_ui(workspace);
+    assert_eq!(ui.layout_mode, LayoutMode::ThreePane);
+    assert_eq!(ui.active_agent_ids, vec![a, b, d]);
+}
+
+#[test]
+fn a_stale_focused_index_is_clamped_on_load() {
+    let (mut store, workspace, [a, b, ..]) = grid();
+    let ui = WorkspaceUiState { layout_mode: LayoutMode::SplitVertical,
+                                active_agent_ids: vec![a, b],
+                                focused_pane_index: 9,
+                                ..Default::default() };
+    store.set_workspace_ui(BTreeMap::from([(workspace, ui)]));
+    let ui = store.workspace_ui(workspace);
+    assert_eq!(ui.active_agent_ids, vec![a, b]);
+    assert_eq!(ui.focused_pane_index, 1);
+}
+
+#[test]
+fn a_ui_entry_for_a_workspace_the_store_does_not_hold_is_left_as_it_is() {
+    let mut store = AgentStore::new();
+    let ghost = Uuid::new_v4();
+    let ui = WorkspaceUiState { layout_mode: LayoutMode::SplitVertical,
+                                active_agent_ids: vec![Uuid::new_v4(), Uuid::new_v4()],
+                                ..Default::default() };
+    store.set_workspace_ui(BTreeMap::from([(ghost, ui.clone())]));
+    assert_eq!(store.workspace_ui(ghost), ui);
 }

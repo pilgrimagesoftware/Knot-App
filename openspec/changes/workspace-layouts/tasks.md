@@ -9,7 +9,7 @@
 
 - [x] 2.1 `store/layout.rs`: `select`, `set_mode`, `add_companion`, `remove` and `normalize` as pure functions over the UI state, the agent order and companions. Verify: one unit test per `workspace-layouts` scenario in "Changing the layout mode", "Selecting an agent from the sidebar", "Companion layout", "A new companion opens beside its creator", "A companion whose owner is not shown", "Moving an agent to another workspace", "Removal collapses the layout" and "The saved layout is restored".
 - [x] 2.2 Wire `AgentStore::remove`, `move_to_workspace` and `create_shell_companion` through those rules, and drop the `UNWIRED(#321)` markers on the layout setters. Verify: store tests check that removing a pane's agent collapses the mode, that a move leaves the target layout alone, and that a companion opens beside its owner.
-- [ ] 2.3 Normalize every workspace's UI state when the store loads it. Verify: a test loads a grid with a missing agent and gets three-pane, and a test with a stale focused index gets it clamped.
+- [x] 2.3 Normalize every workspace's UI state when the store loads it. Verify: a test loads a grid with a missing agent and gets three-pane, and a test with a stale focused index gets it clamped.
 
 ## 3. Geometry and divider (`knot`)
 

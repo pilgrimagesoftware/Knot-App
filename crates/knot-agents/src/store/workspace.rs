@@ -61,8 +61,22 @@ impl AgentStore {
     }
 
     /// Replace the whole UI-state map, as the store is loaded from settings.
+    ///
+    /// Each workspace's state is normalized against the agents it holds, so a
+    /// layout saved before an agent went away, or by another version, opens
+    /// as one the window can draw (`workspace-layouts`, "The saved layout is
+    /// restored"). An entry for a workspace the store does not hold is kept
+    /// as it is: there is nothing to check it against, and the load prunes it.
     pub fn set_workspace_ui(&mut self, ui: std::collections::BTreeMap<Uuid, WorkspaceUiState>) {
         self.workspace_ui = ui;
+        for (workspace_id, state) in &mut self.workspace_ui {
+            if let Some(workspace) = self.workspaces
+                                         .iter()
+                                         .find(|workspace| workspace.id == *workspace_id)
+            {
+                *state = layout::normalize(state, &workspace.agent_ids);
+            }
+        }
     }
 
     /// Lays out `workspace` for a companion just created for `owner`; see
