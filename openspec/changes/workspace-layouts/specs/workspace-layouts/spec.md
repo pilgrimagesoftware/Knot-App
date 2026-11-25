@@ -307,10 +307,11 @@ unchanged; it appears in the sidebar only.
 
 Removing an agent that is in a pane SHALL remove its pane: a grid left with
 three agents SHALL become three-pane, any multi-pane layout left with two a
-split vertical, and any layout left with fewer than two single. The focused
-pane SHALL be clamped to the panes that remain. A single layout whose agent
-is removed SHALL show the workspace's first remaining agent. An owner's
-companions are removed first (`agent-lifecycle`, "Agent removal").
+split vertical, and any layout left with fewer than two single. Focus SHALL
+stay on the focused agent when it remains, and be clamped only when it is the
+one removed. A single layout whose agent is removed SHALL show the workspace's
+first remaining agent. An owner's companions are removed first
+(`agent-lifecycle`, "Agent removal").
 
 #### Scenario: Grid loses a pane
 
@@ -321,6 +322,11 @@ companions are removed first (`agent-lifecycle`, "Agent removal").
 
 - **WHEN** a split shows A and its shell companion S, and S's shell exits
 - **THEN** A is shown alone
+
+#### Scenario: Focus follows its agent
+
+- **WHEN** a three-pane layout shows A, B, C with B focused, and A is removed
+- **THEN** B and C are shown and B is still focused
 
 ### Requirement: Moving an agent to another workspace
 

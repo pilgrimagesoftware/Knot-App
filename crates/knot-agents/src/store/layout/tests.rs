@@ -267,6 +267,25 @@ fn grid_loses_a_pane() {
 }
 
 #[test]
+fn focus_stays_on_the_focused_agent_when_a_pane_before_it_goes() {
+    let ui = state(LayoutMode::ThreePane, "abc", 1);
+    let next = remove(&ui, &ids("bc"), id('a'));
+    assert_eq!(shown(&next), ids("bc"));
+    assert_eq!(next.focused_pane_index, 0, "B is still focused, now pane 0");
+}
+
+#[test]
+fn focus_is_clamped_only_when_the_focused_agent_itself_goes() {
+    let ui = state(LayoutMode::ThreePane, "abc", 2);
+    let next = remove(&ui, &ids("ab"), id('c'));
+    assert_eq!(next.focused_pane_index, 1,
+               "C was last, so focus lands on B");
+    let ui = state(LayoutMode::ThreePane, "abc", 1);
+    let next = remove(&ui, &ids("ac"), id('b'));
+    assert_eq!(next.focused_pane_index, 1, "the pane that took B's place");
+}
+
+#[test]
 fn split_loses_a_pane() {
     let ui = state(LayoutMode::SplitVertical, "as", 1);
     let next = remove(&ui, &ids("a"), id('s'));
