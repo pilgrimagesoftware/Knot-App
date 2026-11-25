@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-LIMIT="${1:-700}"
+LIMIT="${1:-500}"
 
 if [ "$LIMIT" -lt 1 ]; then
     printf 'check-file-size: limit must be a positive integer, got %s\n' "$LIMIT" >&2
