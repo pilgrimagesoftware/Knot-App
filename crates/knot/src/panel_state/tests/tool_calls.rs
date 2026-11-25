@@ -33,7 +33,8 @@ fn tool_call_lifecycle_builds_one_card() {
     assert_eq!(
                state.messages,
                vec![PanelMessage::ToolCall(Box::new(
-        ToolCallCard { id:        "tc1".to_string(),
+        ToolCallCard { subagent:  Vec::new(),
+                       id:        "tc1".to_string(),
                        kind:      "execute".to_string(),
                        title:     String::new(),
                        status:    "completed".to_string(),

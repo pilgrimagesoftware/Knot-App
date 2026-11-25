@@ -27,7 +27,8 @@ fn update(id: &str, status: &str, content: Vec<ToolCallContent>) -> SessionEvent
 }
 
 fn text(text: &str) -> SessionEvent {
-    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(), })
+    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(),
+                                                    meta: None, })
 }
 
 fn diff(path: &str) -> ToolCallContent {

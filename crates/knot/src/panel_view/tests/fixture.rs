@@ -40,12 +40,14 @@ pub(super) fn conversation_with_a_run() -> PanelState {
     state.apply(start("b", "execute"));
     state.apply(knot_acp::SessionEvent::Update(knot_acp::SessionUpdate::TextDelta {
         text: "done".to_string(),
+        meta: None,
     }));
     state
 }
 
 pub(super) fn tool_call(status: &str) -> crate::panel_state::ToolCallCard {
-    crate::panel_state::ToolCallCard { id:        "tc1".to_owned(),
+    crate::panel_state::ToolCallCard { subagent:  Vec::new(),
+                                       id:        "tc1".to_owned(),
                                        kind:      "execute".to_owned(),
                                        title:     "cargo test".to_owned(),
                                        status:    status.to_owned(),

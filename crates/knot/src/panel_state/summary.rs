@@ -41,6 +41,18 @@ const KIND_READ: &str = "read";
 const KIND_EXECUTE: &str = "execute";
 
 impl ToolRunSummary {
+    /// What `cards`, taken as one run, did - a compact run's line, and the
+    /// count line under a delegation card for its subagent's calls.
+    pub fn of_cards<'a>(cards: impl IntoIterator<Item = &'a ToolCallCard>) -> Self {
+        let mut summary = Self::default();
+        let mut edited_paths = BTreeSet::new();
+        for card in cards {
+            summary.absorb(card, &mut edited_paths);
+        }
+        summary.files_edited += edited_paths.len();
+        summary
+    }
+
     /// Folds one card into the summary. `edited_paths` collects the
     /// distinct files named by diff blocks, so a file edited twice in one
     /// run counts once.
@@ -115,17 +127,15 @@ impl PanelState {
     /// visible rows are ever asked - the virtualizer draws a handful at a
     /// time.
     pub fn tool_run_summary(&self, index: usize) -> ToolRunSummary {
-        let mut summary = ToolRunSummary::default();
-        let mut edited_paths = BTreeSet::new();
-        for message in &self.messages[index.min(self.messages.len())..] {
-            let PanelMessage::ToolCall(card) = message
-            else {
-                break;
-            };
-            summary.absorb(card, &mut edited_paths);
-        }
-        summary.files_edited += edited_paths.len();
-        summary
+        let run =
+            self.messages[index.min(self.messages.len())..].iter()
+                                                           .map_while(|message| match message {
+                                                               PanelMessage::ToolCall(card) => {
+                                                                   Some(card.as_ref())
+                                                               }
+                                                               _ => None,
+                                                           });
+        ToolRunSummary::of_cards(run)
     }
 
     /// The id of the first tool call of the run containing `index` - the

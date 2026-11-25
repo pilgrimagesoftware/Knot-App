@@ -5,4 +5,5 @@ mod fixture;
 mod permission_prompt;
 mod rows;
 mod shell;
+mod subagent_activity;
 mod tool_card;

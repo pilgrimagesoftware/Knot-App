@@ -46,7 +46,7 @@ async fn ask(answer: impl FnOnce(&knot_acp::QuestionRequest) -> FormAnswer) -> O
                     client.answer_question(&request, answer(&request));
                 }
             }
-            SessionEvent::Update(SessionUpdate::TextDelta { text }) => reply.push_str(&text),
+            SessionEvent::Update(SessionUpdate::TextDelta { text, .. }) => reply.push_str(&text),
             SessionEvent::Update(SessionUpdate::TurnEnd { .. }) => break,
             _ => {}
         }

@@ -14,7 +14,8 @@ fn user(text: &str) -> SessionEvent {
 }
 
 fn agent(text: &str) -> SessionEvent {
-    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(), })
+    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(),
+                                                    meta: None, })
 }
 
 #[test]

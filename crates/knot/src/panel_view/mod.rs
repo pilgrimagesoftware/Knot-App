@@ -24,6 +24,7 @@ mod rows;
 mod scroll;
 mod shell_card;
 mod style;
+mod subagent_activity;
 mod summary_row;
 mod tool_call;
 

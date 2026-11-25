@@ -220,6 +220,12 @@ pub enum SessionUpdate {
     },
     TextDelta {
         text: String,
+        /// The chunk's `_meta` envelope, verbatim (ACP "Extensibility": any
+        /// update may carry `_meta`). Read for one vendor key:
+        /// claude-agent-acp stamps `claudeCode.parentToolUseId` on every
+        /// update a subagent makes, text included, so the client can tell
+        /// the subagent's prose from the main agent's (#476).
+        meta: Option<Value>,
     },
     /// A piece of one of the user's own messages. Agents send these when
     /// `session/load` replays a conversation, so the client can show the
@@ -313,6 +319,7 @@ impl SessionUpdate {
             },
             Some("agent_message_chunk") | Some("text_delta") => SessionUpdate::TextDelta {
                 text: text_content(&update),
+                meta: update.get("_meta").cloned(),
             },
             Some("user_message_chunk") => SessionUpdate::UserMessageChunk {
                 text: text_content(&update),

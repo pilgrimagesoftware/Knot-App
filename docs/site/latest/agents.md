@@ -217,7 +217,16 @@ A non-shell agent's pane is a conversation panel: the messages you and the agent
 stream, each tool call as its own card - with an icon for the tool and, for a file edit, an
 added/removed line diff - and the shell commands you run from the prompt. A completed tool call
 collapses to its header, while failed and running calls stay open and any call can be opened or
-closed by hand. An active turn shows a turn-in-progress indicator as the conversation's last row,
+closed by hand.
+
+When the agent hands work to a subagent, what the subagent does stays inside the card of the call
+that launched it, so a subagent working beside the agent never cuts into the agent's own reply.
+The card counts the subagent's tool calls under its header (`5 tool calls · 3 commands run`);
+open it to see them in order, with any text the subagent wrote between them, each call a card you
+can open on its own. Knot reads this from Claude Code; an agent that doesn't say which calls are a
+subagent's shows them in the conversation as before.
+
+An active turn shows a turn-in-progress indicator as the conversation's last row,
 below any permission prompt. Beside it, the turn's running time and roughly how much it has written, as
 Claude Code shows them: `42s · ~1.2k tokens`. The time is exact; the token count is an estimate
 from the text the agent has streamed (about four characters to a token), so a turn that spends a

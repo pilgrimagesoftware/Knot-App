@@ -46,7 +46,7 @@ fn permission(tool_call_id: &str, title: Option<&str>) -> PermissionRequest {
 fn display_name_prefers_request_title_then_card_title_kind_then_id() {
     let mut state = PanelState::new();
     state.messages
-         .push(PanelMessage::ToolCall(Box::new(ToolCallCard { id:        "tc1".to_string(),
+         .push(PanelMessage::ToolCall(Box::new(ToolCallCard { subagent: Vec::new(), id:        "tc1".to_string(),
                                                      kind:      "read".to_string(),
                                                      title:
                                                          "Reading configuration file".to_string(),
@@ -61,7 +61,8 @@ fn display_name_prefers_request_title_then_card_title_kind_then_id() {
                "Reading configuration file");
 
     state.messages
-         .push(PanelMessage::ToolCall(Box::new(ToolCallCard { id:        "tc2".to_string(),
+         .push(PanelMessage::ToolCall(Box::new(ToolCallCard { subagent:  Vec::new(),
+                                                              id:        "tc2".to_string(),
                                                               kind:      "execute".to_string(),
                                                               title:     String::new(),
                                                               status:    "pending".to_string(),
