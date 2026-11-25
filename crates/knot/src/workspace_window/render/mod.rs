@@ -25,6 +25,7 @@ pub(super) mod mcp_pane;
 mod openspec_pane;
 mod openspec_toolbar;
 mod overview;
+mod panes;
 mod processes_pane;
 mod processes_summary;
 pub(super) mod pull_requests_pane;

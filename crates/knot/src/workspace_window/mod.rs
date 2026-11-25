@@ -41,6 +41,8 @@ mod key_hints;
 #[cfg(test)]
 mod key_hints_tests;
 mod layout;
+#[cfg(test)]
+mod layout_panes_tests;
 mod layout_select;
 #[cfg(test)]
 mod layout_select_tests;

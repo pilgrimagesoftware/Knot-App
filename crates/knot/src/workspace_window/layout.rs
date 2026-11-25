@@ -12,7 +12,7 @@
 //! `persist_workspace_ui` is the write the bounds observer's doc comment
 //! calls out as too hot to run per frame.
 //!
-//! Not here: drawing panes (task 4.1), and holding terminals at their
+//! Not here: drawing panes (`render::panes`), and holding terminals at their
 //! pre-drag size while a drag runs (task 6, `held_sizes`).
 
 use std::collections::BTreeMap;
