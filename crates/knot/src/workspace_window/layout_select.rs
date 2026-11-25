@@ -78,6 +78,34 @@ impl WorkspaceWindow {
         }
     }
 
+    /// Shows a companion the user just created, which the store has already
+    /// opened beside its owner and focused (`workspace-layouts`, "A new
+    /// companion opens beside its creator"): selected, in the terminal view,
+    /// started as its activation mode starts it, and its layout saved. An
+    /// owner the creation put in a pane starts, as a user action showing it
+    /// would ("Showing an agent in a pane starts it").
+    pub(in crate::workspace_window) fn show_created_companion(&mut self, id: Uuid,
+                                                              cx: &mut Context<Self>) {
+        self.show_created_agent(id, cx);
+        let owner = {
+            let mut store = self.store.lock();
+            let owner = store.agent(id).and_then(|agent| agent.created_by);
+            let shown = owner.filter(|owner| {
+                                 store.workspace_ui(self.workspace_id)
+                                      .active_agent_ids
+                                      .contains(owner)
+                             });
+            if let Some(owner) = shown {
+                store.set_activated(owner, true);
+            }
+            shown
+        };
+        if let Some(owner) = owner {
+            self.start_sessions(owner, cx);
+        }
+        self.persist_workspace_ui(cx);
+    }
+
     /// Focuses pane `index`, as clicking in it does: its agent becomes the
     /// selection and, if it is stopped, starts, as selecting it would.
     pub(super) fn focus_pane(&mut self, index: usize, cx: &mut Context<Self>) {

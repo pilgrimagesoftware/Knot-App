@@ -93,16 +93,6 @@ impl WorkspaceWindow {
         cx.notify();
     }
 
-    /// Shows a companion the user just created, which the store has already
-    /// opened beside its owner and focused (`workspace-layouts`, "A new
-    /// companion opens beside its creator"): selected, in the terminal view,
-    /// started as its activation mode starts it, and its layout saved.
-    pub(in crate::workspace_window) fn show_created_companion(&mut self, id: Uuid,
-                                                              cx: &mut Context<Self>) {
-        self.show_created_agent(id, cx);
-        self.persist_workspace_ui(cx);
-    }
-
     /// Duplicates `source` (see `AgentStore::duplicate`), saves the roster
     /// and shows the copy, returning its id. `None` when `source` is gone.
     ///

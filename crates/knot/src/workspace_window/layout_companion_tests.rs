@@ -107,6 +107,13 @@ fn a_user_companion_of_an_owner_that_is_not_shown_makes_an_owner_and_companion_s
     assert_eq!(ui.active_agent_ids, [f.id("C"), companion]);
     assert_eq!(ui.focused_pane_index, 1);
     assert_eq!(selected_id(&mut f), Some(companion));
+    // Showing the owner in a pane was the user's action, so it starts.
+    let owner = f.id("C");
+    assert!(f.store
+             .lock()
+             .agent(owner)
+             .is_some_and(|agent| agent.activated),
+            "the owner the companion brought into view is started");
 }
 
 #[gpui_kit::test]
