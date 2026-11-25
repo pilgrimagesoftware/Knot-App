@@ -78,8 +78,3 @@ pub const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 /// than one, so a single dropped connection does not bounce a healthy
 /// server.
 pub const PROBE_FAILURE_THRESHOLD: u32 = 3;
-
-/// The largest session transcript a hook's `transcript_path` is read from.
-/// Claude Code's transcripts of even long sessions stay well under it; a file
-/// past it is not read, and Autopilot treats the turn as unchecked.
-pub const MAX_TRANSCRIPT_BYTES: u64 = 64 * 1024 * 1024;

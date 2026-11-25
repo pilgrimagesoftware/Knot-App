@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
-use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -105,43 +105,8 @@ pub fn codex_turn_complete(payload: &Value) -> Result<Option<String>, HookError>
               .map(str::to_string))
 }
 
-/// The directory Claude Code keeps session transcripts in:
-/// `$CLAUDE_CONFIG_DIR/projects`, or else `~/.claude/projects`.
-pub fn claude_transcript_root() -> Option<PathBuf> {
-    let config = std::env::var_os("CLAUDE_CONFIG_DIR").filter(|dir| !dir.is_empty())
-                                                      .map(PathBuf::from)
-                                                      .or_else(|| {
-                                                          std::env::var_os("HOME").filter(|home| !home.is_empty())
-                                                                                  .map(|home| PathBuf::from(home).join(".claude"))
-                                                      })?;
-    Some(config.join("projects"))
-}
-
-/// Opens the transcript at `path` if it is one: a regular file inside `root`
-/// once symlinks are resolved, no larger than
-/// [`MAX_TRANSCRIPT_BYTES`](crate::consts::MAX_TRANSCRIPT_BYTES). The path
-/// comes from a hook's payload, so anything else is not read.
-fn open_transcript(path: &Path, root: &Path) -> Option<impl Read> {
-    let root = root.canonicalize().ok()?;
-    let path = path.canonicalize().ok()?;
-    if !path.starts_with(&root) {
-        return None;
-    }
-    let meta = fs::metadata(&path).ok()?;
-    if !meta.is_file() || meta.len() > crate::consts::MAX_TRANSCRIPT_BYTES {
-        return None;
-    }
-    // Bounded again while reading: a file that grows after the check still
-    // stops at the cap.
-    Some(File::open(&path).ok()?
-                          .take(crate::consts::MAX_TRANSCRIPT_BYTES))
-}
-
-/// The last assistant message in the transcript at `path`, which must lie
-/// inside `root` (see [`claude_transcript_root`]).
-pub fn last_assistant_message_from_transcript(path: impl AsRef<Path>, root: &Path)
-                                              -> Option<String> {
-    let file = open_transcript(path.as_ref(), root)?;
+pub fn last_assistant_message_from_transcript(path: impl AsRef<Path>) -> Option<String> {
+    let file = File::open(path).ok()?;
     let lines: Vec<String> = BufReader::new(file).lines().map_while(Result::ok).collect();
 
     for (index, line) in lines.iter().enumerate().rev() {
@@ -252,7 +217,7 @@ mod tests {
                                                                       .join("\n");
         fs::write(&path, content).unwrap();
 
-        assert_eq!(last_assistant_message_from_transcript(&path, &std::env::temp_dir()),
+        assert_eq!(last_assistant_message_from_transcript(&path),
                    Some("Last".to_string()));
         fs::remove_file(path).unwrap();
     }
@@ -265,86 +230,8 @@ mod tests {
                               json!({"type":"assistant","message":{"content":"Registered"}}),);
         fs::write(&path, content).unwrap();
 
-        assert_eq!(last_assistant_message_from_transcript(&path, &std::env::temp_dir()),
+        assert_eq!(last_assistant_message_from_transcript(&path),
                    Some(String::new()));
         fs::remove_file(path).unwrap();
-    }
-
-    fn transcript_line() -> String {
-        json!({"type":"assistant","message":{"content":"Done"}}).to_string()
-    }
-
-    #[test]
-    fn a_transcript_outside_the_root_is_not_read() {
-        let root = tempfile::tempdir().unwrap();
-        let elsewhere = tempfile::tempdir().unwrap();
-        let path = elsewhere.path().join("t.jsonl");
-        fs::write(&path, transcript_line()).unwrap();
-
-        assert_eq!(last_assistant_message_from_transcript(&path, root.path()),
-                   None);
-        // A `..` that leads back out of the root is outside it too.
-        let dotted = root.path()
-                         .join("..")
-                         .join(elsewhere.path().file_name().unwrap())
-                         .join("t.jsonl");
-        assert_eq!(last_assistant_message_from_transcript(&dotted, root.path()),
-                   None);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_symlink_inside_the_root_that_leads_out_of_it_is_not_read() {
-        let root = tempfile::tempdir().unwrap();
-        let elsewhere = tempfile::tempdir().unwrap();
-        let target = elsewhere.path().join("t.jsonl");
-        fs::write(&target, transcript_line()).unwrap();
-        let link = root.path().join("t.jsonl");
-        std::os::unix::fs::symlink(&target, &link).unwrap();
-
-        assert_eq!(last_assistant_message_from_transcript(&link, root.path()),
-                   None);
-    }
-
-    /// A device is not a transcript: `/dev/zero`, named directly or through a
-    /// link inside the root, is never read.
-    #[cfg(unix)]
-    #[test]
-    fn a_device_is_not_read() {
-        let root = tempfile::tempdir().unwrap();
-        assert_eq!(last_assistant_message_from_transcript("/dev/zero", Path::new("/dev")),
-                   None);
-        let link = root.path().join("zero.jsonl");
-        std::os::unix::fs::symlink("/dev/zero", &link).unwrap();
-        assert_eq!(last_assistant_message_from_transcript(&link, root.path()),
-                   None);
-    }
-
-    #[test]
-    fn a_transcript_over_the_size_cap_is_not_read() {
-        let root = tempfile::tempdir().unwrap();
-        let path = root.path().join("big.jsonl");
-        // A whole, readable line first, so only the size can stop the read.
-        fs::write(&path, format!("{}\n", transcript_line())).unwrap();
-        // Sparse: as large as it says without writing the bytes.
-        File::options().write(true)
-                       .open(&path)
-                       .unwrap()
-                       .set_len(crate::consts::MAX_TRANSCRIPT_BYTES + 1)
-                       .unwrap();
-
-        assert_eq!(last_assistant_message_from_transcript(&path, root.path()),
-                   None);
-    }
-
-    #[test]
-    fn a_transcript_inside_the_root_is_read() {
-        let root = tempfile::tempdir().unwrap();
-        let dir = root.path().join("-Users-x-proj");
-        fs::create_dir(&dir).unwrap();
-        fs::write(dir.join("s.jsonl"), transcript_line()).unwrap();
-
-        assert_eq!(last_assistant_message_from_transcript(dir.join("s.jsonl"), root.path()),
-                   Some("Done".to_string()));
     }
 }

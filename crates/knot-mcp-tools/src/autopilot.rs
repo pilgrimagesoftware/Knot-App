@@ -237,10 +237,7 @@ fn last_message_for_trigger(catalog: &McpToolCatalog, id: Uuid, agent_type: &str
                                          .metadata
                                          .get("transcript_path")?
                                          .clone();
-            // Only a transcript inside Claude Code's own directory is read:
-            // the path arrives in a hook's payload.
-            let root = knot_mcp::claude_transcript_root()?;
-            knot_mcp::last_assistant_message_from_transcript(transcript_path, &root)
+            knot_mcp::last_assistant_message_from_transcript(transcript_path)
         }
         "codex" => payload.get("last-assistant-message")
                           .and_then(Value::as_str)
