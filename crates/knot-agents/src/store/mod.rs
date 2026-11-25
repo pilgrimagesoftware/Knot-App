@@ -68,7 +68,7 @@ pub struct CreateOptions {
     /// For a companion, how it came to be created, which decides what its
     /// creation does to its owner's workspace layout (`workspace-layouts`).
     /// `None` leaves the layout alone, which is what every path that has
-    /// not decided yet gets - the handover terminal among them. A caller
+    /// not decided yet gets. A caller
     /// that creates a companion should say whether the user asked for it
     /// ([`layout::CompanionOrigin::User`]) or not.
     pub companion_origin: Option<layout::CompanionOrigin>,
