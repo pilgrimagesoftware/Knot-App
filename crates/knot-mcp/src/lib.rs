@@ -22,8 +22,8 @@ pub use backoff::backoff_delay;
 pub use consts::{DEFAULT_PORT, LOG_FILE_NAME};
 pub use error::{McpError, Result};
 pub use hooks::{
-    AgentHookHandler, HookError, HookRequest, HookStatus, claude_status, codex_turn_complete,
-    extract_metadata, last_assistant_message_from_transcript,
+    AgentHookHandler, HookError, HookRequest, HookStatus, claude_status, claude_transcript_root,
+    codex_turn_complete, extract_metadata, last_assistant_message_from_transcript,
 };
 pub use log::{Entry, Level, Logger, Subject, describe_call};
 pub use probe::{ProbeFailures, probe_health};
