@@ -1,97 +1,120 @@
 # Tasks
 
-Open questions Q1–Q5 in design.md are decided before task 2 starts. Q1 adds
-task 6, and Q3 sets the scope of task 4.2.
+The design decisions are settled (design.md, "Decided questions"). Section
+references (D1–D10) point to design.md.
 
 ## 1. Credentials (`knot-core`, `knot-mcp`)
 
-- [ ] 1.1 Credential type and registry:
-  - 32 bytes from `getrandom`, base64url, `knot_a_`/`knot_c_` prefixes.
-  - The registry stores SHA-256 digests mapped to principal (`Agent(id)` |
-    `External`).
-  - `issue_agent(id)`, `revoke_agent(id)` and `authenticate(&str) ->
-    Option<Principal>` using `subtle` constant-time comparison over every
-    digest.
+- [ ] 1.1 Credential registry:
+  - 32 bytes from `getrandom`, base64url, with prefixes `knot_a_`, `knot_h_`
+    and `knot_c_` (D1/D2).
+  - Store SHA-256 digests mapped to a principal (`Agent(id)`,
+    `AgentHooks(id)` or `External`) and the routes it is accepted on.
+  - `issue_agent_pair(id)` and `rotate_agent_pair(id)` revoke and issue under
+    one lock (D8). Also `revoke_agent(id)`, and `authenticate(&str) ->
+    Option<Principal>` using `subtle` over every digest.
   - Constants in `consts.rs`.
 
-  Verify: unit tests for issue, authenticate, revoke, an unknown credential
-  and a wrong prefix. No `Debug` or `Display` shows the secret.
+  Verify: unit tests for issue, authenticate, revoke and rotate (the old pair
+  is refused, the new pair accepted, and no window where both are valid,
+  checked by a test that authenticates concurrently with rotation), plus an
+  unknown credential and a wrong prefix. No `Debug`/`Display` shows a secret.
 - [ ] 1.2 Client token in the Keychain (`security-framework`, service
-  `com.pilgrimagesoftware.knot.mcp-client-token`): load on startup, create if
-  absent, regenerate. Verify: a test behind a trait seam with an in-memory
-  store. The Keychain is exercised manually on a signed build.
-- [ ] 1.3 Add the credential patterns to the bug-report scrubber
-  (`bug_report/scrub.rs`). Verify: a scrub test with both prefixes.
-- [ ] 1.4 Confirm nothing inside Knot calls `GET /api/v1/agent/status`
-  over HTTP (D7). If something does, it presents the client token.
+  `com.pilgrimagesoftware.knot.mcp-client-token`): load at startup, create
+  if absent, regenerate. Verify: a test behind a trait seam with an
+  in-memory store. The Keychain is exercised manually on a signed build.
+- [ ] 1.3 Add the three prefixes to the bug-report scrubber
+  (`bug_report/scrub.rs`). Verify: a scrub test for each.
+- [ ] 1.4 Confirm nothing inside Knot calls `GET /api/v1/agent/status` over
+  HTTP (D7), and record the finding in the PR.
 
 ## 2. Server middleware (`knot-mcp`)
 
-- [ ] 2.1 Host check (D4 step 1) as middleware before Origin. Verify: an
-  HTTP test for `Host: attacker.example:<port>` → 403, a missing Host → 403,
-  and `localhost:<port>` and `127.0.0.1:<port>` → pass.
+- [ ] 2.1 Host check (D4 step 1) before Origin. Verify: HTTP tests for
+  `other.example:<port>`, `127.0.0.1:<other port>` and a missing Host
+  (each → 403), and for `localhost:<port>` and `127.0.0.1:<port>` (both
+  pass).
 - [ ] 2.2 Auth middleware (D4 step 3) on every route except `/health`: 401
-  with `WWW-Authenticate: Bearer realm="knot"` and a JSON-RPC error with no
-  id. Store the principal in request extensions. Verify: an HTTP test for
-  each route with no, unknown and valid credentials, and `/health` with
-  none.
+  with `WWW-Authenticate: Bearer realm="knot"`, and 403 for a credential
+  outside its route scope. Verify: an HTTP test for each route (`/`, `/mcp`
+  POST and GET, the status GET, both hook POSTs) with no credential, an
+  unknown one, each kind, and the correct kind. Also `/health` with none.
 - [ ] 2.3 Principal versus `?agent=` hint → 403 on mismatch (D4 step 4).
   Verify: an HTTP test.
-- [ ] 2.4 Log the principal and the auth outcome, never the credential.
-  Count 401s per `User-Agent` over a rolling hour for the settings tab.
-  Verify: a log test asserts that no `knot_` prefix appears in any line.
+- [ ] 2.4 Log the principal and the outcome, never a credential. Attribute
+  refusals to the `?agent=` hint, or to the `User-Agent` when there is no
+  hint (D10). Verify: a log test that no line contains `knot_a_`, `knot_h_`
+  or `knot_c_`, and a counter test of the attribution.
 
 ## 3. Session binding and identity (`knot-mcp`, `knot-mcp-tools`)
 
-- [ ] 3.1 `session.rs` `bind` keyed by principal: `Agent(x)` replaces only a
-  session that `Agent(x)` bound, and `External` never evicts (D5). Verify:
-  unit tests for restart takeover, the External attempt refused, and an
-  Agent(y) attempt for x refused.
-- [ ] 3.2 `identity.rs`: the caller comes from the principal. An External
-  caller naming an agent with a live `Agent` session is refused. Update the
-  existing identity tests to the `mcp-tools` deltas.
-- [ ] 3.3 Run the full MCP HTTP integration suite (`crates/knot-mcp/tests/`)
-  with credentials threaded through the fixtures.
+- [ ] 3.1 `session.rs` `bind` keyed by principal (D5). Verify: unit tests
+  for restart takeover with the new credential, an External attempt refused,
+  and an `Agent(y)` attempt for x refused.
+- [ ] 3.2 `identity.rs` takes the caller from the principal. Update the
+  identity tests to the `mcp-tools` deltas.
+- [ ] 3.3 Run the MCP HTTP integration suite (`crates/knot-mcp/tests/`) with
+  credentials threaded through the fixtures.
 
-## 4. Launch path (`knot-agent-launch`, `knot-acp`, `knot-terminal`)
+## 4. Launch path (`knot-agent-launch`, `knot-acp`, `knot-terminal`, `plugin/`)
 
-- [ ] 4.1 Issue the agent credential when an ACP session starts, and revoke
-  it when the session ends or the agent closes. Put it in
-  `mcpServers[].headers` on `session/new` and `session/load`. Verify:
-  - a client test asserts the header is present and the URL has no secret;
-  - a live check, per adapter that declares `mcpCapabilities.http`, that
-    `set-status` succeeds (record each adapter and version in the PR).
-- [ ] 4.2 Set `KNOT_MCP_URL` and `KNOT_MCP_TOKEN` in the adapter subprocess
-  environment, and move `plugin/*/scripts` from `SKWAD_*` to them, adding
-  the `Authorization` header (scope per Q3). Verify: shellcheck the scripts,
-  and an HTTP test for a hook with each credential kind and one for another
-  agent's id → 403.
+- [ ] 4.1 Issue the pair at launch, rotate on Restart and Restart with New
+  Conversation (D8), and revoke on close. The tool credential goes in
+  `mcpServers[].headers` on `session/new` and `session/load`; the hook
+  credential in the adapter environment.
+  - Keep the header-feasibility probe as `scripts/acp-header-probe.py` (no
+    credentials, a dummy value only).
+  - Re-run it for Claude, Codex and agy. Run it for Copilot (unverified
+    2026-11-25) before Copilot gets a tool credential; until then Copilot
+    uses the `External` path.
+  - Check that agy keeps working when its header-less stream GET gets 401.
+  - Update the design.md table with the versions used.
 
-## 5. Settings and docs (`knot`, `docs/site`)
+  Verify:
+  - a client test that the header carries the tool credential and the
+    environment carries only the hook credential;
+  - a launch-level test that after a restart the old tool credential gets
+    401.
+- [ ] 4.2 Notice for the Claude argv-delivery configurations
+  (`agent-launch-command` "Adapter-side credential exposure is surfaced").
+  Verify: a unit test for each trigger (the environment variable, a
+  `settings` option, an `sdk-url` option) and for none.
+- [ ] 4.3 Migrate `plugin/claude/scripts/*.sh` and
+  `plugin/codex/scripts/*.sh` from `SKWAD_*`/8766 to `KNOT_MCP_URL` and
+  `KNOT_MCP_TOKEN`, with `Authorization: Bearer`. Verify: `shellcheck`, and an
+  HTTP test that a hook with the hook credential is accepted and one for
+  another agent's id gets 403.
 
-- [ ] 5.1 MCP tab:
+## 5. Confirmation (`knot-mcp-tools`, `knot`)
+
+- [ ] 5.1 `create-agent` with a shell `shellCommand`, and worktree creation
+  with a canonical destination outside the repository's parent, wait on a
+  confirmation request to the UI (D9), with a timeout constant in
+  `consts.rs`. A denial or timeout is a tool error with nothing created.
+  Verify: tool tests for confirm, deny and timeout, and for a plain shell and
+  a sibling worktree going through with no prompt.
+- [ ] 5.2 Confirmation dialog naming the requesting agent, the command and
+  the folder. Verify: a gpui test that confirm and deny resolve the request.
+  Assert l10n keys.
+
+## 6. Settings, panel and docs (`knot`, `docs/site`)
+
+- [ ] 6.1 MCP tab:
   - masked token with copy, and regenerate with a confirmation;
-  - install commands with the header per client (verify each CLI's syntax
-    against its current version, Q5);
-  - the count of refused attempts.
+  - install commands with the header per client, each CLI's syntax checked
+    against its current version;
+  - the refused-attempt count with agent attribution;
+  - a note that the token is stored in each client's configuration.
 
-  Verify: a gpui test for mask and copy, regenerate (the old token is
-  refused), and the command text for each type (assert l10n keys, not
-  English).
-- [ ] 5.2 Docs: the MCP setup page (token, re-running the install command
-  after upgrading) and `coordination.md`. Add a release-notes line under the
-  next version through the normal changelog flow.
-
-## 6. Confirmation for MCP-created shell agents and worktrees (only if Q1 = a)
-
-- [ ] 6.1 `create-agent` with `agentType: shell` and a non-empty
-  `shellCommand`, and `create-worktree` with a destination outside the
-  repo's parent directory, wait for a user confirmation that shows the
-  command and folder. A denial returns a tool error. Verify: tool tests for
-  confirm and deny, with a gpui test for the dialog.
+  Verify: gpui tests for mask and copy, regenerate (the old token refused),
+  and the command text per type. Assert l10n keys.
+- [ ] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
+  connection was refused (D10). Verify: a panel test.
+- [ ] 6.3 Docs: the MCP setup page (token, client configuration storage,
+  re-running the install command after upgrading) and `coordination.md`.
+  Add a release-notes line through the changelog flow.
 
 ## 7. Gate
 
 - [ ] 7.1 `make` passes (fmt-check, size-check, lint, test, build).
-- [ ] 7.2 Security co-review of the implementation PR against design.md
-  D1–D7.
+- [ ] 7.2 Security co-review of the implementation PR against D1–D10.

@@ -2,17 +2,22 @@
 
 ### Requirement: Hook requests are authenticated
 
-Hook routes SHALL require a credential per `mcp-server` "Client
-authentication". With an agent credential, `agent_id` SHALL equal that
-credential's agent; with the client token, it SHALL NOT name an agent whose
-credential-bound MCP connection is live. Otherwise the request SHALL yield a
-403 and change nothing. Hook scripts shipped with Knot SHALL read the server
-URL and credential from `KNOT_MCP_URL` and `KNOT_MCP_TOKEN`.
+Hook routes SHALL accept an agent hook credential or the client token (see
+`mcp-server` "Credential kinds"). With a hook credential, `agent_id` SHALL
+equal that credential's agent; with the client token, it SHALL NOT name an
+agent whose credential-bound MCP connection is live. Otherwise the request
+SHALL yield a 403 and change nothing. Hook scripts shipped with Knot SHALL
+read the URL and credential from `KNOT_MCP_URL` and `KNOT_MCP_TOKEN`.
 
 #### Scenario: A hook for another agent
 
-- **WHEN** a hook request presents agent A's credential with `agent_id` set to agent B
+- **WHEN** a hook request presents agent A's hook credential with `agent_id` set to agent B
 - **THEN** the response is 403 and B's status and metadata are unchanged
+
+#### Scenario: A tool credential on a hook route
+
+- **WHEN** a hook request presents an agent's tool credential
+- **THEN** the response is 403 and no state changes
 
 #### Scenario: A hook with no credential
 

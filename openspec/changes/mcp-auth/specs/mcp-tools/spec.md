@@ -21,6 +21,45 @@ another connection presenting `x`'s credential.
   `register-agent` for an agent whose credential-bound connection is live
 - **THEN** the call fails, and the agent's live connection is unchanged
 
+### Requirement: MCP-created commands and distant worktrees need confirmation
+
+An MCP call to `create-agent` with `agentType: shell` and a non-empty
+`shellCommand`, or one that creates a worktree (via `create-worktree` or
+`createWorktree: true`) whose canonical destination is outside the
+repository's parent directory, SHALL wait for the user to confirm a dialog
+naming the requesting agent, the command and the folder. A denial or timeout
+SHALL return a tool error and create nothing.
+
+#### Scenario: The user confirms a shell command
+
+- **WHEN** an agent calls `create-agent` with `agentType: shell` and
+  `shellCommand: "make test"`, and the user confirms
+- **THEN** the agent is created and its command runs
+
+#### Scenario: The user declines
+
+- **WHEN** the user declines the confirmation
+- **THEN** the call fails with a tool error and no agent, worktree or folder
+  is created
+
+#### Scenario: A plain shell needs no confirmation
+
+- **WHEN** an agent calls `create-agent` with `agentType: shell` and no
+  `shellCommand`
+- **THEN** the agent is created without a confirmation
+
+#### Scenario: A worktree beside the repository needs no confirmation
+
+- **WHEN** an agent calls `create-worktree` with no `worktreePath`
+- **THEN** the worktree is created at the suggested sibling path without a
+  confirmation
+
+#### Scenario: A distant worktree needs confirmation
+
+- **WHEN** an agent calls `create-worktree` with a `worktreePath` outside the
+  repository's parent directory
+- **THEN** the call waits for the user's confirmation
+
 ## MODIFIED Requirements
 
 ### Requirement: A caller acts only as itself

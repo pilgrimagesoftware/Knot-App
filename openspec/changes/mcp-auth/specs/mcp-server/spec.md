@@ -5,9 +5,10 @@
 The server SHALL require a bearer credential issued by Knot (see "Credential
 kinds") on every route except `/health`, sent as
 `Authorization: Bearer <credential>`, and SHALL compare it in constant time.
-A request with a missing, malformed or unknown credential SHALL receive HTTP
-401 with `WWW-Authenticate: Bearer` and a JSON-RPC error with no id, and
-SHALL change no state.
+A missing, malformed or unknown credential SHALL get HTTP 401 with
+`WWW-Authenticate: Bearer`; a known credential on a route its kind does not
+cover SHALL get 403. Either response SHALL carry a JSON-RPC error with no id
+and change no state.
 
 #### Scenario: No credential
 
@@ -20,6 +21,16 @@ SHALL change no state.
 - **WHEN** a request carries `Authorization: Bearer` with a value Knot did not issue
 - **THEN** the response is 401 and nothing changes
 
+#### Scenario: A hook credential on the MCP route
+
+- **WHEN** a request to `/mcp` presents an agent hook credential
+- **THEN** the response is 403 and no session is created
+
+#### Scenario: Server info needs a credential
+
+- **WHEN** a client GETs `/` with no credential
+- **THEN** the response is 401
+
 #### Scenario: Health stays open
 
 - **WHEN** a client GETs `/health` with no credential
@@ -27,12 +38,12 @@ SHALL change no state.
 
 ### Requirement: Credential kinds
 
-Knot SHALL issue two kinds of credential, each 256 bits from the operating
-system's CSPRNG. An agent credential is issued per launched agent, held in
-memory only, discarded when that agent's session ends, and identifies that
-agent. One client token, for MCP clients the user registers by hand, is
-stored in the macOS Keychain, persists across launches until regenerated,
-and identifies an external caller.
+Knot SHALL issue three kinds of credential, each 256 bits from the operating
+system's CSPRNG. Per launched agent, held in memory and revoked when its
+session ends: a tool credential, accepted on `/mcp` and the status GET, and a
+hook credential, accepted only on the hook routes. One client token for
+clients the user registers by hand, kept in the macOS Keychain until
+regenerated, is accepted on every authenticated route as an external caller.
 
 #### Scenario: Agent credential ends with its agent
 
@@ -46,8 +57,10 @@ and identifies an external caller.
 
 ### Requirement: Credentials stay secret
 
-The server SHALL store only digests of issued credentials. A credential SHALL
-never be written to a log, a URL or a process argument.
+The server SHALL store only digests of issued credentials. Knot SHALL NOT
+write a credential to a log, a URL, or a command line it builds. Where an
+adapter forwards the MCP headers to its own child processes is outside Knot's
+control and SHALL be documented per adapter.
 
 #### Scenario: Credentials are not logged
 
@@ -63,10 +76,15 @@ other request, including one with no `Host`, SHALL be answered with HTTP 403
 and a JSON-RPC error with no id, before any credential is examined. The rule
 SHALL apply to every route, `/health` included.
 
-#### Scenario: A rebinding host name
+#### Scenario: Another host name
 
-- **WHEN** a request arrives with `Host: attacker.example:8767`
+- **WHEN** a request arrives with `Host: other.example:<port>`
 - **THEN** the response is 403, whatever credential it carries
+
+#### Scenario: Another port
+
+- **WHEN** a request arrives with `Host: 127.0.0.1:<a port other than the listening one>`
+- **THEN** the response is 403
 
 #### Scenario: Loopback host
 
