@@ -258,3 +258,44 @@ fn reopening_a_handover_terminal_that_left_the_layout_keeps_the_split(cx: &mut T
     assert_eq!(ui.layout_mode, LayoutMode::ThreePane);
     assert_eq!(ui.active_agent_ids, [f.id("A"), f.id("B"), terminal]);
 }
+
+/// #507 review: the layout the handover terminal opens is saved, not only
+/// shown. The reveal after it finds the terminal already in a pane and
+/// changes nothing, so the window's open has to save it, or a quit straight
+/// after restores the split from before.
+///
+/// Through the window's own `open_mcp_handover`, which needs an owner whose
+/// type has an MCP flow; `claude` is one. The owner is passive and is never
+/// revealed here, so nothing launches.
+#[gpui_kit::test]
+fn the_layout_the_handover_terminal_opens_is_saved(cx: &mut TestAppContext) {
+    let mut f = split(0, cx);
+    let owner = f.id("A");
+    {
+        let mut store = f.store.lock();
+        let agent = store.agent(owner).expect("A").clone();
+        store.edit(owner,
+                   knot_agents::EditRequest { name: agent.name,
+                                              avatar: agent.avatar,
+                                              agent_type:
+                                                  Some(knot_core::agent_type::CLAUDE.into()),
+                                              activation_mode: agent.activation_mode,
+                                              ..Default::default() })
+             .expect("A becomes a claude agent");
+    }
+
+    let terminal = f.view
+                    .update(&mut f.window, |view, cx| {
+                        view.open_mcp_handover(owner, "linear", cx)
+                    })
+                    .expect("a claude agent has an MCP flow");
+    f.window.run_until_parked();
+
+    let live = f.ui();
+    assert_eq!(live.active_agent_ids, [owner, f.id("B"), terminal]);
+    let saved: std::collections::BTreeMap<Uuid, knot_core::WorkspaceUiState> =
+        serde_json::from_str(&std::fs::read_to_string(&f.document).expect("the UI-state document"))
+            .expect("the UI-state document parses");
+    assert_eq!(saved[&f.workspace].active_agent_ids, live.active_agent_ids,
+               "the saved layout is the live one");
+}
