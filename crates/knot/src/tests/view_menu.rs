@@ -91,6 +91,7 @@ fn the_items_are_in_the_specified_order() {
                 t("menu.view.focus_agent_input"),
                 t("menu.view.jump_to_bottom"),
                 t("menu.view.artifacts"),
+                t("menu.view.collapse_all_tool_calls"),
                 "-".to_string(),
                 t("menu.view.select_agent"),
                 "-".to_string()]);
@@ -116,6 +117,8 @@ fn each_item_dispatches_its_shortcuts_action() {
                             ("menu.view.pull_requests", &TogglePullRequests),
                             ("menu.view.focus_agent_input", &FocusAgentInput),
                             ("menu.view.jump_to_bottom", &JumpToBottom),
+                            ("menu.view.collapse_all_tool_calls",
+                             &crate::app_bootstrap::CollapseAllToolCalls),
                             ("menu.view.artifacts", &ToggleArtifacts)]
     {
         assert!(action_of(item(&menu, key)).partial_eq(expected),

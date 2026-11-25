@@ -96,10 +96,12 @@ impl PanelState {
                                             raw_input,
                                             meta, } => {
                 self.note_pull_requests_in(&content);
+                let mut failed_now = false;
                 if let Some(card) = self.tool_call_mut(&tool_call_id) {
                     // Absent fields mean "unchanged", per the ACP spec's
                     // partial updates - only overwrite what arrived.
                     if let Some(status) = status {
+                        failed_now = status == "failed" && card.status != "failed";
                         card.status = status;
                     }
                     if let Some(title) = title {
@@ -120,6 +122,9 @@ impl PanelState {
                     if meta.is_some() {
                         card.meta = meta;
                     }
+                }
+                if failed_now {
+                    self.failure_reopens(&tool_call_id);
                 }
             }
             // Neither of these is a `sessionUpdate` kind any real agent
