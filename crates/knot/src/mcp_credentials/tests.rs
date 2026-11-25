@@ -8,13 +8,18 @@ use super::*;
 
 #[derive(Default)]
 struct MemoryStore {
-    value: RefCell<Option<String>>,
-    fails: bool,
+    value:      RefCell<Option<String>>,
+    fails:      bool,
+    /// A read error other than "not found": denied, locked, re-signed.
+    unreadable: bool,
 }
 
 impl ClientTokenStore for MemoryStore {
-    fn load(&self) -> Option<String> {
-        self.value.borrow().clone()
+    fn load(&self) -> Result<Option<String>, String> {
+        if self.unreadable {
+            return Err("User interaction is not allowed.".to_owned());
+        }
+        Ok(self.value.borrow().clone())
     }
 
     fn save(&self, token: &Secret) -> Result<(), String> {
@@ -29,9 +34,9 @@ impl ClientTokenStore for MemoryStore {
 #[test]
 fn the_first_launch_creates_and_saves_a_token() {
     let (store, registry) = (MemoryStore::default(), CredentialRegistry::new());
-    let token = load_or_create(&store, &registry);
+    let token = load_or_create(&store, &registry).token;
 
-    assert_eq!(store.load().as_deref(), Some(token.expose()));
+    assert_eq!(store.load().unwrap().as_deref(), Some(token.expose()));
     assert_eq!(registry.authenticate(token.expose()),
                Some(Principal::External));
 }
@@ -39,10 +44,10 @@ fn the_first_launch_creates_and_saves_a_token() {
 #[test]
 fn a_later_launch_reuses_the_stored_token() {
     let store = MemoryStore::default();
-    let first = load_or_create(&store, &CredentialRegistry::new());
+    let first = load_or_create(&store, &CredentialRegistry::new()).token;
     let registry = CredentialRegistry::new();
 
-    assert_eq!(load_or_create(&store, &registry), first);
+    assert_eq!(load_or_create(&store, &registry).token, first);
     assert_eq!(registry.authenticate(first.expose()),
                Some(Principal::External));
 }
@@ -54,7 +59,7 @@ fn a_damaged_stored_token_is_replaced() {
     *store.value.borrow_mut() = Some(agent_shaped.expose().to_owned());
     let registry = CredentialRegistry::new();
 
-    let token = load_or_create(&store, &registry);
+    let token = load_or_create(&store, &registry).token;
 
     assert_ne!(token.expose(), agent_shaped.expose());
     assert_eq!(registry.authenticate(agent_shaped.expose()), None);
@@ -63,15 +68,15 @@ fn a_damaged_stored_token_is_replaced() {
 #[test]
 fn regenerating_refuses_the_old_token_and_saves_the_new() {
     let (store, registry) = (MemoryStore::default(), CredentialRegistry::new());
-    let old = load_or_create(&store, &registry);
+    let old = load_or_create(&store, &registry).token;
 
-    let new = regenerate(&store, &registry);
+    let new = regenerate(&store, &registry).token;
 
     assert_ne!(old, new);
     assert_eq!(registry.authenticate(old.expose()), None);
     assert_eq!(registry.authenticate(new.expose()),
                Some(Principal::External));
-    assert_eq!(store.load().as_deref(), Some(new.expose()));
+    assert_eq!(store.load().unwrap().as_deref(), Some(new.expose()));
 }
 
 #[test]
@@ -80,7 +85,7 @@ fn a_token_that_cannot_be_saved_still_serves_this_launch() {
                               ..MemoryStore::default() };
     let registry = CredentialRegistry::new();
 
-    let token = load_or_create(&store, &registry);
+    let token = load_or_create(&store, &registry).token;
 
     assert_eq!(registry.authenticate(token.expose()),
                Some(Principal::External));
@@ -99,4 +104,38 @@ fn issuing_rotates_and_revoking_ends_an_agents_pair() {
     credentials.revoke(agent);
     assert_eq!(credentials.registry.authenticate(second.tool.expose()),
                None);
+}
+
+/// Security review of #521: a read error that is not "not found" must not
+/// replace the stored token - every client registered with it would stop
+/// working. This launch runs on a token it does not save, and says why.
+#[test]
+fn an_unreadable_store_keeps_its_token_and_this_launch_uses_an_unsaved_one() {
+    let stored = Secret::generate(CredentialKind::Client);
+    let store = MemoryStore { value: RefCell::new(Some(stored.expose().to_owned())),
+                              unreadable: true,
+                              ..MemoryStore::default() };
+    let registry = CredentialRegistry::new();
+
+    let loaded = load_or_create(&store, &registry);
+
+    assert!(loaded.problem.is_some(),
+            "the error is kept for the MCP tab");
+    assert_ne!(loaded.token, stored);
+    assert_eq!(store.value.borrow().as_deref(),
+               Some(stored.expose()),
+               "the stored token is left as it was");
+    assert_eq!(registry.authenticate(loaded.token.expose()),
+               Some(Principal::External),
+               "this launch still serves its own clients");
+}
+
+#[test]
+fn a_saved_token_reports_no_problem() {
+    let (store, registry) = (MemoryStore::default(), CredentialRegistry::new());
+    assert!(load_or_create(&store, &registry).problem.is_none());
+    let failing = MemoryStore { fails: true,
+                                ..MemoryStore::default() };
+    assert!(load_or_create(&failing, &registry).problem.is_some(),
+            "an unsaved token says so");
 }

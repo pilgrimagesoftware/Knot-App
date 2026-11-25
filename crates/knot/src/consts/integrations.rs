@@ -42,6 +42,11 @@ pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))] // No Keychain elsewhere.
 pub(crate) const MCP_CLIENT_TOKEN_SERVICE: &str = "com.pilgrimagesoftware.knot.mcp-client-token";
 
+/// `errSecItemNotFound`: the one Keychain read error that means there is no
+/// token yet. Every other error leaves the stored token alone.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))] // No Keychain elsewhere.
+pub(crate) const KEYCHAIN_ITEM_NOT_FOUND: i32 = -25300;
+
 /// The account name of that Keychain item. One token per user.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))] // No Keychain elsewhere.
 pub(crate) const MCP_CLIENT_TOKEN_ACCOUNT: &str = "client-token";

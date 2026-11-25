@@ -15,7 +15,7 @@ mod shared;
 // caller; until it lands, only the tests use these.
 #[allow(unused_imports)]
 pub(crate) use client_token::{ClientTokenStore, regenerate};
-pub(crate) use client_token::{KeychainTokenStore, load_or_create};
+pub(crate) use client_token::{KeychainTokenStore, LoadedClientToken, load_or_create};
 pub(crate) use shared::{ClientToken, McpCredentials};
 
 #[cfg(test)]

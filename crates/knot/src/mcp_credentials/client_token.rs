@@ -8,48 +8,72 @@ use knot_mcp::{CredentialKind, CredentialRegistry, Secret};
 
 /// Where the client token persists between launches.
 pub(crate) trait ClientTokenStore {
-    /// The stored value, if there is one.
-    fn load(&self) -> Option<String>;
+    /// The stored value: `Ok(None)` only when there is definitely none, and
+    /// `Err` when the store could not be read - access denied, a locked
+    /// keychain, or an item that refuses a re-signed build.
+    fn load(&self) -> Result<Option<String>, String>;
     /// Replaces the stored value.
     fn save(&self, token: &Secret) -> Result<(), String>;
 }
 
-/// The token in effect: the stored one when it is a token Knot could have
-/// generated, else a new one, saved. Made the registry's client token
-/// either way.
+/// The client token in effect for this launch.
+#[derive(Debug, Clone)]
+pub(crate) struct LoadedClientToken {
+    pub(crate) token:   Secret,
+    /// Why this token is not the stored one, or will not outlast this
+    /// launch: the store could not be read, or the token could not be
+    /// saved. For the MCP tab to show; `None` when all is well.
+    // UNWIRED(mcp-auth task 6.1): the MCP tab shows it; tests read it now.
+    #[allow(dead_code)]
+    pub(crate) problem: Option<String>,
+}
+
+/// The token in effect, made the registry's client token.
 ///
-/// A token that cannot be saved still serves this launch - the MCP tab
-/// shows it - and the next launch generates another. The failure is logged
-/// without the token.
+/// - The stored token, when it is one Knot could have generated.
+/// - A new one, saved, when there is none or what is stored is damaged.
+/// - When the store cannot be read, a token for this launch only, never saved:
+///   overwriting a token that exists but could not be read would cut off every
+///   client the user registered with it. The error is kept for the MCP tab, and
+///   logged without the token.
 pub(crate) fn load_or_create(store: &dyn ClientTokenStore, registry: &CredentialRegistry)
-                             -> Secret {
-    let token = match store.load()
-                           .as_deref()
-                           .and_then(Secret::from_stored_client_token)
-    {
-        Some(token) => token,
-        None => fresh(store),
+                             -> LoadedClientToken {
+    let loaded = match store.load() {
+        Ok(stored) => match stored.as_deref().and_then(Secret::from_stored_client_token) {
+            Some(token) => LoadedClientToken { token,
+                                               problem: None },
+            None => fresh(store),
+        },
+        Err(error) => {
+            eprintln!("the MCP client token could not be read, so this launch uses one that is \
+                       not saved: {error}");
+            LoadedClientToken { token:   Secret::generate(CredentialKind::Client),
+                                problem: Some(error), }
+        }
     };
-    registry.set_client_token(&token);
-    token
+    registry.set_client_token(&loaded.token);
+    loaded
 }
 
 /// A new client token, saved and made the registry's, which revokes the
 /// previous one in the same step.
 // UNWIRED(mcp-auth task 6.1): called from the MCP tab's regenerate button.
 #[allow(dead_code)]
-pub(crate) fn regenerate(store: &dyn ClientTokenStore, registry: &CredentialRegistry) -> Secret {
-    let token = fresh(store);
-    registry.set_client_token(&token);
-    token
+pub(crate) fn regenerate(store: &dyn ClientTokenStore, registry: &CredentialRegistry)
+                         -> LoadedClientToken {
+    let loaded = fresh(store);
+    registry.set_client_token(&loaded.token);
+    loaded
 }
 
-fn fresh(store: &dyn ClientTokenStore) -> Secret {
+/// A new token, saved if the store takes it.
+fn fresh(store: &dyn ClientTokenStore) -> LoadedClientToken {
     let token = Secret::generate(CredentialKind::Client);
-    if let Err(error) = store.save(&token) {
+    let problem = store.save(&token).err();
+    if let Some(error) = &problem {
         eprintln!("the MCP client token could not be saved: {error}");
     }
-    token
+    LoadedClientToken { token, problem }
 }
 
 /// The macOS Keychain, as a generic password under
@@ -60,12 +84,19 @@ pub(crate) struct KeychainTokenStore;
 
 #[cfg(target_os = "macos")]
 impl ClientTokenStore for KeychainTokenStore {
-    fn load(&self) -> Option<String> {
-        use crate::consts::{MCP_CLIENT_TOKEN_ACCOUNT, MCP_CLIENT_TOKEN_SERVICE};
-        let bytes =
-            security_framework::passwords::get_generic_password(MCP_CLIENT_TOKEN_SERVICE,
-                                                                MCP_CLIENT_TOKEN_ACCOUNT).ok()?;
-        String::from_utf8(bytes).ok()
+    fn load(&self) -> Result<Option<String>, String> {
+        use crate::consts::{
+            KEYCHAIN_ITEM_NOT_FOUND, MCP_CLIENT_TOKEN_ACCOUNT, MCP_CLIENT_TOKEN_SERVICE,
+        };
+        match security_framework::passwords::get_generic_password(MCP_CLIENT_TOKEN_SERVICE,
+                                                                  MCP_CLIENT_TOKEN_ACCOUNT)
+        {
+            // Bytes that are not text are a damaged item, which
+            // `load_or_create` replaces like any other damaged value.
+            Ok(bytes) => Ok(Some(String::from_utf8(bytes).unwrap_or_default())),
+            Err(error) if error.code() == KEYCHAIN_ITEM_NOT_FOUND => Ok(None),
+            Err(error) => Err(error.to_string()),
+        }
     }
 
     fn save(&self, token: &Secret) -> Result<(), String> {
@@ -79,8 +110,8 @@ impl ClientTokenStore for KeychainTokenStore {
 
 #[cfg(not(target_os = "macos"))]
 impl ClientTokenStore for KeychainTokenStore {
-    fn load(&self) -> Option<String> {
-        None
+    fn load(&self) -> Result<Option<String>, String> {
+        Ok(None)
     }
 
     fn save(&self, _token: &Secret) -> Result<(), String> {

@@ -35,12 +35,12 @@ impl McpCredentials {
     }
 }
 
-/// The client token in effect, for the MCP settings tab to show, copy and
-/// regenerate. Replaced by [`super::regenerate`]'s result when the user
-/// regenerates it.
+/// The client token in effect, and any problem keeping it, for the MCP
+/// settings tab to show, copy and regenerate. Replaced by
+/// [`super::regenerate`]'s result when the user regenerates it.
 #[derive(Clone)]
 // UNWIRED(mcp-auth task 6.1): read by the MCP tab, which shows the token.
 #[allow(dead_code)]
-pub(crate) struct ClientToken(pub(crate) knot_mcp::Secret);
+pub(crate) struct ClientToken(pub(crate) super::LoadedClientToken);
 
 impl gpui_kit::Global for ClientToken {}
