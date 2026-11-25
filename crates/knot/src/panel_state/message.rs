@@ -164,6 +164,21 @@ pub struct ToolCallCard {
     /// The call's `_meta` envelope, verbatim, vendor keys included. Also not
     /// rendered, and for the same reason.
     pub meta:      Option<Value>,
+    /// What a subagent this call launched has done so far: its own tool calls
+    /// and its prose, in arrival order. Empty for any call that is not a
+    /// delegation. See `panel_state::subagent` (#476).
+    pub subagent:  Vec<SubagentItem>,
+}
+
+/// One thing a subagent did, kept inside the delegation card that launched
+/// it rather than in the conversation, so a subagent running beside the main
+/// agent cannot split the main agent's text (#476).
+#[derive(Debug, Clone, PartialEq)]
+pub enum SubagentItem {
+    /// Boxed for the reason `PanelMessage::ToolCall` is: a card is far wider
+    /// than a string.
+    ToolCall(Box<ToolCallCard>),
+    Text(String),
 }
 
 impl ToolCallCard {
@@ -185,5 +200,25 @@ impl ToolCallCard {
     /// collapses to its header" requirement.
     pub fn succeeded(&self) -> bool {
         self.status == "completed"
+    }
+
+    /// Adds one subagent item, joining text to text the way the main reply's
+    /// deltas join: a subagent's prose streams in pieces too.
+    pub(super) fn push_subagent(&mut self, item: SubagentItem) {
+        if let SubagentItem::Text(text) = &item
+           && let Some(SubagentItem::Text(existing)) = self.subagent.last_mut()
+        {
+            existing.push_str(text);
+            return;
+        }
+        self.subagent.push(item);
+    }
+
+    /// The subagent's tool calls, without its prose.
+    pub fn subagent_tool_calls(&self) -> impl Iterator<Item = &ToolCallCard> {
+        self.subagent.iter().filter_map(|item| match item {
+                                SubagentItem::ToolCall(card) => Some(card.as_ref()),
+                                SubagentItem::Text(_) => None,
+                            })
     }
 }

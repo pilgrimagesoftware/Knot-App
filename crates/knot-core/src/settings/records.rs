@@ -9,12 +9,10 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::consts::{
-    DEFAULT_AGENT_TYPE, DEFAULT_AVATAR, WORKSPACE_LAYOUT_DEFAULT, WORKSPACE_SPLIT_RATIO_DEFAULT,
-};
+use crate::consts::{DEFAULT_AGENT_TYPE, DEFAULT_AVATAR, WORKSPACE_SPLIT_RATIO_DEFAULT};
 use crate::settings::capabilities::Capabilities;
 use crate::settings::prompts::StartupPrompt;
-use crate::settings::vocabulary::CostTier;
+use crate::settings::vocabulary::{CostTier, LayoutMode};
 
 // ---------------------------------------------------------------------------
 // Persona
@@ -286,23 +284,21 @@ pub struct Workspace {
 /// window sits is the most frequently written value in the store and the
 /// least valuable, and it must not be a reason to rewrite the roster.
 ///
-/// The port stores the layout fields as opaque data; it does not interpret
-/// them here.
+/// `layout_mode` is a [`LayoutMode`]: an unknown stored mode reads as
+/// [`LayoutMode::Single`] once, at load. The other layout fields are kept as
+/// stored; `knot-agents` normalizes them against the workspace's agents.
 ///
 /// Every field carries its own serde default, so an entry written before a
 /// field existed loads with that field defaulted rather than failing.
 ///
-/// [`Default`] is written out rather than derived: `layout_mode` and
-/// `split_ratio` default to `"single"` and `0.5`, which is what every record
-/// written before the split already holds. Deriving would give `""` and
-/// `0.0`, so a workspace with no entry would read as a layout that does not
-/// exist and a divider at the far edge - a change to what the state *means*,
-/// which moving this record is not supposed to make.
+/// [`Default`] is written out rather than derived: `split_ratio` defaults to
+/// `0.5`, which is what every record written before the split already holds.
+/// Deriving would give `0.0`, a divider at the far edge - a change to what
+/// the state *means*, which moving this record is not supposed to make.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct WorkspaceUiState {
-    #[serde(default = "default_workspace_layout")]
-    pub layout_mode:           String,
+    pub layout_mode:           LayoutMode,
     pub active_agent_ids:      Vec<Uuid>,
     pub focused_pane_index:    i32,
     #[serde(default = "default_split_ratio")]
@@ -342,7 +338,7 @@ pub struct SavedWindowBounds {
 
 impl Default for WorkspaceUiState {
     fn default() -> Self {
-        Self { layout_mode:           default_workspace_layout(),
+        Self { layout_mode:           LayoutMode::Single,
                active_agent_ids:      Vec::new(),
                focused_pane_index:    0,
                split_ratio:           default_split_ratio(),
@@ -353,10 +349,6 @@ impl Default for WorkspaceUiState {
                open_at_quit:          false,
                schedule_runs_handled: BTreeMap::new(), }
     }
-}
-
-fn default_workspace_layout() -> String {
-    WORKSPACE_LAYOUT_DEFAULT.to_string()
 }
 
 fn default_split_ratio() -> f64 {

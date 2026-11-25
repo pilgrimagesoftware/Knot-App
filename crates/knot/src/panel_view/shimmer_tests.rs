@@ -26,7 +26,10 @@ fn style() -> PanelStyle {
                  markdown_font_size: px(14.),
                  mono_font_family:   "Menlo".into(),
                  ui_font_family:     "Helvetica".into(),
-                 title_font_family:  "Helvetica".into(),
+                 markdown_style:
+                     crate::markdown_view::MarkdownStyle::new(&gpui_kit::component::Theme::default(),
+                                                              "Helvetica".into(),
+                                                              px(14.)),
                  danger_color:       Hsla::default(),
                  info_color:         Hsla::default(),
                  border_color:       Hsla::default(),
@@ -37,7 +40,8 @@ fn style() -> PanelStyle {
 }
 
 fn card(status: &str) -> ToolCallCard {
-    ToolCallCard { id:        "tc1".to_owned(),
+    ToolCallCard { subagent:  Vec::new(),
+                   id:        "tc1".to_owned(),
                    kind:      "execute".to_owned(),
                    title:     "sleep 30".to_owned(),
                    status:    status.to_owned(),
@@ -65,8 +69,10 @@ impl Render for Probe {
              .child(gpui_kit::list(self.list.clone(), move |_, _, _| match row {
                         Row::Card { finished } => {
                             let status = if finished { "completed" } else { "in_progress" };
-                            render_tool_call_card(&card(status), &style(), true, Rc::new(|_| {}))
-                                .into_any_element()
+                            render_tool_call_card(&card(status),
+                                                  &style(),
+                                                  &|_| true,
+                                                  Rc::new(|_| {})).into_any_element()
                         }
                         Row::Summary { running } => {
                             let summary = ToolRunSummary { calls: 2,

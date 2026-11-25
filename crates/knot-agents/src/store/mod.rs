@@ -8,11 +8,13 @@ use uuid::Uuid;
 
 use crate::agent::{Agent, AgentState};
 
+mod arrange;
 mod bench;
 mod checklist;
 mod duplicate;
 mod edit;
 mod helpers;
+pub mod layout;
 mod lifecycle;
 mod mcp_handover;
 mod ordering;
@@ -20,6 +22,7 @@ mod panels;
 mod persistence;
 mod pull_requests;
 
+pub use arrange::LayoutChange;
 pub use mcp_handover::{McpHandoverRequest, McpHandoverTerminal};
 pub use persistence::AdoptedCounts;
 mod workspace;
@@ -35,33 +38,40 @@ const DEFAULT_WORKSPACE_COLOR: &str = "#1B4FB2";
 /// `AgentStore::create` since it is the one field every creation supplies.
 #[derive(Debug, Clone, Default)]
 pub struct CreateOptions {
-    pub name:            Option<String>,
-    pub avatar:          Option<String>,
-    pub agent_type:      Option<String>,
-    pub shell_command:   Option<String>,
-    pub persona_id:      Option<Uuid>,
-    pub created_by:      Option<Uuid>,
-    pub is_companion:    bool,
-    pub insert_after:    Option<Uuid>,
+    pub name:             Option<String>,
+    pub avatar:           Option<String>,
+    pub agent_type:       Option<String>,
+    pub shell_command:    Option<String>,
+    pub persona_id:       Option<Uuid>,
+    pub created_by:       Option<Uuid>,
+    pub is_companion:     bool,
+    pub insert_after:     Option<Uuid>,
     /// Workspace to place the new agent in. Takes priority over inferring one
     /// from `created_by`/`insert_after`. A caller that knows which workspace
     /// it means must say so explicitly rather than relying on whichever
     /// workspace happens to be "current" - that's ambient global state a
     /// concurrent window or MCP call can change out from under it.
-    pub workspace_id:    Option<Uuid>,
+    pub workspace_id:     Option<Uuid>,
     /// Defaults to `Passive` - deliberately not the load default a record
     /// with no stored mode gets (`Active`, see `knot_core::SavedAgent`).
-    pub activation_mode: ActivationMode,
+    pub activation_mode:  ActivationMode,
     /// Registry metadata. All three default to "nothing declared", which is
     /// what an agent created without them should read as.
-    pub description:     String,
-    pub capabilities:    Capabilities,
-    pub cost_tier:       CostTier,
-    pub startup_prompt:  Option<StartupPrompt>,
+    pub description:      String,
+    pub capabilities:     Capabilities,
+    pub cost_tier:        CostTier,
+    pub startup_prompt:   Option<StartupPrompt>,
     /// Marks the new agent as the terminal handing the user its owner's MCP
     /// flow for this server (#443). Use [`AgentStore::open_mcp_handover`]
     /// rather than setting it here.
-    pub mcp_handover:    Option<String>,
+    pub mcp_handover:     Option<String>,
+    /// For a companion, how it came to be created, which decides what its
+    /// creation does to its owner's workspace layout (`workspace-layouts`).
+    /// `None` leaves the layout alone, which is what every path that has
+    /// not decided yet gets - the handover terminal among them. A caller
+    /// that creates a companion should say whether the user asked for it
+    /// ([`layout::CompanionOrigin::User`]) or not.
+    pub companion_origin: Option<layout::CompanionOrigin>,
 }
 
 /// Fields an edit may change. `name`/`avatar` always apply and never trigger

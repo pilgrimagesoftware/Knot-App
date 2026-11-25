@@ -279,6 +279,11 @@ impl WorkspaceWindow {
         self.prune_pull_request_states();
         self.nudged_messages.remove(&id);
         self.panel_handoffs.remove(&id);
+        // Held sizes are keyed by agent and live only for a divider drag, but
+        // a drag can outlast an agent's removal (MCP, process exit).
+        if let Some(drag) = self.divider_drag.as_mut() {
+            drag.held_sizes.remove(&id);
+        }
         self.forget_awaiting_notification(id);
         self.panel_states.remove(&id);
         self.panel_prompt_inputs.remove(&id);
@@ -309,7 +314,7 @@ impl WorkspaceWindow {
         self.panel_list_row_counts.remove(&id);
         self.panel_finds.remove(&id);
         self.panel_questions.remove(&id);
-        self.git_read_folders.forget(id);
+        self.git.git_read_folders.forget(id);
         self.panel_pending_context.remove(&id);
         self.panel_composer_styling.remove(&id);
         self.forget_panel_mentions(id);

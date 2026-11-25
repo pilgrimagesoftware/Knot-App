@@ -38,7 +38,7 @@ make             # fmt + size + clippy + test + build for the whole workspace
 # or individually
 make fmt         # reformat with the pinned nightly
 make fmt-check   # verify formatting
-make size-check  # fail on any .rs file over 700 lines
+make size-check  # fail on any .rs file over 500 lines
 make lint
 make test
 make build

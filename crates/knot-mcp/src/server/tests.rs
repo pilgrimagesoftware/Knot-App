@@ -2,6 +2,9 @@
 
 use std::time::Duration;
 
+use uuid::Uuid;
+
+use super::routes::agent_from_query;
 use super::*;
 use crate::tools::EmptyCatalog;
 

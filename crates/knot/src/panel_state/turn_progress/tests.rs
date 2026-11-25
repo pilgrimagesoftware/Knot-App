@@ -7,7 +7,8 @@ use knot_acp::{SessionEvent, SessionUpdate};
 use super::*;
 
 fn streamed(state: &mut PanelState, text: &str) {
-    state.apply(SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_owned(), }));
+    state.apply(SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_owned(),
+                                                                meta: None, }));
 }
 
 #[test]

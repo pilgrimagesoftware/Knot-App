@@ -122,7 +122,7 @@ make             # the whole gate, in the order CI runs it
 
 make fmt         # reformat with the pinned nightly
 make fmt-check   # verify formatting (what CI runs)
-make size-check  # fail on any .rs file over 700 lines
+make size-check  # fail on any .rs file over 500 lines
 make lint        # cargo clippy --workspace --all-targets -- -D warnings
 make test        # cargo test --workspace
 make build       # cargo build --workspace

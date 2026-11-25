@@ -8,10 +8,16 @@ paths:
 Each of these exists because it was violated and cost something. The cost is
 named so you can tell when the rule genuinely does not apply.
 
-## File size: 700 lines, enforced
+## File size: 500 lines, enforced
 
-`make size-check` fails the build above 700 lines per `.rs` file, and CI runs
+`make size-check` fails the build above 500 lines per `.rs` file, and CI runs
 it. Do not raise `RUST_FILE_LINE_LIMIT` to make a change fit.
+
+That has already happened once. The convention was always 500, but
+enforcement sat at 700, and by the time anyone noticed (#484), 21 files had
+grown into the gap between the two. They were split by concern before the
+check dropped to 500. When the written rule and its check disagree, the
+written rule is the intent: fix the check.
 
 This was applied once by hand and then regressed: `workspace_window/mod.rs`
 came out of that split at 2216 lines and reached 4578 four days later, with a
@@ -212,7 +218,7 @@ do - `import_window/window.rs` for the entity and its lifecycle,
 
 Unlike the rest of these rules, this one is a standing decision rather than a
 postmortem: it was adopted while moving the Import surface out of the settings
-window, before it had cost anything. The reasoning is that the 700-line limit
+window, before it had cost anything. The reasoning is that the 500-line limit
 is a ceiling, not a target, and it is the only signal that had been enforcing
 placement at all. `import_window` would have been 443 lines in one `mod.rs` -
 comfortably legal, and still wrong, because nothing about the name says where

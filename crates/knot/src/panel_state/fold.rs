@@ -8,9 +8,11 @@ use knot_acp::ToolCallContent;
 use super::harness::UserChunk;
 use super::harness::classify_user_chunk;
 use super::message::PanelMessage;
+use super::message::SubagentItem;
 use super::message::ToolCallCard;
 use super::message::render_json;
 use super::state::PanelState;
+use super::subagent::parent_tool_use_id;
 
 impl PanelState {
     /// Applies one event from the session's ordered stream.
@@ -26,6 +28,7 @@ impl PanelState {
             // otherwise take them off screen (#344).
             SessionEvent::Ended(cause) => {
                 self.ended = Some(cause);
+                self.release_subagent_orphans();
                 self.clear_inputs();
             }
         }
@@ -51,7 +54,10 @@ impl PanelState {
                 self.context_usage = Some((used, size));
             }
             SessionUpdate::Usage { .. } => {}
-            SessionUpdate::TextDelta { text } => self.append_text(text),
+            SessionUpdate::TextDelta { text, meta } => match parent_tool_use_id(meta.as_ref()) {
+                Some(parent) => self.deliver_to_subagent(parent, SubagentItem::Text(text)),
+                None => self.append_text(text),
+            },
             SessionUpdate::UserMessageChunk { text, meta } => {
                 self.append_user_chunk(text, meta.as_ref());
             }
@@ -63,14 +69,25 @@ impl PanelState {
                                            raw_input,
                                            meta, } => {
                 self.note_pull_requests_in(&content);
-                self.push_message(PanelMessage::ToolCall(Box::new(ToolCallCard { id:
-                                                                                     tool_call_id,
-                                                                                 kind,
-                                                                                 title,
-                                                                                 status,
-                                                                                 content,
-                                                                                 raw_input,
-                                                                                 meta })));
+                let parent = parent_tool_use_id(meta.as_ref());
+                let card = ToolCallCard { id: tool_call_id,
+                                          kind,
+                                          title,
+                                          status,
+                                          content,
+                                          raw_input,
+                                          meta,
+                                          subagent: Vec::new() };
+                match parent {
+                    Some(parent) => {
+                        self.deliver_to_subagent(parent, SubagentItem::ToolCall(Box::new(card)))
+                    }
+                    None => {
+                        let id = card.id.clone();
+                        self.push_message(PanelMessage::ToolCall(Box::new(card)));
+                        self.adopt_subagent_items(&id);
+                    }
+                }
             }
             SessionUpdate::ToolCallUpdate { tool_call_id,
                                             status,
@@ -137,6 +154,7 @@ impl PanelState {
             // agent that announced work and went idle.
             SessionUpdate::TurnEnd { stop_reason } => {
                 self.turn_active = false;
+                self.release_subagent_orphans();
                 self.clear_inputs();
                 if let Some(notice) = stop_notice(&stop_reason) {
                     self.push_notice(notice);

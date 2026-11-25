@@ -13,16 +13,20 @@ pub const AGENTS_FILE: &str = "agents.json";
 /// The saved-workspaces collection.
 pub const WORKSPACES_FILE: &str = "workspaces.json";
 
-/// The layout a workspace window uses until something changes it: a single
-/// pane. Every record written by the Swift app and by every Rust build so far
-/// carries this value, so an entry that does not name a layout has to read as
-/// this one rather than as the empty string.
-pub const WORKSPACE_LAYOUT_DEFAULT: &str = "single";
-
-/// Where a split layout's divider sits until it is dragged: the middle. Like
-/// [`WORKSPACE_LAYOUT_DEFAULT`], this is what every stored record already
-/// holds, so a missing value must read as this and not as zero.
+/// Where a split layout's divider sits until it is dragged: the middle. This
+/// is what every stored record already holds, so a missing value must read
+/// as this and not as zero. (A missing layout mode reads as
+/// `LayoutMode::Single`, the enum's default.)
 pub const WORKSPACE_SPLIT_RATIO_DEFAULT: f64 = 0.5;
+
+/// The nearest a layout divider may sit to either edge of a workspace
+/// window's content area, as a fraction of it (`workspace-layouts`,
+/// "Dividers"). Shared by the store, which clamps a saved ratio on load, and
+/// the window, which clamps a drag, so there is one source for the bounds.
+pub const WORKSPACE_SPLIT_RATIO_MIN: f64 = 0.25;
+
+/// The far bound of [`WORKSPACE_SPLIT_RATIO_MIN`].
+pub const WORKSPACE_SPLIT_RATIO_MAX: f64 = 0.75;
 
 /// Per-workspace UI state, keyed by workspace id.
 ///

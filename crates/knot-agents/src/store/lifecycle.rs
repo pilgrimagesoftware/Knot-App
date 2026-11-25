@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use knot_core::ActivationMode;
 use uuid::Uuid;
 
+use super::layout::{self, CompanionOrigin};
 use super::{AgentStore, CreateOptions, RemovedAgent};
 use crate::agent::{Agent, AgentState, view_mode_for};
 use crate::error::{AgentError, Result};
@@ -88,6 +89,11 @@ impl AgentStore {
             if self.workspace_ui(workspace_id).active_agent_ids.is_empty() {
                 self.set_workspace_active_agents(workspace_id, vec![id]);
             }
+            if let (Some(origin), Some(owner), true) =
+                (opts.companion_origin, opts.created_by, opts.is_companion)
+            {
+                self.show_companion(workspace_id, owner, id, origin);
+            }
         }
         id
     }
@@ -112,6 +118,10 @@ impl AgentStore {
                                              is_companion: true,
                                              insert_after: Some(owner),
                                              activation_mode,
+                                             // Only the agent row's New Shell
+                                             // Companion creates one this way,
+                                             // so the user asked for it.
+                                             companion_origin: Some(CompanionOrigin::User),
                                              ..Default::default() });
         self.set_activated(id, owner_activated);
         Ok(id)
@@ -138,9 +148,14 @@ impl AgentStore {
                 workspace.agent_ids.retain(|agent_id| *agent_id != id);
             }
             // The parallel map has to lose the agent too, or a layout would
-            // go on naming a pane for an agent that no longer exists.
-            for ui in self.workspace_ui.values_mut() {
-                ui.active_agent_ids.retain(|agent_id| *agent_id != id);
+            // go on naming a pane for an agent that no longer exists. Its
+            // pane goes and the layout collapses around the rest.
+            for (workspace_id, ui) in &mut self.workspace_ui {
+                let order = self.workspaces
+                                .iter()
+                                .find(|workspace| workspace.id == *workspace_id)
+                                .map_or(&[][..], |workspace| workspace.agent_ids.as_slice());
+                *ui = layout::remove(ui, order, id);
             }
             removed.push(RemovedAgent { id, was_registered });
         }

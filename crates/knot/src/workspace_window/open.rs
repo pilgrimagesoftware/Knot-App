@@ -201,20 +201,7 @@ impl WorkspaceWindow {
                     window_bounds_subscription: None,
                     _window_closed: Some(window_closed),
                     diff_stats: crate::diff_stats::DiffStatsCache::default(),
-                    git_panel_open: BTreeSet::new(),
-                    git_status: crate::git_panel::state::GitStatusCache::default(),
-                    git_diffs: crate::git_panel::state::GitDiffCache::default(),
-                    git_selection: BTreeMap::new(),
-                    git_watches: BTreeMap::new(),
-                    git_read_folders: crate::read_folders::ReadFolders::default(),
-                    git_watch_dirty: BTreeMap::new(),
-                    git_panel_width: BTreeMap::new(),
-                    git_action_error: BTreeMap::new(),
-                    pending_git_actions: BTreeMap::new(),
-                    pending_git_commits: BTreeMap::new(),
-                    git_diff_lists: BTreeMap::new(),
-                    git_diff_row_counts: BTreeMap::new(),
-                    git_panel_resize: BTreeMap::new(),
+                    git: super::git_panel_state::GitPanelState::default(),
                     artifact_panel: BTreeMap::new(),
                     artifact_panel_resize: BTreeMap::new(),
                     artifact_split_resize: BTreeMap::new(),
@@ -244,6 +231,8 @@ impl WorkspaceWindow {
                     start_requested: std::collections::BTreeSet::new(),
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
+                    divider_drag: None,
+                    frame_layout: None,
                     selected_agent,
                     sessions: BTreeMap::new(),
                     terminal_panes: BTreeMap::new(),
@@ -325,6 +314,7 @@ impl WorkspaceWindow {
                                          .find(|workspace| workspace.id == workspace_id)
                                          .map(|workspace| workspace.agent_ids.clone())
                                 }.unwrap_or_default();
+                            let mut requested_layout = None;
                             {
                                 let mut store = window.store.lock();
                                 // The workspace's `active` agents start
@@ -337,9 +327,25 @@ impl WorkspaceWindow {
                                 // whatever its mode. The workspace's own
                                 // restored selection is not, so a `passive`
                                 // agent stays stopped across a relaunch.
+                                //
+                                // It goes through the layout's selection rules
+                                // like a sidebar click, so a restored split
+                                // that does not show it gains it in a pane,
+                                // and what that placed starts too.
                                 if let Some(requested) = select_agent {
                                     store.set_activated(requested, true);
+                                    let change =
+                                        store.select_in_layout(workspace_id, requested, false);
+                                    for placed in change.placed() {
+                                        store.set_activated(placed, true);
+                                    }
+                                    requested_layout = Some(change);
                                 }
+                            }
+                            // Written after the guard is released, the same
+                            // blocking-I/O rule `persist_workspace_ui` keeps.
+                            if requested_layout.is_some_and(|change| change.changed()) {
+                                window.persist_workspace_ui(cx);
                             }
                             for id in agent_ids {
                                 window.ensure_session(id, cx);

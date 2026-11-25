@@ -1,4 +1,66 @@
 
+## 1.43.0 - 2026-11-25
+
+### Added
+- Make the workspace layout mode a closed enum
+- Add the workspace layout rules
+- Route removal, moves and companions through the layout rules
+- Normalize each workspace's UI state on load
+- Layout geometry and divider drag
+- Route every agent selection through the layout rules
+- Draw a layout's panes through render_agent_pane
+- Name, dim and focus the panes of a multi-pane layout
+- Add a Layout menu to the content header
+- Hold terminal panes at their size during a divider drag
+- Show a new companion beside its owner and focus it
+- Keep the selection on a shown agent when one is removed
+- Show the Layout menu as an icon of the current mode
+
+
+### Changed
+- Split settings/store.rs by concern
+- Split settings/store/tests.rs by concern
+- Move lib.rs tests to a sibling tests.rs
+- Split tasks/tests.rs by concern
+- Split client/tests.rs by concern
+- Split tests/http.rs by concern
+- Split server.rs by concern
+- Split pull_request/tests.rs by concern
+- Split app_bootstrap.rs by concern
+- Split app_state.rs by concern
+- Split app_support.rs by concern
+- Split consts.rs by concern
+- Split tests/l10n_catalog.rs by concern
+- Split pull_request_state/tests.rs by concern
+- Split panel_view/tests.rs by concern
+- Split panel_state/tests.rs by concern
+- Split panel_session.rs by concern
+- Split workspace_window/panel/prompt.rs by concern
+- Split workspace_window/render/mod.rs by concern
+- Split workspace_window/window.rs by concern
+- Split workspace_window/render/sidebar.rs by concern
+- Share the split ratio bounds with the store
+
+
+### Documentation
+- Add a scar for cmd- keystrokes in bindings and tests
+- Point the render module doc at root.rs
+- Document workspace layouts
+- Say how layout ratios and terminals behave in a drag
+
+
+### Fixed
+- Bind question card Submit to secondary-enter
+- Commit and About windows follow system light/dark
+- Keep a subagent's activity inside its delegation card
+- Keep focus on the focused agent when a pane is removed
+- Start the owner a user-created companion brings into view
+- Draw a frame's panes from the layout its selection came from
+- Make Markdown header text selectable
+- Release held subagent reports when a turn ends in an error
+
+
+
 ## 1.42.0 - 2026-11-24
 
 ### Added

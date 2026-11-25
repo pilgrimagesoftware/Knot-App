@@ -28,6 +28,7 @@ mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;
 mod git_panel;
+mod git_panel_state;
 mod handoff;
 #[cfg(test)]
 mod handoff_tests;
@@ -39,6 +40,26 @@ mod issues_view;
 mod key_hints;
 #[cfg(test)]
 mod key_hints_tests;
+mod layout;
+#[cfg(test)]
+mod layout_companion_tests;
+#[cfg(test)]
+mod layout_focus_tests;
+#[cfg(test)]
+mod layout_hold_tests;
+#[cfg(test)]
+mod layout_menu_tests;
+#[cfg(test)]
+mod layout_panes_tests;
+#[cfg(test)]
+mod layout_removal_tests;
+mod layout_select;
+#[cfg(test)]
+mod layout_select_tests;
+#[cfg(test)]
+mod layout_test_support;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod mcp_handover_tests;
 pub(crate) mod mcp_panel;
@@ -84,6 +105,7 @@ mod terminal_pane;
 mod title;
 mod view_mode;
 mod window;
+mod window_drop;
 mod work_items;
 
 // Re-exported so the rest of the crate keeps reaching these by

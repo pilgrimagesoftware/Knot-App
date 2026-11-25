@@ -64,7 +64,7 @@ fn a_combined_document_is_detected_and_split() {
             "a combined document must be written back");
     assert_eq!(split.workspaces.len(), 2);
     let ui = &split.ui_state[&alpha()];
-    assert_eq!(ui.layout_mode, "splitVertical");
+    assert_eq!(ui.layout_mode, crate::LayoutMode::SplitVertical);
     assert_eq!(ui.focused_pane_index, 2);
     assert_eq!(ui.split_ratio, 0.25);
     assert_eq!(ui.split_ratio_secondary, Some(0.4));
@@ -89,7 +89,9 @@ fn an_entry_already_written_wins_over_the_combined_record() {
     let split = read(&StorePaths::rooted(dir.path()));
 
     let alpha_ui = &split.ui_state[&alpha()];
-    assert_eq!(alpha_ui.layout_mode, "single", "the written entry won");
+    assert_eq!(alpha_ui.layout_mode,
+               crate::LayoutMode::Single,
+               "the written entry won");
     assert_eq!(alpha_ui.split_ratio, 0.9);
     assert!(split.needs_write, "the split still has to finish");
     // The record the crash never reached is taken from the combined document.
@@ -198,7 +200,7 @@ fn a_legacy_installation_arrives_at_both_new_documents() {
     assert_eq!(settings.mcp_server_port, 9300);
     assert_eq!(settings.saved_workspaces.len(), 2);
     let ui = &settings.workspace_ui[&alpha()];
-    assert_eq!(ui.layout_mode, "splitVertical");
+    assert_eq!(ui.layout_mode, crate::LayoutMode::SplitVertical);
     assert_eq!(ui.split_ratio_secondary, Some(0.4));
     assert_eq!(ui.is_detached, Some(true));
     assert_eq!(ui.window_bounds.unwrap().height, 4.0);

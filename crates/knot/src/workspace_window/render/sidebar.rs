@@ -1,5 +1,6 @@
-//! The sidebar column: the dashboard row that sits above the list, and the
-//! agent rows themselves.
+//! The sidebar's agent rows: one element per agent, with the selection, drag,
+//! click and context-menu wiring. The expanded body is in `sidebar_row`, the
+//! dashboard row above the list in `dashboard_row`.
 //!
 //! An agent row is built from an [`AgentRow`] snapshot rather than from the
 //! store directly, so the store lock is released before any element is
@@ -18,33 +19,24 @@ use gpui_kit::IntoElement;
 use gpui_kit::ParentElement;
 use gpui_kit::StatefulInteractiveElement;
 use gpui_kit::Styled;
-use gpui_kit::base::StyledExt;
-use gpui_kit::base::h_flex;
-use gpui_kit::base::v_flex;
 use gpui_kit::component::ActiveTheme;
-use gpui_kit::component::Icon;
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::div;
 use gpui_kit::prelude::FluentBuilder;
-use gpui_kit::px;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::sidebar_compact::{
     CompactAgentRow, CompactTooltip, compact_agent_row_body, compact_tooltip,
 };
-use super::status_dot::DotDetail;
-use super::status_dot::status_dot;
-use crate::app_support::single_line;
+use super::sidebar_row::ExpandedAgentRow;
+use super::sidebar_row::expanded_agent_row_body;
 use crate::consts;
-use crate::settings_window::SettingsWindow;
 use crate::workspace_window::AgentMenuTargets;
-use crate::workspace_window::DetailLineSize;
 use crate::workspace_window::WorkspaceViewMode;
 use crate::workspace_window::WorkspaceWindow;
 use crate::workspace_window::agent_row::AgentRow;
 use crate::workspace_window::agent_row_context_menu;
-use crate::workspace_window::detail_line;
 use crate::workspace_window::key_hints::with_key_hint;
 use crate::workspace_window::sidebar_drag::AgentDrag;
 use crate::workspace_window::sidebar_drag::AgentDragPreview;
@@ -204,6 +196,7 @@ impl WorkspaceWindow {
                             else {
                                 cx.theme().transparent
                             })
+                            .map(|row| mark_selected_row(row, selected, index))
                             // A stopped agent's row is dimmed as a whole, so a
                             // workspace of mixed agents reads at a glance. The
                             // state dot cannot carry this: its four values say what
@@ -242,176 +235,37 @@ impl WorkspaceWindow {
                                                        cx).into_any_element()
                             }
                             else {
-                                h_flex()
-                            .w_full()
-                            .gap_3()
-                            .items_start()
-                            .child(
-                                div()
-                                    .w(px(40.))
-                                    .h(px(40.))
-                                    .flex_shrink_0()
-                                    .overflow_hidden()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .text_2xl()
-                                    .child(avatar),
-                            )
-                            .child(
-                                v_flex()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .gap_0p5()
-                                    .child(
-                                        div()
-                                            .w_full()
-                                            .min_w_0()
-                                            .overflow_hidden()
-                                            .whitespace_nowrap()
-                                            .text_ellipsis()
-                                            .font_semibold()
-                                            // A name is stored text, and
-                                            // imported rosters carry
-                                            // whatever the other tool held;
-                                            // the flags above stop soft
-                                            // wrapping only, so a name with
-                                            // a line break in it would grow
-                                            // the row.
-                                            .child(single_line(&name)),
-                                    )
-                                    // A companion says so where a primary
-                                    // agent names its type - it has no
-                                    // coding-agent type of its own, and an
-                                    // unlabelled row gave no clue what it was.
-                                    .children(is_companion.then(|| {
-                                        detail_line(
-                                            gpui_kit::assets::IconName::CornerDownRight,
-                                            knot_core::l10n::t("agent.companion"),
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    // A locked agent is shut out of agent
-                                    // messaging (#310). Said on the row,
-                                    // because a message to it fails and the
-                                    // user should not have to open a menu to
-                                    // find out why.
-                                    .children(is_locked.then(|| {
-                                        detail_line(
-                                            gpui_kit::assets::IconName::Lock,
-                                            knot_core::l10n::t("agent.locked"),
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    // Autopilot reads this agent's replies
-                                    // and may answer or flag them (#323).
-                                    .children(autopilot.then(|| {
-                                        detail_line(
-                                            gpui_kit::assets::IconName::Fan,
-                                            knot_core::l10n::t("agent.autopilot"),
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    // When it next starts on its own, or a
-                                    // run it missed (#404).
-                                    .children(schedule_line.clone().map(|text| {
-                                        detail_line(
-                                            gpui_kit::assets::IconName::CalendarClock,
-                                            text,
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    // Near the end of an idle period only, so
-                                    // the sidebar does not fill with timers.
-                                    .children(idle_line.clone().map(|text| {
-                                        detail_line(
-                                            gpui_kit::assets::IconName::Timer,
-                                            text,
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    // The agent type reads as one of the
-                                    // row's detail lines, directly under the
-                                    // name and above the persona - not
-                                    // right-aligned opposite it, where it
-                                    // floated away from the name it
-                                    // describes and crowded the state dot.
-                                    .children((!is_shell).then(|| {
-                                        detail_line(
-                                            SettingsWindow::agent_type_icon(&agent_type),
-                                            SettingsWindow::agent_type_label(&agent_type)
-                                                .to_string(),
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    .children(persona_name.map(|persona_name| {
-                                        // A drawn icon, not the `👤` this line
-                                        // used to carry inside its text: an
-                                        // emoji keeps its own colour and size,
-                                        // so it was the one thing in the
-                                        // column that did not line up.
-                                        detail_line(
-                                            gpui_kit::assets::IconName::User,
-                                            persona_name,
-                                            DetailLineSize::Small,
-                                            title_font_name.clone(),
-                                            title_font_size,
-                                            cx,
-                                        )
-                                    }))
-                                    .child(detail_line(
-                                        gpui_kit::assets::IconName::Activity,
-                                        header_title,
-                                        DetailLineSize::Body,
-                                        title_font_name.clone(),
-                                        title_font_size,
-                                        cx,
-                                    ))
-                                    .child(detail_line(
-                                        gpui_kit::assets::IconName::Folder,
-                                        folder_name,
-                                        DetailLineSize::Body,
-                                        title_font_name.clone(),
-                                        title_font_size,
-                                        cx,
-                                    )),
-                            )
-                            // The state dot alone. The working indicator is
-                            // deliberately not here: beside the dot it says
-                            // the same thing twice, and the row already
-                            // carries the one thing the dot cannot - a
-                            // stopped agent's row is dimmed as a whole
-                            // (see `agent-list-ui`).
-                            .children((!is_shell).then(|| {
-                                status_dot(id,
-                                           state,
-                                           DotDetail { idle_since,
-                                                       input_reason: input_reason.clone(),
-                                                       session_limit: session_limit.clone() },
-                                           crate::status_palette::status_palette(cx)).mt_1()
-                            }))
-                            .into_any_element()
+                                expanded_agent_row_body(ExpandedAgentRow { id,
+                                                                           avatar,
+                                                                           name,
+                                                                           folder_name,
+                                                                           state,
+                                                                           idle_since,
+                                                                           input_reason: input_reason.clone(),
+                                                                           session_limit: session_limit.clone(),
+                                                                           is_shell,
+                                                                           is_companion,
+                                                                           is_locked,
+                                                                           autopilot,
+                                                                           header_title,
+                                                                           persona_name,
+                                                                           agent_type,
+                                                                           schedule_line: schedule_line.clone(),
+                                                                           idle_line: idle_line.clone() },
+                                                        &title_font_name,
+                                                        title_font_size,
+                                                        cx)
                             })
-                            .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
-                                            view.select_agent(id);
+                            .on_click(cx.listener(move |view, event: &ClickEvent, _window, cx| {
+                                            // The platform's secondary modifier
+                                            // (⌘ on macOS, Ctrl elsewhere),
+                                            // which is what the rest of the
+                                            // app's shortcuts read, so ⌘-click
+                                            // on a Mac and Ctrl-click on
+                                            // Linux skip the companion layout.
+                                            view.select_agent(id,
+                                                              event.modifiers().secondary(),
+                                                              cx);
                                             // Leave the dashboard, the same way
                                             // tapping an
                                             // agent card does - selecting a row
@@ -420,8 +274,6 @@ impl WorkspaceWindow {
                                             // the selection
                                             // without ever showing the session.
                                             view.view_mode = WorkspaceViewMode::Terminal;
-                                            view.ensure_session(id, cx);
-                                            view.ensure_panel_session(id, cx);
                                             cx.notify();
                                         }))
                             .context_menu({
@@ -440,70 +292,23 @@ impl WorkspaceWindow {
               .map(gpui_kit::IntoElement::into_any_element)
               .collect()
     }
+}
 
-    /// The workspace overview row, pinned above the agent list.
-    ///
-    /// `compact` drops its label, leaving the icon - the same trade the agent
-    /// rows above it make at the same width.
-    pub(super) fn dashboard_row(&self, is_dashboard: bool, compact: bool, cx: &mut Context<Self>)
-                                -> gpui_kit::AnyElement {
-        // The dashboard sits at the top of the agent list, the way the
-        // Swift reference's `overviewRow` does (`SidebarView.swift`), and
-        // not as an icon in the bottom bar: it is the workspace's overview
-        // of every agent, so it belongs above them, shaped like the rows it
-        // summarises. As a bare icon beside "New agent" it read as a minor
-        // control and went unnoticed.
-        let hint = self.key_hints.shown().map(|hints| hints.dashboard.clone());
-        let row = div().id("workspace-dashboard-row");
-        let row = if compact {
-            row
-        }
-        else {
-            with_key_hint(row, hint.as_deref(), false, cx)
-        };
-        row.debug_selector(|| "workspace-dashboard-row".into())
-           .cursor_pointer()
-           .rounded(cx.theme().radius)
-           .p_2()
-           .bg(if is_dashboard {
-               cx.theme().muted
-           }
-           else {
-               cx.theme().transparent
-           })
-           .child(h_flex().w_full()
-                          .gap_3()
-                          .items_center()
-                          .when(compact, |row| row.justify_center())
-                          .child({
-                              let icon =
-                                  div().w(px(40.))
-                                       .h(px(40.))
-                                       .flex_shrink_0()
-                                       .flex()
-                                       .items_center()
-                                       .justify_center()
-                                       .child(Icon::default().path("icons/layout-dashboard.svg"));
-                              if compact {
-                                  with_key_hint(icon, hint.as_deref(), true, cx)
-                              }
-                              else {
-                                  icon
-                              }
-                          })
-                          .when(!compact, |row| {
-                              row.child(div().flex_1()
-                                             .min_w_0()
-                                             .font_semibold()
-                                             .child(knot_core::l10n::t("dashboard.title")))
-                          }))
-           .on_click(cx.listener(|view, _: &ClickEvent, _window, cx| {
-                           view.view_mode = match view.view_mode {
-                               WorkspaceViewMode::Dashboard => WorkspaceViewMode::Terminal,
-                               _ => WorkspaceViewMode::Dashboard,
-                           };
-                           cx.notify();
-                       }))
-           .into_any_element()
+/// Adds what lets a test see that `row` is the highlighted one, which is
+/// otherwise only a background colour. Nothing in a release build.
+#[cfg(test)]
+fn mark_selected_row<E: ParentElement>(row: E, selected: bool, index: usize) -> E {
+    if selected {
+        row.child(div().absolute()
+                       .size_0()
+                       .debug_selector(move || format!("workspace-agent-selected-{index}")))
     }
+    else {
+        row
+    }
+}
+
+#[cfg(not(test))]
+fn mark_selected_row<E>(row: E, _selected: bool, _index: usize) -> E {
+    row
 }

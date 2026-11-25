@@ -20,7 +20,8 @@ pub use duplicate_name::duplicate_name;
 pub use error::{AgentError, Result};
 pub use registry::{RegistryEntry, RegistryQuery, RegistryStatus, RegistryView, visible_to};
 pub use session_limit::SessionLimit;
+pub use store::layout::{self, CompanionOrigin};
 pub use store::{
-    AdoptedCounts, AgentStore, CreateOptions, EditRequest, McpHandoverRequest, McpHandoverTerminal,
-    RemovedAgent,
+    AdoptedCounts, AgentStore, CreateOptions, EditRequest, LayoutChange, McpHandoverRequest,
+    McpHandoverTerminal, RemovedAgent,
 };

@@ -95,6 +95,11 @@ impl AgentEditor {
                     startup_prompt: self.submitted_startup_prompt(cx),
                     // Only the MCP section opens handover terminals (#443).
                     mcp_handover: None,
+                    // The user filled in the form, so a companion it creates
+                    // is one they asked for.
+                    companion_origin: self.prefill
+                                          .is_companion
+                                          .then_some(knot_agents::CompanionOrigin::User),
                 },
             );
             // A fork continues the source's conversation rather than

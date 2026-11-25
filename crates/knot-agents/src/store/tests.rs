@@ -1,7 +1,9 @@
+mod arrange;
 mod autopilot;
 mod awaiting_reason;
 mod duplicate;
 mod idle_since;
+mod layout;
 mod lifecycle;
 mod mcp_handover;
 mod persistence;
