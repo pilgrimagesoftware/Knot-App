@@ -44,6 +44,8 @@ mod layout;
 #[cfg(test)]
 mod layout_focus_tests;
 #[cfg(test)]
+mod layout_hold_tests;
+#[cfg(test)]
 mod layout_menu_tests;
 #[cfg(test)]
 mod layout_panes_tests;

@@ -148,10 +148,8 @@ impl WorkspaceWindow {
             return self.render_panel_pane(id, window, cx);
         }
         // The view owns its input, sizing and repaint; see `terminal_pane`.
-        match self.terminal_panes.get(&id) {
-            Some(pane) => div().size_full()
-                               .child(pane.view.clone())
-                               .into_any_element(),
+        match self.terminal_surface(id) {
+            Some(surface) => surface,
             None => self.empty_pane("Starting terminal…", cx),
         }
     }

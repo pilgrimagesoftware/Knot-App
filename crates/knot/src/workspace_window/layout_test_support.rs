@@ -57,6 +57,12 @@ pub(super) struct Fixture {
 }
 
 pub(super) fn open(spec: &Spec, cx: &mut TestAppContext) -> Fixture {
+    open_as(spec, INERT_AGENT_TYPE, cx)
+}
+
+/// [`open`] with every agent of `agent_type`: a shell's agents show a
+/// terminal where the others show a conversation panel.
+pub(super) fn open_as(spec: &Spec, agent_type: &str, cx: &mut TestAppContext) -> Fixture {
     let mut store = knot_agents::AgentStore::new();
     let space = crate::tests::workspace("Layouts");
     let workspace = space.id;
@@ -66,7 +72,7 @@ pub(super) fn open(spec: &Spec, cx: &mut TestAppContext) -> Fixture {
         |store: &mut knot_agents::AgentStore, name: &str, options: knot_agents::CreateOptions| {
             store.create(format!("~/{name}"),
                          knot_agents::CreateOptions { name: Some(name.into()),
-                                                      agent_type: Some(INERT_AGENT_TYPE.into()),
+                                                      agent_type: Some(agent_type.into()),
                                                       workspace_id: Some(workspace),
                                                       ..options })
         };

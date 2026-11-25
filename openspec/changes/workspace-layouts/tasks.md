@@ -31,7 +31,7 @@
 
 ## 6. Terminal resize on settle
 
-- [ ] 6.1 Hold each terminal pane's inner size at its pre-drag pixel size during a drag, and lift the hold on release. Verify: a gpui test with two terminal panes drags across 100 px and asserts each terminal's grid size is unchanged mid-drag and changed exactly once after release.
+- [x] 6.1 Hold each terminal pane's inner size at its pre-drag pixel size during a drag, and lift the hold on release. Verify: a gpui test with two terminal panes drags across 100 px and asserts each terminal's grid size is unchanged mid-drag and changed exactly once after release. (`layout_hold_tests.rs`: two `/bin/cat` PTY terminals in a vertical split, dragged 100 px in four moves; each grid is asserted unchanged after every move, both change on release, and a later frame leaves them as the release put them. "Exactly once" is checked as one change in the grid size the PTY was last given, not as a count of resize calls. The test fails with the hold removed.)
 - [ ] 6.2 Conversation panels are not held. Verify: a gpui test asserts a panel pane's bounds track the divider mid-drag.
 
 ## 7. Companions and removal in the window
