@@ -1,20 +1,30 @@
+## ADDED Requirements
+
+### Requirement: Agent credential delivery
+
+When it launches an ACP agent with the MCP server enabled, the system SHALL
+issue that agent a credential (see `mcp-server` "Credential kinds") and pass
+it as `Authorization: Bearer <credential>` in the ACP MCP server entry's
+`headers`, and as `KNOT_MCP_TOKEN` (with `KNOT_MCP_URL`) in the adapter
+subprocess environment for hook scripts. The credential SHALL NOT appear in
+the URL, the adapter's command line, or any log line.
+
+#### Scenario: The credential travels in a header
+
+- **WHEN** an ACP agent is launched with the MCP server enabled
+- **THEN** the `mcpServers` entry has an `Authorization` header and its URL
+  contains no credential
+
 ## MODIFIED Requirements
 
 ### Requirement: MCP configuration for ACP-launched agents
 
 The system SHALL configure MCP access for every ACP-launched (non-shell)
-agent through the ACP protocol's own session-scoped mechanism (the
-`session/new`/`session/load` request's MCP server parameters), naming the
-knot HTTP MCP server and its URL, rather than through a CLI argument string
-passed to the adapter subprocess. This SHALL apply uniformly across every
-agent type with a registered ACP adapter, replacing the previous
-per-type CLI-flag behavior, which never reached the subprocess correctly.
-The entry's `headers` SHALL carry `Authorization: Bearer <agent credential>`
-for that agent (see `mcp-server` "Client authentication"), issued when the
-agent is launched; the credential SHALL NOT appear in the URL, in the
-adapter's command line, or in any log line. The adapter subprocess
-environment SHALL carry `KNOT_MCP_URL` and `KNOT_MCP_TOKEN` (the same agent
-credential) for hook scripts.
+agent through the `session/new`/`session/load` request's MCP server
+parameters, naming the knot HTTP MCP server and its URL, rather than through
+a CLI argument passed to the adapter subprocess, uniformly across every agent
+type with a registered ACP adapter. The entry's `headers` SHALL carry that
+agent's credential (see "Agent credential delivery").
 
 #### Scenario: ACP session carries MCP server config
 
