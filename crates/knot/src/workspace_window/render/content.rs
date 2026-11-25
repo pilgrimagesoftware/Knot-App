@@ -186,6 +186,15 @@ impl WorkspaceWindow {
                                                             }
                                                             None => pane,
                                                         };
+                                                        // Beside the side
+                                                        // panels' group, not
+                                                        // inside
+                                                        // it: the dividers
+                                                        // belong to the layout
+                                                        // area. Single mode
+                                                        // returns `pane` as is.
+                                                        let pane =
+                                                            self.with_layout_dividers(pane, cx);
                                                         let pane =
                                                             self.with_side_panels(pane, window, cx);
                                                         v_flex().flex_1()

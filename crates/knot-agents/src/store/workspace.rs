@@ -2,6 +2,7 @@ use knot_core::WorkspaceUiState;
 use uuid::Uuid;
 
 use super::AgentStore;
+use super::layout::{self, CompanionOrigin};
 
 impl AgentStore {
     /// The UI state for `id`, created at its defaults if the workspace has
@@ -60,8 +61,34 @@ impl AgentStore {
     }
 
     /// Replace the whole UI-state map, as the store is loaded from settings.
+    ///
+    /// Each workspace's state is normalized against the agents it holds, so a
+    /// layout saved before an agent went away, or by another version, opens
+    /// as one the window can draw (`workspace-layouts`, "The saved layout is
+    /// restored"). An entry for a workspace the store does not hold is kept
+    /// as it is: there is nothing to check it against, and the load prunes it.
     pub fn set_workspace_ui(&mut self, ui: std::collections::BTreeMap<Uuid, WorkspaceUiState>) {
         self.workspace_ui = ui;
+        for (workspace_id, state) in &mut self.workspace_ui {
+            if let Some(workspace) = self.workspaces
+                                         .iter()
+                                         .find(|workspace| workspace.id == *workspace_id)
+            {
+                *state = layout::normalize(state, &workspace.agent_ids);
+            }
+        }
+    }
+
+    /// Lays out `workspace` for a companion just created for `owner`; see
+    /// [`layout::add_companion`]. Writes only when the layout changes, so a
+    /// workspace that has never been arranged does not gain an entry.
+    pub(super) fn show_companion(&mut self, workspace: Uuid, owner: Uuid, companion: Uuid,
+                                 origin: CompanionOrigin) {
+        let current = self.workspace_ui(workspace);
+        let next = layout::add_companion(&current, owner, companion, origin);
+        if next != current {
+            self.workspace_ui.insert(workspace, next);
+        }
     }
 
     /// The workspace `id` names, for the operations that edit one in place.
@@ -99,17 +126,12 @@ impl AgentStore {
         true
     }
 
-    /// Record `id`'s layout mode and which agents are active in it.
-    ///
-    /// UNWIRED(#321): nothing sets a layout mode yet - workspace windows show
-    /// one agent, and the split, three- and four-pane layouts are still to be
-    /// ported. The field is persisted and migrated all the same, because an
-    /// installation upgrading from the Swift app already has one stored and
-    /// losing it would be silent.
-    pub fn set_workspace_layout(&mut self, id: Uuid, layout_mode: impl Into<String>,
+    /// Record `id`'s layout mode and which agents are active in it. The rules
+    /// that decide them are in [`layout`].
+    pub fn set_workspace_layout(&mut self, id: Uuid, layout_mode: knot_core::LayoutMode,
                                 active_agent_ids: Vec<Uuid>) {
         let ui = self.workspace_ui_mut(id);
-        ui.layout_mode = layout_mode.into();
+        ui.layout_mode = layout_mode;
         ui.active_agent_ids = active_agent_ids;
     }
 
@@ -120,16 +142,12 @@ impl AgentStore {
     }
 
     /// Record which pane of `id`'s layout has focus.
-    ///
-    /// UNWIRED(#321): there is only one pane until the layouts are ported.
     pub fn set_workspace_focused_pane(&mut self, id: Uuid, index: i32) {
         self.workspace_ui_mut(id).focused_pane_index = index;
     }
 
     /// Record `id`'s split ratios - the secondary one only applies to the
     /// three- and four-pane layouts, hence the `Option`.
-    ///
-    /// UNWIRED(#321): nothing splits a workspace window yet.
     pub fn set_workspace_split_ratios(&mut self, id: Uuid, primary: f64, secondary: Option<f64>) {
         let ui = self.workspace_ui_mut(id);
         ui.split_ratio = primary;
@@ -278,9 +296,18 @@ impl AgentStore {
             if let Some(workspace) = self.workspace_mut(source) {
                 workspace.agent_ids.retain(|id| *id != agent_id);
             }
-            self.workspace_ui_mut(source)
-                .active_agent_ids
-                .retain(|id| *id != agent_id);
+            // The old workspace's layout loses the pane as removal does; the
+            // new one's is not touched below, bar showing the agent in a
+            // workspace that showed nothing.
+            let order = self.workspaces
+                            .iter()
+                            .find(|workspace| workspace.id == source)
+                            .map(|workspace| workspace.agent_ids.clone())
+                            .unwrap_or_default();
+            let collapsed = layout::remove(&self.workspace_ui(source), &order, agent_id);
+            if collapsed != self.workspace_ui(source) {
+                self.workspace_ui.insert(source, collapsed);
+            }
         }
         let mut became_only_member = false;
         if let Some(workspace) = self.workspace_mut(target_workspace_id) {

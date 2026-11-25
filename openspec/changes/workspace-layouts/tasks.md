@@ -2,19 +2,19 @@
 
 ## 1. Layout mode type (`knot-core`)
 
-- [ ] 1.1 `LayoutMode` enum with the Swift serde names and `pane_count()`. `WorkspaceUiState.layout_mode` uses it, and an unknown value reads as `Single`. Verify: records tests round-trip each mode, an unknown string loads as `Single`, and `tests/settings.rs` still reads the legacy fixture's `splitVertical`.
-- [ ] 1.2 Replace the `"grid"` value in `records/tests.rs` with a real mode and retire `WORKSPACE_LAYOUT_DEFAULT`'s string form. Verify: `cargo test -p knot-core` passes.
+- [x] 1.1 `LayoutMode` enum with the Swift serde names and `pane_count()`. `WorkspaceUiState.layout_mode` uses it, and an unknown value reads as `Single`. Verify: records tests round-trip each mode, an unknown string loads as `Single`, and `tests/settings.rs` still reads the legacy fixture's `splitVertical`.
+- [x] 1.2 Replace the `"grid"` value in `records/tests.rs` with a real mode and retire `WORKSPACE_LAYOUT_DEFAULT`'s string form. Verify: `cargo test -p knot-core` passes.
 
 ## 2. Layout rules (`knot-agents`)
 
-- [ ] 2.1 `store/layout.rs`: `select`, `set_mode`, `add_companion`, `remove` and `normalize` as pure functions over the UI state, the agent order and companions. Verify: one unit test per `workspace-layouts` scenario in "Changing the layout mode", "Selecting an agent from the sidebar", "Companion layout", "A new companion opens beside its creator", "A companion whose owner is not shown", "Moving an agent to another workspace", "Removal collapses the layout" and "The saved layout is restored".
-- [ ] 2.2 Wire `AgentStore::remove`, `move_to_workspace` and `create_shell_companion` through those rules, and drop the `UNWIRED(#321)` markers on the layout setters. Verify: store tests check that removing a pane's agent collapses the mode, that a move leaves the target layout alone, and that a companion opens beside its owner.
-- [ ] 2.3 Normalize every workspace's UI state when the store loads it. Verify: a test loads a grid with a missing agent and gets three-pane, and a test with a stale focused index gets it clamped.
+- [x] 2.1 `store/layout.rs`: `select`, `set_mode`, `add_companion`, `remove` and `normalize` as pure functions over the UI state, the agent order and companions. Verify: one unit test per `workspace-layouts` scenario in "Changing the layout mode", "Selecting an agent from the sidebar", "Companion layout", "A new companion opens beside its creator", "A companion whose owner is not shown", "Moving an agent to another workspace", "Removal collapses the layout" and "The saved layout is restored".
+- [x] 2.2 Wire `AgentStore::remove`, `move_to_workspace` and `create_shell_companion` through those rules, and drop the `UNWIRED(#321)` markers on the layout setters. Verify: store tests check that removing a pane's agent collapses the mode, that a move leaves the target layout alone, and that a companion opens beside its owner.
+- [x] 2.3 Normalize every workspace's UI state when the store loads it. Verify: a test loads a grid with a missing agent and gets three-pane, and a test with a stale focused index gets it clamped.
 
 ## 3. Geometry and divider (`knot`)
 
-- [ ] 3.1 `render/layout.rs`: `pane_rects` and `divider_rects` for all five modes. The three-pane secondary divider spans the right column only, and the grid's dividers run full length. Verify: unit tests for each mode at ratios 0.5 and 0.3/0.7, and clamping at 0.1 and 0.9.
-- [ ] 3.2 `render/divider.rs`: 12 px hit area, 1 px line and a resize cursor for each direction. Window-level drag state with the clamped ratio set live, and persistence only on release. Verify: a gpui test drags a split divider past 25% and asserts the ratio is 0.25 and the UI-state document was written once, after release.
+- [x] 3.1 `render/layout.rs`: `pane_rects` and `divider_rects` for all five modes. The three-pane secondary divider spans the right column only, and the grid's dividers run full length. Verify: unit tests for each mode at ratios 0.5 and 0.3/0.7, and clamping at 0.1 and 0.9.
+- [x] 3.2 `render/divider.rs`: 12 px hit area, 1 px line and a resize cursor for each direction. Window-level drag state with the clamped ratio set live, and persistence only on release. Verify: a gpui test drags a split divider past 25% and asserts the ratio is 0.25 and the UI-state document was written once, after release. (The test asserts the document is unchanged through every mid-drag move, holds 0.25 after release, and is not rewritten by later moves or a second release; it cannot count identical rewrites, but `end_divider_drag` takes the drag state before its single `persist_workspace_ui` call.)
 
 ## 4. Panes in the workspace window
 

@@ -108,7 +108,8 @@ fn a_combined_document_splits_without_losing_a_value() {
         let ui = settings.workspace_ui
                          .get(&key)
                          .unwrap_or_else(|| panic!("no UI state for workspace {key}"));
-        assert_eq!(ui.layout_mode, record["layoutMode"].as_str().unwrap());
+        assert_eq!(ui.layout_mode.as_str(),
+                   record["layoutMode"].as_str().unwrap());
         let active: Vec<Uuid> =
             record["activeAgentIds"].as_array()
                                     .unwrap()
@@ -214,7 +215,7 @@ fn a_combined_record_missing_ui_fields_migrates_with_defaults() {
     assert_eq!(settings.saved_workspaces[0].name, "Sparse");
     let ui = &settings.workspace_ui[&key];
     assert_eq!(ui,
-               &WorkspaceUiState { layout_mode: "single".to_string(),
+               &WorkspaceUiState { layout_mode: knot_core::LayoutMode::Single,
                                    ..WorkspaceUiState::default() });
 }
 

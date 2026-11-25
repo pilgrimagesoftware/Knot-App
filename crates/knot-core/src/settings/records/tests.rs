@@ -113,7 +113,7 @@ fn workspace_round_trips() {
 
 #[test]
 fn workspace_ui_state_round_trips() {
-    let ui = WorkspaceUiState { layout_mode:           "grid".to_string(),
+    let ui = WorkspaceUiState { layout_mode:           LayoutMode::GridFourPane,
                                 active_agent_ids:      vec![id()],
                                 focused_pane_index:    1,
                                 split_ratio:           0.5,
@@ -207,14 +207,14 @@ fn a_sighting_matches_only_the_same_url_from_the_same_agent() {
 }
 
 /// The defaults are what every record written before the split already
-/// holds. Deriving `Default` would give `""` and `0.0` instead, which is
-/// a layout that does not exist and a divider at the far edge - a change
+/// holds. Deriving `Default` would give `0.0` for the ratio instead, which
+/// is a divider at the far edge - a change
 /// to what the state means, not just to where it is stored.
 #[test]
 fn ui_state_defaults_match_what_existing_records_hold() {
     let ui = WorkspaceUiState::default();
 
-    assert_eq!(ui.layout_mode, "single");
+    assert_eq!(ui.layout_mode, LayoutMode::Single);
     assert_eq!(ui.split_ratio, 0.5);
 
     // And an entry that names neither reads the same way, rather than
@@ -229,7 +229,7 @@ fn ui_state_defaults_match_what_existing_records_hold() {
 fn ui_state_without_saved_window_bounds_still_loads() {
     let ui: WorkspaceUiState = serde_json::from_str(r#"{"layoutMode":"single"}"#).unwrap();
 
-    assert_eq!(ui.layout_mode, "single");
+    assert_eq!(ui.layout_mode, LayoutMode::Single);
     assert_eq!(ui.window_bounds, None);
 }
 
@@ -239,10 +239,41 @@ fn ui_state_without_saved_window_bounds_still_loads() {
 #[test]
 fn a_combined_workspace_record_still_decodes_as_a_workspace() {
     let json = r##"{"id":"00000000-0000-0000-0000-000000000001","name":"Main",
-                    "colorHex":"#1B4FB2","layoutMode":"grid","splitRatio":0.25}"##;
+                    "colorHex":"#1B4FB2","layoutMode":"gridFourPane","splitRatio":0.25}"##;
 
     let ws: Workspace = serde_json::from_str(json).unwrap();
 
     assert_eq!(ws.name, "Main");
     assert!(ws.agent_ids.is_empty());
+}
+
+/// Every mode is stored as the Swift app's `LayoutMode` raw value, so a
+/// record written by either app reads back as the same mode.
+#[test]
+fn each_layout_mode_round_trips_under_its_swift_name() {
+    let names = [(LayoutMode::Single, "single"),
+                 (LayoutMode::SplitVertical, "splitVertical"),
+                 (LayoutMode::SplitHorizontal, "splitHorizontal"),
+                 (LayoutMode::ThreePane, "threePane"),
+                 (LayoutMode::GridFourPane, "gridFourPane")];
+    assert_eq!(names.len(), LayoutMode::ALL.len());
+    for (mode, name) in names {
+        let ui = WorkspaceUiState { layout_mode: mode,
+                                    ..WorkspaceUiState::default() };
+        let json = serde_json::to_value(&ui).unwrap();
+        assert_eq!(json["layoutMode"], name);
+        let back: WorkspaceUiState = serde_json::from_value(json).unwrap();
+        assert_eq!(back.layout_mode, mode);
+    }
+}
+
+/// A mode this build does not know - a misspelling, or one a later version
+/// added - reads as single rather than failing the whole document.
+#[test]
+fn an_unknown_layout_mode_loads_as_single() {
+    let ui: WorkspaceUiState =
+        serde_json::from_str(r#"{"layoutMode":"grid","splitRatio":0.3}"#).unwrap();
+
+    assert_eq!(ui.layout_mode, LayoutMode::Single);
+    assert_eq!(ui.split_ratio, 0.3, "the rest of the entry still loads");
 }

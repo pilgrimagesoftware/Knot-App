@@ -1,4 +1,4 @@
-use knot_agents::{AgentStore, CreateOptions};
+use knot_agents::{AgentStore, CompanionOrigin, CreateOptions};
 use knot_core::BenchAgent;
 use knot_mcp::ToolCallResult;
 use uuid::Uuid;
@@ -156,6 +156,10 @@ pub fn create_agent(store: &mut AgentStore, arguments: &serde_json::Value,
                                           persona_id: fields.persona_id,
                                           created_by: Some(created_by),
                                           is_companion: companion,
+                                          // Another agent asked for it, not
+                                          // the user.
+                                          companion_origin:
+                                              companion.then_some(CompanionOrigin::Other),
                                           insert_after: None,
                                           workspace_id: None,
                                           // Active, not the dialog's
