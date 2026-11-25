@@ -71,6 +71,10 @@ pub struct ConnectRequest<'a> {
     /// Where the session's conversation times are kept, or `None` to keep
     /// none - see [`TimesStore`].
     pub times:                      Option<TimesStore>,
+    /// Lines Knot adds to the conversation about this launch before it goes
+    /// live - that the agent's MCP credential travels on its CLI's command
+    /// line, say (`mcp-auth` D3).
+    pub notices:                    Vec<String>,
 }
 
 /// A startup prompt's raw text and what its variables expand with. The
@@ -91,7 +95,7 @@ pub struct StartupRequest {
 /// it. Either way nothing is published and `on_session_id` is not called,
 /// so a torn-down attempt can neither leave an adapter running beside the
 /// next one nor write its session id over the one that replaced it.
-pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, request: ConnectRequest<'_>,
+pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, mut request: ConnectRequest<'_>,
                           progress: &ConnectProgress, on_session_id: impl FnOnce(&str)) {
     // Taken under the lock, so an attempt that starts after its slot was
     // retired - or a second task handed the same slot - does nothing.
@@ -100,6 +104,7 @@ pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, request: ConnectR
         return;
     };
     let agent_id = request.agent_id;
+    let notices = std::mem::take(&mut request.notices);
     let prepared = tokio::select! {
         // Fires when the `Connecting` variant holding the sender is
         // replaced. Only a retire can do that while this select runs: the
@@ -135,6 +140,9 @@ pub async fn connect_into(slot: &Arc<Mutex<PanelSessionSlot>>, request: ConnectR
         return;
     }
     on_session_id(handle.session_id());
+    for notice in notices {
+        handle.record_notice(notice);
+    }
     let session = handle.session();
     let recorder = handle.recorder();
     // Publish the handle *before* sending the registration prompt.

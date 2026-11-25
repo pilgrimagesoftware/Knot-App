@@ -341,6 +341,8 @@ impl PanelRecorder {
 }
 
 #[cfg(test)]
+mod notice_tests;
+#[cfg(test)]
 mod retire_tests;
 #[cfg(test)]
 mod tests;

@@ -71,7 +71,7 @@ impl WorkspaceWindow {
         let credentials = mcp_url.is_some().then(|| self.mcp_credentials.issue(id));
         let hook_env = credentials.as_ref()
                                   .map(|pair| {
-                                      hook_environment(id,
+                                      super::mcp_launch::hook_environment(id,
                                             pair,
                                             crate::settings_global::read(cx).mcp_server_port)
                                   })
@@ -107,6 +107,15 @@ impl WorkspaceWindow {
                                                              .agent_options
                                                              .get(&agent.agent_type)
                                                              .map_or("", String::as_str));
+        // Decided before `options` moves into the launch, and only with MCP
+        // on: without a server there is no credential to expose.
+        let notices: Vec<String> =
+            mcp_url.as_ref()
+                   .and_then(|_| {
+                       super::mcp_launch::command_line_notice(id, &agent.agent_type, &options)
+                   })
+                   .into_iter()
+                   .collect();
         if !options.ignored.is_empty() {
             eprintln!("agent {id}: {} options not passed to its adapter: {:?}",
                       agent.agent_type, options.ignored);
@@ -223,7 +232,8 @@ impl WorkspaceWindow {
                                                             env: [delivery.env, hook_env].concat(),
                                                             subagents,
                                                             startup_prompt,
-                                                            times };
+                                                            times,
+                                                            notices };
                         panel_session::connect_into(&slot, request, &progress, |session_id| {
                             // Written out straight away, not left for the next
                             // roster change: with conversations restored, this
@@ -416,16 +426,4 @@ impl WorkspaceWindow {
                         }
                     });
     }
-}
-
-/// The environment an adapter's hook scripts read (D3, D6): the server's
-/// base URL, the agent's id and its hook credential - the only agent
-/// credential placed in an environment, and one the server refuses on
-/// `/mcp`.
-pub(in crate::workspace_window) fn hook_environment(agent: uuid::Uuid,
-                                                    pair: &knot_mcp::AgentCredentials, port: u16)
-                                                    -> Vec<(String, String)> {
-    vec![(crate::consts::MCP_HOOK_URL_ENV.to_owned(), knot_agent_launch::server_url_for_port(port)),
-         (crate::consts::MCP_HOOK_TOKEN_ENV.to_owned(), pair.hooks.expose().to_owned()),
-         (crate::consts::MCP_HOOK_AGENT_ENV.to_owned(), agent.to_string())]
 }

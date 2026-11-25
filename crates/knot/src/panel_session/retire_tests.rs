@@ -58,7 +58,8 @@ fn request<'a>(config: &'a AdapterConfig, env: Vec<(String, String)>) -> Connect
                      args: Vec::new(),
                      subagents: None,
                      startup_prompt: None,
-                     times: None }
+                     times: None,
+                     notices: Vec::new() }
 }
 
 /// The adapter's pid, once it has written it.

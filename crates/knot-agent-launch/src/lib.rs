@@ -10,6 +10,7 @@ mod agent_options;
 mod builders;
 mod capabilities;
 mod consts;
+mod credential_exposure;
 mod default_mode;
 mod escape;
 mod handoff;
@@ -26,6 +27,7 @@ pub use builders::{
     mcp_url, mcp_url_for_port, plan_launch, server_url_for_port,
 };
 pub use capabilities::{keeps_mcp_query, supports_inline_registration};
+pub use credential_exposure::{CommandLineDelivery, command_line_delivery};
 pub use default_mode::{DefaultMode, unconfigured_default_mode};
 pub use escape::persona_prompt;
 pub use handoff::{OpenThread, handoff_note, reset_notice};

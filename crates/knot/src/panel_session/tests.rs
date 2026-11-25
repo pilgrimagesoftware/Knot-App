@@ -69,7 +69,8 @@ async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      None, };
+                                   times:                      None,
+                                   notices:                    Vec::new(), };
 
     let watched = Arc::clone(&slot);
     // The phase the slot was in when the prompt arrived, or `Failed` as soon
@@ -184,7 +185,8 @@ async fn connect_naming_a_prior_session(load: &str, resume_prompt: Option<&str>)
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      None, };
+                                   times:                      None,
+                                   notices:                    Vec::new(), };
     let mut persisted = String::new();
     connect_into(&slot, request, &progress, |id| persisted = id.to_string()).await;
     if let PanelSessionSlot::Ready(handle) = &*slot.lock() {
@@ -300,7 +302,8 @@ async fn a_restored_session_keeps_its_entries_times() {
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      Some(store.clone()), };
+                                   times:                      Some(store.clone()),
+                                   notices:                    Vec::new(), };
     connect_into(&slot, request, &progress, |_| {}).await;
     let (state, session) = match &*slot.lock() {
         PanelSessionSlot::Ready(handle) => (handle.state(), handle.session()),
@@ -385,7 +388,8 @@ async fn restore_thread_7(store: &TimesStore, env: Vec<(String, String)>)
                                    args: Vec::new(),
                                    subagents: None,
                                    startup_prompt: None,
-                                   times: Some(store.clone()) };
+                                   times: Some(store.clone()),
+                                   notices: Vec::new() };
     connect_into(&slot, request, &progress, |_| {}).await;
     let (state, session) = match &*slot.lock() {
         PanelSessionSlot::Ready(handle) => (handle.state(), handle.session()),

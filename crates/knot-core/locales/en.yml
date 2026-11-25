@@ -128,6 +128,11 @@ panel:
   # Failures the panel records into the conversation itself, where the
   # user reads them beside the turn they belong to.
   error_first_turn: "The agent could not start its first turn: %{error}"
+  # `mcp-auth` D3: the Claude adapter, in this configuration, passes Knot's
+  # MCP server - with this agent's credential - on the Claude CLI's command
+  # line, where other processes on the machine can read it. %{trigger} is
+  # what selects that path: an environment variable or an option name.
+  mcp_command_line_notice: "Knot's MCP credential for this agent is passed on the Claude CLI's command line, because %{trigger} is set. Other processes on this Mac can read it there. Remove it from the agent's options or environment to keep the credential off the command line."
   # What a replayed conversation shows in place of a message the agent's
   # harness injected, rather than rendering it as the user's prompt.
   harness:
