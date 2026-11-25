@@ -168,17 +168,35 @@ impl WorkspaceWindow {
     /// Starts nothing and writes nothing: nobody asked for these agents to be
     /// shown, and the store's copy is already what is saved. A single layout
     /// is left to `selected_agent`, as it was before layouts.
+    ///
+    /// The layout it read is kept in `frame_layout` for the layout area to
+    /// draw from, so the panes match the selection set here even if another
+    /// thread changes the store in between.
     pub(super) fn sync_selection_with_layout(&mut self) {
         let ui = self.store.lock().workspace_ui(self.workspace_id);
-        if ui.layout_mode == LayoutMode::Single {
-            return;
+        if ui.layout_mode != LayoutMode::Single
+           && let Some(focused) = focused_agent(&ui)
+        {
+            self.selected_agent = Some(focused);
         }
-        let focused =
-            usize::try_from(ui.focused_pane_index).ok()
-                                                  .and_then(|index| ui.active_agent_ids.get(index))
-                                                  .copied();
-        if focused.is_some() {
-            self.selected_agent = focused;
-        }
+        self.frame_layout = Some(ui);
     }
+
+    /// The layout this frame synced the selection to, or a fresh read synced
+    /// now when nothing has this frame. Taken, so the next frame reads again.
+    pub(super) fn take_frame_layout(&mut self) -> knot_core::WorkspaceUiState {
+        if self.frame_layout.is_none() {
+            self.sync_selection_with_layout();
+        }
+        self.frame_layout
+            .take()
+            .expect("sync_selection_with_layout just set it")
+    }
+}
+
+/// The agent in `ui`'s focused pane, if that index names one.
+pub(super) fn focused_agent(ui: &knot_core::WorkspaceUiState) -> Option<Uuid> {
+    usize::try_from(ui.focused_pane_index).ok()
+                                          .and_then(|index| ui.active_agent_ids.get(index))
+                                          .copied()
 }

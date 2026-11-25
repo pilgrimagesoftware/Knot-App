@@ -42,7 +42,8 @@ impl WorkspaceWindow {
     /// open, which follow the focused agent.
     pub(super) fn layout_area(&mut self, window: &mut Window, cx: &mut Context<Self>)
                               -> AnyElement {
-        let ui = self.store.lock().workspace_ui(self.workspace_id);
+        // The read `prepare_frame` synced the selection to, not a second one.
+        let ui = self.take_frame_layout();
         let panes = if ui.layout_mode == LayoutMode::Single {
             self.single_pane(window, cx)
         }
@@ -90,12 +91,14 @@ impl WorkspaceWindow {
                                secondary,
                                size(px(1.), px(1.)));
         let focus = usize::try_from(ui.focused_pane_index).unwrap_or(0);
-        // The one writer (`layout_select`) keeps these equal, and
-        // `sync_selection_with_layout` restores it at the top of every frame,
-        // so a difference here is a second writer.
-        debug_assert_eq!(self.selected_agent,
-                         ui.active_agent_ids.get(focus).copied(),
-                         "selected_agent must be the focused pane's agent");
+        // `ui` is the read `sync_selection_with_layout` set the selection
+        // from, so the two agree unless something else wrote the selection
+        // since - a second writer.
+        if let Some(focused) = super::super::layout_select::focused_agent(ui) {
+            debug_assert_eq!(self.selected_agent,
+                             Some(focused),
+                             "selected_agent must be the focused pane's agent");
+        }
         let mut area = div().id("layout-area")
                             .debug_selector(|| "layout-area".to_string())
                             .size_full()

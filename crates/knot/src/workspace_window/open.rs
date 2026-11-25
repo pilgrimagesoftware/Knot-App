@@ -232,6 +232,7 @@ impl WorkspaceWindow {
                     notified_awaiting: BTreeMap::new(),
                     workspace_id,
                     divider_drag: None,
+                    frame_layout: None,
                     selected_agent,
                     sessions: BTreeMap::new(),
                     terminal_panes: BTreeMap::new(),

@@ -7,6 +7,7 @@ use gpui_kit::Modifiers;
 use gpui_kit::TestAppContext;
 use knot_core::LayoutMode;
 
+use super::layout_select::focused_agent;
 use super::layout_test_support::Fixture;
 use super::layout_test_support::Spec;
 use super::layout_test_support::open;
@@ -99,4 +100,37 @@ fn a_focused_companion_highlights_its_own_row(cx: &mut TestAppContext) {
 
     assert!(f.row_highlighted("A"));
     assert!(!f.row_highlighted("S"));
+}
+
+/// Another thread - an agent over MCP - can move the focus between the
+/// frame's selection sync and the panes being drawn. The panes draw from the
+/// layout the selection was synced to, so the two still agree, and the
+/// change shows on the next frame.
+#[gpui_kit::test]
+fn a_focus_change_mid_frame_waits_for_the_next_frame(cx: &mut TestAppContext) {
+    let mut f = open(&Spec { agents:     &["A", "B"],
+                             companions: &[],
+                             mode:       LayoutMode::SplitVertical,
+                             panes:      &["A", "B"],
+                             focus:      0, },
+                     cx);
+    let (a, b, workspace) = (f.id("A"), f.id("B"), f.workspace);
+    let store = f.store.clone();
+
+    let (selected, drawn) = f.view.update(&mut f.window, |view, _| {
+                                      view.sync_selection_with_layout();
+                                      store.lock().set_workspace_focused_pane(workspace, 1);
+                                      let drawn = view.take_frame_layout();
+                                      (view.selected_agent, focused_agent(&drawn))
+                                  });
+    assert_eq!(selected, Some(a));
+    assert_eq!(drawn,
+               Some(a),
+               "the panes draw the layout the selection came from");
+
+    f.view.update(&mut f.window, |_, cx| cx.notify());
+    f.window.run_until_parked();
+    assert_eq!(f.selected().as_deref(), Some("B"));
+    assert_eq!(f.view.read_with(&f.window, |view, _| view.selected_agent),
+               Some(b));
 }
