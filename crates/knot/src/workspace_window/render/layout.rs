@@ -56,7 +56,8 @@ pub(in crate::workspace_window) struct DividerRect {
 
 /// `ratio` held to the bounds a divider may reach.
 pub(in crate::workspace_window) fn clamp_ratio(ratio: f64) -> f64 {
-    ratio.clamp(consts::PANE_SPLIT_RATIO_MIN, consts::PANE_SPLIT_RATIO_MAX)
+    ratio.clamp(knot_core::consts::WORKSPACE_SPLIT_RATIO_MIN,
+                knot_core::consts::WORKSPACE_SPLIT_RATIO_MAX)
 }
 
 /// The dividers `mode` has, in the order they are drawn.

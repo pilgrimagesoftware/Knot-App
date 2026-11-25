@@ -14,7 +14,6 @@ use super::Orientation;
 use super::divider_rects;
 use super::dragged_ratio;
 use super::pane_rects;
-use crate::consts;
 
 const AREA: (f32, f32) = (1000., 800.);
 
@@ -206,8 +205,10 @@ fn ratios_past_the_bounds_are_clamped() {
                     0.1,
                     &[(DividerId::Primary, [744., 0., 12., 800.]),
                       (DividerId::Secondary, [750., 194., 250., 12.])]);
-    assert_eq!(super::clamp_ratio(0.1), consts::PANE_SPLIT_RATIO_MIN);
-    assert_eq!(super::clamp_ratio(0.9), consts::PANE_SPLIT_RATIO_MAX);
+    assert_eq!(super::clamp_ratio(0.1),
+               knot_core::consts::WORKSPACE_SPLIT_RATIO_MIN);
+    assert_eq!(super::clamp_ratio(0.9),
+               knot_core::consts::WORKSPACE_SPLIT_RATIO_MAX);
 }
 
 /// Panes tile the area exactly: nothing overlaps and nothing is left over.
@@ -245,9 +246,9 @@ fn a_drag_moves_the_ratio_by_the_share_of_the_extent_travelled() {
 #[test]
 fn a_drag_past_a_bound_stops_at_it() {
     assert_eq!(dragged_ratio(0.5, px(-900.), px(1000.)),
-               consts::PANE_SPLIT_RATIO_MIN);
+               knot_core::consts::WORKSPACE_SPLIT_RATIO_MIN);
     assert_eq!(dragged_ratio(0.5, px(900.), px(1000.)),
-               consts::PANE_SPLIT_RATIO_MAX);
+               knot_core::consts::WORKSPACE_SPLIT_RATIO_MAX);
 }
 
 #[test]

@@ -41,7 +41,6 @@ use super::render::layout::DividerId;
 use super::render::layout::Orientation;
 use super::render::layout::divider_rects;
 use super::render::layout::dragged_ratio;
-use crate::consts;
 
 /// A divider drag in progress: which divider, where its ratio and the
 /// pointer were when it began, and the sizes terminals are held at.
@@ -64,7 +63,7 @@ impl WorkspaceWindow {
         (ui.layout_mode,
          ui.split_ratio,
          ui.split_ratio_secondary
-           .unwrap_or(consts::PANE_SPLIT_RATIO_DEFAULT))
+           .unwrap_or(knot_core::consts::WORKSPACE_SPLIT_RATIO_DEFAULT))
     }
 
     /// `pane`, with the layout's dividers laid over it.

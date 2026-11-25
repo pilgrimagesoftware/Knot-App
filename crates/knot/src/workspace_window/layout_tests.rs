@@ -137,11 +137,12 @@ fn dragging_a_split_divider_past_the_bound_clamps_and_persists_once(cx: &mut Tes
                                 MouseButton::Left,
                                 Modifiers::none());
     let (live, _) = fixture.ratios();
-    assert!(live < 0.5 && live > consts::PANE_SPLIT_RATIO_MIN,
+    assert!(live < 0.5 && live > knot_core::consts::WORKSPACE_SPLIT_RATIO_MIN,
             "the ratio follows the pointer live, got {live}");
     fixture.cx
            .simulate_mouse_move(point(px(5.), grab.y), MouseButton::Left, Modifiers::none());
-    assert_eq!(fixture.ratios().0, consts::PANE_SPLIT_RATIO_MIN);
+    assert_eq!(fixture.ratios().0,
+               knot_core::consts::WORKSPACE_SPLIT_RATIO_MIN);
     assert_eq!(fixture.saved(),
                before,
                "nothing is written while the drag is running");
@@ -183,7 +184,8 @@ fn the_secondary_divider_moves_only_the_secondary_ratio(cx: &mut TestAppContext)
 
     let (primary, secondary) = fixture.ratios();
     assert_eq!(primary, 0.5, "the primary ratio is untouched");
-    assert_eq!(secondary, Some(consts::PANE_SPLIT_RATIO_MAX));
+    assert_eq!(secondary,
+               Some(knot_core::consts::WORKSPACE_SPLIT_RATIO_MAX));
 }
 
 /// A release the window never heard leaves the button up on the next move,
