@@ -190,7 +190,7 @@ fn the_view_menu_carries_the_navigation_shortcuts(cx: &mut TestAppContext) {
           // Fixed, and cross-platform: ⌥⌘C on macOS, Ctrl+Alt+C elsewhere.
           assert_bound(cx,
                        "secondary-alt-c",
-                       &crate::app_bootstrap::CollapseToolCalls);
+                       &crate::app_bootstrap::CollapseAllToolCalls);
           assert_bound(cx, "cmd-alt-a", &ToggleArtifacts);
           assert_bound(cx, "cmd-2", &SelectAgent2);
           assert_bound(cx, "cmd-alt-3", &SelectWorkspace3);

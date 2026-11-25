@@ -120,7 +120,7 @@ fn a_reloaded_conversation_collapses_a_call_the_previous_one_had_open() {
     assert!(reloaded.is_collapsed(card(&reloaded, 0)));
 }
 
-/// Collapse Tool Calls (#488): every card drawn open goes back to its
+/// Collapse All Tool Calls (#488): every card drawn open goes back to its
 /// header - running and failed ones open by default, one the user opened,
 /// one nested under a delegation - and an opened summary run returns to its
 /// line.
@@ -171,4 +171,35 @@ fn collapsing_all_changes_no_message_and_leaves_later_calls_to_their_default() {
     state.apply(tool_call_start("later", "execute"));
     assert!(!state.is_collapsed(state.tool_call("later").expect("later")),
             "a running call that arrives afterwards is open");
+}
+
+/// A failure stays visible (`collapsed-tool-call-summary`, "Failures stay
+/// visible"): a running call Collapse All Tool Calls closed reopens when it
+/// fails (#508 review).
+#[test]
+fn a_call_collapse_all_closed_reopens_when_it_fails() {
+    let mut state = PanelState::new();
+    state.apply(tool_call_start("tc1", "execute"));
+    state.collapse_all_tool_calls();
+    assert!(state.is_collapsed(card(&state, 0)));
+
+    state.apply(tool_call_update("tc1", Some("failed"), Vec::new()));
+
+    assert!(!state.is_collapsed(card(&state, 0)), "the failure shows");
+}
+
+/// The user's own choice is not collapse-all's: once they close a card by
+/// hand, a later failure leaves it closed, as before collapse-all existed.
+#[test]
+fn a_call_the_user_closed_after_collapse_all_stays_closed_when_it_fails() {
+    let mut state = PanelState::new();
+    state.apply(tool_call_start("tc1", "execute"));
+    state.collapse_all_tool_calls();
+    state.toggle_tool_call("tc1");
+    state.toggle_tool_call("tc1");
+    assert!(state.is_collapsed(card(&state, 0)));
+
+    state.apply(tool_call_update("tc1", Some("failed"), Vec::new()));
+
+    assert!(state.is_collapsed(card(&state, 0)));
 }

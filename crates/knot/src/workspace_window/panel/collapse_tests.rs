@@ -1,4 +1,4 @@
-//! View > Collapse Tool Calls in a real workspace window (#488): the fixed
+//! View > Collapse All Tool Calls in a real workspace window (#488): the fixed
 //! key reaches the selected agent's conversation and collapses it.
 //!
 //! As in the find bar's tests, the agent's type has no terminal process and
@@ -123,8 +123,9 @@ fn the_collapse_key_collapses_the_selected_conversations_tool_calls(cx: &mut Tes
 fn the_collapse_menu_item_is_enabled_with_a_conversation_on_screen(cx: &mut TestAppContext) {
     let mut fixture = window(cx);
     let available =
-        fixture.window.update(|window, cx| {
-                          window.is_action_available(&crate::app_bootstrap::CollapseToolCalls, cx)
-                      });
+        fixture.window
+               .update(|window, cx| {
+                   window.is_action_available(&crate::app_bootstrap::CollapseAllToolCalls, cx)
+               });
     assert!(available);
 }

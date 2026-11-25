@@ -9,7 +9,7 @@ compact view except closing them one at a time.
 
 ## What Changes
 
-- **View > Collapse Tool Calls** (⌥⌘C on macOS, Ctrl+Alt+C elsewhere)
+- **View > Collapse All Tool Calls** (⌥⌘C on macOS, Ctrl+Alt+C elsewhere)
   returns everything in the selected agent's conversation to its collapsed
   form. Every summary run the user opened goes back to its summary line, and
   every tool-call card drawn open collapses to its header, including running
@@ -36,14 +36,15 @@ None.
 
 ### Modified Capabilities
 
-- `collapsed-tool-call-summary`: adds "Collapsing every tool call at once".
-- `app-menu`: adds "View > Collapse Tool Calls".
+- `collapsed-tool-call-summary`: adds "Collapsing every tool call at once" and
+  "A failure reopens a call that collapsing all closed".
+- `app-menu`: adds "View > Collapse All Tool Calls".
 - `keybindings`: adds "Collapsing the tool calls by shortcut".
 
 ## Impact
 
 - `knot`: `PanelState::collapse_all_tool_calls`, the session handle's
-  wrapper, the `CollapseToolCalls` action with its fixed binding, the View
+  wrapper, the `CollapseAllToolCalls` action with its fixed binding, the View
   menu item, and the workspace window's handler, which is registered while a
   conversation is on screen, as for Jump to Bottom.
 - Docs: the View menu list and the conversation panel section.

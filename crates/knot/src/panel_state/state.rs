@@ -88,6 +88,12 @@ pub struct PanelState {
     /// user has never touched follows the mode's default, and a run that
     /// grows another call afterwards does not forget it was opened.
     tool_run_expanded:              HashSet<String>,
+    /// The overrides in `tool_call_collapsed` that Collapse All Tool Calls
+    /// set rather than the user's own toggle. Kept apart because a failure
+    /// has to stay visible (`collapsed-tool-call-summary`, "Failures stay
+    /// visible"): a call collapse-all closed while it ran reopens if it
+    /// fails, where one the user closed stays closed.
+    pub(super) collapsed_by_all:    HashSet<String>,
     /// Pull request URLs seen in this session's tool-call text, canonical
     /// and de-duplicated, waiting to be drained by the window that owns the
     /// agent store.
@@ -382,6 +388,8 @@ impl PanelState {
         else {
             return;
         };
+        // The user's choice now, not collapse-all's: a later failure leaves it.
+        self.collapsed_by_all.remove(id);
         self.tool_call_collapsed.insert(id.to_string(), !collapsed);
     }
 
@@ -403,7 +411,16 @@ impl PanelState {
             }
         }
         for id in open {
-            self.tool_call_collapsed.insert(id, true);
+            self.tool_call_collapsed.insert(id.clone(), true);
+            self.collapsed_by_all.insert(id);
+        }
+    }
+
+    /// A call that has just failed: drops a collapse-all override, so the
+    /// card follows its default and opens. The user's own choice stays.
+    pub(super) fn failure_reopens(&mut self, id: &str) {
+        if self.collapsed_by_all.remove(id) {
+            self.tool_call_collapsed.remove(id);
         }
     }
 

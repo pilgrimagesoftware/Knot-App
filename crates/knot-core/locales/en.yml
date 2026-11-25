@@ -487,7 +487,7 @@ menu:
     jump_to_bottom: "Jump to Bottom"
     # Every tool call in the selected agent's conversation back to its
     # collapsed form (#488).
-    collapse_tool_calls: "Collapse Tool Calls"
+    collapse_all_tool_calls: "Collapse All Tool Calls"
     # Shows or hides the selected agent's artifact panel; checked while it is
     # shown.
     artifacts: "Artifacts"

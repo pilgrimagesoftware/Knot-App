@@ -81,7 +81,7 @@ fn view_menu_labels_resolve() {
                 "menu.view.pull_requests",
                 "menu.view.focus_agent_input",
                 "menu.view.jump_to_bottom",
-                "menu.view.collapse_tool_calls",
+                "menu.view.collapse_all_tool_calls",
                 "menu.view.select_agent"]
     {
         let value = knot_core::l10n::t(key);
