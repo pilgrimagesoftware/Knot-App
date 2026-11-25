@@ -21,14 +21,14 @@ Sections 1-5 ship in #506. Section 6 ships in a stacked draft PR.
 
 ## 2. Store
 
-- [ ] 2.1 `AgentStore::deactivate_fresh`: clear what `restart` clears
+- [x] 2.1 `AgentStore::deactivate_fresh`: clear what `restart` clears
   (including `fresh_context_requested`), replace `restart_token`, then run
   `deactivate`'s cascade. Tests: ids cleared, token replaced, companions
   deactivated, agent not started.
-- [ ] 2.2 `AgentStore::set_acp_session_id_if_current(id, token, session_id)`.
+- [x] 2.2 `AgentStore::set_acp_session_id_if_current(id, token, session_id)`.
   Tests: written with the same token; dropped after `restart` and after
   `deactivate_fresh`; written after plain `deactivate`.
-- [ ] 2.3 `panel/session.rs`: capture the token at launch and write through
+- [x] 2.3 `panel/session.rs`: capture the token at launch and write through
   the guard.
 
 ## 3. Window actions and confirmations

@@ -13,6 +13,7 @@ mod bench;
 mod checklist;
 mod duplicate;
 mod edit;
+mod fresh_session;
 mod helpers;
 pub mod layout;
 mod lifecycle;
