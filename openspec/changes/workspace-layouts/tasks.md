@@ -41,7 +41,7 @@
 
 ## 8. Docs and gate
 
-- [ ] 8.1 `docs/site/latest/`: a layouts section covering the Layout menu, dividers, focus, sidebar clicks including ⌘-click, companions, and the fact that showing an agent starts it. Verify: the page builds with the site's doc check, and the source contracts list `workspace-layouts`.
+- [x] 8.1 `docs/site/latest/`: a layouts section covering the Layout menu, dividers, focus, sidebar clicks including ⌘-click, companions, and the fact that showing an agent starts it. Verify: the page builds with the site's doc check, and the source contracts list `workspace-layouts`. (New page `docs/site/latest/layouts.md`, linked from `_data/versions.yml` and the docs index. The doc check is `bundle exec jekyll build` from `docs/site` (its AGENTS.md and the Pages workflow); it ran locally with Ruby 4.0.10 and Bundler 4.0.20 and built the page without warnings. Its source contracts name `openspec/specs/workspace-layouts/spec.md`, which exists once the change is archived.)
 - [ ] 8.2 Full gate. Verify: `make fmt-check size-check declared-check lint test` exits 0, and `openspec validate workspace-layouts --strict` passes.
 
 ## Workflow follow-up
