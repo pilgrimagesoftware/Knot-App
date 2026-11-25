@@ -26,6 +26,9 @@ pub struct Runner {
     timeout:     Duration,
     program:     OsString,
     search_path: Option<OsString>,
+    /// Whether `program` is git, and so takes [`call_config`]'s `-c`
+    /// options. Only a test runs anything else.
+    is_git:      bool,
 }
 
 impl Runner {
@@ -35,7 +38,8 @@ impl Runner {
         Self { cwd:         cwd.into(),
                timeout:     DEFAULT_TIMEOUT,
                program:     configured.program,
-               search_path: configured.search_path, }
+               search_path: configured.search_path,
+               is_git:      true, }
     }
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
@@ -46,6 +50,7 @@ impl Runner {
     #[cfg(test)]
     pub(crate) fn with_program(mut self, program: impl Into<OsString>) -> Self {
         self.program = program.into();
+        self.is_git = false;
         self
     }
 
@@ -79,6 +84,9 @@ impl Runner {
         let label = display_command(args);
 
         let mut command = Command::new(&self.program);
+        if self.is_git {
+            command.args(call_config(args));
+        }
         command.args(args).current_dir(&self.cwd);
         if let Some(search_path) = &self.search_path {
             // Git's own helpers - credential helpers, hooks, `git-lfs`,
@@ -167,6 +175,25 @@ fn read_to_string(pipe: &mut impl Read) -> String {
 
 fn display_command(args: &[&str]) -> String {
     args.join(" ")
+}
+
+/// The `-c` options `git <args>` runs under: [`consts::CALL_CONFIG`] always,
+/// and [`consts::NO_HOOKS_CONFIG`] unless the call is one the user starts
+/// whose hooks are theirs to run.
+pub(crate) fn call_config(args: &[&str]) -> Vec<&'static str> {
+    let mut config = crate::consts::CALL_CONFIG.to_vec();
+    if !keeps_user_hooks(args) {
+        config.extend_from_slice(crate::consts::NO_HOOKS_CONFIG);
+    }
+    config
+}
+
+/// Whether `git <args>` keeps the repository's hooks: a commit and a new
+/// worktree, which the user starts from the commit window and the worktree
+/// dialog, and whose hooks (a pre-commit check, an LFS post-checkout) they
+/// expect to run. Everything Knot runs on its own goes without.
+pub(crate) fn keeps_user_hooks(args: &[&str]) -> bool {
+    matches!(args, ["commit", ..] | ["worktree", "add", ..])
 }
 
 #[cfg(test)]

@@ -301,7 +301,8 @@ impl Repository {
             return Ok(());
         }
 
-        let argv = [base, paths].concat();
+        // `--` so a path that starts with `-` is a path, not an option.
+        let argv = [base, &[consts::PATHSPEC_SEP], paths].concat();
         self.runner.run(&argv).map(drop)
     }
 }
