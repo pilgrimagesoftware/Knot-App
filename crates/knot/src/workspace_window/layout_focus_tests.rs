@@ -1,6 +1,7 @@
-//! What follows the focused pane (`workspace-layouts`, "The focused pane"): the
-//! side panels, which wrap the whole layout area and show the focused agent's
-//! state.
+//! What follows the focused pane (`workspace-layouts`, "The focused pane" and
+//! "The sidebar highlights the focused agent's row"): the side panels, which
+//! wrap the whole layout area and show the focused agent's state, and the
+//! sidebar highlight, which is the focused agent's own row and no other.
 
 use gpui_kit::Modifiers;
 use gpui_kit::TestAppContext;
@@ -78,4 +79,24 @@ fn the_side_panels_sit_beside_the_whole_layout_area(cx: &mut TestAppContext) {
             "both panes are left of the panel, not the panel inside one pane");
     let second = f.window.debug_bounds("layout-pane-1").unwrap();
     assert!(second.right() <= panel.left() + gpui_kit::px(1.));
+}
+
+#[gpui_kit::test]
+fn a_focused_companion_highlights_its_own_row(cx: &mut TestAppContext) {
+    let mut f = open(&Spec { agents:     &["A", "B"],
+                             companions: &[("A", "S")],
+                             mode:       LayoutMode::SplitVertical,
+                             panes:      &["A", "S"],
+                             focus:      1, },
+                     cx);
+    assert!(f.row_highlighted("S"), "the companion's pane is focused");
+    assert!(!f.row_highlighted("A"), "not its owner's row");
+    assert!(!f.row_highlighted("B"));
+
+    let inside = f.window.debug_bounds("layout-pane-0").unwrap().center();
+    f.window.simulate_click(inside, Modifiers::none());
+    f.window.run_until_parked();
+
+    assert!(f.row_highlighted("A"));
+    assert!(!f.row_highlighted("S"));
 }
