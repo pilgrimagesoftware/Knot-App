@@ -1,25 +1,17 @@
 use std::cell::RefCell;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::AnyWindowHandle;
 use gpui_kit::App;
 use gpui_kit::AppContext;
-use gpui_kit::Menu;
-use gpui_kit::MenuItem;
-use gpui_kit::SystemMenuType;
-use gpui_kit::actions;
-use gpui_kit::base::input;
 use gpui_kit::component::Root;
 use gpui_kit::component::input::InputEvent;
 use gpui_kit::component::input::InputState;
-use knot_mcp::ToolCatalog;
 use knot_messaging::QueuedNotifier;
 use parking_lot::Mutex;
 
 use crate::about_window::register_about_action;
-use crate::agent_menu::agents_menu;
 use crate::app_state::build_agent_store;
 use crate::app_support;
 use crate::app_support::Activation;
@@ -32,336 +24,21 @@ use crate::import_window::register_import_action;
 use crate::library_window::Library;
 use crate::library_window::open_library_window;
 use crate::mcp_lifetime::hold_mcp_server;
-use crate::mcp_status;
-use crate::mcp_status::McpServerStatus;
 use crate::menu_bar::MenuBarSnapshot;
 use crate::menu_bar::MenuBarState;
 use crate::quit_guard;
 use crate::settings_window::open_settings_window;
-use crate::view_menu::view_menu;
 use crate::window_actions::register_focused_window_actions;
 use crate::window_options::manager_window_options;
 use crate::workspace_manager::WorkspaceManager;
 
-/// Starts the MCP server under supervision, reporting the stop signal that
-/// ends both and the status the rest of the application watches.
-///
-/// The server used to be started once here and never watched again: when
-/// its serve task ended the port went quiet for the rest of the process's
-/// life, and a failed bind ended the MCP subsystem for the session. The
-/// supervisor owns that lifecycle now; this still owns the thread, the
-/// runtime and the oneshot that stops it.
-///
-/// A server configuration has turned off leaves the status at
-/// [`knot_mcp::ServerState::Disabled`]: nothing is bound and nothing is
-/// supervised.
-///
-/// Takes the shared surface, not a snapshot. This runs before
-/// `gpui_kit::application()`, so it cannot read the global - the bootstrap
-/// builds the surface first and hands the same handle to both, which is what
-/// keeps the server's settings and the windows' settings one thing. The
-/// catalog it builds persists the roster hours into a session, and did so
-/// from a value captured here at startup.
-pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
-                               settings: knot_core::SharedSettings,
-                               notifier: Arc<QueuedNotifier>,
-                               messages: Arc<Mutex<knot_messaging::MessageStore>>,
-                               queues: crate::app_support::McpQueues,
-                               subagents: crate::app_support::SubagentRegistryHandle)
-                               -> (tokio::sync::oneshot::Sender<()>, McpServerStatus) {
-    let (stop, stop_rx) = tokio::sync::oneshot::channel();
-    let status = McpServerStatus::new();
-    let thread_status = status.clone();
-    std::thread::spawn(move || {
-        let runtime = match tokio::runtime::Runtime::new() {
-            Ok(rt) => rt,
-            Err(err) => {
-                eprintln!("failed to start MCP server runtime: {err}");
-                return;
-            }
-        };
-        runtime.block_on(async move {
-                   // Read once here: what follows is startup configuration -
-                   // the enable flag, the port, the folder to watch - and the
-                   // supervisor does not re-read it while it runs. The
-                   // catalog gets the handle rather than this value, because
-                   // what *it* does happens later.
-                   let startup = settings.read();
-                   if !startup.mcp_server_enabled {
-                       return;
-                   }
+mod actions;
+mod mcp_server;
+mod menus;
 
-                   let (discovery, repos_rx) = knot_discovery::Discovery::new();
-                   if !startup.source_base_folder.is_empty()
-                && let Err(err) =
-                    discovery.set_source_folder(Some(PathBuf::from(&startup.source_base_folder)))
-            {
-                eprintln!("failed to watch source folder: {err}");
-            }
-
-                   let catalog = Arc::new(
-                knot_mcp_tools::McpToolCatalog::new(agents, repos_rx, notifier)
-                    .with_subagents(Arc::clone(&subagents))
-                    .with_message_store(messages)
-                    .with_awaiting_input_queue(queues.awaiting_input)
-                    .with_activation_queue(queues.activation)
-                    .with_autopilot_queue(queues.autopilot)
-                    .with_settings(settings),
-            );
-                   catalog.set_bench_agents(startup.bench_agents.clone());
-
-                   let agents_snapshot: knot_mcp::AgentsSnapshotFn = {
-                       let catalog = catalog.clone();
-                       Arc::new(move || catalog.agents_snapshot())
-                   };
-                   let hook_handler = catalog.clone();
-                   let mut supervisor =
-                       knot_mcp::Supervisor::new(startup.mcp_server_port,
-                                                 catalog as Arc<dyn ToolCatalog>,
-                                                 agents_snapshot).with_hook_handler(hook_handler);
-                   // A packaged `Knot.app` has no stderr anyone reads, so
-                   // the file is the only record of what the server did.
-                   // With no resolvable home directory there is nowhere to
-                   // put one, and the server runs as it always has.
-                   //
-                   // Given to the supervisor rather than to a server: it
-                   // builds a fresh one per attempt, and one writer has to
-                   // span every restart for the entries either side of a
-                   // failure to land in the same file.
-                   if let Some(directory) = knot_core::log_dir() {
-                       supervisor = supervisor.with_log(directory.join(knot_mcp::LOG_FILE_NAME));
-                   }
-                   // Subscribed before `run`, so no transition is missed -
-                   // though a `watch` receiver would read the current value
-                   // even if it were not.
-                   let mirroring =
-                       tokio::spawn(mcp_status::mirror_server_state(supervisor.state(),
-                                                                    thread_status));
-                   // Returns only on the stop signal, having released the
-                   // port; everything else it retries.
-                   supervisor.run(stop_rx).await;
-                   mirroring.abort();
-                   drop(discovery);
-               });
-    });
-    (stop, status)
-}
-
-actions!(knot_app,
-         [Quit,
-          HideApp,
-          HideOthers,
-          ShowAllWindows,
-          AboutKnot,
-          ReportIssue,
-          OpenSettings,
-          OpenImport,
-          PanelPermissionAllow,
-          PanelPermissionAllowAlways,
-          PanelPermissionDeny,
-          PanelOpenPermissionSelector,
-          PanelFind]);
-
-// UNWIRED: the standard-menu items the port has not implemented yet. They
-// exist as named actions rather than `NoAction` only so each can carry its
-// own key equivalent - a menu item's shortcut is looked up by action, so
-// items sharing `NoAction` would all have to show the same one, and binding
-// a key to `NoAction` *unbinds* that key everywhere (`Keymap::add_bindings`
-// treats it as a disabling binding).
-//
-// Nothing registers a handler for any of these, so `is_action_available`
-// answers false and AppKit draws the items disabled with their shortcut
-// greyed beside them, which is how macOS presents a standard item an app
-// does not currently offer. Wiring one is a matter of registering its
-// handler on the window that owns the behavior; the binding is already
-// here.
-actions!(knot_app, [NewWorkspace]);
-
-// Help > Knot Help (⌘?). Opens Knot's page in the browser; wired app-wide in
-// `install_actions_and_keys`, so it is enabled whatever is focused.
-actions!(knot_app, [KnotHelp]);
-
-// File > Close Window and Window > Minimize / Zoom. Wired app-wide in
-// `window_actions`, so they act on whichever window is focused. Zoom is named
-// only so it can have a handler; macOS gives it no key equivalent, and
-// nothing binds one.
-actions!(knot_app, [CloseWindow, MinimizeWindow, ZoomWindow]);
-
-// Enter Full Screen is deliberately absent. macOS adds its own item to the
-// View menu when it does not find an equivalent one, and it judges
-// equivalence by the action behind the item rather than by its label - so a
-// Knot item it does not recognize was added beside rather than instead, and
-// the menu showed the same command twice under the same key. cmd-ctrl-f is
-// also a key the platform reserves, and `app-menu` forbids a Knot item from
-// holding one: AppKit claims a menu key equivalent ahead of the window, so
-// such an item takes the key rather than sharing it. The same rule moved Fork
-// Agent off cmd-f.
-
-// File > New Agent… (⌘T, the Swift reference's key). Wired, unlike the items
-// above, but only inside a workspace window: its handler is registered on the
-// window's root element (`WorkspaceWindow::with_shortcut_actions`), so the
-// item is disabled wherever there is no workspace to add an agent to.
-actions!(knot_app, [NewAgent]);
-// Edit > Find File… (#5): the file finder over the selected agent's folder.
-actions!(knot_app, [FindFile]);
-
-// The Window menu's openers. Unlike the items above these are wired, and
-// enabled at all times: they are how a user gets back to a window, so an
-// enablement rule that depended on a window being focused would disable them
-// exactly when they are needed.
-actions!(knot_app, [OpenCommandCenter, OpenWorkspaces]);
-
-// The Window menu's library openers (#20): Personas, Prompts and Bench each
-// moved out of the settings window into their own single-instance window,
-// reached the same way Command Center and Workspaces are.
-actions!(knot_app, [OpenPersonas, OpenPrompts, OpenBench]);
-
-/// Every user-facing quit path lands here - the application menu's Quit
-/// Knot item and the `cmd-q` binding both dispatch `Quit` - so the guard
-/// only has to be applied once. See `quit_guard` for why the check cannot
-/// live in `on_app_quit` instead.
-pub(crate) fn quit(_: &Quit, cx: &mut App) {
-    quit_guard::request_quit(cx);
-}
-
-/// Quits on Ctrl-C (or `kill`) from the launching terminal.
-///
-/// Under `cargo run` the signal appeared to be swallowed: the Cocoa run
-/// loop keeps the process alive and nothing here handled it, so the only
-/// way out was Cmd+Q or killing the process from another shell. A
-/// terminal-launched process is expected to die on Ctrl-C, so this restores
-/// that. It exits rather than routing through `cx.quit()` because the
-/// handler runs off the main thread and cannot reach the app; the child
-/// PTYs go with the process, and the MCP server's listener is closed by the
-/// same exit.
-#[cfg(unix)]
-pub(crate) fn quit_on_terminal_signals() {
-    use tokio::signal::unix::{SignalKind, signal};
-
-    std::thread::spawn(|| {
-        let runtime = match tokio::runtime::Builder::new_current_thread().enable_all()
-                                                                         .build()
-        {
-            Ok(runtime) => runtime,
-            Err(error) => {
-                eprintln!("failed to start the signal runtime: {error}");
-                return;
-            }
-        };
-        runtime.block_on(async {
-                   let (Ok(mut interrupt), Ok(mut terminate)) =
-                       (signal(SignalKind::interrupt()), signal(SignalKind::terminate()))
-                   else {
-                       eprintln!("failed to install terminal signal handlers");
-                       return;
-                   };
-                   tokio::select! {
-                       _ = interrupt.recv() => {}
-                       _ = terminate.recv() => {}
-                   }
-                   crate::app_log::flush();
-                   // 128 + SIGINT, the conventional shell exit code.
-                   std::process::exit(130);
-               });
-    });
-}
-
-#[cfg(not(unix))]
-pub(crate) fn quit_on_terminal_signals() {}
-
-/// Opens Knot's help page. Through the platform rather than `open_in`: that
-/// runs `/usr/bin/open` and waits for it, and this is a menu handler on the
-/// main thread.
-pub(crate) fn knot_help(_: &KnotHelp, cx: &mut App) {
-    cx.open_url(crate::consts::KNOT_HELP_URL);
-}
-
-pub(crate) fn hide_app(_: &HideApp, cx: &mut App) {
-    cx.hide();
-}
-
-pub(crate) fn hide_others(_: &HideOthers, cx: &mut App) {
-    cx.hide_other_apps();
-}
-
-pub(crate) fn show_all_windows(_: &ShowAllWindows, cx: &mut App) {
-    cx.activate(true);
-}
-
-/// Installs the menu bar.
-///
-/// Called again whenever `snapshot` changes, because a `Menu` is a static
-/// snapshot: the Agents menu's Move to Workspace and Markdown Files
-/// submenus cannot re-read the store on their own (`app-menu`). Everything
-/// else in the bar is rebuilt identically, which is cheap and keeps the
-/// whole bar described in one place.
-pub(crate) fn set_app_menus(snapshot: &MenuBarSnapshot, cx: &mut App) {
-    cx.set_menus([
-        Menu::new("Knot").items([
-            MenuItem::action("About Knot", AboutKnot),
-            MenuItem::separator(),
-            MenuItem::action("Settings…", OpenSettings),
-            MenuItem::action(knot_core::l10n::t("menu.window.personas"), OpenPersonas),
-            MenuItem::action(knot_core::l10n::t("menu.window.prompts"), OpenPrompts),
-            MenuItem::action(knot_core::l10n::t("menu.window.bench"), OpenBench),
-            MenuItem::separator(),
-            MenuItem::os_submenu("Services", SystemMenuType::Services),
-            MenuItem::separator(),
-            MenuItem::action("Hide Knot", HideApp),
-            MenuItem::action("Hide Others", HideOthers),
-            MenuItem::action("Show All", ShowAllWindows),
-            MenuItem::separator(),
-            MenuItem::action("Quit Knot", Quit),
-        ]),
-        Menu::new("File").items([
-            MenuItem::action("New Workspace", NewWorkspace).disabled(true),
-            MenuItem::action(knot_core::l10n::t("menu.file.new_agent"), NewAgent),
-            MenuItem::separator(),
-            MenuItem::action("Import…", OpenImport),
-            MenuItem::separator(),
-            MenuItem::action("Close Window", CloseWindow),
-        ]),
-        // The text actions gpui already defines and binds for a focused
-        // input, rather than placeholders of our own. Reusing them is what
-        // puts the standard shortcuts beside these labels, and it is also
-        // the only safe way to get them: a placeholder action of ours bound
-        // to cmd-c would out-rank the input's own binding - a context-less
-        // binding ranks at the deepest context, and later bindings win ties
-        // - and copying in a text field would stop working.
-        //
-        // They carry no `disabled`, because these five do work: AppKit asks
-        // whether each action is available along the focused element's
-        // dispatch path, so they enable with a text field focused and grey
-        // out elsewhere. In the terminal pane, where nothing claims them,
-        // the disabled items let cmd-c fall through to the pane's own
-        // copy-selection handler.
-        Menu::new("Edit").items([
-            MenuItem::action("Undo", input::Undo),
-            MenuItem::action("Redo", input::Redo),
-            MenuItem::separator(),
-            MenuItem::action("Cut", input::Cut),
-            MenuItem::action("Copy", input::Copy),
-            MenuItem::action("Paste", input::Paste),
-            MenuItem::separator(),
-            // Enabled only with an agent selected: the window registers its
-            // handler then, and AppKit greys out an item nothing handles.
-            MenuItem::action(knot_core::l10n::t("menu.edit.find_file"), FindFile),
-        ]),
-        // The navigation shortcuts. macOS still appends its own Enter Full
-        // Screen below them; see the note beside the `actions!` block.
-        view_menu(&snapshot.view),
-        agents_menu(&snapshot.agents),
-        // Knot's own items, then the list of open windows macOS appends;
-        // see `window_menu`.
-        crate::window_menu::window_menu(&snapshot.window),
-        // Report an Issue has no key equivalent: macOS gives it none, and the
-        // item is enabled everywhere because it is how a user asks for help.
-        Menu::new("Help").items([
-            MenuItem::action("Knot Help", KnotHelp),
-            MenuItem::action(knot_core::l10n::t("menu.help.report_issue"), ReportIssue),
-        ]),
-    ]);
-}
+pub(crate) use actions::*;
+pub(crate) use mcp_server::start_mcp_server;
+pub(crate) use menus::set_app_menus;
 
 /// What [`open_workspace_manager`] needs to build the window, grouped so it
 /// stays inside the workspace's argument-count convention.
