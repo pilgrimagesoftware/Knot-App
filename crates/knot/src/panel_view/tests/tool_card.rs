@@ -140,6 +140,33 @@ fn codex_permission_modes_are_classified() {
     assert_eq!(permission_risk_level("agent", "Mode"), RiskLevel::Neutral);
 }
 
+/// A mode is matched whole, never by a word inside it:
+/// a name or id that only contains "read", "plan" or "full access" is
+/// neutral.
+#[test]
+fn a_mode_that_only_contains_a_known_word_is_neutral() {
+    for (value, name) in [("custom", "Read and write all files"),
+                          ("already", "Already approved"),
+                          ("thread", "Thread"),
+                          ("explanation", "Explanation"),
+                          ("planner", "Planner"),
+                          ("not-full-access", "Mostly full access")]
+    {
+        assert_eq!(permission_risk_level(value, name),
+                   RiskLevel::Neutral,
+                   "{value} / {name}");
+    }
+}
+
+#[test]
+fn known_modes_match_whatever_their_case_and_separators() {
+    assert_eq!(permission_risk_level("Read-Only", "Mode"), RiskLevel::Safe);
+    assert_eq!(permission_risk_level("read_only", "Mode"), RiskLevel::Safe);
+    assert_eq!(permission_risk_level("yolo", "Mode"), RiskLevel::Danger);
+    assert_eq!(permission_risk_level("danger-full-access", "Mode"),
+               RiskLevel::Danger);
+}
+
 /// A call's title shimmers while it has not finished - pending, running, or
 /// a status Knot does not know - and stops once it is done or failed (#499).
 #[test]
