@@ -15,7 +15,6 @@ use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::resizable::ResizableState;
 use gpui_kit::component::resizable::h_resizable;
 use gpui_kit::component::resizable::resizable_panel;
-use gpui_kit::div;
 use gpui_kit::px;
 
 use crate::consts;
@@ -76,6 +75,7 @@ impl WorkspaceWindow {
                                                      .child(h_flex().flex_shrink_0()
                                                                     .items_center()
                                                                     .gap_2()
+                                                                    .children(self.layout_menu(cx))
                                                                     .child(title_bar_right))
                                          }))
                 .child(dashboard_content.unwrap_or_else(|| {
@@ -110,98 +110,9 @@ impl WorkspaceWindow {
                                                     // one expression: both borrow `self` mutably,
                                                     // so they
                                                     // cannot be nested in a single call.
-                                                    .child({
-                                                        let pane = self.selected_agent
-                                    .and_then(|id| {
-                                        // The markdown file and the diagram
-                                        // are no longer read here. They used
-                                        // to take the content area ahead of
-                                        // either session pane; now they are
-                                        // sections of the artifact panel,
-                                        // which `with_side_panels` puts
-                                        // beside this one.
-                                        let (is_panel_mode, stopped) = {
-                                            let store = self.store.lock();
-                                            let agent = store.agent(id);
-                                            (agent.map(|agent| agent.view_mode)
-                                             == Some(knot_core::ViewMode::Panel),
-                                             agent.filter(|agent| !agent.activated)
-                                                  .map(|agent| agent.name.clone()))
-                                        };
-                                        // Ahead of both session
-                                        // panes, which would
-                                        // otherwise render empty:
-                                        // there is no session, and
-                                        // asking for one is what
-                                        // the activation gate
-                                        // refuses.
-                                        if let Some(name) = stopped {
-                                            return Some(self.render_stopped_pane(name,
-                                                                                 cx));
-                                        }
-                                        if is_panel_mode {
-                                            return Some(self.render_panel_pane(id,
-                                                                               window,
-                                                                               cx));
-                                        }
-                                        // The view owns its input, sizing
-                                        // and repaint; see `terminal_pane`.
-                                        let pane = self.terminal_panes.get(&id)?;
-                                        Some(div().size_full()
-                                                  .child(pane.view.clone())
-                                                  .into_any_element())
-                                    })
-                                    .unwrap_or_else(|| {
-                                        div()
-                                            .size_full()
-                                            .p_6()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .bg(cx.theme().muted)
-                                            .child(
-                                                div()
-                                                    .text_color(cx.theme().muted_foreground)
-                                                    .child(if self.selected_agent.is_some()
-                                                    {
-                                                        "Starting terminal…"
-                                                    } else {
-                                                        "Choose an agent from the sidebar"
-                                                    }),
-                                            )
-                                            .into_any_element()
-                                    });
-                                                        // Codex nearing its
-                                                        // usage limit (#291).
-                                                        let pane = self.with_usage_banner(pane, cx);
-                                                        // Typing, clicking or
-                                                        // scrolling in the
-                                                        // pane restarts the
-                                                        // agent's idle period
-                                                        // (#404).
-                                                        let pane = match self.selected_agent {
-                                                            Some(id) => {
-                                                                self.with_activity_capture(id,
-                                                                                           pane, cx)
-                                                            }
-                                                            None => pane,
-                                                        };
-                                                        // Beside the side
-                                                        // panels' group, not
-                                                        // inside
-                                                        // it: the dividers
-                                                        // belong to the layout
-                                                        // area. Single mode
-                                                        // returns `pane` as is.
-                                                        let pane =
-                                                            self.with_layout_dividers(pane, cx);
-                                                        let pane =
-                                                            self.with_side_panels(pane, window, cx);
-                                                        v_flex().flex_1()
-                                                                .min_h_0()
-                                                                .w_full()
-                                                                .child(pane)
-                                                    })
+                                                    // The layout area: the agent panes and the side
+                                                    // panels beside them. See `panes`.
+                                                    .child(self.layout_area(window, cx))
                                                     // Below whichever session pane is showing, so
                                                     // the
                                                     // terminal and panel views get the sections

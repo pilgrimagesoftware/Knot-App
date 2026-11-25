@@ -192,13 +192,15 @@ pub fn add_companion(ui: &WorkspaceUiState, owner: Uuid, companion: Uuid,
 ///
 /// Its pane goes, and the mode shrinks to fit the panes that remain: a grid
 /// with three becomes three-pane, two become a vertical split, fewer than two
-/// single. Focus is clamped to the remaining panes. A single layout whose
-/// agent is gone shows the first of `order`. An agent in no pane changes
+/// single. Focus stays on the focused agent when it remains, and is clamped to
+/// the remaining panes only when it was the agent removed. A single layout
+/// whose agent is gone shows the first of `order`. An agent in no pane changes
 /// nothing.
 pub fn remove(ui: &WorkspaceUiState, order: &[Uuid], agent: Uuid) -> WorkspaceUiState {
     if !ui.active_agent_ids.contains(&agent) {
         return ui.clone();
     }
+    let focused = ui.active_agent_ids.get(focus_of(ui)).copied();
     let mut next: Vec<Uuid> = ui.active_agent_ids
                                 .iter()
                                 .copied()
@@ -207,7 +209,12 @@ pub fn remove(ui: &WorkspaceUiState, order: &[Uuid], agent: Uuid) -> WorkspaceUi
     if next.is_empty() {
         next.extend(order.iter().copied().find(|id| *id != agent));
     }
-    let focus = focus_of(ui).min(next.len().saturating_sub(1));
+    // Focus stays on the focused agent when it survives, wherever its pane
+    // moved to; only when it was the one removed does the index stay and clamp,
+    // landing on the pane that took its place.
+    let focus = focused.filter(|focused| *focused != agent)
+                       .and_then(|focused| next.iter().position(|pane| *pane == focused))
+                       .unwrap_or_else(|| focus_of(ui).min(next.len().saturating_sub(1)));
     arranged(ui, fit_mode(ui.layout_mode, next.len()), next, focus)
 }
 

@@ -83,10 +83,6 @@ pub(in crate::workspace_window) fn dividers(mode: LayoutMode) -> &'static [Divid
 /// `r` and `s` are clamped here as well as where they are written, so a
 /// ratio read from a document that predates the clamp still lays out within
 /// bounds. `s` only matters to the three-pane and grid layouts.
-// UNWIRED(#8): `workspace-layouts` task 4.1 lays the panes out with this.
-// Until then only the tests reach it; the dividers already use the same
-// ratios through `divider_rects`.
-#[allow(dead_code)]
 pub(in crate::workspace_window) fn pane_rects(mode: LayoutMode, r: f64, s: f64,
                                               area: Size<Pixels>)
                                               -> Vec<Bounds<Pixels>> {

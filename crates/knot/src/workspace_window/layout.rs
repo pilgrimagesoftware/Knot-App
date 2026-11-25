@@ -12,8 +12,11 @@
 //! `persist_workspace_ui` is the write the bounds observer's doc comment
 //! calls out as too hot to run per frame.
 //!
-//! Not here: drawing panes (task 4.1), and holding terminals at their
-//! pre-drag size while a drag runs (task 6, `held_sizes`).
+//! A drag also records each shown terminal's size (`held_sizes`), which
+//! `terminal_pane::terminal_surface` holds the terminal at until release, so a
+//! full-screen program is not resized on every frame of the drag.
+//!
+//! Not here: drawing panes (`render::panes`).
 
 use std::collections::BTreeMap;
 
@@ -48,9 +51,9 @@ pub(super) struct DividerDrag {
     pub(super) divider:     Divider,
     pub(super) start_ratio: f64,
     pub(super) start_mouse: Point<Pixels>,
-    /// Each terminal pane's size when the drag began. Empty until task 6
-    /// holds terminals at it. Keyed by agent, so `teardown_session` prunes
-    /// it.
+    /// Each terminal pane's size when the drag began; the terminals are held
+    /// at it until the drag ends (`terminal_pane::terminal_surface`). Keyed
+    /// by agent, so `teardown_session` prunes it.
     pub(super) held_sizes:  BTreeMap<Uuid, Size<Pixels>>,
 }
 
@@ -139,6 +142,7 @@ impl WorkspaceWindow {
     pub(super) fn begin_divider_drag(&mut self, divider: Divider, mouse: Point<Pixels>,
                                      _cx: &mut Context<Self>) {
         let (_, primary, secondary) = self.layout_state();
+        let held_sizes = self.terminal_sizes_in_layout();
         let start_ratio = match divider.id {
             DividerId::Primary => primary,
             DividerId::Secondary => secondary,
@@ -146,7 +150,22 @@ impl WorkspaceWindow {
         self.divider_drag = Some(DividerDrag { divider,
                                                start_ratio,
                                                start_mouse: mouse,
-                                               held_sizes: BTreeMap::new() });
+                                               held_sizes });
+    }
+
+    /// The size each shown terminal was last drawn at, which a drag holds
+    /// it at. A pane that was never drawn has none and is not held.
+    fn terminal_sizes_in_layout(&self) -> BTreeMap<Uuid, Size<Pixels>> {
+        let shown = self.store
+                        .lock()
+                        .workspace_ui(self.workspace_id)
+                        .active_agent_ids;
+        shown.into_iter()
+             .filter_map(|id| {
+                 let size = self.terminal_panes.get(&id)?.size.get()?;
+                 Some((id, size))
+             })
+             .collect()
     }
 
     /// A pointer move while the window is open. Sets the dragged ratio, live,

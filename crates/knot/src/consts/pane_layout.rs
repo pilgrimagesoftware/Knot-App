@@ -10,3 +10,8 @@ pub(crate) const DIVIDER_HIT_WIDTH: f32 = 12.;
 
 /// The visible line at the centre of a divider's hit area.
 pub(crate) const DIVIDER_LINE_WIDTH: f32 = 1.;
+
+/// The opacity of the black overlay that dims every pane but the focused one
+/// (`workspace-layouts`, "The focused pane"). The Swift app's value
+/// (`Theme.swift`:15).
+pub(crate) const UNFOCUSED_PANE_OVERLAY_OPACITY: f32 = 0.1;

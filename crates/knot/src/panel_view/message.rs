@@ -245,15 +245,13 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
                             Some(reply) => crate::markdown_view::markdown_view_for(
                                 reply,
                                 style.ui_font_family.clone(),
-                                style.title_font_family.clone(),
-                                style.markdown_font_size,
+                                &style.markdown_style,
                             ),
                             None => crate::markdown_view::markdown_view(
                                 ("panel-message-markdown", index as u64),
                                 text.clone(),
                                 style.ui_font_family.clone(),
-                                style.title_font_family.clone(),
-                                style.markdown_font_size,
+                                &style.markdown_style,
                             ),
                         }),
                 )

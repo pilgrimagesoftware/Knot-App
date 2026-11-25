@@ -9,6 +9,7 @@
 use gpui_kit::{App, Context};
 use uuid::Uuid;
 
+use crate::app_state::agent_selection_for_workspace;
 use crate::app_support::Activation;
 use crate::workspace_window::WorkspaceViewMode;
 use crate::workspace_window::WorkspaceWindow;
@@ -27,6 +28,9 @@ impl WorkspaceWindow {
     pub(super) fn remove_agent(&mut self, id: Uuid, cx: &App) {
         self.remove_agent_unpersisted(id);
         self.persist_agents(cx);
+        // The removal collapsed the layout in the store; a relaunch must not
+        // bring the removed agent's pane back.
+        self.persist_workspace_ui(cx);
     }
 
     /// The removal itself, without writing settings back out.
@@ -36,26 +40,22 @@ impl WorkspaceWindow {
     /// copy of the teardown cascade going out of step with this one.
     pub(super) fn remove_agent_unpersisted(&mut self, id: Uuid) {
         let removed = self.store.lock().remove(id);
+        let mut lost_selection = false;
         for removed_agent in removed {
             self.teardown_session(removed_agent.id);
             if self.selected_agent == Some(removed_agent.id) {
                 self.selected_agent = None;
+                lost_selection = true;
             }
         }
-    }
-
-    /// Makes `id` this window's selection and marks it activated, so the
-    /// next `ensure_*` starts it. Selection is the universal "I want this
-    /// one" signal: it starts a `passive` agent that has never run, and
-    /// restarts a deactivated one whatever its activation mode - otherwise
-    /// Deactivate would be a trap with no way back short of Restart.
-    ///
-    /// Deliberately not on the layout-restore path, which sets the field
-    /// directly: restoring a window must not start what the user has not
-    /// asked for.
-    pub(super) fn select_agent(&mut self, id: Uuid) {
-        self.selected_agent = Some(id);
-        self.store.lock().set_activated(id, true);
+        // The store has already collapsed the layout around the removed
+        // panes (`workspace-layouts`, "Removal collapses the layout"), so the
+        // selection moves to what it now focuses rather than to nothing.
+        // Nothing is started: nobody asked for this agent to be shown.
+        if lost_selection {
+            let store = self.store.lock();
+            self.selected_agent = agent_selection_for_workspace(&store, self.workspace_id);
+        }
     }
 
     /// The agent this window has selected, for tests outside the module.
@@ -73,10 +73,8 @@ impl WorkspaceWindow {
     /// (`openspec/specs/window-lifecycle`, "A workspace has at most one
     /// window").
     pub(crate) fn reveal_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        self.select_agent(id);
+        self.select_agent(id, false, cx);
         self.view_mode = WorkspaceViewMode::Terminal;
-        self.ensure_session(id, cx);
-        self.ensure_panel_session(id, cx);
         cx.notify();
     }
 
@@ -90,10 +88,8 @@ impl WorkspaceWindow {
     /// activated from birth, so the `ensure_*` calls start it as before; for a
     /// `passive` one they return early on the clear flag.
     pub(crate) fn show_created_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        self.selected_agent = Some(id);
+        self.select_created_agent(id, cx);
         self.view_mode = WorkspaceViewMode::Terminal;
-        self.ensure_session(id, cx);
-        self.ensure_panel_session(id, cx);
         cx.notify();
     }
 
@@ -343,6 +339,7 @@ impl WorkspaceWindow {
             self.remove_agent_unpersisted(id);
         }
         self.persist_agents(cx);
+        self.persist_workspace_ui(cx);
     }
 
     /// Deactivates every running agent in the workspace. An agent that is

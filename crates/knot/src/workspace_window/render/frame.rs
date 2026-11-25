@@ -88,6 +88,9 @@ impl WorkspaceWindow {
     /// compare unless the configured name changed (see `terminal_font`).
     pub(super) fn prepare_frame(&mut self, is_dashboard: bool, window: &mut Window,
                                 cx: &mut Context<Self>) {
+        // Before anything reads the selection: a layout the store changed
+        // since the last frame has moved its focus.
+        self.sync_selection_with_layout();
         // Ahead of `sync_terminal_style`, the frame's first reader of it.
         self.refresh_terminal_font(cx);
         // The view sizes itself to its bounds; only the font is the window's

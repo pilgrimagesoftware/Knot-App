@@ -1,3 +1,4 @@
+mod arrange;
 mod autopilot;
 mod awaiting_reason;
 mod duplicate;

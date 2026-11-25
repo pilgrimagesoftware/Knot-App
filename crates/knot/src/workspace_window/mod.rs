@@ -42,6 +42,23 @@ mod key_hints;
 mod key_hints_tests;
 mod layout;
 #[cfg(test)]
+mod layout_companion_tests;
+#[cfg(test)]
+mod layout_focus_tests;
+#[cfg(test)]
+mod layout_hold_tests;
+#[cfg(test)]
+mod layout_menu_tests;
+#[cfg(test)]
+mod layout_panes_tests;
+#[cfg(test)]
+mod layout_removal_tests;
+mod layout_select;
+#[cfg(test)]
+mod layout_select_tests;
+#[cfg(test)]
+mod layout_test_support;
+#[cfg(test)]
 mod layout_tests;
 #[cfg(test)]
 mod mcp_handover_tests;

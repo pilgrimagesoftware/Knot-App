@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::agent::{Agent, AgentState};
 
+mod arrange;
 mod bench;
 mod checklist;
 mod duplicate;
@@ -21,6 +22,7 @@ mod panels;
 mod persistence;
 mod pull_requests;
 
+pub use arrange::LayoutChange;
 pub use mcp_handover::{McpHandoverRequest, McpHandoverTerminal};
 pub use persistence::AdoptedCounts;
 mod workspace;
