@@ -18,39 +18,44 @@ Shift-click that changes what happens without changing what is shown.
 - **Agent row context menu:**
   - An item with a Shift variant shows its primary title. While Shift is
     held, the open menu redraws the title as the variant's title.
-  - Choosing the item, by click or by Enter, runs whichever action is
-    showing.
-  - Each such item also shows a muted ⇧ in its trailing column. This makes
-    the variant discoverable before the user tries Shift.
+  - Choosing the item, by click, Return or Shift-Return, runs whichever
+    action is showing.
+  - Each such item also shows a muted ⇧ in its trailing column, on every
+    platform. This makes the variant discoverable before the user tries
+    Shift.
+  - A variant (and its ⇧) is offered only when it differs from its primary:
+    for an owner that is not a shell, with `restore-conversation-on-launch`
+    on. With the setting off, Restart already starts a new conversation.
 - **Restart pair:** Restart Agent and Restart with New Conversation merge
   into one line. Restart Agent is the primary title, and Restart with New
-  Conversation is its Shift variant. Each keeps its own confirmation, and
-  Restart with New Conversation keeps its visibility rule: an owner that is
-  not a shell.
+  Conversation is its Shift variant. Each keeps its own confirmation.
 - **New Deactivate variant:** Deactivate gains a Shift variant, "Deactivate
   with New Session". It deactivates the agent as Deactivate does, and also
   clears the agent's session ids, so its next start begins a new
   conversation instead of resuming. Because it discards the resume point,
-  it asks for confirmation first. A shell has no conversation to discard,
-  so it gets no variant.
-- **Agents menu bar:** the bar keeps listing both items of each pair. The
-  native menu cannot show alternates yet (see design), so it gains one line,
-  Deactivate with New Session, for the new variant.
+  it asks for confirmation first.
+- **Sidebar background menu:** Restart All and Deactivate All gain the same
+  kind of Shift variant: Restart All with New Conversations and Deactivate
+  All with New Sessions, under the same rule and marker.
+- **Session-id race:** a session id reported by a connection that started
+  before a restart or a Deactivate with New Session is no longer written
+  back, so "new session" holds.
+- **Agents menu bar:** on macOS, each pair folds into one native alternate
+  item (Restart Agent ⌘R / Restart with New Conversation ⇧⌘R). This needs
+  a small gpui-pre patch, carried as a fork under `[patch.crates-io]` with an
+  ADR. Windows and Linux show the primary only. Until the fork lands, each
+  variant is its own item directly below its primary.
 - **Spec drift:** the agent row context menu's item list in `agent-list-ui`
   is brought up to date. It predates Agent Info, Config Files, Lock, Unlock,
   the Autopilot items and Deactivate, which the menu already shows.
 
 Non-goals:
 
-- Alternates in the sidebar background menu (Restart All, Deactivate All).
-  This is left for a follow-up once the agent row pattern has been used for
-  a while; see design, open questions.
 - Pairing Fork Agent with Duplicate Agent, Save to Bench with Bench Agent…,
   or New Companion… with New Shell Companion. Each pair differs in more than
   one decision, has its own shortcut, or hides a destructive action behind a
   modifier. They stay as separate lines.
-- Native NSMenu alternates in the menu bar. They need a change to gpui; see
-  design, option B.
+- Opening the gpui upstream PR. Its text is drafted in the ADR.
 
 ## Capabilities
 
@@ -63,29 +68,30 @@ None.
 - `agent-list-ui`:
   - The agent row context menu's item list.
   - Its visibility rules.
-  - A new requirement for Shift alternates.
-- `agent-lifecycle`: a new requirement, Deactivate with New
-  Session.
-- `app-menu`: the Agents menu lists alternates as separate items, which is
-  where the menu bar now differs from the context menu's layout.
+  - New requirements for Shift alternates and the ⇧ marker.
+  - Restart All and Deactivate All gain Shift alternates.
+- `agent-lifecycle`: a new requirement, Deactivate with New Session, and a
+  guard on late session ids.
+- `app-menu`: the Agents menu folds each pair into a native alternate on
+  macOS, and shows the primary only elsewhere.
 
 ## Impact
 
-- `crates/knot/src/agent_menu_entries.rs`:
-  - Each entry gains an optional Shift alternate.
-  - The context menu builder folds a pair into one line.
-- `crates/knot/src/workspace_window/menus/agent_row.rs`: builds the
-  alternate item, which renders from `window.modifiers()` and runs from it.
+- `crates/knot/src/agent_menu_entries.rs`: each entry gains an optional Shift
+  alternate, offered by the agent's facts.
+- `crates/knot/src/app_state.rs`: the sidebar background entries gain theirs.
+- `crates/knot/src/workspace_window/menus/`: the alternate line (render from
+  `window.modifiers()`, run from it) for both menus.
 - `crates/knot/src/workspace_window/render/root.rs`: the root
   `on_modifiers_changed` listener refreshes the window when Shift changes.
 - PopupMenu keymap: `shift-enter` is bound to `Confirm` in the PopupMenu
-  context, so the keyboard reaches the variant.
-- `crates/knot-agents/src/store/lifecycle.rs`: deactivate with fresh
-  session ids.
-- `crates/knot/src/agent_menu.rs`: a new menu bar action for Deactivate with
-  New Session.
-- Localization keys:
-  - `menu.agent.deactivate_new_session`
-  - the ⇧ marker's tooltip, if one is kept
-- Docs: the agent menu page.
-- No new dependencies and no `[patch]` changes.
+  context.
+- `crates/knot-agents/src/store/`: `deactivate_fresh` and
+  `set_acp_session_id_if_current`.
+- `crates/knot/src/workspace_window/panel/session.rs`: the guarded write.
+- `crates/knot/src/agent_menu.rs`: menu bar actions for the new variants, and
+  the native alternate items.
+- `Cargo.toml`: `[patch.crates-io]` for `gpui-pre` and `gpui-pre-macos`
+  (stacked PR), and `docs/adr/0009-gpui-pre-menu-alternates.md`.
+- Localization keys for the new titles and confirmations.
+- Docs: the agent menu and sidebar pages.

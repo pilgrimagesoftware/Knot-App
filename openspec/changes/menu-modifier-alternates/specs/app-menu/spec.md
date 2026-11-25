@@ -4,26 +4,33 @@
 
 ### Requirement: Agents menu
 
-The menu bar SHALL carry an Agents menu offering the same items as the agent
-row's context menu, in the same order and grouping, produced from one item
-set. A Shift alternate SHALL be its own item, directly below its primary.
-The menu SHALL act on the agent selected in the focused workspace window's
-sidebar, and an item SHALL do exactly what it does from that agent's
+The menu bar SHALL carry an Agents menu offering the agent row context
+menu's items, in its order and grouping, from one item set. On macOS a
+Shift alternate SHALL be a native alternate of its primary; elsewhere only
+the primary SHALL be shown. The menu SHALL act on the focused window's
+selected agent, and an item SHALL do exactly what it does from that agent's
 context menu, including any confirmation.
 
 #### Scenario: The menu offers what the context menu offers
 
 - **WHEN** the user opens the Agents menu with an agent selected
 - **THEN** it lists the same items, in the same order and groups, as that
-  agent's context menu, with each Shift alternate as its own item below its
-  primary
+  agent's context menu
 
-#### Scenario: An alternate has its own item
+#### Scenario: Holding Shift shows the alternates
 
-- **WHEN** the user opens the Agents menu with a running, non-shell agent
-  selected
-- **THEN** Deactivate with New Session is listed directly below Deactivate,
-  and Restart with New Conversation directly below Restart Agent
+- **WHEN** the user opens the Agents menu on macOS with a running, non-shell
+  agent selected and `restore-conversation-on-launch` enabled, and holds
+  Shift
+- **THEN** Restart Agent (⌘R) reads Restart with New Conversation (⇧⌘R)
+  and Deactivate reads Deactivate with New Session, each in its primary's
+  place
+
+#### Scenario: No alternates off macOS
+
+- **WHEN** the user opens the Agents menu on Windows or Linux
+- **THEN** it shows Restart Agent and Deactivate, and no Restart with New
+  Conversation or Deactivate with New Session item
 
 #### Scenario: An item does the same thing from either menu
 

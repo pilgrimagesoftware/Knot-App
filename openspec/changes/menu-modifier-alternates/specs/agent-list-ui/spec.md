@@ -22,18 +22,19 @@ group it would separate is empty.
   Agent - where `|` is a divider
 
 #### Scenario: Right-click a non-companion agent
-- **WHEN** the user right-clicks a non-companion, non-shell agent's row in
-  a workspace that is the only attached workspace, and the agent has no
-  markdown history
+- **WHEN** the user right-clicks the row of a non-companion, non-shell
+  agent that is not running, in a workspace that is the only attached
+  workspace, and the agent has no markdown history
 - **THEN** the menu shows New Companion…, New Shell Companion, Edit
   Agent…, Fork Agent, Duplicate Agent, Save to Bench, Bench Agent…, Open
   In…, Register Agent, Restart Agent and Remove Agent
 - **AND** it does not show Move to Workspace (no other workspace to move
-  to), Markdown Files (no history), or a separate Restart with New
-  Conversation line
+  to), Markdown Files (no history), Deactivate (not running), or a separate
+  Restart with New Conversation line
 
 #### Scenario: Right-click a shell companion
-- **WHEN** the user right-clicks a shell companion's row
+- **WHEN** the user right-clicks the row of a shell companion that is not
+  running
 - **THEN** the menu shows Edit Agent…, Open In… and Remove Agent
 - **AND** it does not show New Companion…, New Shell Companion, Fork
   Agent, Duplicate Agent, Move to Workspace, Save to Bench, Bench Agent…,
@@ -47,9 +48,10 @@ group it would separate is empty.
 ### Requirement: Agent row context menu visibility rules
 Each item's presence SHALL be decided by the agent it was opened on, as the
 scenarios below state. Edit Agent…, Open In… and Remove Agent SHALL always
-be shown. A Shift alternate that is not offered for an agent SHALL leave its
-line showing the primary title whatever the modifiers, with no Shift
-marker.
+be shown. A Shift alternate SHALL be offered only for an owner that is not
+a shell, while `restore-conversation-on-launch` is enabled; one that is not
+offered SHALL leave its line showing the primary title whatever the
+modifiers, with no Shift marker.
 
 #### Scenario: A companion shows no owner-only items
 - **WHEN** the user right-clicks a companion's row
@@ -85,6 +87,12 @@ marker.
 - **WHEN** the user right-clicks the row of an agent that is not running
 - **THEN** Deactivate is absent, and with it Deactivate with New Session
 
+#### Scenario: No alternates without restored conversations
+- **WHEN** `restore-conversation-on-launch` is disabled and the user
+  right-clicks a running, non-shell owner's row and holds Shift
+- **THEN** the lines read Restart Agent and Deactivate, carry no Shift
+  marker, and run Restart Agent and Deactivate
+
 #### Scenario: Panel-only and history-only items
 - **WHEN** the user right-clicks a terminal-mode agent with no markdown
   history and no config files
@@ -101,8 +109,8 @@ A line without an alternate SHALL NOT change its title or action with
 Shift.
 
 #### Scenario: Holding Shift swaps the title
-- **WHEN** the context menu of a non-shell owner is open and the user holds
-  Shift
+- **WHEN** the context menu of a running, non-shell owner is open,
+  `restore-conversation-on-launch` is enabled, and the user holds Shift
 - **THEN** the Restart Agent line reads Restart with New Conversation and
   the Deactivate line reads Deactivate with New Session
 - **WHEN** the user releases Shift
@@ -121,12 +129,40 @@ Shift.
 
 ### Requirement: A Shift marker shows which lines have an alternate
 A context menu line with a Shift alternate SHALL show a Shift marker (⇧) in
-its trailing column whether or not Shift is down, so the alternate is
-visible before the user tries the modifier. A line without one SHALL show
-no marker.
+its trailing column whether or not Shift is down, on every platform, so the
+alternate is visible before the user tries the modifier. A line without one
+SHALL show no marker.
 
 #### Scenario: The marker shows which lines have an alternate
-- **WHEN** the context menu of a running non-shell owner is open and no
-  modifier is held
+- **WHEN** the context menu of a running, non-shell owner is open,
+  `restore-conversation-on-launch` is enabled, and no modifier is held
 - **THEN** the Restart Agent and Deactivate lines show ⇧, and no other line
   does
+
+### Requirement: Shift alternates in the sidebar background menu
+The sidebar background menu SHALL give Restart All the Shift alternate
+Restart All with New Conversations, and Deactivate All the Shift alternate
+Deactivate All with New Sessions, shown and chosen as "Shift alternates in
+the agent row context menu" describes and marked as "A Shift marker shows
+which lines have an alternate" describes. Each SHALL be offered only while
+`restore-conversation-on-launch` is enabled, and SHALL be disabled whenever
+its primary is.
+
+#### Scenario: Restart All with New Conversations
+- **WHEN** `restore-conversation-on-launch` is enabled, the user holds
+  Shift, chooses Restart All with New Conversations in a workspace of three
+  agents, and confirms
+- **THEN** all three agents restart into new conversations
+
+#### Scenario: Deactivate All with New Sessions asks first
+- **WHEN** `restore-conversation-on-launch` is enabled and the user holds
+  Shift and chooses Deactivate All with New Sessions in a workspace with two
+  running agents
+- **THEN** a confirmation appears, and confirming runs Deactivate with New
+  Session on both agents
+
+#### Scenario: No sidebar alternates without restored conversations
+- **WHEN** `restore-conversation-on-launch` is disabled and the user opens
+  the sidebar background menu
+- **THEN** Restart All and Deactivate All carry no Shift marker, and holding
+  Shift does not change them
