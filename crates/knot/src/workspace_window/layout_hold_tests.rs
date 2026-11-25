@@ -60,6 +60,11 @@ fn settle(f: &mut Fixture) {
 
 #[gpui_kit::test]
 fn terminals_keep_their_grid_during_a_drag_and_resize_once_on_release(cx: &mut TestAppContext) {
+    // The `/bin/cat` PTYs read on their own threads, and an exiting one wakes
+    // the terminal from there. The test scheduler counts that as
+    // non-determinism and fails the test under load (it passed alone and
+    // failed in the full suite), so this test opts in to real threads.
+    cx.executor().allow_parking();
     let mut f = open_as(&SPLIT, knot_core::agent_type::SHELL, cx);
     attach_terminal(&mut f, "A");
     attach_terminal(&mut f, "B");
