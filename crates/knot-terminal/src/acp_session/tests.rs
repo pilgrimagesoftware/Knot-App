@@ -281,7 +281,7 @@ async fn the_adapter_subprocess_is_spawned_with_the_merged_adapter_path() {
 
     let update = events.recv().await.expect("session update");
     match update {
-        SessionEvent::Update(knot_acp::SessionUpdate::TextDelta { text }) => {
+        SessionEvent::Update(knot_acp::SessionUpdate::TextDelta { text, .. }) => {
             // The merged path's fallback dirs are appended after any
             // process `PATH` entries, so last-five covers exactly them.
             let merged = adapter_path();
@@ -357,7 +357,7 @@ async fn starting_and_stopping_an_acp_session_never_touches_the_terminal_transpo
     let update = events.recv().await.expect("session update");
     assert!(matches!(
                 update,
-                SessionEvent::Update(knot_acp::SessionUpdate::TextDelta { text }) if text == "hi"
+                SessionEvent::Update(knot_acp::SessionUpdate::TextDelta { text, .. }) if text == "hi"
             ));
 
     session.stop().await;

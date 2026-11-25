@@ -36,6 +36,7 @@ use crate::panel_view::style::MUTED;
 use crate::panel_view::style::PanelStyle;
 use crate::panel_view::style::SAFE_COLOR;
 use crate::panel_view::style::card_outline;
+use crate::panel_view::subagent_activity::{render_subagent_activity, subagent_count_line};
 
 /// A tool-call card: an icon/title/status header over whatever content
 /// the agent has reported so far - diff blocks as an added/removed line
@@ -50,14 +51,20 @@ use crate::panel_view::style::card_outline;
 /// running call reads as live at a glance, beside the status icon that also
 /// says so.
 ///
-/// `collapsed` comes from `PanelState::is_collapsed`, so a succeeded call
+/// A delegation card also counts what its subagent ran, and draws that
+/// activity above its own result while open (`subagent_activity`, #476).
+///
+/// `collapsed_of` is `PanelState::is_collapsed`, so a succeeded call
 /// folds to just this header. The whole header row is the toggle's hit
 /// target, not only the chevron: a 12px icon is a poor one and the header
 /// carries no other action (design decision "The control is a disclosure
 /// chevron, and the whole header toggles").
-pub(super) fn render_tool_call_card(card: &ToolCallCard, style: &PanelStyle, collapsed: bool,
+pub(super) fn render_tool_call_card(card: &ToolCallCard, style: &PanelStyle,
+                                    collapsed_of: &dyn Fn(&ToolCallCard) -> bool,
                                     on_toggle: Rc<dyn Fn(String)>)
                                     -> impl IntoElement {
+    let collapsed = collapsed_of(card);
+    let nested_toggle = Rc::clone(&on_toggle);
     let label = if card.title.is_empty() {
         card.kind.clone()
     }
@@ -139,6 +146,13 @@ pub(super) fn render_tool_call_card(card: &ToolCallCard, style: &PanelStyle, col
                                     .text_xs()
                                     .child(status_label(&card.status))
                                                                         })))
+            .children(subagent_count_line(card, style))
+            .children((!collapsed && !card.subagent.is_empty()).then(|| {
+                                                                  render_subagent_activity(card,
+                                                                                           style,
+                                                                                           collapsed_of,
+                                                                                           &nested_toggle)
+                                                              }))
             .children((!collapsed).then(|| render_tool_call_body(card, style)))
 }
 

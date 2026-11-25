@@ -80,7 +80,7 @@ async fn ordered_updates_stream_text_and_turn_end() {
     let first = events.recv().await.expect("first update");
     let second = events.recv().await.expect("second update");
 
-    assert!(matches!(first, SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == "hello"));
+    assert!(matches!(first, SessionEvent::Update(SessionUpdate::TextDelta { text, .. }) if text == "hello"));
     assert!(matches!(second, SessionEvent::Update(SessionUpdate::TurnEnd { stop_reason }) if stop_reason.as_str() == "end_turn"));
 }
 
@@ -115,7 +115,7 @@ async fn permission_deny_decision_is_delivered_to_the_agent() {
 
     expect_resolved(&mut events, &permission.rpc_id).await;
     let confirmation = events.recv().await.expect("decision echoed back");
-    assert!(matches!(confirmation, SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == "decision:deny"));
+    assert!(matches!(confirmation, SessionEvent::Update(SessionUpdate::TextDelta { text, .. }) if text == "decision:deny"));
 }
 
 /// Cancelling a turn answers the permission request the agent is blocked
@@ -155,7 +155,7 @@ async fn cancelling_answers_a_pending_permission_request_as_cancelled() {
     let texts: Vec<_> =
         seen.iter()
             .filter_map(|event| match event {
-                SessionEvent::Update(SessionUpdate::TextDelta { text }) => Some(text.as_str()),
+                SessionEvent::Update(SessionUpdate::TextDelta { text, .. }) => Some(text.as_str()),
                 _ => None,
             })
             .collect();
@@ -189,7 +189,7 @@ async fn allow_and_always_allow_answer_with_their_own_kinds() {
         expect_resolved(&mut events, &permission.rpc_id).await;
         let confirmation = events.recv().await.expect("decision echoed back");
         assert!(matches!(&confirmation,
-                         SessionEvent::Update(SessionUpdate::TextDelta { text }) if text == expected),
+                         SessionEvent::Update(SessionUpdate::TextDelta { text, .. }) if text == expected),
                 "{decision:?} answered {confirmation:?}");
     }
 }

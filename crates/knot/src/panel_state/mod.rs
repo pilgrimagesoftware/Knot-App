@@ -12,7 +12,8 @@
 //! `question` a question card's answers and keyboard position.
 //! `harness` tells a replayed user chunk the user typed from one the agent's
 //! harness injected. `times` keeps when each entry happened across a
-//! restored session.
+//! restored session. `subagent` keeps a subagent's updates inside the card of
+//! the call that launched it.
 //!
 //! Contract: `openspec/specs/acp-panel-ui/spec.md`.
 
@@ -22,6 +23,7 @@ mod message;
 mod pending_input;
 mod question;
 mod state;
+mod subagent;
 mod summary;
 mod times;
 mod turn_progress;
@@ -29,6 +31,7 @@ mod turn_progress;
 pub use message::PanelMessage;
 pub use message::ShellCard;
 pub use message::ShellDelivery;
+pub use message::SubagentItem;
 pub use message::ToolCallCard;
 pub use pending_input::PendingInput;
 pub use question::{CardKey, FieldValue, QuestionState, Stop};

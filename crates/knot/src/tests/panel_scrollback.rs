@@ -55,7 +55,8 @@ fn conversation() -> PanelState {
     let mut state = PanelState::new();
     for turn in 0..TURNS {
         state.push_user_message(format!("Question {turn}"));
-        state.apply(SessionEvent::Update(SessionUpdate::TextDelta { text: long_reply(turn), }));
+        state.apply(SessionEvent::Update(SessionUpdate::TextDelta { text: long_reply(turn),
+                                                                    meta: None, }));
     }
     assert!(long_reply(0).len() > 4 * 1024,
             "the reply has to be past TextView's synchronous parse limit to exercise the defect");
@@ -136,6 +137,7 @@ fn a_streaming_reply_leaves_a_reader_further_up_where_they_are(cx: &mut TestAppC
     for chunk in 0..20 {
         state.lock().apply(SessionEvent::Update(SessionUpdate::TextDelta {
             text: format!("Streamed chunk {chunk} of the answer still being written. "),
+            meta: None,
         }));
         redraw(&mut probe_cx, &probe);
     }
@@ -173,6 +175,7 @@ fn an_inbox_nudge_leaves_a_reader_further_up_where_they_are(cx: &mut TestAppCont
     redraw(&mut probe_cx, &probe);
     state.lock().apply(SessionEvent::Update(SessionUpdate::TextDelta {
         text: "Checking my inbox now.".to_string(),
+        meta: None,
     }));
     redraw(&mut probe_cx, &probe);
 

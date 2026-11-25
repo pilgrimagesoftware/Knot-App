@@ -17,7 +17,34 @@ fn text_delta_parses_from_the_real_nested_update_envelope() {
 
     let update = SessionUpdate::from_params(params);
 
-    assert!(matches!(update, SessionUpdate::TextDelta { text } if text == "pong"));
+    assert!(matches!(update, SessionUpdate::TextDelta { text, .. } if text == "pong"));
+}
+
+/// A subagent's text chunk keeps its `_meta`, so the client can tell it from
+/// the main agent's (#476). The shape is claude-agent-acp 0.111.0's
+/// `stampParentToolUseId` (`dist/sdk-to-acp.js`) applied to an
+/// `agent_message_chunk`; ACP lets any update carry `_meta`.
+#[test]
+fn a_text_chunk_keeps_its_meta_envelope() {
+    let params = serde_json::json!({
+        "sessionId": "s1",
+        "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": { "type": "text", "text": "found it" },
+            "_meta": { "claudeCode": { "parentToolUseId": "toolu_agent" } }
+        }
+    });
+
+    let SessionUpdate::TextDelta { text, meta } = SessionUpdate::from_params(params)
+    else {
+        panic!("a text delta");
+    };
+
+    assert_eq!(text, "found it");
+    assert_eq!(meta.as_ref()
+                   .and_then(|meta| meta.pointer("/claudeCode/parentToolUseId"))
+                   .and_then(Value::as_str),
+               Some("toolu_agent"));
 }
 
 /// What `session/load` replays the user's side of a conversation as. It
@@ -309,7 +336,7 @@ fn text_delta_still_parses_the_flat_legacy_shape() {
 
     let update = SessionUpdate::from_params(params);
 
-    assert!(matches!(update, SessionUpdate::TextDelta { text } if text == "hi"));
+    assert!(matches!(update, SessionUpdate::TextDelta { text, .. } if text == "hi"));
 }
 
 #[test]

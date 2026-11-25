@@ -9,7 +9,8 @@ use crate::panel_state::PanelState;
 use crate::panel_state::ToolCallCard;
 
 pub(super) fn text(text: &str) -> SessionEvent {
-    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(), })
+    SessionEvent::Update(SessionUpdate::TextDelta { text: text.to_string(),
+                                                    meta: None, })
 }
 
 pub(super) fn tool_call_start(id: &str, kind: &str) -> SessionEvent {

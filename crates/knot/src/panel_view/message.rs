@@ -280,7 +280,7 @@ pub(super) fn render_message(ctx: Message<'_>, message: &PanelMessage,
         }
         PanelMessage::ToolCall(card) => render_tool_call_card(card,
                                                               style,
-                                                              state.is_collapsed(card),
+                                                              &|card| state.is_collapsed(card),
                                                               callbacks.on_toggle_tool_call
                                                                        .clone()).into_any_element(),
         // The user's own command. Full width and on the card surface like a

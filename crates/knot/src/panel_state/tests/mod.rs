@@ -9,5 +9,6 @@ mod questions;
 mod replay;
 mod shell;
 mod stop_reason;
+mod subagents;
 mod tool_calls;
 mod turns;
