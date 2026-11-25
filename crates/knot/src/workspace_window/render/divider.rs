@@ -69,6 +69,9 @@ pub(in crate::workspace_window) fn divider_element(rect: DividerRect,
          .items_center()
          .justify_center()
          .cursor(divider_cursor(divider.orientation))
+         // In front of the panes it overlaps, so that grabbing a divider does
+         // not also click into the pane under it and move the focus.
+         .block_mouse_except_scroll()
          .on_mouse_down(MouseButton::Left,
                         move |event: &MouseDownEvent, window: &mut Window, cx: &mut App| {
                             // A closed window has no drag to start.

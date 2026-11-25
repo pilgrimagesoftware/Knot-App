@@ -94,13 +94,19 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
 fn open_editor_from_menu(targets: &AgentMenuTargets, prefill: AgentPrefill,
                          insert_after: Option<Uuid>, edit_target: Option<Uuid>, app: &mut App) {
     let window_entity = targets.window_entity.clone();
+    // A companion the form creates is one the user asked for, so the window
+    // shows it where the store put it. An edit is not a creation.
+    let creates_companion = prefill.is_companion && edit_target.is_none();
     open_agent_editor(Arc::clone(&targets.store),
                       AgentEditorRequest { workspace_id: targets.workspace_id,
                                            prefill,
                                            insert_after,
                                            edit_target },
-                      move |_id, _window, app| {
-                          window_entity.update(app, |_view, cx| {
+                      move |id, _window, app| {
+                          window_entity.update(app, |view, cx| {
+                                           if creates_companion {
+                                               view.show_created_companion(id, cx);
+                                           }
                                            // No reload here any more. The
                                            // sidebar row resolves the agent's
                                            // persona name from the shared
@@ -340,13 +346,11 @@ pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTa
                                  });
         }
         AgentMenuEntry::NewShellCompanion => {
-            let created = targets.store
-                                 .lock()
-                                 .create_shell_companion(targets.id)
-                                 .is_ok();
-            if created {
+            let created = targets.store.lock().create_shell_companion(targets.id);
+            if let Ok(companion) = created {
                 targets.window_entity.update(app, |view, cx| {
                                          view.persist_agents(cx);
+                                         view.show_created_companion(companion, cx);
                                          cx.notify();
                                      });
             }

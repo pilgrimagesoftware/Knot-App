@@ -129,6 +129,11 @@ pub(crate) struct WorkspaceWindow {
     /// "Dividers"). Cleared on release, which is also what persists the
     /// ratios; see `layout`.
     pub(super) divider_drag:                     Option<super::layout::DividerDrag>,
+    /// The workspace's layout as this frame read it, taken by
+    /// `sync_selection_with_layout` and consumed by the layout area, so the
+    /// selection and the panes come from one read of the store. Two reads
+    /// could straddle a change from another thread.
+    pub(super) frame_layout:                     Option<knot_core::WorkspaceUiState>,
     pub(super) selected_agent:                   Option<Uuid>,
     pub(super) sessions: BTreeMap<Uuid, Arc<Mutex<TerminalSession<PtyTransport>>>>,
     /// The view drawing each session in `sessions`, created and dropped with

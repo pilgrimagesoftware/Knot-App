@@ -26,6 +26,15 @@ dashboard:
     name: "Name"
     status: "Status"
 
+# The content header's Layout menu (`workspace-layouts`, "The Layout menu").
+layout:
+  menu: "Layout"
+  single: "Single"
+  split_vertical: "Split Vertical"
+  split_horizontal: "Split Horizontal"
+  three_panes: "Three Panes"
+  four_panes: "Four Panes"
+
 count:
   agent: "agent"
   agents: "agents"

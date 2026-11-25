@@ -41,10 +41,8 @@ impl WorkspaceWindow {
         }
         input.update(cx, |field, cx| field.set_value("", window, cx));
         if open {
-            self.select_agent(id);
+            self.select_agent(id, false, cx);
             self.view_mode = WorkspaceViewMode::Terminal;
-            self.ensure_session(id, cx);
-            self.ensure_panel_session(id, cx);
         }
         cx.notify();
     }

@@ -48,7 +48,12 @@ impl WorkspaceWindow {
         let id = view.agent;
         let has_staged = matches!(&view.content, PanelContent::Changes(tree) if tree.staged);
 
+        let folder = view.folder.clone();
         v_flex().h_full()
+                // Names the folder the panel reads, so a test can tell whose
+                // panel is on screen. Nothing in a release build.
+                .id("git-panel")
+                .debug_selector(move || format!("git-panel-folder:{folder}"))
                 .w(px(view.width))
                 .flex_none()
                 .border_l_1()
