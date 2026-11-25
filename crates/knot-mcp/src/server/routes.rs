@@ -137,11 +137,16 @@ fn hook_response(state: &AppState, principal: Principal, body: &[u8], action: Ho
 
 /// Whether `principal` may post a hook event for `agent` (D6): an agent's
 /// hook credential only for that agent, and the client token only for an
-/// agent no session opened with its own tool credential holds.
+/// agent Knot did not launch - one with no issued pair and no session opened
+/// with its own credential.
 fn may_post_hooks_for(state: &AppState, principal: Principal, agent: Uuid) -> bool {
     match principal {
         Principal::AgentHooks(own) => own == agent,
-        Principal::External => !state.sessions.held_by_credential(agent),
+        // Not for an agent Knot launched, even before its adapter connects
+        // or after its connection lapses: holding a pair is what counts.
+        Principal::External => {
+            !state.credentials.has_agent_pair(agent) && !state.sessions.held_by_credential(agent)
+        }
         Principal::Agent(_) => false,
     }
 }
@@ -252,9 +257,10 @@ fn connection(state: &AppState, is_initialize: bool, sent: Option<String>, princ
         Principal::Agent(agent) => Some(agent),
         Principal::AgentHooks(_) | Principal::External => None,
     };
-    let caller = Caller { agent:      own.or(bound),
-                          session_id: session_id.clone().filter(|_| kept),
-                          sessions:   sessions.clone(), };
+    let caller = Caller { agent:       own.or(bound),
+                          session_id:  session_id.clone().filter(|_| kept),
+                          sessions:    sessions.clone(),
+                          credentials: state.credentials.clone(), };
     (caller, session_id)
 }
 

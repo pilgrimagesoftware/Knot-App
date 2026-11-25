@@ -56,6 +56,15 @@ pub(crate) fn refusal(store: &AgentStore, tool: &str, arguments: &serde_json::Va
         ))),
         None => {
             let named = named?;
+            // An agent Knot launched answers only to its own credential,
+            // connected or not (D5): the client token's holder is told so.
+            if caller.launched(named) {
+                return Some(ToolCallResult::error(format!(
+                    "Refused: {} was launched by Knot and can only act through its own \
+                     connection. Use your own knot agent ID.",
+                    describe(store, named)
+                )));
+            }
             caller.held_elsewhere(named).then(|| {
                                             ToolCallResult::error(format!(
                     "Refused: {} is already registered from another live session, and two \

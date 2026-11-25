@@ -17,7 +17,8 @@ fn bound_to(agent: Uuid) -> Caller {
     let session = sessions.create_session(knot_mcp::Principal::Agent(agent));
     Caller { agent: Some(agent),
              session_id: Some(session.id),
-             sessions }
+             sessions,
+             credentials: knot_mcp::CredentialRegistry::new() }
 }
 
 fn is_refused(result: Option<ToolCallResult>) -> bool {
@@ -79,9 +80,10 @@ fn an_unknown_id_on_a_bound_connection_is_told_the_right_one() {
 fn an_unbound_connection_may_not_take_a_live_agents_id() {
     let (store, orchestrator, _) = knot();
     let held = bound_to(orchestrator);
-    let unbound = Caller { agent:      None,
-                           session_id: None,
-                           sessions:   held.sessions.clone(), };
+    let unbound = Caller { agent:       None,
+                           session_id:  None,
+                           sessions:    held.sessions.clone(),
+                           credentials: held.credentials.clone(), };
     let args = json!({ "agentId": orchestrator.to_string() });
     assert!(is_refused(refusal(&store, consts::REGISTER_AGENT, &args, &unbound)));
 }
@@ -120,7 +122,8 @@ async fn a_duplicate_live_registration_is_refused_through_the_catalog() {
                                                            knot_mcp::Principal::Agent));
         Caller { agent,
                  session_id: Some(session.id),
-                 sessions: sessions.clone() }
+                 sessions: sessions.clone(),
+                 credentials: knot_mcp::CredentialRegistry::new() }
     };
     let register = |id: Uuid| json!({ "agentId": id.to_string() });
 
@@ -174,4 +177,45 @@ fn a_bound_connection_registers_its_agent() {
     assert!(store.agent(builder).unwrap().is_registered);
     assert!(!store.agent(orchestrator).unwrap().is_registered,
             "only the agent the URL names");
+}
+
+/// `mcp-auth` D5: the client token may not act for an agent Knot launched -
+/// before its adapter's first authenticated request, and after its
+/// connection has lapsed - only for one with no issued pair.
+#[test]
+fn the_client_token_may_not_act_for_a_launched_agent_with_or_without_a_connection() {
+    let (store, orchestrator, builder) = knot();
+    let credentials = knot_mcp::CredentialRegistry::new();
+    credentials.issue_agent_pair(orchestrator);
+    let sessions = McpSessionManager::new();
+    let external = sessions.create_session(knot_mcp::Principal::External);
+    let unbound = Caller { agent:       None,
+                           session_id:  Some(external.id.clone()),
+                           sessions:    sessions.clone(),
+                           credentials: credentials.clone(), };
+    let register = |id: Uuid| json!({ "agentId": id.to_string() });
+
+    // Launched, not yet connected: no session holds it at all.
+    assert!(!unbound.held_elsewhere(orchestrator));
+    assert!(is_refused(refusal(&store,
+                               consts::REGISTER_AGENT,
+                               &register(orchestrator),
+                               &unbound)));
+    unbound.bind(orchestrator);
+    assert!(sessions.session_for_agent(orchestrator).is_none(),
+            "bind refused too");
+
+    // Its connection came and went: still launched, still refused.
+    let own = sessions.create_session(knot_mcp::Principal::Agent(orchestrator));
+    sessions.remove(&own.id);
+    assert!(is_refused(refusal(&store,
+                               consts::REGISTER_AGENT,
+                               &register(orchestrator),
+                               &unbound)));
+
+    // An agent Knot did not launch is still the client token's to register.
+    assert!(refusal(&store, consts::REGISTER_AGENT, &register(builder), &unbound).is_none());
+    unbound.bind(builder);
+    assert_eq!(sessions.session_for_agent(builder).map(|s| s.id),
+               Some(external.id));
 }

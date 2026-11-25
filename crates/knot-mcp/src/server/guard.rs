@@ -124,6 +124,10 @@ fn record_refusal(state: &AppState, request: &Request, principal: Option<Princip
     let user_agent = request.headers()
                             .get(header::USER_AGENT)
                             .and_then(|value| value.to_str().ok());
+    // Counted against the hinted agent only when Knot launched it: the hint
+    // comes from an unauthenticated URL, and anything else would let a
+    // caller grow the table with made-up ids.
+    let hint = hint.filter(|agent| state.credentials.has_agent_pair(*agent));
     state.refusals.record(RefusalSource::of(hint, user_agent));
     let who = principal.map_or_else(|| "none".to_owned(), |principal| principal.to_string());
     let line = format!("[{who}] {} {} refused {}",

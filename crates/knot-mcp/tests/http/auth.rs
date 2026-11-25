@@ -231,6 +231,30 @@ async fn the_client_token_cannot_report_for_an_agent_its_credential_holds() {
     fixture.server.stop();
 }
 
+/// D5/D6: holding an issued pair is what makes an agent off limits to the
+/// client token - before its adapter's first request, and after its
+/// connection has gone.
+#[tokio::test]
+async fn the_client_token_cannot_report_for_a_launched_agent_before_it_connects() {
+    let mut fixture = fixture().await;
+    let launched = Uuid::new_v4();
+    fixture.credentials.issue_agent_pair(launched);
+    let token = support::TOKEN.expose();
+
+    for target in [Target::StatusHook, Target::RegisterHook] {
+        assert_eq!(send(target, &fixture.base, Some(token), launched).await
+                                                                     .status(),
+                   403,
+                   "{target:?} before the agent connected");
+    }
+    fixture.credentials.revoke_agent(launched);
+    assert!(send(Target::StatusHook, &fixture.base, Some(token), launched).await
+                                                                          .status()
+                                                                          .is_success(),
+            "once its adapter is gone the agent is an ordinary one again");
+    fixture.server.stop();
+}
+
 #[tokio::test]
 async fn a_rotated_credential_is_refused() {
     let mut fixture = fixture().await;
@@ -268,6 +292,7 @@ async fn a_rotated_credential_is_refused() {
 async fn refusals_are_counted_against_the_agent_the_url_names() {
     let mut fixture = fixture().await;
     let agent = Uuid::new_v4();
+    fixture.credentials.issue_agent_pair(agent);
     let client = reqwest::Client::builder().user_agent("probe-client/1.0")
                                            .build()
                                            .unwrap();
@@ -285,5 +310,26 @@ async fn refusals_are_counted_against_the_agent_the_url_names() {
     assert!(fixture.refusals
                    .snapshot()
                    .contains(&(RefusalSource::UserAgent("probe-client/1.0".into()), 1)));
+    fixture.server.stop();
+}
+
+/// Hints come from unauthenticated URLs, so only a launched agent is counted
+/// by name: a stream of made-up ids does not grow the table.
+#[tokio::test]
+async fn made_up_hints_do_not_grow_the_refusal_table() {
+    let mut fixture = fixture().await;
+    let client = reqwest::Client::new();
+    for _ in 0..200 {
+        client.post(format!("{}/mcp?agent={}", fixture.base, Uuid::new_v4()))
+              .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }))
+              .send()
+              .await
+              .unwrap();
+    }
+
+    assert_eq!(fixture.refusals.total(), 200);
+    assert!(fixture.refusals.snapshot().len() <= 2,
+            "{:?}",
+            fixture.refusals.snapshot());
     fixture.server.stop();
 }
