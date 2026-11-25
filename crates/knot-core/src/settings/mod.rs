@@ -17,4 +17,6 @@ pub use records::{
 };
 pub use shared::SharedSettings;
 pub use store::{PromptReferences, Settings, detect_source_base_folder};
-pub use vocabulary::{AiProvider, AppearanceMode, AutopilotAction, CostTier, UnknownVariant};
+pub use vocabulary::{
+    AiProvider, AppearanceMode, AutopilotAction, CostTier, LayoutMode, UnknownVariant,
+};

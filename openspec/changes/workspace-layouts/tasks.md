@@ -2,8 +2,8 @@
 
 ## 1. Layout mode type (`knot-core`)
 
-- [ ] 1.1 `LayoutMode` enum with the Swift serde names and `pane_count()`. `WorkspaceUiState.layout_mode` uses it, and an unknown value reads as `Single`. Verify: records tests round-trip each mode, an unknown string loads as `Single`, and `tests/settings.rs` still reads the legacy fixture's `splitVertical`.
-- [ ] 1.2 Replace the `"grid"` value in `records/tests.rs` with a real mode and retire `WORKSPACE_LAYOUT_DEFAULT`'s string form. Verify: `cargo test -p knot-core` passes.
+- [x] 1.1 `LayoutMode` enum with the Swift serde names and `pane_count()`. `WorkspaceUiState.layout_mode` uses it, and an unknown value reads as `Single`. Verify: records tests round-trip each mode, an unknown string loads as `Single`, and `tests/settings.rs` still reads the legacy fixture's `splitVertical`.
+- [x] 1.2 Replace the `"grid"` value in `records/tests.rs` with a real mode and retire `WORKSPACE_LAYOUT_DEFAULT`'s string form. Verify: `cargo test -p knot-core` passes.
 
 ## 2. Layout rules (`knot-agents`)
 

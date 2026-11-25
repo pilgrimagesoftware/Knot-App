@@ -106,10 +106,10 @@ impl AgentStore {
     /// ported. The field is persisted and migrated all the same, because an
     /// installation upgrading from the Swift app already has one stored and
     /// losing it would be silent.
-    pub fn set_workspace_layout(&mut self, id: Uuid, layout_mode: impl Into<String>,
+    pub fn set_workspace_layout(&mut self, id: Uuid, layout_mode: knot_core::LayoutMode,
                                 active_agent_ids: Vec<Uuid>) {
         let ui = self.workspace_ui_mut(id);
-        ui.layout_mode = layout_mode.into();
+        ui.layout_mode = layout_mode;
         ui.active_agent_ids = active_agent_ids;
     }
 
