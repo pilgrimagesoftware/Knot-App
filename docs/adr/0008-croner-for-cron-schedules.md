@@ -25,6 +25,15 @@ not hand-rolled.
 
 Use `croner` 4.x with `default-features = false, features = ["jiff"]`.
 
+> **Update (2026-11-25):** now `croner` 5.x with
+> `default-features = false, features = ["std", "jiff"]`, for `jiff` 1.0,
+> which renamed `jiff::Zoned` to `jiff::ZonedDateTime`. `croner` 5 is
+> `no_std` without its `std` feature, hence the addition. It also refuses
+> patterns 4.x accepted on an unintended schedule (a name outside its own
+> field, a bare `L` for a weekday) and reads `SUN-SUN` as Sundays only; a
+> stored pattern it now refuses loads as unreadable and never runs. The DST
+> tests below passed unchanged.
+
 - `croner`'s default feature is `chrono`. Turning it off and enabling `jiff`
   gives `CronDateTime` for `jiff::Zoned`, so `Cron::find_next_occurrence`
   takes and returns the zoned times the rest of the change uses, and the

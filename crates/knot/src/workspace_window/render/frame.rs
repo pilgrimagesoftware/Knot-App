@@ -24,7 +24,7 @@ impl WorkspaceWindow {
     pub(super) fn frame_snapshot(&self, cx: &App) -> Option<(String, Vec<AgentRow>)> {
         let autopilot_enabled = crate::settings_global::read(cx).autopilot_enabled;
         // Evaluating a schedule is arithmetic on the clock, not I/O (#404).
-        let now = jiff::Zoned::now();
+        let now = jiff::ZonedDateTime::now();
         let outcomes = cx.try_global::<crate::scheduled_starts::ScheduleOutcomes>();
         let store = self.store.lock();
         let title = workspace_title(&store, self.workspace_id)?;

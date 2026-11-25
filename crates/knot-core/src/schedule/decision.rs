@@ -3,7 +3,7 @@
 //! clock and whether the agent is busy, so every rule in the spec's
 //! scheduled-start requirements is testable without a window.
 
-use jiff::{SignedDuration, Timestamp, Zoned};
+use jiff::{SignedDuration, Timestamp, ZonedDateTime};
 
 use super::definition::Schedule;
 use super::evaluate::previous_run;
@@ -32,11 +32,14 @@ pub enum RunDecision {
     /// No run has come due since the last one handled.
     NotDue,
     /// Start the agent for the run due at `run`.
-    Start { run: Zoned },
+    Start { run: ZonedDateTime },
     /// The run due at `run` is skipped, with the reason.
-    Skip { run: Zoned, reason: SkipReason },
+    Skip {
+        run:    ZonedDateTime,
+        reason: SkipReason,
+    },
     /// The run due at `run` is too late to start.
-    Missed { run: Zoned },
+    Missed { run: ZonedDateTime },
 }
 
 impl RunDecision {
@@ -60,7 +63,7 @@ impl RunDecision {
 /// before `last_handled` has been dealt with already.
 #[must_use]
 /// `busy` is what would be discarded by starting now, if anything.
-pub fn decide(schedule: &Schedule, last_handled: Option<Timestamp>, now: &Zoned,
+pub fn decide(schedule: &Schedule, last_handled: Option<Timestamp>, now: &ZonedDateTime,
               busy: Option<SkipReason>)
               -> RunDecision {
     let Some(run) = previous_run(schedule, now)
