@@ -79,7 +79,7 @@ fn loads_swift_shaped_document() {
     // arrives in the UI-state map rather than on the workspace - see
     // `tests/workspace_ui_state.rs`.
     let ui = s.workspace_ui(ws.id);
-    assert_eq!(ui.layout_mode, "splitVertical");
+    assert_eq!(ui.layout_mode, knot_core::LayoutMode::SplitVertical);
     assert_eq!(ui.split_ratio_secondary, Some(0.4));
     assert_eq!(ui.is_detached, Some(true));
 

@@ -142,6 +142,32 @@ settings_vocabulary! {
     }
 }
 
+settings_vocabulary! {
+    /// How a workspace window's content area divides into panes
+    /// (`workspace-layouts`, "Layout modes"). The stored strings are the
+    /// Swift app's `LayoutMode` raw values, so a record written by either
+    /// app round-trips; an unknown one reads as `Single`.
+    LayoutMode {
+        Single = "single",
+        SplitVertical = "splitVertical",
+        SplitHorizontal = "splitHorizontal",
+        ThreePane = "threePane",
+        GridFourPane = "gridFourPane",
+    }
+}
+
+impl LayoutMode {
+    /// How many panes, and so how many agents, this mode shows.
+    pub const fn pane_count(self) -> usize {
+        match self {
+            Self::Single => 1,
+            Self::SplitVertical | Self::SplitHorizontal => 2,
+            Self::ThreePane => 3,
+            Self::GridFourPane => 4,
+        }
+    }
+}
+
 /// How expensive an agent is to run, as declared by whoever configured it.
 ///
 /// Deliberately hand-written rather than a [`settings_vocabulary!`] enum:

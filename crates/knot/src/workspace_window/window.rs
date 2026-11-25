@@ -125,6 +125,10 @@ pub(crate) struct WorkspaceWindow {
     /// rather than news, per `desktop-notifications`' suppression rule.
     pub(super) notified_awaiting:                BTreeMap<Uuid, String>,
     pub(super) workspace_id:                     Uuid,
+    /// The divider drag in progress, if any (`workspace-layouts`,
+    /// "Dividers"). Cleared on release, which is also what persists the
+    /// ratios; see `layout`.
+    pub(super) divider_drag:                     Option<super::layout::DividerDrag>,
     pub(super) selected_agent:                   Option<Uuid>,
     pub(super) sessions: BTreeMap<Uuid, Arc<Mutex<TerminalSession<PtyTransport>>>>,
     /// The view drawing each session in `sessions`, created and dropped with
