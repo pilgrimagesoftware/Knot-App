@@ -8,45 +8,42 @@
 //! spec requires them to render alike, and a shared constructor makes that
 //! true by construction rather than by review.
 //!
-//! # Why a heading renderer exists here at all
+//! # How headers get their own face
 //!
-//! gpui-kit exposes no per-heading font family. `TextViewStyle` carries
-//! heading *sizes* (`heading_base_font_size`, `with_heading_font_size`) and
-//! `StyleRefinement`s for code blocks and tables, but nothing for a heading's
-//! face, and `gpui-base` renders a heading as a plain `div` that inherits the
-//! ambient family. Giving headers their own face therefore means claiming the
-//! heading node through the block parser and renderer hooks and drawing it
-//! here.
+//! Through `gpui-base`'s per-level heading refinement
+//! (`TextViewStyle::with_heading`), which its own heading branch applies over
+//! its defaults. The heading stays `gpui-base`'s node, so it is selectable and
+//! copyable like a paragraph, and keeps its inline marks.
 //!
-//! # The upgrade check this implies
+//! An earlier version claimed the heading node through the block parser and
+//! renderer hooks and drew it as a plain `div` of text. That gave headers the
+//! title face, but `gpui-base` leaves a claimed node out of every selection,
+//! so header text could not be selected or copied (#491).
 //!
-//! Claiming the node means `gpui-base`'s own heading branch no longer runs, so
-//! [`HEADING_SIZE_FACTORS`], [`HEADING_WEIGHTS`] and
-//! [`HEADING_BOTTOM_PADDING_REMS`] duplicate its values - as of gpui-kit
-//! 0.6.4, `gpui-base`'s `BlockNode::render_block`. A gpui-kit upgrade that
-//! changes a heading's size, weight or padding will leave these disagreeing
-//! with the built-in rendering, silently. Check them against that function
-//! when bumping gpui-kit.
+//! # The upgrade checks this implies
 //!
-//! A heading-face refinement upstream would delete this whole module; until
-//! then the duplication is the cost of the second face.
+//! Passing a style replaces the one `gpui-component` installs for every text
+//! view rather than refining it, and that one cannot be read back. So
+//! [`MarkdownStyle::new`] rebuilds it from the theme - as of gpui-component
+//! 0.7.0, its `text::base_text_view_style`. A gpui-kit upgrade that changes
+//! that mapping leaves these disagreeing, silently; check it when bumping.
+//!
+//! [`HEADING_SIZE_FACTORS`] and [`HEADING_WEIGHTS`] are `gpui-base`'s own
+//! values, re-stated because the size scales from the configured body size
+//! rather than a fixed 14px. Check them against `BlockNode::render_block`
+//! too.
+
+use std::fmt;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::base::text::CodeBlock;
+use gpui_kit::base::text::{CodeBlock, TextView, TextViewState, TextViewStyle};
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::notification::Notification;
-use gpui_kit::component::text::{
-    MarkdownNode, MarkdownParseContext, TextView, TextViewState, markdown_ast,
-};
-use gpui_kit::component::{Sizable, WindowExt};
+use gpui_kit::component::{ActiveTheme, Sizable, Theme, WindowExt};
 use gpui_kit::{
-    App, ClickEvent, ClipboardItem, ElementId, Entity, FontWeight, ParentElement, Pixels,
-    SharedString, Styled, Window, div, rems,
+    App, ClickEvent, ClipboardItem, ElementId, Entity, FontWeight, HighlightStyle, Pixels,
+    SharedString, StyleRefinement, Styled, Window, rems,
 };
-
-/// The name the heading block parser claims and the block renderer answers to.
-/// Namespaced so it cannot collide with a built-in node name.
-const HEADING_NODE_NAME: &str = "knot-heading";
 
 /// Size factor per heading level, indexed by `level - 1`, multiplied by the
 /// body text size. `gpui-base`'s own values - see the module doc's upgrade
@@ -62,28 +59,16 @@ const HEADING_WEIGHTS: [FontWeight; 6] = [FontWeight::BOLD,
                                           FontWeight::SEMIBOLD,
                                           FontWeight::MEDIUM];
 
-/// A heading's bottom padding, in rems. `gpui-base` gives a heading this and
-/// no other spacing, so matching it leaves the face as the only difference.
-const HEADING_BOTTOM_PADDING_REMS: f32 = 0.3;
-
 /// What a level outside 1-6 renders at. `gpui-base` falls through to body size
-/// at normal weight rather than clamping to level 6, and a node carrying no
-/// level payload is the same kind of "not a heading we know" case.
+/// at normal weight rather than clamping to level 6.
 const HEADING_FALLBACK: (f32, FontWeight) = (1.0, FontWeight::NORMAL);
-
-/// The payload a [`HEADING_NODE_NAME`] node carries. The heading's text
-/// travels in the node's own text slot; only the level needs a payload.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct HeadingLevel(pub(crate) u8);
 
 /// The pixel size and weight a heading level draws at, against `body_size` as
 /// the rem base.
 ///
-/// `body_size` rather than `TextViewStyle::heading_base_font_size`, whose
-/// default is a fixed 14px that no Knot code sets: scaling from the
+/// `body_size` rather than `gpui-base`'s fixed 14px: scaling from the
 /// configured Markdown body size is what makes a user who enlarges that size
-/// get proportionally larger headers. The two cannot disagree, because
-/// claiming the heading node leaves this the only live path.
+/// get proportionally larger headers.
 pub(crate) fn heading_size_and_weight(level: u8, body_size: Pixels) -> (Pixels, FontWeight) {
     let (factor, weight) = match level {
         1..=6 => {
@@ -95,71 +80,77 @@ pub(crate) fn heading_size_and_weight(level: u8, body_size: Pixels) -> (Pixels, 
     (rems(factor).to_pixels(body_size), weight)
 }
 
-/// Flattens a heading's inline children to plain text, appending to `out`.
-///
-/// A header's marks are deliberately lost: the block renderer receives the
-/// heading's text, not its parsed inline marks, so `## A **bold** word`
-/// renders as "A bold word" - the words themselves, never the Markdown source
-/// that marked them. See `openspec/changes/swap-ui-title-font-roles/design.md`
-/// for why that loss was accepted.
-fn push_inline_text(node: &markdown_ast::Node, out: &mut String) {
-    match node {
-        markdown_ast::Node::Text(text) => out.push_str(&text.value),
-        markdown_ast::Node::InlineCode(code) => out.push_str(&code.value),
-        markdown_ast::Node::InlineMath(math) => out.push_str(&math.value),
-        // Every other inline construct - bold, italics, links, strikethrough
-        // - contributes only through its children.
-        other => {
-            if let Some(children) = other.children() {
-                for child in children {
-                    push_inline_text(child, out);
-                }
-            }
-        }
-    }
-}
-
-/// Claims a heading node and leaves every other node to the built-in
-/// conversion, declining it by returning `None`.
-///
-/// Separate from [`parse_heading`], which is the hook's shape, so this can be
-/// tested against a hand-built AST node: `MarkdownParseContext` has no public
-/// constructor, and the parse needs nothing from it.
-pub(crate) fn heading_node(node: &markdown_ast::Node) -> Option<MarkdownNode> {
-    let markdown_ast::Node::Heading(heading) = node
-    else {
-        return None;
-    };
-    let mut text = String::new();
-    for child in &heading.children {
-        push_inline_text(child, &mut text);
-    }
-    Some(MarkdownNode::new(HEADING_NODE_NAME, HeadingLevel(heading.depth)).text(text))
-}
-
-/// The block parser hook. Runs ahead of the built-in AST conversion for every
-/// block node, which is what lets [`heading_node`] take headings over.
-fn parse_heading(node: &markdown_ast::Node, _context: &MarkdownParseContext<'_>)
-                 -> Option<MarkdownNode> {
-    heading_node(node)
-}
-
-/// The block renderer for a claimed heading: the title family, the level's
-/// size and weight, and the bottom padding `gpui-base` gives a heading.
-///
-/// Returns a concrete `Div` rather than `impl IntoElement`: an opaque return
-/// type would capture the borrow of `node`, and the renderer hook's element
-/// must outlive the call.
-fn render_heading(node: &MarkdownNode, title_font_family: SharedString, body_size: Pixels)
-                  -> gpui_kit::Div {
-    let level = node.data::<HeadingLevel>().map_or(0, |level| level.0);
+/// The refinement a heading at `level` draws with: the title family, and the
+/// level's size and weight against `body_size`.
+pub(crate) fn heading_refinement(level: u8, title_font_family: SharedString, body_size: Pixels)
+                                 -> StyleRefinement {
     let (text_size, font_weight) = heading_size_and_weight(level, body_size);
-    div().pb(rems(HEADING_BOTTOM_PADDING_REMS))
-         .whitespace_normal()
-         .font_family(title_font_family)
-         .text_size(text_size)
-         .font_weight(font_weight)
-         .child(node.as_text().to_string())
+    StyleRefinement::default().font_family(title_font_family)
+                              .text_size(text_size)
+                              .font_weight(font_weight)
+}
+
+/// How a Markdown surface draws: the theme's colors, and headers in the title
+/// family at their level's size and weight.
+///
+/// Built per render from the live theme, so code blocks, tables and the
+/// selection color track the system appearance the way `gpui-component`'s
+/// installed style does. A `TextViewStyle::default()` would pin them to the
+/// light palette.
+#[derive(Clone)]
+pub(crate) struct MarkdownStyle(TextViewStyle);
+
+impl fmt::Debug for MarkdownStyle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MarkdownStyle").finish_non_exhaustive()
+    }
+}
+
+impl MarkdownStyle {
+    /// The style for `theme`, with headers in `title_font_family` scaled from
+    /// `body_size`. The theme mapping is `gpui-component`'s - see the module
+    /// doc's upgrade check.
+    pub(crate) fn new(theme: &Theme, title_font_family: SharedString, body_size: Pixels) -> Self {
+        // All four corners, as gpui-component sets them one by one.
+        let radius = theme.semantic_tokens().radius.md;
+        let table = StyleRefinement::default().rounded(radius);
+        let code_block = StyleRefinement::default().rounded(radius);
+        let table_head = StyleRefinement::default().bg(theme.table_head)
+                                                   .text_color(theme.table_head_foreground);
+
+        Self(TextViewStyle::default().with_foreground(theme.foreground)
+                                     .with_muted_foreground(theme.muted_foreground)
+                                     .with_link(theme.link)
+                                     .with_selection(theme.selection)
+                                     .with_code_background(theme.muted)
+                                     .with_border(theme.border)
+                                     .with_code_block(code_block)
+                                     .with_table(table)
+                                     .with_table_head(table_head)
+                                     .with_inline_code(HighlightStyle { background_color:
+                                                                            Some(theme.accent),
+                                                                        ..Default::default() })
+                                     .with_dark(theme.is_dark())
+                                     .with_heading(move |level| {
+                                         heading_refinement(level,
+                                                            title_font_family.clone(),
+                                                            body_size)
+                                     }))
+    }
+
+    /// The style for the live theme and the user's title font and Markdown body
+    /// size - what both surfaces draw with.
+    pub(crate) fn from_settings(cx: &App) -> Self {
+        let settings = crate::settings_global::read(cx);
+        Self::new(cx.theme(),
+                  settings.title_font_name.clone().into(),
+                  gpui_kit::px(settings.markdown_font_size as f32))
+    }
+
+    /// The `gpui-base` style this wraps.
+    pub(crate) fn text_view_style(&self) -> &TextViewStyle {
+        &self.0
+    }
 }
 
 /// The text a code block's copy control places on the clipboard.
@@ -195,37 +186,28 @@ fn code_block_copy_button(block: &CodeBlock) -> Button {
                        })
 }
 
-/// The configured Markdown view: body text in `ui_font_family`, headers in
-/// `title_font_family` at the size and weight their level already gave them.
+/// The configured Markdown view: body text in `ui_font_family`, headers as
+/// `style` gives them.
 ///
 /// The body family is set on the `TextView` itself, which sets the ambient
 /// family for everything it draws, so every body construct - paragraphs,
 /// lists, table cells, quotes, the text around inline code - inherits it.
-/// Headings do not: the heading renderer sets the family explicitly, and a
-/// child's own family wins over the ambient one. Inline code and code blocks
-/// keep the monospace family, which `TextViewStyle` sets from the theme.
+/// Headings do not: their refinement sets the title family, and a child's own
+/// family wins over the ambient one. Inline code and code blocks keep the
+/// monospace family.
 ///
-/// No `TextViewStyle` is passed. Without one, gpui-kit derives it from the
-/// live theme, which is what keeps code blocks, tables and selection colors
-/// tracking the system appearance; a `TextViewStyle::default()` would pin them
-/// to the light palette. Its heading sizes would not be read anyway - see
-/// [`heading_size_and_weight`].
+/// `gpui-base`'s `TextView` rather than `gpui-component`'s wrapper: the
+/// wrapper's style type has no heading face, and with no style and no motion
+/// set it adds nothing to the view it wraps.
 ///
 /// The code block copy control is wired here, once, for the same no-drift
-/// reason as everything else in this constructor. There is no layout code for
-/// it here to go looking for: `code_block_actions` is `gpui-base`'s own hook,
-/// and `gpui-base` draws what it returns absolutely at the block's top-right,
-/// inside the block's background. Unlike the heading renderer it claims no
-/// node, so nothing here duplicates an upstream value a gpui-kit bump could
-/// leave silently disagreeing.
+/// reason as everything else in this constructor. `code_block_actions` is
+/// `gpui-base`'s own hook, and `gpui-base` draws what it returns absolutely at
+/// the block's top-right, inside the block's background.
 pub(crate) fn markdown_view(id: impl Into<ElementId>, source: impl Into<SharedString>,
-                            ui_font_family: SharedString, title_font_family: SharedString,
-                            body_size: Pixels)
+                            ui_font_family: SharedString, style: &MarkdownStyle)
                             -> TextView {
-    configured(TextView::markdown(id, source),
-               ui_font_family,
-               title_font_family,
-               body_size)
+    configured(TextView::markdown(id, source), ui_font_family, style)
 }
 
 /// [`markdown_view`] over a state the caller owns, for a view whose parsed
@@ -233,24 +215,15 @@ pub(crate) fn markdown_view(id: impl Into<ElementId>, source: impl Into<SharedSt
 /// laying out when it scrolls away (#246). The caller keeps the state's text
 /// current; see `panel_view::markdown_rows`.
 pub(crate) fn markdown_view_for(state: &Entity<TextViewState>, ui_font_family: SharedString,
-                                title_font_family: SharedString, body_size: Pixels)
+                                style: &MarkdownStyle)
                                 -> TextView {
-    configured(TextView::new(state),
-               ui_font_family,
-               title_font_family,
-               body_size)
+    configured(TextView::new(state), ui_font_family, style)
 }
 
 /// Everything both constructors share, so the two cannot drift apart.
-fn configured(view: TextView, ui_font_family: SharedString, title_font_family: SharedString,
-              body_size: Pixels)
-              -> TextView {
+fn configured(view: TextView, ui_font_family: SharedString, style: &MarkdownStyle) -> TextView {
     view.font_family(ui_font_family)
-        .markdown_block_parser(parse_heading)
-        .markdown_block_renderer(HEADING_NODE_NAME,
-                                 move |node: &MarkdownNode, _window: &mut Window, _cx: &mut App| {
-                                     render_heading(node, title_font_family.clone(), body_size)
-                                 })
+        .style(style.text_view_style().clone())
         .code_block_actions(|block: &CodeBlock, _window: &mut Window, _cx: &mut App| {
             code_block_copy_button(block)
         })

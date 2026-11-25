@@ -13,6 +13,7 @@ use gpui_kit::TestAppContext;
 use gpui_kit::VisualTestContext;
 use gpui_kit::Window;
 use gpui_kit::WindowOptions;
+use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::Root;
 use gpui_kit::div;
 use gpui_kit::point;
@@ -27,16 +28,19 @@ struct LinkProbe {
 }
 
 impl Render for LinkProbe {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div().size_full().w(px(400.)).children(self.shown.then(|| {
-            crate::markdown_view::markdown_view(
+                                         crate::markdown_view::markdown_view(
                 "link-probe",
                 "[the docs](https://example.com/docs) and then some plain words",
                 "Helvetica".into(),
-                "Helvetica".into(),
-                px(14.),
+                &crate::markdown_view::MarkdownStyle::new(
+                    cx.theme(),
+                    "Helvetica".into(),
+                    px(14.),
+                ),
             )
-        }))
+                                     }))
     }
 }
 

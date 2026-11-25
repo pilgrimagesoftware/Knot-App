@@ -204,18 +204,23 @@ impl Render for PanelProbe {
             panel_view::sync_follow_mode(&self.panel.list, state.turn_active && state.tracking);
         }
         let theme = cx.theme();
-        let style = panel_view::PanelStyle { permission_risk:    panel_view::RiskLevel::Neutral,
-                                             markdown_font_size: px(14.),
-                                             mono_font_family:   theme.mono_font_family.clone(),
-                                             ui_font_family:     theme.font_family.clone(),
-                                             title_font_family:  theme.font_family.clone(),
-                                             danger_color:       theme.danger,
-                                             info_color:         theme.info,
-                                             border_color:       theme.border,
-                                             card_color:         theme.secondary,
-                                             prompt_color:       theme.primary,
-                                             prompt_foreground:  theme.primary_foreground,
-                                             compact_tool_calls: false, };
+        let style =
+            panel_view::PanelStyle { permission_risk:    panel_view::RiskLevel::Neutral,
+                                     markdown_font_size: px(14.),
+                                     mono_font_family:   theme.mono_font_family.clone(),
+                                     ui_font_family:     theme.font_family.clone(),
+                                     markdown_style:
+                                         crate::markdown_view::MarkdownStyle::new(theme,
+                                                                                  theme.font_family
+                                                                                       .clone(),
+                                                                                  px(14.)),
+                                     danger_color:       theme.danger,
+                                     info_color:         theme.info,
+                                     border_color:       theme.border,
+                                     card_color:         theme.secondary,
+                                     prompt_color:       theme.primary,
+                                     prompt_foreground:  theme.primary_foreground,
+                                     compact_tool_calls: false, };
         div().size_full()
              .child(panel_view::render_panel(Arc::clone(&self.state),
                                              self.panel.clone(),
