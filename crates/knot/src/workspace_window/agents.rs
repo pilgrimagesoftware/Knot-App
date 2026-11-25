@@ -44,20 +44,6 @@ impl WorkspaceWindow {
         }
     }
 
-    /// Makes `id` this window's selection and marks it activated, so the
-    /// next `ensure_*` starts it. Selection is the universal "I want this
-    /// one" signal: it starts a `passive` agent that has never run, and
-    /// restarts a deactivated one whatever its activation mode - otherwise
-    /// Deactivate would be a trap with no way back short of Restart.
-    ///
-    /// Deliberately not on the layout-restore path, which sets the field
-    /// directly: restoring a window must not start what the user has not
-    /// asked for.
-    pub(super) fn select_agent(&mut self, id: Uuid) {
-        self.selected_agent = Some(id);
-        self.store.lock().set_activated(id, true);
-    }
-
     /// The agent this window has selected, for tests outside the module.
     #[cfg(test)]
     pub(crate) fn selected_agent_id(&self) -> Option<Uuid> {
@@ -73,10 +59,8 @@ impl WorkspaceWindow {
     /// (`openspec/specs/window-lifecycle`, "A workspace has at most one
     /// window").
     pub(crate) fn reveal_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        self.select_agent(id);
+        self.select_agent(id, false, cx);
         self.view_mode = WorkspaceViewMode::Terminal;
-        self.ensure_session(id, cx);
-        self.ensure_panel_session(id, cx);
         cx.notify();
     }
 
@@ -90,10 +74,8 @@ impl WorkspaceWindow {
     /// activated from birth, so the `ensure_*` calls start it as before; for a
     /// `passive` one they return early on the clear flag.
     pub(crate) fn show_created_agent(&mut self, id: Uuid, cx: &mut Context<Self>) {
-        self.selected_agent = Some(id);
+        self.select_created_agent(id, cx);
         self.view_mode = WorkspaceViewMode::Terminal;
-        self.ensure_session(id, cx);
-        self.ensure_panel_session(id, cx);
         cx.notify();
     }
 

@@ -11,6 +11,7 @@
 use std::path::Path;
 
 use gpui_kit::App;
+use gpui_kit::Context;
 use knot_agents::Agent;
 use knot_core::BenchAgent;
 use uuid::Uuid;
@@ -66,7 +67,8 @@ impl WorkspaceWindow {
     /// When the entry's folder no longer exists, the entry is removed from
     /// the bench and the sidebar's error line says which one and why, rather
     /// than the click doing nothing visible.
-    pub(in crate::workspace_window) fn deploy_bench_entry(&mut self, entry: &BenchAgent, cx: &App) {
+    pub(in crate::workspace_window) fn deploy_bench_entry(&mut self, entry: &BenchAgent,
+                                                          cx: &mut Context<Self>) {
         let created = self.store
                           .lock()
                           .deploy_bench(entry, Some(self.workspace_id), |folder| {
@@ -75,7 +77,7 @@ impl WorkspaceWindow {
         match created {
             Some(id) => {
                 self.persist_agents(cx);
-                self.select_agent(id);
+                self.select_agent(id, false, cx);
             }
             None => {
                 if let Err(error) = crate::settings_global::write_persisting(cx, |settings| {

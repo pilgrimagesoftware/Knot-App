@@ -255,8 +255,16 @@ impl WorkspaceWindow {
                                                         title_font_size,
                                                         cx)
                             })
-                            .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
-                                            view.select_agent(id);
+                            .on_click(cx.listener(move |view, event: &ClickEvent, _window, cx| {
+                                            // The platform's secondary modifier
+                                            // (⌘ on macOS, Ctrl elsewhere),
+                                            // which is what the rest of the
+                                            // app's shortcuts read, so ⌘-click
+                                            // on a Mac and Ctrl-click on
+                                            // Linux skip the companion layout.
+                                            view.select_agent(id,
+                                                              event.modifiers().secondary(),
+                                                              cx);
                                             // Leave the dashboard, the same way
                                             // tapping an
                                             // agent card does - selecting a row
@@ -265,8 +273,6 @@ impl WorkspaceWindow {
                                             // the selection
                                             // without ever showing the session.
                                             view.view_mode = WorkspaceViewMode::Terminal;
-                                            view.ensure_session(id, cx);
-                                            view.ensure_panel_session(id, cx);
                                             cx.notify();
                                         }))
                             .context_menu({

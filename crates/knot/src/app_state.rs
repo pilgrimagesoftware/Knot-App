@@ -266,11 +266,18 @@ pub(crate) fn agent_selection_for_workspace(store: &knot_agents::AgentStore, wor
     // Which agents the layout is showing is arrangement, so it comes from the
     // UI state; which agents belong to the workspace is configuration, and
     // comes from the record.
-    let active = store.workspace_ui(workspace_id).active_agent_ids;
-    active.iter()
-          .chain(workspace.agent_ids.iter())
-          .find(|id| store.agent(**id).is_some())
-          .copied()
+    let ui = store.workspace_ui(workspace_id);
+    // The focused pane's agent first: the window's selection is always the
+    // focused pane's agent (`workspace-layouts`, "The focused pane"), so a
+    // restored layout with pane 1 focused opens with pane 1's agent selected.
+    let focused =
+        usize::try_from(ui.focused_pane_index).ok()
+                                              .and_then(|index| ui.active_agent_ids.get(index));
+    focused.into_iter()
+           .chain(ui.active_agent_ids.iter())
+           .chain(workspace.agent_ids.iter())
+           .find(|id| store.agent(**id).is_some())
+           .copied()
 }
 
 // UNWIRED: ported from the Swift reference, no view reads it yet.
