@@ -128,3 +128,13 @@ fn cost_tier_orders_cheapest_first() {
 fn cost_tier_defaults_to_medium() {
     assert_eq!(CostTier::default(), CostTier::Medium);
 }
+
+/// How many agents each mode shows (`workspace-layouts`, "Each mode's pane
+/// count").
+#[test]
+fn layout_mode_pane_counts() {
+    let counts: Vec<usize> = LayoutMode::ALL.iter()
+                                            .map(|mode| mode.pane_count())
+                                            .collect();
+    assert_eq!(counts, [1, 2, 2, 3, 4]);
+}

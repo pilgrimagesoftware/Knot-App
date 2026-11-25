@@ -14,6 +14,7 @@ use gpui_kit::Styled;
 use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::Root;
 
+use crate::app_support::observe_system_appearance;
 use crate::window_options::about_window_options;
 
 /// Registers the `AboutKnot` handler over the window handle it keeps.
@@ -52,6 +53,9 @@ fn open_about_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>,
         return;
     }
     match cx.open_window(about_window_options(cx), |window, cx| {
+                // Every window tracks the OS appearance, so a light/dark flip
+                // re-resolves the system palette and repaints (#481).
+                observe_system_appearance(window);
                 let view = cx.new(|cx| AboutWindow::new(title_font, cx));
                 cx.new(|cx| Root::new(view, window, cx).bg(cx.theme().background))
             }) {

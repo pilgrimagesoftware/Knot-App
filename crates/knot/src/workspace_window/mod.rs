@@ -40,6 +40,9 @@ mod issues_view;
 mod key_hints;
 #[cfg(test)]
 mod key_hints_tests;
+mod layout;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod mcp_handover_tests;
 pub(crate) mod mcp_panel;
