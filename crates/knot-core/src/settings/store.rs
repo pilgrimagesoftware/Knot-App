@@ -43,14 +43,14 @@
 //! Two upgrades run on the preferences document. The terminal font's
 //! `"SF Mono"` default is replaced value-for-value, and a document written
 //! before the two proportional fonts swapped roles has them exchanged once,
-//! gated on the `settingsVersion` marker - see [`migrate_font_roles`].
+//! gated on the `settingsVersion` marker - see
+//! [`preferences::migrate_font_roles`].
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use uuid::Uuid;
 
 mod bench;
@@ -60,6 +60,7 @@ mod legacy;
 mod library_locations;
 mod paths;
 mod personas;
+mod preferences;
 mod prompts;
 mod workspace_split;
 
@@ -69,16 +70,14 @@ pub use prompts::PromptReferences;
 
 use super::prompts::Prompt;
 pub use super::records::{
-    BenchAgent, Persona, PersonaState, PersonaType, SavedAgent, SavedPullRequest, Workspace,
-    WorkspaceUiState,
+    BenchAgent, Persona, SavedAgent, SavedPullRequest, Workspace, WorkspaceUiState,
 };
-use super::vocabulary::{AiProvider, AppearanceMode, AutopilotAction, UnknownVariant};
+use super::vocabulary::{AiProvider, AppearanceMode, AutopilotAction};
 use crate::consts::{
-    DEFAULT_PERSONAS, MARKDOWN_FONT_SIZE_DEFAULT, MCP_PORT_DEFAULT, RECENT_REPOS_MAX,
-    SETTINGS_VERSION_CURRENT, SIDEBAR_WIDTH_DEFAULT, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN,
-    SOURCE_FOLDER_CANDIDATES, TERMINAL_FONT_DEFAULT, TERMINAL_FONT_SIZE_DEFAULT,
-    TITLE_FONT_DEFAULT, TITLE_FONT_SIZE_DEFAULT, UI_FONT_DEFAULT, UI_FONT_SIZE_DEFAULT,
-    VOICE_ENGINE_DEFAULT, VOICE_PUSH_TO_TALK_KEY_DEFAULT,
+    MARKDOWN_FONT_SIZE_DEFAULT, MCP_PORT_DEFAULT, RECENT_REPOS_MAX, SETTINGS_VERSION_CURRENT,
+    SIDEBAR_WIDTH_DEFAULT, SOURCE_FOLDER_CANDIDATES, TERMINAL_FONT_DEFAULT,
+    TERMINAL_FONT_SIZE_DEFAULT, TITLE_FONT_DEFAULT, TITLE_FONT_SIZE_DEFAULT, UI_FONT_DEFAULT,
+    UI_FONT_SIZE_DEFAULT, VOICE_ENGINE_DEFAULT, VOICE_PUSH_TO_TALK_KEY_DEFAULT,
 };
 use crate::error::Result;
 
@@ -90,13 +89,13 @@ use crate::error::Result;
 pub struct Settings {
     /// Which arrangement the persisted document was written under, so a
     /// load-time migration runs exactly once. See [`SETTINGS_VERSION_CURRENT`]
-    /// and [`migrate_font_roles`].
+    /// and [`preferences::migrate_font_roles`].
     ///
     /// Its own serde default, rather than the container's: a document with no
     /// `settingsVersion` key predates the marker and must read as `0`, while a
     /// fresh [`Settings::default`] is already current and must not be
     /// migrated.
-    #[serde(default = "de_legacy_settings_version")]
+    #[serde(default = "preferences::de_legacy_settings_version")]
     pub settings_version:               u32,
     pub appearance_mode:                AppearanceMode,
     pub restore_layout_on_launch:       bool,
@@ -307,38 +306,6 @@ impl Settings {
             self.saved_workspaces.iter().map(|w| w.id).collect();
         self.workspace_ui.retain(|id, _| live.contains(id));
     }
-
-    /// Decode a preferences object and apply the load-time upgrades. The
-    /// collections are left empty; the caller fills them from their own
-    /// documents.
-    ///
-    /// Also the path a legacy document takes once its collection keys have
-    /// been lifted out, so an upgrading installation gets exactly the same
-    /// upgrades as a document already in the new arrangement.
-    fn from_preferences(mut value: Value) -> Self {
-        migrate_font_roles(&mut value);
-        report_unreadable_vocabularies(&value);
-
-        let mut settings: Self = serde_json::from_value(value).unwrap_or_default();
-        // "SF Mono" was the terminal font default before JetBrains Mono
-        // replaced it; a persisted document from before that change still
-        // carries the old value, and SF Mono isn't reliably resolvable
-        // through GPUI's font lookup (unlike AppKit, which special-cases
-        // it), silently falling back to the UI font. Upgrade it once,
-        // the same way a never-customized document already would default.
-        if settings.terminal_font_name == "SF Mono" {
-            settings.terminal_font_name = TERMINAL_FONT_DEFAULT.to_string();
-        }
-        // A hand-edited or future-written width outside the divider's range
-        // describes an intent the window cannot honour; the nearest legal
-        // width is closer to it than the default is. Clamping here rather
-        // than in the window keeps every reader of the setting free of the
-        // bound.
-        settings.sidebar_width = settings.sidebar_width
-                                         .clamp(SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX);
-        settings
-    }
-
     /// Write every document.
     ///
     /// The whole surface at once, for a caller that changed more than one
@@ -467,103 +434,6 @@ impl Settings {
         self.recent_repos.truncate(RECENT_REPOS_MAX);
         self.persist_recent_repos()
     }
-
-    /// Personas excluding soft-deleted ones, sorted case-insensitively by name.
-    pub fn active_personas(&self) -> Vec<&Persona> {
-        let mut personas: Vec<&Persona> = self.personas
-                                              .iter()
-                                              .filter(|p| p.state != PersonaState::Deleted)
-                                              .collect();
-        personas.sort_by_key(|p| p.name.to_lowercase());
-        personas
-    }
-
-    /// Install any shipped default persona whose id is not already present
-    /// (deleted entries count as present, so a removed default stays removed).
-    pub fn install_default_personas(&mut self) -> Result<()> {
-        let mut changed = false;
-        for persona in default_personas() {
-            if self.personas.iter().any(|p| p.id == persona.id) {
-                continue;
-            }
-            self.personas.push(persona);
-            changed = true;
-        }
-        if changed {
-            self.persist_personas()?;
-        }
-        Ok(())
-    }
-
-    /// Add a new user persona, enabled by default.
-    pub fn add_persona(&mut self, name: impl Into<String>, instructions: impl Into<String>)
-                       -> Result<&Persona> {
-        let persona = Persona { id:           Uuid::new_v4(),
-                                name:         name.into(),
-                                instructions: instructions.into(),
-                                persona_type: PersonaType::User,
-                                state:        PersonaState::Enabled, };
-        self.personas.push(persona);
-        self.persist_personas()?;
-        Ok(self.personas.last().expect("just pushed"))
-    }
-
-    /// Rewrite name/instructions for an existing persona of any type. A no-op
-    /// if `id` is not present.
-    pub fn update_persona(&mut self, id: Uuid, name: impl Into<String>,
-                          instructions: impl Into<String>)
-                          -> Result<()> {
-        let Some(persona) = self.personas.iter_mut().find(|p| p.id == id)
-        else {
-            return Ok(());
-        };
-        persona.name = name.into();
-        persona.instructions = instructions.into();
-        self.persist_personas()
-    }
-
-    /// Look up a persona by id, restricted to the active (non-deleted) list.
-    pub fn persona(&self, id: Uuid) -> Option<&Persona> {
-        self.active_personas().into_iter().find(|p| p.id == id)
-    }
-
-    /// The persona an agent is assigned, from its `persona_id`. Takes the
-    /// field rather than an id so a launch path cannot hand it the agent's
-    /// own id, which is what dropped every persona from every launch (#519).
-    pub fn persona_for(&self, persona_id: Option<Uuid>) -> Option<&Persona> {
-        persona_id.and_then(|id| self.persona(id))
-    }
-
-    /// Remove a persona: soft delete (state becomes `deleted`, record kept)
-    /// for a system persona, hard delete (record removed) for a user persona.
-    /// A no-op if `id` is not present.
-    pub fn remove_persona(&mut self, id: Uuid) -> Result<()> {
-        let Some(index) = self.personas.iter().position(|p| p.id == id)
-        else {
-            return Ok(());
-        };
-        if self.personas[index].persona_type == PersonaType::System {
-            self.personas[index].state = PersonaState::Deleted;
-        }
-        else {
-            self.personas.remove(index);
-        }
-        self.persist_personas()
-    }
-
-    /// Reset every shipped default persona already present (matched by id,
-    /// including soft-deleted ones) to its shipped name, instructions, type,
-    /// and state; append any shipped default that is entirely missing. User
-    /// personas are untouched.
-    pub fn restore_default_personas(&mut self) -> Result<()> {
-        for default in default_personas() {
-            match self.personas.iter_mut().find(|p| p.id == default.id) {
-                Some(existing) => *existing = default,
-                None => self.personas.push(default),
-            }
-        }
-        self.persist_personas()
-    }
 }
 
 /// Return the first candidate that is an existing directory.
@@ -573,21 +443,6 @@ pub fn detect_source_base_folder(candidates: &[&Path]) -> Option<PathBuf> {
               .map(|path| path.to_path_buf())
 }
 
-/// The six personas shipped with the app, keyed by fixed ids.
-fn default_personas() -> Vec<Persona> {
-    DEFAULT_PERSONAS.iter()
-                    .map(|(id, name, instructions)| {
-                        Persona {
-            id: Uuid::parse_str(id).expect("default persona id is a valid uuid"),
-            name: (*name).to_string(),
-            instructions: (*instructions).to_string(),
-            persona_type: PersonaType::System,
-            state: PersonaState::Enabled,
-        }
-                    })
-                    .collect()
-}
-
 fn expand_tilde(path: &str) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/")
        && let Some(base) = BaseDirs::new()
@@ -595,98 +450,6 @@ fn expand_tilde(path: &str) -> PathBuf {
         return base.home_dir().join(rest);
     }
     PathBuf::from(path)
-}
-
-/// The version a document carrying no `settingsVersion` key was written under:
-/// the pre-swap font roles.
-fn de_legacy_settings_version() -> u32 {
-    0
-}
-
-/// Exchange the two proportional font settings in a pre-swap document.
-///
-/// Before the roles were swapped, `uiFontName` / `uiFontSize` held the title
-/// face and `titleFontName` / `titleFontSize` held the application-wide
-/// default. Exchanging the values keeps a user's customized fonts on the text
-/// they were chosen for.
-///
-/// Runs on the raw document because only the raw document says which keys the
-/// user actually customized: after deserializing, an absent key is
-/// indistinguishable from one holding the default, so exchanging both would
-/// invert the defaults for every user who never picked a font. An absent key
-/// therefore stays absent and takes the new default.
-///
-/// Gated on `settingsVersion`, so it runs exactly once. The migrated value is
-/// not written eagerly; the next persist records it, the same as the
-/// `"SF Mono"` upgrade.
-/// Says so, once, when a stored vocabulary value could not be read.
-///
-/// Deserialization is deliberately tolerant - one bad field must not take the
-/// whole document down - so without this the substitution is invisible and a
-/// corrupt value behaves exactly like the real default. That
-/// indistinguishability is what issue #224 was about.
-fn report_unreadable_vocabularies(value: &Value) {
-    fn check<T: std::str::FromStr<Err = UnknownVariant> + Default + std::fmt::Display>(value: &Value,
-                                                                                       field: &str)
-    {
-        let Some(stored) = value.get(field).and_then(Value::as_str)
-        else {
-            return;
-        };
-        if let (_, Some(unknown)) = {
-            let parsed = stored.parse::<T>();
-            match parsed {
-                Ok(v) => (v, None),
-                Err(e) => (T::default(), Some(e)),
-            }
-        } {
-            eprintln!("knot-core: settings field `{field}`: {unknown}; using {}",
-                      T::default());
-        }
-    }
-
-    check::<AppearanceMode>(value, "appearanceMode");
-    check::<AiProvider>(value, "aiProvider");
-    check::<AutopilotAction>(value, "autopilotAction");
-}
-
-fn migrate_font_roles(document: &mut Value) {
-    let Some(object) = document.as_object_mut()
-    else {
-        return;
-    };
-    let version = object.get("settingsVersion")
-                        .and_then(Value::as_u64)
-                        .unwrap_or_else(|| u64::from(de_legacy_settings_version()));
-    if version >= u64::from(SETTINGS_VERSION_CURRENT) {
-        return;
-    }
-
-    exchange_entries(object, "uiFontName", "titleFontName");
-    exchange_entries(object, "uiFontSize", "titleFontSize");
-
-    object.insert("settingsVersion".to_string(),
-                  Value::from(SETTINGS_VERSION_CURRENT));
-}
-
-/// Move the values under `left` and `right` past each other. A key the
-/// document does not carry is left absent rather than created, so a setting
-/// the user never customized keeps its default instead of inheriting the
-/// other's value.
-fn exchange_entries(object: &mut serde_json::Map<String, Value>, left: &str, right: &str) {
-    match (object.remove(left), object.remove(right)) {
-        (Some(was_left), Some(was_right)) => {
-            object.insert(left.to_string(), was_right);
-            object.insert(right.to_string(), was_left);
-        }
-        (Some(was_left), None) => {
-            object.insert(right.to_string(), was_left);
-        }
-        (None, Some(was_right)) => {
-            object.insert(left.to_string(), was_right);
-        }
-        (None, None) => {}
-    }
 }
 
 #[cfg(test)]

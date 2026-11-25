@@ -28,6 +28,7 @@ mod fresh_context;
 #[cfg(test)]
 mod git_folder_tests;
 mod git_panel;
+mod git_panel_state;
 mod handoff;
 #[cfg(test)]
 mod handoff_tests;
@@ -84,6 +85,7 @@ mod terminal_pane;
 mod title;
 mod view_mode;
 mod window;
+mod window_drop;
 mod work_items;
 
 // Re-exported so the rest of the crate keeps reaching these by
