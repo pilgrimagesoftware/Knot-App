@@ -111,24 +111,12 @@ the setting changes.
 
 Every Markdown surface — the panel's assistant messages and the Markdown pane
 opened for an agent — SHALL draw body text in the configured UI font and
-headers (`#` through `######`) in the configured title font.
-
-Body text is everything but a header: paragraphs, list items, table cells,
-block quotes, link text, and the text around inline code. Inline code and code
-blocks SHALL keep the monospace family, as elsewhere in the panel.
-
-A header SHALL keep the size and weight its level already gives it, so the two
-faces are the change and the heading hierarchy is not.
-
-Inline formatting inside a header — bold, italics, a link, inline code — SHALL
-render as plain text in the title font. The renderer draws a header from its
-text rather than its inline marks, and a header carrying a mark SHALL render as
-the words themselves rather than as the Markdown source that marked them: `##
-A **bold** word` renders as "A bold word", with no asterisks shown and no bold
-run.
-
-Changing either font in settings SHALL change the corresponding Markdown text
-without reopening the surface.
+headers (`#` through `######`) in the configured title font. Body text is
+everything but a header. Inline code and code blocks SHALL keep the monospace
+family. A header SHALL keep the size and weight its level gives it, and its
+inline marks SHALL render as in body text, in the title font. Changing either
+font in settings SHALL change the corresponding text without reopening the
+surface.
 
 #### Scenario: A response with a header and a paragraph
 
@@ -156,8 +144,8 @@ without reopening the surface.
 #### Scenario: A header containing a mark
 
 - **WHEN** a response contains the header `## A **bold** word`
-- **THEN** the header line reads "A bold word" in the title font, with no
-  asterisks and no bold run
+- **THEN** the header line reads "A bold word" in the title font, with "bold"
+  drawn as a bold run and no asterisks shown
 
 #### Scenario: The Markdown pane follows the same split
 
@@ -1811,3 +1799,89 @@ permission requests SHALL be shown one at a time, in the order they arrived.
 - **WHEN** a question card is shown and a permission request arrives
 - **THEN** the permission prompt is shown after the question is answered,
   not over it
+
+### Requirement: Header text is selectable like body text
+
+On every Markdown surface, header text SHALL be selectable and copyable the
+same way as body text: a drag may start, end or pass through a header, and the
+copy SHALL contain the header's words in reading order with the text around
+them. Every other block a response draws (list items, block quotes, table
+cells, code blocks) SHALL stay selectable.
+
+#### Scenario: A selection that starts on a header
+
+- **WHEN** the user drags from a `##` header into the paragraph after it and
+  copies
+- **THEN** the copy holds the header's words followed by the paragraph's
+
+#### Scenario: A selection across a header
+
+- **WHEN** the user drags from a paragraph, across a header, into the next
+  paragraph and copies
+- **THEN** the copy holds both paragraphs and the header between them, in that
+  order
+
+### Requirement: A subagent's activity stays inside its delegation card
+
+When an agent reports a tool call or text as made by a subagent it launched
+(claude-agent-acp: `_meta.claudeCode.parentToolUseId`), the panel SHALL show it
+inside the card of the delegation call with that id, never in the
+conversation, so the main agent's reply stays one piece.
+
+#### Scenario: A subagent runs while the main agent writes
+
+- **WHEN** the main agent streams a reply containing a table while a subagent
+  it launched reports tool calls and text between the reply's chunks
+- **THEN** the reply is one message with the table intact, and the subagent's
+  tool calls and text appear in order inside the delegation card
+
+#### Scenario: A background subagent after the turn
+
+- **WHEN** a subagent launched in the background reports after the turn that
+  launched it ended
+- **THEN** its report still appears inside its delegation card
+
+### Requirement: A delegation card counts and lists its subagent's activity
+
+A delegation card SHALL show a count line of its subagent's tool calls,
+collapsed or open, in the words of a compact tool-call summary. While open it
+SHALL list the subagent's tool calls and text in arrival order, each tool call
+as a card with its own open/closed state.
+
+#### Scenario: The delegation card counts its subagent's calls
+
+- **WHEN** a subagent has run two commands
+- **THEN** its delegation card shows a count line naming two tool calls and
+  two commands run, collapsed or open
+
+#### Scenario: A nested tool call opens on its own
+
+- **WHEN** the user opens a nested tool call inside an open delegation card
+- **THEN** that call's output shows, and the delegation card and its other
+  nested calls keep their own state
+
+### Requirement: A subagent report ahead of its delegation card is held, never dropped
+
+A subagent's report that arrives before its delegation card SHALL move into
+the card if the card arrives later in the turn. One still waiting SHALL appear
+in the conversation when the turn ends, normally or in an error, or when the
+session ends.
+
+#### Scenario: A report ahead of its delegation card
+
+- **WHEN** a subagent's tool call arrives before the delegation card that
+  launched it, in the same turn
+- **THEN** the tool call moves into that card when the card arrives
+
+#### Scenario: A delegation card that never arrives
+
+- **WHEN** a turn ends while a subagent's report is still waiting for its
+  delegation card
+- **THEN** the report is shown in the conversation rather than dropped
+
+#### Scenario: A turn that ends in an error
+
+- **WHEN** a turn the agent answers with an error ends while a subagent's
+  report is still waiting for its delegation card
+- **THEN** the report is shown in that turn's conversation, before the next
+  prompt
