@@ -18,6 +18,7 @@ mod state;
 mod status;
 mod supervisor;
 mod tools;
+mod transcript;
 
 pub use auth::{
     AgentCredentials, CredentialKind, CredentialRegistry, Principal, RefusalLog, RefusalSource,
@@ -42,3 +43,4 @@ pub use tools::{
     Caller, EmptyCatalog, PropertySchema, ToolCallResult, ToolCatalog, ToolContent, ToolDefinition,
     ToolInputSchema,
 };
+pub use transcript::TranscriptRoot;

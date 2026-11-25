@@ -112,3 +112,14 @@ pub const STATUS_PATH: &str = "/api/v1/agent/status";
 
 /// The hook that registers an agent.
 pub const REGISTER_PATH: &str = "/api/v1/agent/register";
+
+/// The most of a transcript a hook makes Knot read: its last 8 MiB. The
+/// last assistant message and the user turn before it are at the end, and a
+/// path that names something huge, or something that never ends, costs at
+/// most this much.
+pub const TRANSCRIPT_TAIL_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Where Claude Code keeps its session transcripts, under its config
+/// directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`). A hook's
+/// `transcript_path` is read only inside it.
+pub const CLAUDE_TRANSCRIPTS_DIR: &str = "projects";
