@@ -43,8 +43,14 @@ pointer, stops at 25% and 75%, and the ratio is saved when you release, so it
 is there after a restart. Three Panes has two dividers: the vertical one, and a
 horizontal one that spans the right column only. In Four Panes the vertical
 and the horizontal divider each run the full width or height, so dragging one
-moves both columns or both rows together. Each mode remembers its own ratios
-when you switch away and back.
+moves both columns or both rows together. Switching modes keeps the ratios, so
+switching away and back finds the dividers where you left them.
+
+While you drag, a terminal keeps its rows and columns: a pane that grows shows
+empty space at its edge, and one that shrinks clips its text. When you release,
+each terminal is resized once, so a full-screen program such as `vim` or `htop`
+redraws once rather than on every step of the drag. A conversation panel
+reflows as you drag.
 
 ## Focus and dimming
 
