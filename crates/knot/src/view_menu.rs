@@ -129,7 +129,8 @@ fn numbered_items(targets: &[(Uuid, String)], checked: Option<Uuid>,
                                                           action:    action(),
                                                           os_action: None,
                                                           checked:   checked == Some(*id),
-                                                          disabled:  false, })
+                                                          disabled:  false,
+                                                          alternate: None, })
            .collect()
 }
 

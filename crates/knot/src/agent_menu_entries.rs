@@ -235,6 +235,13 @@ pub(crate) fn shift_alternate(entry: AgentMenuEntry, facts: AgentMenuFacts)
     facts.offers_alternates().then_some(alternate)
 }
 
+/// Whether `entry` is some entry's Shift alternate, as opposed to a primary
+/// or an entry with no alternate.
+pub(crate) fn is_shift_alternate(entry: AgentMenuEntry) -> bool {
+    matches!(entry,
+             AgentMenuEntry::DeactivateWithNewSession | AgentMenuEntry::RestartWithNewConversation)
+}
+
 /// One line of the agent row's context menu: an entry, and the Shift
 /// alternate the line shows instead while Shift is held.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

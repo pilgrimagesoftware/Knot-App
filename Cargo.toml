@@ -96,3 +96,12 @@ gpui-terminal = { git = "https://github.com/pilgrimagesoftware/gpui-terminal", t
 # condition.
 [patch.crates-io]
 gpui-base = { git = "https://github.com/pilgrimagesoftware/gpui-kit", branch = "knot/table-columns-0.7.0" }
+# `gpui-pre` and `gpui-pre-macos` add native alternate menu items
+# (`MenuItem::alternate`, `NSMenuItem.alternate`), so the Agents menu shows
+# Restart with New Conversation in Restart Agent's place while Shift is held
+# (#475). The fork is the published 0.3.7 sources plus that one commit; there
+# is no upstream repository for the snapshot to fork.
+# `docs/adr/0009-gpui-pre-menu-alternates.md` records the commit, the drafted
+# upstream PR and the exit condition.
+gpui-pre = { git = "https://github.com/pilgrimagesoftware/gpui-pre", branch = "knot/menu-alternates-0.3.7" }
+gpui-pre-macos = { git = "https://github.com/pilgrimagesoftware/gpui-pre", branch = "knot/menu-alternates-0.3.7" }

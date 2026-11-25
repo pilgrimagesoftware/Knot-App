@@ -2609,8 +2609,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre"
 version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e87a42bb37c7cb4e76dd1ac0ce88851e46e976e0373a47ab3e0757abffee54d"
+source = "git+https://github.com/pilgrimagesoftware/gpui-pre?branch=knot%2Fmenu-alternates-0.3.7#c0496ea53fae2850046e1c1a3dec0f505579f8a7"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -2795,8 +2794,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-macos"
 version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a43af845b260b09393e923c4f1e1a67a10fcfc847b4815192bbfd02ed9fe725"
+source = "git+https://github.com/pilgrimagesoftware/gpui-pre?branch=knot%2Fmenu-alternates-0.3.7#c0496ea53fae2850046e1c1a3dec0f505579f8a7"
 dependencies = [
  "accesskit",
  "accesskit_macos",

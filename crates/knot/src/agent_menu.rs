@@ -42,6 +42,7 @@ use uuid::Uuid;
 use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::AgentMenuFacts;
 use crate::agent_menu_entries::agent_context_menu_entries;
+use crate::agent_menu_entries::is_shift_alternate;
 use crate::open_in;
 
 actions!(knot_app,
@@ -203,6 +204,11 @@ pub(crate) struct AgentMenuSnapshot {
     pub(crate) config_files:     Vec<crate::agent_config::ConfigFile>,
 }
 
+/// Whether the menu bar shows a Shift alternate in its primary's place, as
+/// macOS does (`NSMenuItem.alternate`, through the gpui-pre fork, ADR 0009).
+/// Elsewhere the menu bar has no alternates and shows the primary only.
+pub(crate) const NATIVE_MENU_ALTERNATES: bool = cfg!(target_os = "macos");
+
 /// The Agents menu, carrying every item the context menu can offer.
 ///
 /// Built from [`agent_context_menu_entries`] with the facts of an agent that
@@ -210,13 +216,25 @@ pub(crate) struct AgentMenuSnapshot {
 /// context menu's: the two menus cannot drift apart because they are the
 /// same list.
 pub(crate) fn agents_menu(snapshot: &AgentMenuSnapshot) -> Menu {
-    let items = agent_context_menu_entries(AgentMenuFacts::EVERY_ITEM).into_iter()
-                                                                      .filter_map(|entry| {
-                                                                          agent_menu_item(entry,
-                                                                                          snapshot)
-                                                                      })
-                                                                      .collect::<Vec<_>>();
-    Menu::new(knot_core::l10n::t("menu.agents")).items(items)
+    Menu::new(knot_core::l10n::t("menu.agents")).items(agents_menu_items(snapshot,
+                                                                         NATIVE_MENU_ALTERNATES))
+}
+
+/// The Agents menu's items. Each Shift alternate directly follows its
+/// primary; with `native_alternates` it is marked as the primary's
+/// alternate, revealed by Shift, and without it, it is left out (`app-menu`:
+/// "Agents menu"). It stays reachable from the context menus.
+pub(crate) fn agents_menu_items(snapshot: &AgentMenuSnapshot, native_alternates: bool)
+                                -> Vec<MenuItem> {
+    agent_context_menu_entries(AgentMenuFacts::EVERY_ITEM).into_iter()
+                                                          .filter(|entry| {
+                                                              native_alternates
+                                                              || !is_shift_alternate(*entry)
+                                                          })
+                                                          .filter_map(|entry| {
+                                                              agent_menu_item(entry, snapshot)
+                                                          })
+                                                          .collect()
 }
 
 /// One item of the Agents menu. The three submenu entries carry no action of
@@ -233,11 +251,15 @@ fn agent_menu_item(entry: AgentMenuEntry, snapshot: &AgentMenuSnapshot) -> Optio
              // Not `MenuItem::action`, which takes a concrete action:
              // `Box<dyn Action>` is what keeps the pairing in one table
              // rather than repeating the match here.
-             entry => MenuItem::Action { name:      entry.label()?.into(),
-                                         action:    agent_menu_action(entry)?,
-                                         os_action: None,
-                                         checked:   false,
-                                         disabled:  false, },
+             entry => {
+                 MenuItem::Action { name:      entry.label()?.into(),
+                                    action:    agent_menu_action(entry)?,
+                                    os_action: None,
+                                    checked:   false,
+                                    disabled:  false,
+                                    alternate:
+                                        is_shift_alternate(entry).then(gpui_kit::Modifiers::shift), }
+             }
          })
 }
 
