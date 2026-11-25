@@ -186,7 +186,7 @@ fn the_card_takes_focus_and_answers_from_the_keyboard(cx: &mut TestAppContext) {
     assert_eq!(question.value(2),
                Some(&FieldValue::Multi(vec![true, false, false])));
 
-    fixture.press("cmd-enter");
+    fixture.press("secondary-enter");
     assert!(fixture.question().is_none(), "submitted");
     assert!(fixture.composer_focused(), "focus returns to the composer");
 }
