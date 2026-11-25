@@ -29,9 +29,11 @@ impl McpCredentials {
         self.registry.issue_agent_pair(agent)
     }
 
-    /// Revokes `agent`'s pair: its adapter has stopped.
+    /// Revokes `agent`'s pair: its adapter has stopped. Its run of
+    /// refusals goes too, so the next adapter starts with a clean slate.
     pub(crate) fn revoke(&self, agent: Uuid) {
         self.registry.revoke_agent(agent);
+        self.refusals.forget(agent);
     }
 }
 

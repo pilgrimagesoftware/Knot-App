@@ -170,10 +170,13 @@ fn each_principal_reaches_only_its_routes() {
 fn a_refusal_is_counted_against_the_hint_then_the_user_agent() {
     let log = RefusalLog::new();
     let agent = Uuid::new_v4();
-    log.record(RefusalSource::of(Some(agent), Some("claude-code/2.0")));
-    log.record(RefusalSource::of(None, Some("claude-code/2.0")));
-    log.record(RefusalSource::of(None, Some("curl knot_c_abc")));
-    log.record(RefusalSource::of(None, None));
+    log.record(RefusalSource::of(Some(agent), Some("claude-code/2.0")),
+               RefusalKind::Request);
+    log.record(RefusalSource::of(None, Some("claude-code/2.0")),
+               RefusalKind::Request);
+    log.record(RefusalSource::of(None, Some("curl knot_c_abc")),
+               RefusalKind::Request);
+    log.record(RefusalSource::of(None, None), RefusalKind::Request);
 
     assert_eq!(log.refused_for(agent), 1);
     assert_eq!(log.total(), 4);
@@ -188,11 +191,58 @@ fn a_refusal_is_counted_against_the_hint_then_the_user_agent() {
 fn the_refusal_table_stops_growing_at_its_cap() {
     let log = RefusalLog::new();
     for index in 0..consts::REFUSAL_SOURCES_MAX + 10 {
-        log.record(RefusalSource::of(None, Some(&format!("client-{index}"))));
+        log.record(RefusalSource::of(None, Some(&format!("client-{index}"))),
+                   RefusalKind::Request);
     }
     let snapshot = log.snapshot();
 
     assert_eq!(snapshot.len(), consts::REFUSAL_SOURCES_MAX + 1);
     assert_eq!(log.total(), (consts::REFUSAL_SOURCES_MAX + 10) as u64);
     assert!(snapshot.contains(&(RefusalSource::Other, 10)));
+}
+
+#[test]
+fn refusals_older_than_the_window_are_not_counted() {
+    let log = RefusalLog::new();
+    let start = std::time::Instant::now();
+    let source = RefusalSource::of(None, Some("old-client/1.0"));
+    log.record_for_test(source.clone(), RefusalKind::Request, start);
+    log.record_for_test(source.clone(),
+                        RefusalKind::Request,
+                        start + std::time::Duration::from_secs(30 * 60));
+
+    let later = start + consts::REFUSAL_WINDOW + std::time::Duration::from_secs(60);
+    assert_eq!(log.snapshot_for_test(later), [(source, 1)]);
+    let much_later = later + consts::REFUSAL_WINDOW;
+    assert!(log.snapshot_for_test(much_later).is_empty(),
+            "the table empties out");
+}
+
+/// D10 and the security review of #521: an agent's tools read as
+/// unavailable after a refused request, until it next authenticates - and a
+/// refused SSE stream alone (agy's header-less GET) never says so.
+#[test]
+fn tools_read_unavailable_from_a_refused_request_until_the_next_success() {
+    let log = RefusalLog::new();
+    let agent = Uuid::new_v4();
+    let named = || RefusalSource::of(Some(agent), None);
+
+    log.record(named(), RefusalKind::Stream);
+    assert!(!log.tools_unavailable(agent),
+            "a refused stream alone is not a lost tool");
+
+    log.record(named(), RefusalKind::Request);
+    assert!(log.tools_unavailable(agent));
+
+    log.authenticated(agent);
+    assert!(!log.tools_unavailable(agent));
+    assert_eq!(log.refused_for(agent),
+               2,
+               "the hour's count is kept for the MCP tab");
+
+    log.record(named(), RefusalKind::Request);
+    assert!(log.tools_unavailable(agent),
+            "dropping the header after a good start is still caught");
+    log.forget(agent);
+    assert!(!log.tools_unavailable(agent));
 }
