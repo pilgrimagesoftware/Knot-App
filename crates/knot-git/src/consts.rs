@@ -42,8 +42,8 @@ pub const GITLINK_MODE: &str = "160000";
 /// Config every git call runs with: no filesystem monitor, which git would
 /// otherwise start as a configured program on a plain `status`.
 pub const CALL_CONFIG: &[&str] = &["-c", "core.fsmonitor=false"];
-/// Config for every call but the ones the user starts that run their own
-/// hooks ([`keeps_user_hooks`](crate::runner::keeps_user_hooks)): no hooks.
+/// Config for every call the user did not start
+/// ([`CallOrigin::Automated`](crate::runner::CallOrigin)): no hooks.
 pub const NO_HOOKS_CONFIG: &[&str] = &["-c", "core.hooksPath=/dev/null"];
 
 /// Diffs Knot reads are git's own: no external diff program, no textconv

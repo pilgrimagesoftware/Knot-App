@@ -10,6 +10,19 @@ use crate::consts::{DEFAULT_TIMEOUT, OUTPUT_DRAIN_FLOOR, POLL_INTERVAL};
 use crate::error::{GitError, Result};
 use crate::program::configured;
 
+/// Who started a git call, which decides whether the repository's own hooks
+/// run for it. Passed by the caller, never read off the arguments: the same
+/// `git worktree add` is the user's from a dialog and not theirs from a tool
+/// call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CallOrigin {
+    /// The user, from Knot's own UI (the commit window, a dialog): the
+    /// repository's hooks run, as they would in a terminal.
+    User,
+    /// Knot on its own, or an agent through one of Knot's tools: no hooks.
+    Automated,
+}
+
 /// Runs `git` in a fixed working directory with a wall-clock timeout.
 ///
 /// Output streams drain on worker threads so a full pipe buffer never wedges
@@ -69,8 +82,15 @@ impl Runner {
     /// Non-zero exit -> [`GitError::Command`] carrying stderr (or stdout when
     /// stderr is empty) and the exit code. Exceeding the timeout kills the
     /// process and yields [`GitError::Timeout`].
+    ///
+    /// The call is [`CallOrigin::Automated`]; see [`Runner::run_as`].
     pub fn run(&self, args: &[&str]) -> Result<String> {
-        Ok(self.run_raw(args)?.trim().to_owned())
+        self.run_as(args, CallOrigin::Automated)
+    }
+
+    /// As [`Runner::run`], for a call started by `origin`.
+    pub fn run_as(&self, args: &[&str], origin: CallOrigin) -> Result<String> {
+        Ok(self.run_raw_as(args, origin)?.trim().to_owned())
     }
 
     /// As [`Runner::run`], but returns stdout exactly as git wrote it.
@@ -81,11 +101,15 @@ impl Runner {
     /// exist. Prefer [`Runner::run`] for everything else - most git output
     /// carries a trailing newline nobody wants.
     pub fn run_raw(&self, args: &[&str]) -> Result<String> {
+        self.run_raw_as(args, CallOrigin::Automated)
+    }
+
+    fn run_raw_as(&self, args: &[&str], origin: CallOrigin) -> Result<String> {
         let label = display_command(args);
 
         let mut command = Command::new(&self.program);
         if self.is_git {
-            command.args(call_config(args));
+            command.args(call_config(origin));
         }
         command.args(args).current_dir(&self.cwd);
         if let Some(search_path) = &self.search_path {
@@ -177,23 +201,17 @@ fn display_command(args: &[&str]) -> String {
     args.join(" ")
 }
 
-/// The `-c` options `git <args>` runs under: [`consts::CALL_CONFIG`] always,
-/// and [`consts::NO_HOOKS_CONFIG`] unless the call is one the user starts
-/// whose hooks are theirs to run.
-pub(crate) fn call_config(args: &[&str]) -> Vec<&'static str> {
+/// The `-c` options a call from `origin` runs under:
+/// [`consts::CALL_CONFIG`](crate::consts::CALL_CONFIG) always, and
+/// [`consts::NO_HOOKS_CONFIG`](crate::consts::NO_HOOKS_CONFIG) unless the
+/// user started the call, so its hooks are theirs to run.
+fn call_config(origin: CallOrigin) -> Vec<&'static str> {
     let mut config = crate::consts::CALL_CONFIG.to_vec();
-    if !keeps_user_hooks(args) {
-        config.extend_from_slice(crate::consts::NO_HOOKS_CONFIG);
+    match origin {
+        CallOrigin::User => {}
+        CallOrigin::Automated => config.extend_from_slice(crate::consts::NO_HOOKS_CONFIG),
     }
     config
-}
-
-/// Whether `git <args>` keeps the repository's hooks: a commit and a new
-/// worktree, which the user starts from the commit window and the worktree
-/// dialog, and whose hooks (a pre-commit check, an LFS post-checkout) they
-/// expect to run. Everything Knot runs on its own goes without.
-pub(crate) fn keeps_user_hooks(args: &[&str]) -> bool {
-    matches!(args, ["commit", ..] | ["worktree", "add", ..])
 }
 
 #[cfg(test)]

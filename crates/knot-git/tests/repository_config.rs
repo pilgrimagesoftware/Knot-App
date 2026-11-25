@@ -12,7 +12,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use knot_git::{Repository, Runner};
+use knot_git::{CallOrigin, Repository, Runner};
 
 fn init_repo(dir: &Path) {
     let run = |args: &[&str]| {
@@ -125,4 +125,30 @@ fn a_path_that_starts_with_a_dash_is_staged_as_a_path() {
     assert!(status.staged()
                   .any(|entry| entry.path == Path::new("-dash.txt")),
             "the file is staged");
+}
+
+/// A worktree add that ran `post-checkout` or not, for `origin`.
+fn post_checkout_ran_for(origin: CallOrigin) -> bool {
+    let (dir, tools, repo) = repo_with_a_change();
+    let ran = marker(&tools, "post-checkout-ran");
+    marking_script(&dir.path().join(".git/hooks/post-checkout"), &ran);
+
+    repo.create_worktree("feature", &tools.path().join("worktree"), origin)
+        .unwrap();
+
+    ran.exists()
+}
+
+/// A worktree the user starts runs the repository's checkout hook (an LFS
+/// `post-checkout`, say), as it would in a terminal.
+#[test]
+fn a_worktree_the_user_adds_runs_the_checkout_hook() {
+    assert!(post_checkout_ran_for(CallOrigin::User));
+}
+
+/// A worktree an agent asks for through a tool runs no hook: the same
+/// arguments, a different origin.
+#[test]
+fn a_worktree_added_for_an_agent_runs_no_hook() {
+    assert!(!post_checkout_ran_for(CallOrigin::Automated));
 }
