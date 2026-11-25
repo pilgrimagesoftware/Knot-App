@@ -91,3 +91,24 @@ fn a_missing_root_or_file_reads_nothing() {
     assert_eq!(root.read_tail(dir.path().join("projects/absent.jsonl")),
                None);
 }
+
+/// Security review of #521: a FIFO inside the directory is refused at once,
+/// not opened - opening one blocks until something writes to it.
+#[cfg(unix)]
+#[test]
+fn a_fifo_inside_the_directory_is_refused_without_blocking() {
+    let (dir, root) = root();
+    let fifo = dir.path().join("projects/session.jsonl");
+    let made = std::process::Command::new("mkfifo").arg(&fifo)
+                                                   .status()
+                                                   .expect("mkfifo runs");
+    assert!(made.success());
+
+    let (done, finished) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = done.send(root.read_tail(&fifo));
+    });
+    let read = finished.recv_timeout(std::time::Duration::from_secs(5))
+                       .expect("the read returned instead of blocking");
+    assert_eq!(read, None);
+}

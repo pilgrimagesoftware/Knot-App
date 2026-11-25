@@ -25,6 +25,12 @@ knot-agents = { path = "../knot-agents" }
 # `MCP_AGENT_QUERY`, the agent a connection's URL names.
 knot-core = { path = "../knot-core" }
 
+# `O_NONBLOCK` for opening a hook-named transcript: a FIFO planted inside
+# the transcript directory must not block the open (security review of
+# #521). Already in the lock file.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
 tempfile.workspace = true

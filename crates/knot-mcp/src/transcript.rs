@@ -47,9 +47,13 @@ impl TranscriptRoot {
         if !resolved.starts_with(&self.dir) {
             return None;
         }
-        let mut file = File::open(&resolved).ok()?;
-        // Checked on the open handle, not the path, so what is read is what
-        // was checked: a regular file, never a device or a pipe.
+        // Checked before opening, because opening a FIFO blocks until a
+        // writer appears; then checked again on the open handle, so what is
+        // read is what was checked even if the path changed in between.
+        if !std::fs::metadata(&resolved).is_ok_and(|metadata| metadata.is_file()) {
+            return None;
+        }
+        let mut file = open_without_blocking(&resolved)?;
         let metadata = file.metadata().ok()?;
         if !metadata.is_file() {
             return None;
@@ -68,6 +72,20 @@ impl TranscriptRoot {
                  (false, _) => text,
              })
     }
+}
+
+/// Opens `path` for reading without waiting on it: `O_NONBLOCK` makes a
+/// FIFO swapped in after the check open at once rather than hang the hook
+/// route. A regular file reads the same either way.
+fn open_without_blocking(path: &Path) -> Option<File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK);
+    }
+    options.open(path).ok()
 }
 
 #[cfg(test)]
