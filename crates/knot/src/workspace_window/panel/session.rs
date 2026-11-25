@@ -64,6 +64,18 @@ impl WorkspaceWindow {
         if !panel_session::claim_adapter(id, &slot) {
             return;
         }
+        // Issued only now that this window owns the start: issuing revokes
+        // the agent's previous pair, and an agent another window is running
+        // must keep its own. Before the spawn, so no adapter of this agent
+        // ever runs on a pair that is not current (D8).
+        let credentials = mcp_url.is_some().then(|| self.mcp_credentials.issue(id));
+        let hook_env = credentials.as_ref()
+                                  .map(|pair| {
+                                      hook_environment(id,
+                                            pair,
+                                            crate::settings_global::read(cx).mcp_server_port)
+                                  })
+                                  .unwrap_or_default();
         let handoff = self.panel_handoffs.remove(&id);
         self.panel_sessions.insert(id, Arc::clone(&slot));
         let cwd = agent.folder.clone();
@@ -195,7 +207,12 @@ impl WorkspaceWindow {
                                                             cwd: &cwd,
                                                             prior_session_id:
                                                                 prior_session_id.as_deref(),
-                                                            mcp_url: mcp_url.as_deref(),
+                                                            mcp: mcp_url.as_deref().map(|url| {
+                                                                knot_acp::McpEndpoint {
+                                                                    url,
+                                                                    bearer: credentials.as_ref().map(|pair| pair.tool.expose()),
+                                                                }
+                                                            }),
                                                             registration_prompt,
                                                             resume_registration_prompt,
                                                             session_config,
@@ -203,7 +220,7 @@ impl WorkspaceWindow {
                                                             option_mode: options.mode,
                                                             session_meta,
                                                             args: options.args,
-                                                            env: delivery.env,
+                                                            env: [delivery.env, hook_env].concat(),
                                                             subagents,
                                                             startup_prompt,
                                                             times };
@@ -399,4 +416,16 @@ impl WorkspaceWindow {
                         }
                     });
     }
+}
+
+/// The environment an adapter's hook scripts read (D3, D6): the server's
+/// base URL, the agent's id and its hook credential - the only agent
+/// credential placed in an environment, and one the server refuses on
+/// `/mcp`.
+pub(in crate::workspace_window) fn hook_environment(agent: uuid::Uuid,
+                                                    pair: &knot_mcp::AgentCredentials, port: u16)
+                                                    -> Vec<(String, String)> {
+    vec![(crate::consts::MCP_HOOK_URL_ENV.to_owned(), knot_agent_launch::server_url_for_port(port)),
+         (crate::consts::MCP_HOOK_TOKEN_ENV.to_owned(), pair.hooks.expose().to_owned()),
+         (crate::consts::MCP_HOOK_AGENT_ENV.to_owned(), agent.to_string())]
 }

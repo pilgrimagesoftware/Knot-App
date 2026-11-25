@@ -18,6 +18,8 @@ mod support;
 
 #[path = "http/auth.rs"]
 mod auth;
+#[path = "http/hook_scripts.rs"]
+mod hook_scripts;
 #[path = "http/origin.rs"]
 mod origin;
 #[path = "http/protocol_version.rs"]

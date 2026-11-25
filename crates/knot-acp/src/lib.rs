@@ -12,7 +12,7 @@ mod error;
 mod protocol;
 mod transport;
 
-pub use client::{AcpClient, NewSession, SessionEvent};
+pub use client::{AcpClient, McpEndpoint, NewSession, SessionEvent};
 pub use error::{AcpError, Result, SessionEndCause};
 pub use protocol::steering::SteerOutcome;
 pub use protocol::{

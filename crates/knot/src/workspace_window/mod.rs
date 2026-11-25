@@ -61,6 +61,8 @@ mod layout_test_support;
 #[cfg(test)]
 mod layout_tests;
 #[cfg(test)]
+mod mcp_credentials_tests;
+#[cfg(test)]
 mod mcp_handover_tests;
 pub(crate) mod mcp_panel;
 mod menus;

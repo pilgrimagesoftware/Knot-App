@@ -226,12 +226,21 @@ pub(crate) fn run() {
     // One registry for the process, built before the MCP server because both
     // it and every workspace window write to the same one.
     let subagents: crate::app_support::SubagentRegistryHandle = Arc::default();
-    let (mcp_stop, mcp_status) = start_mcp_server(Arc::clone(&store),
-                                                  settings.clone(),
-                                                  Arc::clone(&notifier),
-                                                  Arc::clone(&messages),
-                                                  queues,
-                                                  Arc::clone(&subagents));
+    // Before the server, which authenticates against it, and before any
+    // window, which issues agent credentials into it. The client token is
+    // read from the Keychain once per launch (D1).
+    let mcp_credentials = crate::mcp_credentials::McpCredentials::default();
+    let mcp_client_token =
+        crate::mcp_credentials::load_or_create(&crate::mcp_credentials::KeychainTokenStore,
+                                               &mcp_credentials.registry);
+    let (mcp_stop, mcp_status) =
+        start_mcp_server(Arc::clone(&store),
+                         settings.clone(),
+                         Arc::clone(&notifier),
+                         Arc::clone(&messages),
+                         queues,
+                         crate::app_support::McpShared { subagents:   Arc::clone(&subagents),
+                                                         credentials: mcp_credentials.clone(), });
 
     gpui_kit::application()
                            // `Assets` only embeds gpui-component's own curated icon subset; our
@@ -281,6 +290,8 @@ pub(crate) fn run() {
                                cx.set_global(Activation(Arc::clone(&activation)));
                                cx.set_global(crate::app_support::Autopilot(Arc::clone(&autopilot)));
                                cx.set_global(crate::app_support::Subagents(Arc::clone(&subagents)));
+                               cx.set_global(mcp_credentials.clone());
+                               cx.set_global(crate::mcp_credentials::ClientToken(mcp_client_token.clone()));
                                // The MCP server's state, for the settings
                                // pane's row and the failure notification.
                                cx.set_global(mcp_status);

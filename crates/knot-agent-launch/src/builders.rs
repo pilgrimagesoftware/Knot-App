@@ -30,7 +30,13 @@ pub fn agent_mcp_url(settings: &Settings, agent_id: uuid::Uuid) -> String {
 /// server routes MCP at `/mcp` and answers a POST to `/` with 405, so a
 /// URL built without it produces an entry that can never connect.
 pub fn mcp_url_for_port(port: u16) -> String {
-    format!("http://127.0.0.1:{port}/mcp")
+    format!("{}/mcp", server_url_for_port(port))
+}
+
+/// The MCP server's base URL on `port`, with no path: what hook scripts
+/// append the hook routes to (`KNOT_MCP_URL`).
+pub fn server_url_for_port(port: u16) -> String {
+    format!("http://127.0.0.1:{port}")
 }
 
 /// Builds the shell agent's terminal command: its custom command if set,

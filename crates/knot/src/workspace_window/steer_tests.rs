@@ -62,7 +62,7 @@ fn busy_slot(runtime: &tokio::runtime::Runtime, steers: bool, outcome: &str)
                                                              config: &config,
                                                              cwd: "/tmp",
                                                              prior_session_id: None,
-                                                             mcp_url: None,
+                                                             mcp: None,
                                                              registration_prompt:
                                                                  Some("register".into()),
                                                              resume_registration_prompt: None,

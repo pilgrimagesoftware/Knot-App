@@ -3957,6 +3957,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "parking_lot 0.13.0",
  "regex",
+ "security-framework",
  "serde",
  "serde_json",
  "tempfile",

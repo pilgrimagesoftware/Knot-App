@@ -56,7 +56,7 @@ pub(in crate::workspace_window::panel) fn ready_slot(
                                                   config:                     &declaring_adapter(),
                                                   cwd:                        "/tmp",
                                                   prior_session_id:           None,
-                                                  mcp_url:                    None,
+                                                  mcp:                        None,
                                                   registration_prompt:        None,
                                                   resume_registration_prompt: None,
                                                   session_config:             BTreeMap::new(),

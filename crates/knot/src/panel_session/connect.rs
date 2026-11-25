@@ -23,7 +23,8 @@ pub struct ConnectRequest<'a> {
     pub config:                     &'a AdapterConfig,
     pub cwd:                        &'a str,
     pub prior_session_id:           Option<&'a str>,
-    pub mcp_url:                    Option<&'a str>,
+    /// Knot's MCP server and this agent's tool credential for it.
+    pub mcp:                        Option<knot_acp::McpEndpoint<'a>>,
     /// The registration prompt a fresh session opens on. Built whether or
     /// not a prior session is named: only the adapter can say whether it
     /// resumed, so [`connect_into`] withholds this once it has - a resumed
@@ -184,7 +185,7 @@ async fn prepare(request: ConnectRequest<'_>, progress: &ConnectProgress)
                  -> std::result::Result<Prepared, String> {
     let target = SessionTarget { cwd:              request.cwd,
                                  prior_session_id: request.prior_session_id,
-                                 mcp_url:          request.mcp_url,
+                                 mcp:              request.mcp,
                                  meta:             request.session_meta.as_ref(),
                                  env:              &request.env,
                                  args:             &request.args, };

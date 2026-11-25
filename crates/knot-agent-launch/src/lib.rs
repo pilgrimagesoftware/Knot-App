@@ -23,7 +23,7 @@ pub use adapter::{AdapterConfig, InstallMethod, acp_adapter, adapter_path, adapt
 pub use agent_options::{AdapterOptions, adapter_options};
 pub use builders::{
     LaunchPlan, LaunchRequest, agent_mcp_url, build_agent_command, build_initialization_command,
-    mcp_url, mcp_url_for_port, plan_launch,
+    mcp_url, mcp_url_for_port, plan_launch, server_url_for_port,
 };
 pub use capabilities::{keeps_mcp_query, supports_inline_registration};
 pub use default_mode::{DefaultMode, unconfigured_default_mode};

@@ -42,8 +42,8 @@ pub struct PanelSessionHandle {
 impl PanelSessionHandle {
     /// Starts the adapter connection and spawns a background task (on the
     /// current tokio runtime) draining its event stream into `state` until
-    /// the session ends. `mcp_url` is Knot's own MCP HTTP server URL, wired
-    /// into the session when MCP is enabled.
+    /// the session ends. `target.mcp` is Knot's own MCP HTTP server and the
+    /// agent's credential for it, wired into the session when MCP is enabled.
     pub async fn start(config: &AdapterConfig, target: SessionTarget<'_>,
                        progress: &ConnectProgress, subagents: Option<SubagentSink>,
                        times: Option<TimesStore>)

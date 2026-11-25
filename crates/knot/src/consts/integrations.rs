@@ -36,3 +36,25 @@ pub(crate) const ADAPTER_UPDATE_NOTIFICATION_TAG_PREFIX: &str = "adapter-update:
 /// GitHub refuses a much longer one, so past this the file goes to the
 /// clipboard and the page opens empty.
 pub(crate) const LIBRARY_SUBMIT_URL_MAX: usize = 8000;
+
+/// The Keychain service the MCP client token is stored under
+/// (`openspec/changes/mcp-auth/design.md` D1).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))] // No Keychain elsewhere.
+pub(crate) const MCP_CLIENT_TOKEN_SERVICE: &str = "com.pilgrimagesoftware.knot.mcp-client-token";
+
+/// The account name of that Keychain item. One token per user.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))] // No Keychain elsewhere.
+pub(crate) const MCP_CLIENT_TOKEN_ACCOUNT: &str = "client-token";
+
+/// The environment variable carrying an agent's hook credential to its
+/// adapter's hook scripts (D3, D6). The only agent credential in an
+/// environment.
+pub(crate) const MCP_HOOK_TOKEN_ENV: &str = "KNOT_MCP_TOKEN";
+
+/// The environment variable carrying the MCP server's base URL to the same
+/// scripts.
+pub(crate) const MCP_HOOK_URL_ENV: &str = "KNOT_MCP_URL";
+
+/// The environment variable naming the agent to the same scripts, which
+/// send it as the hook body's `agent_id`. Not a secret.
+pub(crate) const MCP_HOOK_AGENT_ENV: &str = "KNOT_AGENT_ID";

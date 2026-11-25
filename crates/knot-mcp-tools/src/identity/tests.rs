@@ -14,7 +14,7 @@ fn knot() -> (AgentStore, Uuid, Uuid) {
 
 fn bound_to(agent: Uuid) -> Caller {
     let sessions = McpSessionManager::new();
-    let session = sessions.create_session(agent);
+    let session = sessions.create_session(knot_mcp::Principal::Agent(agent));
     Caller { agent: Some(agent),
              session_id: Some(session.id),
              sessions }
@@ -116,7 +116,8 @@ async fn a_duplicate_live_registration_is_refused_through_the_catalog() {
         crate::McpToolCatalog::new(Arc::new(Mutex::new(store)), rx, Arc::new(NoopNotifier));
     let sessions = McpSessionManager::new();
     let connection = |agent: Option<Uuid>| {
-        let session = sessions.create_session(agent.unwrap_or_else(Uuid::nil));
+        let session = sessions.create_session(agent.map_or(knot_mcp::Principal::External,
+                                                           knot_mcp::Principal::Agent));
         Caller { agent,
                  session_id: Some(session.id),
                  sessions: sessions.clone() }

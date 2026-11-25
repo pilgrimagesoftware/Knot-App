@@ -32,6 +32,8 @@ pub(super) mod question;
 pub(crate) mod reply;
 mod scroll_to_latest;
 mod session;
+#[cfg(test)]
+pub(super) use session::hook_environment;
 pub(super) mod shell;
 mod startup;
 pub(crate) mod steer;
