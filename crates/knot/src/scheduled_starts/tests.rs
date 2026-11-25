@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use gpui_kit::TestAppContext;
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 use jiff::civil::date;
 use jiff::tz::TimeZone;
 use knot_core::StartupPrompt;
@@ -73,14 +73,14 @@ fn fixture(startup_prompt: bool, cx: &mut TestAppContext) -> Fixture {
               _dir: dir }
 }
 
-fn la(hour: i8, minute: i8) -> Zoned {
+fn la(hour: i8, minute: i8) -> ZonedDateTime {
     date(2026, 11, 16).at(hour, minute, 0, 0)
-                      .to_zoned(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
+                      .to_zoned_datetime(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
                       .expect("a valid local time")
 }
 
 impl Fixture {
-    fn tick(&self, now: &Zoned, cx: &mut TestAppContext) {
+    fn tick(&self, now: &ZonedDateTime, cx: &mut TestAppContext) {
         cx.update(|cx| tick(&self.store, &self.messages, now, cx));
     }
 

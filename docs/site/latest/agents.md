@@ -240,7 +240,10 @@ A non-shell agent's pane is a conversation panel: the messages you and the agent
 stream, each tool call as its own card - with an icon for the tool and, for a file edit, an
 added/removed line diff - and the shell commands you run from the prompt. A completed tool call
 collapses to its header, while failed and running calls stay open and any call can be opened or
-closed by hand.
+closed by hand. View > Collapse All Tool Calls (Option-Cmd+C; Ctrl+Alt+C on Linux and Windows) closes
+them all at once: every open card goes back to its header, running and failed ones included, and
+with Collapse tool calls on in Settings every run you opened goes back to its summary line. It
+changes only what is open; nothing in the conversation is removed, and you can open any call again.
 
 When the agent hands work to a subagent, what the subagent does stays inside the card of the call
 that launched it, so a subagent working beside the agent never cuts into the agent's own reply.

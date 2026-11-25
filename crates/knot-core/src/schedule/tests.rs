@@ -5,13 +5,13 @@
 
 use jiff::civil::date;
 use jiff::tz::TimeZone;
-use jiff::{SignedDuration, Zoned};
+use jiff::{SignedDuration, ZonedDateTime};
 
 use super::*;
 
-fn la(year: i16, month: i8, day: i8, hour: i8, minute: i8) -> Zoned {
+fn la(year: i16, month: i8, day: i8, hour: i8, minute: i8) -> ZonedDateTime {
     date(year, month, day).at(hour, minute, 0, 0)
-                          .to_zoned(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
+                          .to_zoned_datetime(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
                           .expect("a valid local time")
 }
 
@@ -23,7 +23,7 @@ fn schedule(text: &str) -> Schedule {
     text.parse().unwrap_or_else(|()| panic!("{text} parses"))
 }
 
-fn hm(zoned: &Zoned) -> (i8, i8) {
+fn hm(zoned: &ZonedDateTime) -> (i8, i8) {
     (zoned.hour(), zoned.minute())
 }
 
@@ -59,6 +59,39 @@ fn only_five_field_cron_is_accepted() {
     assert!(Schedule::cron("0 0 9 * * 1-5 2027").is_none());
     assert!(Schedule::cron("61 9 * * *").is_none());
     assert!(Schedule::cron("not cron").is_none());
+}
+
+/// croner 5 (jiff 1.0) reads names only in their own field and refuses a
+/// bare `L` for a weekday. Both used to parse and run on an unintended
+/// schedule - `jan` as Monday, `L` as nothing at all - so refusing them is
+/// the fix, not a regression.
+#[test]
+fn a_name_outside_its_field_and_a_bare_weekday_l_are_refused() {
+    assert!(Schedule::cron("0 0 * * jan").is_none(),
+            "a month name in the weekday field");
+    assert!(Schedule::cron("mon 0 * * *").is_none(),
+            "a weekday name in the minute field");
+    assert!(Schedule::cron("0 0 * * L").is_none(),
+            "a bare L for a weekday");
+    assert!(Schedule::cron("0 0 * jan mon").is_some(),
+            "names in their own fields still parse");
+}
+
+/// A stored pattern croner 5 refuses loads as unreadable and never runs,
+/// rather than failing the document or running on a guess.
+#[test]
+fn a_stored_pattern_croner_now_refuses_never_runs() {
+    let loaded: Schedule = serde_json::from_str("\"cron 0 0 * * jan\"").expect("never fails");
+    assert!(!loaded.is_runnable());
+    assert_eq!(next_run(&loaded, &la(2026, 11, 16, 9, 0)), None);
+}
+
+/// `SUN-SUN` is Sundays only (croner 5); it used to read as every day.
+#[test]
+fn a_sunday_to_sunday_range_is_sundays_only() {
+    // 2026-11-16 is a Monday; the next Sunday is the 22nd.
+    let next = next_run(&schedule("cron 0 9 * * SUN-SUN"), &la(2026, 11, 16, 8, 0)).expect("runs");
+    assert_eq!((next.day(), hm(&next)), (22, (9, 0)));
 }
 
 #[test]
