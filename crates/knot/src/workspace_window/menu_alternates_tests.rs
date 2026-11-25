@@ -40,7 +40,8 @@ impl Fixture {
         {
             let mut store = self.store.lock();
             store.set_activated(id, true);
-            store.set_acp_session_id(id, "a1".to_string());
+            let token = store.agent(id).expect("the agent exists").restart_token;
+            assert!(store.set_acp_session_id_if_current(id, token, "a1".to_string()));
         }
         self.window.update(|_, cx| {
                        crate::settings_global::write(cx, |settings| {

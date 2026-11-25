@@ -54,6 +54,9 @@ impl AgentStore {
     /// resumed on the next start. A plain Deactivate keeps the token, so an
     /// id arriving after one is still stored: that agent keeps its resume
     /// point.
+    ///
+    /// There is no unguarded setter for a single agent's ACP session id, so
+    /// a connection cannot record one without naming its token.
     pub fn set_acp_session_id_if_current(&mut self, id: Uuid, token: Uuid, session_id: String)
                                          -> bool {
         match self.agent_mut(id) {

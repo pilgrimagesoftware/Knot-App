@@ -9,7 +9,8 @@ fn running_agent_with_a_session(store: &mut AgentStore) -> Uuid {
     let id = store.create("/tmp/a", CreateOptions::default());
     store.set_activated(id, true);
     store.set_session_id(id, "s1".to_string());
-    store.set_acp_session_id(id, "a1".to_string());
+    let token = store.agent(id).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(id, token, "a1".to_string()));
     store.request_fresh_context(id);
     let agent = store.agent_mut(id).unwrap();
     agent.resume_session_id = Some("s1".to_string());
