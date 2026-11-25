@@ -131,3 +131,8 @@ pub const REFUSAL_WINDOW: std::time::Duration = std::time::Duration::from_secs(6
 /// The most refusal times kept per source. A source refused faster than this
 /// per hour is counted as at least this many, and costs no more memory.
 pub const REFUSAL_EVENTS_MAX: usize = 10_000;
+
+/// How many agents the refusal table counts by name. Only agents holding a
+/// pair are named, so this is a backstop; past it, refusals are counted
+/// under one overflow entry.
+pub const REFUSAL_AGENTS_MAX: usize = 256;

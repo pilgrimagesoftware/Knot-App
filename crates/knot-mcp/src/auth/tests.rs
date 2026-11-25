@@ -246,3 +246,17 @@ fn tools_read_unavailable_from_a_refused_request_until_the_next_success() {
     log.forget(agent);
     assert!(!log.tools_unavailable(agent));
 }
+
+/// B3's review of #521: whatever the caller passes, the table has a hard
+/// size.
+#[test]
+fn the_refusal_table_has_a_hard_cap_on_named_agents() {
+    let log = RefusalLog::new();
+    for _ in 0..consts::REFUSAL_AGENTS_MAX + 50 {
+        log.record(RefusalSource::Agent(Uuid::new_v4()), RefusalKind::Request);
+    }
+    let snapshot = log.snapshot();
+
+    assert_eq!(snapshot.len(), consts::REFUSAL_AGENTS_MAX + 1);
+    assert!(snapshot.contains(&(RefusalSource::Other, 50)));
+}

@@ -49,8 +49,13 @@ impl WorkspaceWindow {
             return;
         };
         // The agent's own URL, so the server binds the connection to it and
-        // refuses a call that names another agent (#539).
-        let mcp_url = crate::settings_global::read(cx).mcp_server_enabled.then(|| {
+        // refuses a call that names another agent (#539). Only for an adapter
+        // that will present the credential Knot issues it (D3): any other
+        // would be refused on every request, so it is handed no server.
+        let mcp_url = super::mcp_launch::wires_mcp(crate::settings_global::read(cx)
+                                                       .mcp_server_enabled,
+                                                   &agent.agent_type)
+                      .then(|| {
                           knot_agent_launch::agent_mcp_url(&crate::settings_global::read(cx),
                                                            agent.id)
                       });
@@ -68,11 +73,8 @@ impl WorkspaceWindow {
         // the agent's previous pair, and an agent another window is running
         // must keep its own. Before the spawn, so no adapter of this agent
         // ever runs on a pair that is not current (D8).
-        // Only for an adapter checked to send the header; any other reaches
-        // Knot as an external client until it is (D3).
-        let credentials = (mcp_url.is_some()
-                           && knot_core::agent_type::sends_mcp_headers(&agent.agent_type))
-                          .then(|| self.mcp_credentials.issue(id));
+        let credentials = mcp_url.is_some().then(|| self.mcp_credentials.issue(id));
+        let wired = mcp_url.is_some();
         let hook_env = credentials.as_ref()
                                   .map(|pair| {
                                       super::mcp_launch::hook_environment(id,
@@ -204,13 +206,9 @@ impl WorkspaceWindow {
                         // A fresh session only: `connect_into` sends this
                         // prompt only when nothing was resumed (#405).
                         let registration_prompt =
-                            knot_agent_launch::acp_registration_prompt(false,
-                                                                       delivery.first_turn
-                                                                               .as_deref())
-                                .map(|prompt| match &handoff {
-                                    Some(note) => format!("{prompt} {note}"),
-                                    None => prompt,
-                                });
+                            super::mcp_launch::first_turn(wired,
+                                                          delivery.first_turn.as_deref(),
+                                                          handoff.as_deref());
                         let session_meta =
                             knot_agent_launch::merge_session_meta(options.session_meta,
                                                                   delivery.session_meta);

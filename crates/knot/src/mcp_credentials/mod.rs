@@ -1,6 +1,6 @@
 //! The MCP credentials the app holds: the registry the server authenticates
 //! against, the refusal counts the UI shows, and the client token kept in
-//! the Keychain.
+//! the Keychain (a 0600 file on other platforms).
 //!
 //! Contract: `openspec/changes/mcp-auth/design.md` D1, D3, D8 and D10.
 //! Agent credentials are issued just before an adapter starts
@@ -11,8 +11,11 @@
 mod client_token;
 mod shared;
 
+// Named here for the tests; the platform store builds its own off macOS.
+#[cfg(test)]
+pub(crate) use client_token::FileTokenStore;
 pub(crate) use client_token::{ClientTokenStore, regenerate};
-pub(crate) use client_token::{KeychainTokenStore, LoadedClientToken, load_or_create};
+pub(crate) use client_token::{LoadedClientToken, PlatformTokenStore, load_or_create};
 pub(crate) use shared::{ClientToken, McpCredentials};
 
 #[cfg(test)]

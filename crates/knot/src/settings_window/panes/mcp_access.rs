@@ -21,7 +21,7 @@ use gpui_kit::div;
 use knot_mcp::RefusalSource;
 
 use crate::mcp_credentials::{
-    ClientToken, ClientTokenStore, KeychainTokenStore, McpCredentials, regenerate,
+    ClientToken, ClientTokenStore, McpCredentials, PlatformTokenStore, regenerate,
 };
 use crate::settings_window::SettingsWindow;
 
@@ -169,7 +169,7 @@ fn confirm_regenerate(settings_window: gpui_kit::Entity<SettingsWindow>, window:
                        .ok_variant(ButtonVariant::Danger)
                        .show_cancel(true))
                    .on_ok(move |_, _, app| {
-                       regenerate_client_token(&KeychainTokenStore, app);
+                       regenerate_client_token(&PlatformTokenStore, app);
                        settings_window.update(app, |_, cx| cx.notify());
                        true
                    })

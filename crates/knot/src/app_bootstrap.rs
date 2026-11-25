@@ -233,7 +233,7 @@ pub(crate) fn run() {
     // read from the Keychain once per launch (D1).
     let mcp_credentials = crate::mcp_credentials::McpCredentials::default();
     let mcp_client_token =
-        crate::mcp_credentials::load_or_create(&crate::mcp_credentials::KeychainTokenStore,
+        crate::mcp_credentials::load_or_create(&crate::mcp_credentials::PlatformTokenStore,
                                                &mcp_credentials.registry);
     let (mcp_stop, mcp_status) =
         start_mcp_server(Arc::clone(&store),
