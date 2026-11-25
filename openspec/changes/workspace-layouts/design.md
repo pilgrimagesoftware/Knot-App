@@ -32,9 +32,10 @@ code:
 - gpui-base's `ResizablePanelGroup` sizes panels in pixels, one group per
   axis. It emits `ResizablePanelEvent::Resized` from `done_resizing`, on
   drag end.
-- `render/mod.rs` is at 655 of 700 lines. The limit that applies is 700,
-  the one `make size-check` enforces (`RUST_FILE_LINE_LIMIT`). The 500 in
-  `CLAUDE.md` is stale, and fixing that line is outside this change.
+- `render/mod.rs` holds declarations and re-exports only since #487; the
+  frame it used to draw is in `render/frame.rs`. The file limit is 500
+  lines, enforced by `make size-check` (`RUST_FILE_LINE_LIMIT`, #484), so
+  new layout code goes in new modules rather than growing an existing one.
 
 ## Goals / Non-Goals
 

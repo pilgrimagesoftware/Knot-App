@@ -167,8 +167,8 @@ with the same defaults. It is unchanged.
   live with the store's workspace UI state, wiring the setters that are
   marked `UNWIRED` today.
 - `knot`: the workspace window's content area (`render/content.rs`) gets a
-  layout branch in new modules beside it. `render/mod.rs` is at 655 of 700
-  lines and takes nothing. Also a divider element, the Layout menu, the
+  layout branch in new modules beside it. `render/mod.rs` only declares
+  modules and takes nothing; every file stays under the 500-line limit. Also a divider element, the Layout menu, the
   focused-pane wiring to `selected_agent`, and the hold on terminal sizes
   during a drag.
 - Docs: `docs/site/` gains a layouts section.
