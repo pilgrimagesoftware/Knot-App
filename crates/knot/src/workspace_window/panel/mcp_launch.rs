@@ -73,12 +73,12 @@ mod tests {
     /// B3's review of #521: removing the header gate must fail a test.
     #[test]
     fn only_checked_adapters_are_wired_and_only_with_the_server_on() {
-        for agent_type in ["claude", "codex", "antigravity"] {
+        for agent_type in ["claude", "codex", "antigravity", "copilot"] {
             assert!(wires_mcp(true, agent_type), "{agent_type}");
             assert!(!wires_mcp(false, agent_type),
                     "{agent_type} with the server off");
         }
-        for agent_type in ["copilot", "gemini", "opencode", "shell", "custom1"] {
+        for agent_type in ["gemini", "opencode", "shell", "custom1"] {
             assert!(!wires_mcp(true, agent_type), "{agent_type}");
         }
     }
