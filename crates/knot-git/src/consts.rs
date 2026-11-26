@@ -87,3 +87,45 @@ pub const BRANCH_SHOW_CURRENT: &[&str] = &["branch", "--show-current"];
 pub const SHORT_HEAD: &[&str] = &["rev-parse", "--short", "HEAD"];
 pub const LOG_UNPUSHED: &[&str] = &["log", "@{u}..", "--oneline"];
 pub const AHEAD_BEHIND: &[&str] = &["rev-list", "--left-right", "--count", "@{u}...HEAD"];
+
+/// Where a repository keeps its configuration: the common git folder (its
+/// `config`) and this worktree's git folder (its `config.worktree`).
+pub const REV_PARSE_GIT_DIRS: &[&str] = &["rev-parse",
+                                          "--path-format=absolute",
+                                          "--git-common-dir",
+                                          "--git-dir"];
+
+/// The worktree's top folder, which `config --show-origin` names files
+/// relative to.
+pub const REV_PARSE_TOPLEVEL: &[&str] = &["rev-parse", "--path-format=absolute", "--show-toplevel"];
+
+/// Every configuration entry with its scope and the file it came from,
+/// following includes, NUL-separated.
+pub const CONFIG_LIST_WITH_ORIGIN: &[&str] = &["config",
+                                               "--list",
+                                               "--show-scope",
+                                               "--show-origin",
+                                               "--includes",
+                                               "-z"];
+
+/// The file naming a repository's submodules, at its top.
+pub const GITMODULES_FILE: &str = ".gitmodules";
+
+/// `git config -z --file <file>` - followed by the file and a query - for
+/// reading a file such as `.gitmodules` rather than a repository's config.
+pub const CONFIG_FILE_REGEXP_PREFIX: &[&str] = &["config", "-z", "--file"];
+
+/// The `.gitmodules` keys holding each submodule's path.
+pub const SUBMODULE_PATH_PATTERN: &str = r"^submodule\..*\.path$";
+
+/// How deep repository trust follows submodules inside submodules. Deeper
+/// nesting than this is not read.
+pub const MAX_SUBMODULE_DEPTH: usize = 8;
+
+/// The entry standing for a submodule nested past [`MAX_SUBMODULE_DEPTH`]:
+/// its configuration was not read, so it is treated as naming a program and
+/// the repository needs trust. Shown and saved as `[path] key=value`.
+pub const UNREAD_SUBMODULE_KEY: &str = "submodule";
+
+/// [`UNREAD_SUBMODULE_KEY`]'s value.
+pub const UNREAD_SUBMODULE_VALUE: &str = "nested too deep for Knot to read its settings";

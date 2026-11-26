@@ -18,6 +18,8 @@ use crate::workspace_window::WorkspaceWindow;
 pub(super) enum PanelContent {
     Loading,
     NotARepository,
+    /// The repository waits for the user's trust; carries its folder.
+    Untrusted(std::path::PathBuf),
     Failed(String),
     Clean,
     Changes(Box<TreeView>),
@@ -61,6 +63,7 @@ impl WorkspaceWindow {
         let content = match snapshot {
             None => PanelContent::Loading,
             Some(GitStatusSnapshot::NotARepository) => PanelContent::NotARepository,
+            Some(GitStatusSnapshot::Untrusted(repository)) => PanelContent::Untrusted(repository),
             Some(GitStatusSnapshot::Failed(reason)) => PanelContent::Failed(reason),
             Some(GitStatusSnapshot::Loaded(status)) => {
                 let sections = group(&status);

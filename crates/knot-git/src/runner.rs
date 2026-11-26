@@ -35,24 +35,28 @@ pub enum CallOrigin {
 /// a bound made the call last as long as that helper.
 #[derive(Debug, Clone)]
 pub struct Runner {
-    cwd:         PathBuf,
-    timeout:     Duration,
-    program:     OsString,
-    search_path: Option<OsString>,
+    cwd:          PathBuf,
+    timeout:      Duration,
+    program:      OsString,
+    search_path:  Option<OsString>,
     /// Whether `program` is git, and so takes [`call_config`]'s `-c`
     /// options. Only a test runs anything else.
-    is_git:      bool,
+    is_git:       bool,
+    /// Whether calls are checked against [`crate::trust`] first. Off only
+    /// for the calls that do the checking.
+    checks_trust: bool,
 }
 
 impl Runner {
     pub fn new(cwd: impl Into<PathBuf>) -> Self {
         let configured = configured();
 
-        Self { cwd:         cwd.into(),
-               timeout:     DEFAULT_TIMEOUT,
-               program:     configured.program,
-               search_path: configured.search_path,
-               is_git:      true, }
+        Self { cwd:          cwd.into(),
+               timeout:      DEFAULT_TIMEOUT,
+               program:      configured.program,
+               search_path:  configured.search_path,
+               is_git:       true,
+               checks_trust: true, }
     }
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
@@ -64,6 +68,14 @@ impl Runner {
     pub(crate) fn with_program(mut self, program: impl Into<OsString>) -> Self {
         self.program = program.into();
         self.is_git = false;
+        self
+    }
+
+    /// This runner, for the calls that read a repository's configuration to
+    /// decide whether it is trusted: they run no configured program, and
+    /// checking them would recurse.
+    pub(crate) fn without_trust_check(mut self) -> Self {
+        self.checks_trust = false;
         self
     }
 
@@ -105,6 +117,9 @@ impl Runner {
     }
 
     fn run_raw_as(&self, args: &[&str], origin: CallOrigin) -> Result<String> {
+        if self.is_git && self.checks_trust {
+            crate::trust::check(&self.cwd)?;
+        }
         let label = display_command(args);
 
         let mut command = Command::new(&self.program);

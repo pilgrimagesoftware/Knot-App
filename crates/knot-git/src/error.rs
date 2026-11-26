@@ -19,6 +19,11 @@ pub enum GitError {
 
     #[error("parsing git output failed: {0}")]
     Parse(String),
+
+    /// Not run: the repository's configuration names programs for git to
+    /// run, and it is not trusted ([`crate::trust`]).
+    #[error("{} is not trusted to run git: its configuration names programs", .repository.display())]
+    Untrusted { repository: std::path::PathBuf },
 }
 
 #[cfg(test)]

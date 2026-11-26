@@ -51,6 +51,9 @@ pub(crate) enum GitStatusSnapshot {
     /// The folder exists but is not a working tree. A finished answer, and a
     /// different one from a clean tree.
     NotARepository,
+    /// Not read: the repository's settings name programs and it is not
+    /// trusted (`crate::repository_trust`). Carries the repository.
+    Untrusted(std::path::PathBuf),
     Failed(String),
     Loaded(Box<RepoStatus>),
 }

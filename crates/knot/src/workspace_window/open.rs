@@ -218,6 +218,8 @@ impl WorkspaceWindow {
                     work_items: Default::default(),
                     codex_usage: Default::default(),
                     codex_usage_dismissed: None,
+                    repository_trust: crate::repository_trust::registry().cloned(),
+                    trust_generation_drawn: 0,
                     codex_usage_source: crate::codex_usage::read_current,
                     open_config_selector: None,
                     prompt_picker: None,

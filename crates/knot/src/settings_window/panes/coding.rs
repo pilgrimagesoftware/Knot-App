@@ -231,6 +231,7 @@ impl SettingsWindow {
                     ),
                 ),
             )
+            .child(self.render_trusted_repositories(cx))
             .child(self.render_agent_tabs(cx))
             .child(
                 // One group per agent: its options and its adapter together,

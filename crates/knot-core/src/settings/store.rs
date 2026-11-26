@@ -147,6 +147,11 @@ pub struct Settings {
     /// out of what needs attention. See
     /// `openspec/specs/agent-mcp-status/spec.md`.
     pub dismissed_mcp_servers:          BTreeSet<String>,
+    /// Repositories the user has trusted to run the programs their git
+    /// configuration names, each with the entries it was trusted with.
+    /// Empty by default: Knot runs no git in such a repository until the
+    /// user says so. See `openspec/specs/git-operations/spec.md`.
+    pub trusted_repositories:           Vec<super::TrustedRepository>,
     /// What happens to an agent that has been idle, for every agent whose
     /// own idle setting follows the default (#404). `None` - off - by
     /// default; an unreadable stored value also loads as off. See
@@ -223,6 +228,7 @@ impl Default for Settings {
                agent_panel_compact_tool_calls: false,
                keybindings:                    super::KeybindingSettings::default(),
                dismissed_mcp_servers:          BTreeSet::new(),
+               trusted_repositories:           Vec::new(),
                idle_default:                   None,
                saved_agents:                   Vec::new(),
                saved_workspaces:               Vec::new(),
