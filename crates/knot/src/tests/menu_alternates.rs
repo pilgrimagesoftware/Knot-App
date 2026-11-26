@@ -67,8 +67,8 @@ fn deactivate_with_new_session_needs_a_running_agent() {
                [(AgentMenuEntry::RestartAgent, AgentMenuEntry::RestartWithNewConversation)]);
 }
 
-/// The menu bar lists each alternate as its own item, directly below its
-/// primary, until native alternates fold them.
+/// The menu bar's entry list puts each alternate directly below its
+/// primary, which is what lets macOS pair them as native alternates.
 #[test]
 fn the_menu_bar_lists_each_alternate_below_its_primary() {
     let entries = agent_context_menu_entries(AgentMenuFacts::EVERY_ITEM);
@@ -111,4 +111,60 @@ fn the_sidebar_alternate_labels_resolve() {
         let label = entry.label().expect("a labelled entry");
         assert!(!label.starts_with("menu.sidebar."), "{entry:?}: {label}");
     }
+}
+
+/// Each menu-bar item's title and the modifiers that reveal it, when it is
+/// an alternate.
+fn menu_bar(native_alternates: bool) -> Vec<(String, Option<gpui_kit::Modifiers>)> {
+    crate::agent_menu::agents_menu_items(&crate::agent_menu::AgentMenuSnapshot::default(),
+                                         native_alternates).into_iter()
+                                                           .filter_map(|item| match item {
+                                                               gpui_kit::MenuItem::Action { name,
+                                                                                            alternate,
+                                                                                            .. } => {
+                                                                   Some((name.to_string(), alternate))
+                                                               }
+                                                               _ => None,
+                                                           })
+                                                           .collect()
+}
+
+fn title(entry: AgentMenuEntry) -> String {
+    entry.label().expect("a labelled entry")
+}
+
+/// macOS: each alternate is a native alternate of the item before it,
+/// revealed by Shift (`app-menu`: "Holding Shift shows the alternates").
+#[test]
+fn native_menu_bar_alternates_follow_their_primaries() {
+    let items = menu_bar(true);
+    for (primary, alternate) in
+        [(AgentMenuEntry::Deactivate, AgentMenuEntry::DeactivateWithNewSession),
+         (AgentMenuEntry::RestartAgent, AgentMenuEntry::RestartWithNewConversation)]
+    {
+        let at = items.iter()
+                      .position(|(name, _)| *name == title(primary))
+                      .expect("the primary is listed");
+        assert_eq!(items[at].1, None, "{primary:?} is not an alternate");
+        assert_eq!(items.get(at + 1),
+                   Some(&(title(alternate), Some(gpui_kit::Modifiers::shift()))),
+                   "{alternate:?}");
+    }
+    let alternates = items.iter()
+                          .filter(|(_, alternate)| alternate.is_some())
+                          .count();
+    assert_eq!(alternates, 2, "{items:?}");
+}
+
+/// Windows and Linux: the menu bar has no alternates, so it shows the
+/// primaries only (`app-menu`: "No alternates off macOS").
+#[test]
+fn menu_bar_without_native_alternates_shows_primaries_only() {
+    let names = menu_bar(false).into_iter()
+                               .map(|(name, _)| name)
+                               .collect::<Vec<_>>();
+    assert!(names.contains(&title(AgentMenuEntry::RestartAgent)));
+    assert!(names.contains(&title(AgentMenuEntry::Deactivate)));
+    assert!(!names.contains(&title(AgentMenuEntry::RestartWithNewConversation)));
+    assert!(!names.contains(&title(AgentMenuEntry::DeactivateWithNewSession)));
 }
