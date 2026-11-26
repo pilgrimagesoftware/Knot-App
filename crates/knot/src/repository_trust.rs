@@ -85,11 +85,6 @@ impl RepositoryTrust {
         self.answered(repository);
     }
 
-    /// The repositories answered "Not now" this session, by path.
-    pub(crate) fn declined(&self) -> Vec<RepositoryPrograms> {
-        self.declined.lock().values().cloned().collect()
-    }
-
     /// Puts a repository answered "Not now" back in the queue, so the
     /// banner asks about it again. Nothing happens for one not declined.
     pub(crate) fn reconsider(&self, repository: &Path) {

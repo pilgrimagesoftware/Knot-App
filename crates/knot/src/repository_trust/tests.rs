@@ -95,14 +95,16 @@ fn a_declined_repository_can_be_reconsidered() {
     let lfs = programs("/src/a", &[("filter.lfs.clean", "git-lfs clean")]);
     trust.refused(&lfs);
     trust.decline(&lfs.repository);
-    assert_eq!(trust.declined(), vec![lfs.clone()]);
+    assert_eq!(trust.next_pending(), None);
     let before = trust.generation();
 
     trust.reconsider(&lfs.repository);
 
-    assert_eq!(trust.next_pending(), Some(lfs));
-    assert!(trust.declined().is_empty());
+    assert_eq!(trust.next_pending(), Some(lfs.clone()));
     assert_ne!(trust.generation(), before, "windows repaint for it");
+    // Taken out of the declined set: a refusal now keeps it queued.
+    trust.refused(&lfs);
+    assert_eq!(trust.next_pending(), Some(lfs));
 }
 
 /// While declined, the repository's latest programs are kept, so a review
