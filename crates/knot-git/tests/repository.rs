@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use knot_git::Repository;
+use knot_git::{CallOrigin, Repository};
 
 fn init_repo(dir: &Path) {
     let run = |args: &[&str]| {
@@ -52,7 +52,8 @@ fn linked_worktrees_share_one_common_dir() {
     init_repo(&repo_path);
     let repo = Repository::open(&repo_path);
     let worktree_path = dir.path().join("repo-feature");
-    repo.create_worktree("feature", &worktree_path).unwrap();
+    repo.create_worktree("feature", &worktree_path, CallOrigin::User)
+        .unwrap();
 
     let primary_common = repo.common_dir().unwrap().unwrap();
     let worktree_common = Repository::open(&worktree_path).common_dir()

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::consts;
 use crate::diff::{FileDiff, parse_diff};
 use crate::error::{GitError, Result};
-use crate::runner::Runner;
+use crate::runner::{CallOrigin, Runner};
 use crate::stats::{DiffStats, parse_numstat, untracked_line_count};
 use crate::status::{RepoStatus, parse_status};
 
@@ -184,10 +184,12 @@ impl Repository {
         self.runner.run(consts::UNSTAGE_ALL).map(drop)
     }
 
-    /// `git commit -m <message>`.
+    /// `git commit -m <message>`, as the user's: the repository's commit
+    /// hooks run. Only the commit window commits; a commit Knot or an agent
+    /// starts would need its own [`CallOrigin`].
     pub fn commit(&self, message: &str) -> Result<()> {
         let argv = [consts::COMMIT, &[message]].concat();
-        self.runner.run(&argv).map(drop)
+        self.runner.run_as(&argv, CallOrigin::User).map(drop)
     }
 
     /// Current branch from `git branch --show-current`. `None` when HEAD is
@@ -288,12 +290,16 @@ impl Repository {
     /// `git worktree add -b <branch> <destination>` run from this repository.
     /// The runner's error propagates unchanged, so an existing branch name
     /// surfaces as [`GitError::Command`] and no worktree is created.
-    pub fn create_worktree(&self, branch: &str, destination: &Path) -> Result<()> {
+    ///
+    /// The repository's hooks (an LFS `post-checkout`) run only for
+    /// [`CallOrigin::User`].
+    pub fn create_worktree(&self, branch: &str, destination: &Path, origin: CallOrigin)
+                           -> Result<()> {
         let destination = destination.to_str().ok_or_else(|| {
             GitError::Parse("worktree destination path is not valid UTF-8".to_owned())
         })?;
         let argv = [consts::WORKTREE_ADD, &[branch, destination]].concat();
-        self.runner.run(&argv).map(drop)
+        self.runner.run_as(&argv, origin).map(drop)
     }
 
     fn run_scoped(&self, base: &[&str], paths: &[&str]) -> Result<()> {
@@ -301,7 +307,8 @@ impl Repository {
             return Ok(());
         }
 
-        let argv = [base, paths].concat();
+        // `--` so a path that starts with `-` is a path, not an option.
+        let argv = [base, &[consts::PATHSPEC_SEP], paths].concat();
         self.runner.run(&argv).map(drop)
     }
 }
