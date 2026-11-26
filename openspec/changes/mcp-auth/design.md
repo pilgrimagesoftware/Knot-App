@@ -119,7 +119,7 @@ searched for the dummy value and for `--mcp-config`.
 | Claude | `claude-agent-acp` 0.112.0, SDK 0.3.331 | yes | yes, all requests | no | The adapter's `cliDelivery()` sends MCP servers in the CLI's stdin initialize message. It switches to `--mcp-config` argv only when `CLAUDE_CODE_EXECUTABLE` is set in the adapter's environment, or when the session's extra args name `settings` or `sdk-url`. Knot passes users' Claude options as `extraArgs`, so a user option can select the argv path (see below). |
 | Codex | `codex-acp` 2.12.0 | yes | yes, all requests | no | |
 | Antigravity | `agy` 1.5.17 (`acp --process-per-session`) | yes | yes on POST; **not** on the SSE `GET /mcp` | no | The stream GET gets 401. Re-checked in task 4.1 with the stub answering that GET with 401: agy went on to `tools/list` with the header, so it works on POST alone. The refused GET is still counted against agy's `?agent=` hint, so D10's panel notice also requires that the agent holds no live credential-bound session. |
-| Copilot | `copilot --acp`, CLI 1.0.116 | yes | yes, all requests | no | Verified with `scripts/acp-header-probe.py` (run on another machine; this one had no Copilot CLI). No SSE `GET /mcp` was observed in the 12 s window. Copilot gets the tool credential like Claude, Codex and agy. |
+| Copilot | `copilot --acp`, CLI 1.0.116 | yes | yes, all requests | no | Verified with `scripts/acp-header-probe.py`, probe run by the maintainer locally. No SSE `GET /mcp` was observed in the 12 s window. Copilot gets the tool credential like Claude, Codex and agy. |
 | Gemini, OpenCode | — | no | — | — | No HTTP MCP in ACP, so no automatic path. They stay `External` (D5) until a stdio-bridge follow-up. |
 
 **Claude argv path.** When Knot launches `claude-agent-acp` with
