@@ -75,15 +75,28 @@ checked.
 
 ### Requirement: Submodules answer with their repository
 
-The configuration of each checked-out submodule, nested ones included,
-SHALL be checked with the repository's own, each entry tagged with the
-submodule's path.
+The configuration of each checked-out submodule - named in `.gitmodules`
+or present only as a gitlink in the index - nested ones included, SHALL be
+checked with the repository's own, each entry tagged with the submodule's
+path. A checked-out submodule nested deeper than Knot reads SHALL count as
+naming a program.
 
 #### Scenario: A submodule's clean filter
 
 - **WHEN** a checked-out submodule configures a clean filter for a changed
   file and Knot reads the repository's status
 - **THEN** the filter does not run until the repository is trusted
+
+#### Scenario: A submodule missing from .gitmodules
+
+- **WHEN** the index holds a populated gitlink that `.gitmodules` doesn't
+  name, and that submodule configures a clean filter
+- **THEN** the filter does not run until the repository is trusted
+
+#### Scenario: A submodule nested too deep to read
+
+- **WHEN** a checked-out submodule is nested deeper than Knot reads
+- **THEN** the repository needs trust
 
 ### Requirement: Asking the user
 

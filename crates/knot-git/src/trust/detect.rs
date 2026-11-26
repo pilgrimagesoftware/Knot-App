@@ -14,8 +14,9 @@ use std::time::SystemTime;
 
 use super::keys::{ProgramSetting, names_a_program};
 use crate::consts::{
-    CONFIG_FILE_REGEXP_PREFIX, CONFIG_LIST_WITH_ORIGIN, GITMODULES_FILE, MAX_SUBMODULE_DEPTH,
-    REV_PARSE_GIT_DIRS, REV_PARSE_TOPLEVEL, SUBMODULE_PATH_PATTERN,
+    CONFIG_FILE_REGEXP_PREFIX, CONFIG_LIST_WITH_ORIGIN, GITLINK_MODE, GITMODULES_FILE,
+    LS_FILES_STAGE, MAX_SUBMODULE_DEPTH, REV_PARSE_GIT_DIRS, REV_PARSE_TOPLEVEL,
+    SUBMODULE_PATH_PATTERN, UNREAD_SUBMODULE_KEY, UNREAD_SUBMODULE_VALUE,
 };
 use crate::error::{GitError, Result};
 use crate::runner::Runner;
@@ -61,7 +62,7 @@ fn stamp_of(path: &Path) -> Stamp {
 pub(super) fn detect(folder: &Path) -> Result<Option<Detection>> {
     let Some(Found { common_dir,
                      mut settings,
-                     mut watched, }) = read_repository(folder, 0)?
+                     mut watched, }) = read_repository(folder, 0, MAX_SUBMODULE_DEPTH)?
     else {
         return Ok(None);
     };
@@ -89,11 +90,11 @@ struct Found {
 }
 
 /// Reads `folder`'s repository, then each checked-out submodule's, down to
-/// [`MAX_SUBMODULE_DEPTH`]. A submodule's configuration lives in its own git
-/// folder (`.git/modules/<name>/config`), outside the repository's `local`
-/// scope, yet `status` and `diff` run git in it - so its programs are the
-/// repository's to answer for too.
-fn read_repository(folder: &Path, depth: usize) -> Result<Option<Found>> {
+/// `max_depth` levels ([`MAX_SUBMODULE_DEPTH`] outside tests). A submodule's
+/// configuration lives in its own git folder (`.git/modules/<name>/config`),
+/// outside the repository's `local` scope, yet `status` and `diff` run git in
+/// it - so its programs are the repository's to answer for too.
+fn read_repository(folder: &Path, depth: usize, max_depth: usize) -> Result<Option<Found>> {
     let runner = Runner::new(folder).without_trust_check();
     let dirs = match runner.run(REV_PARSE_GIT_DIRS) {
         Ok(dirs) => dirs,
@@ -136,34 +137,44 @@ fn read_repository(folder: &Path, depth: usize) -> Result<Option<Found>> {
         }
     }
 
-    if depth < MAX_SUBMODULE_DEPTH {
-        let gitmodules = base.join(GITMODULES_FILE);
-        watched.push(gitmodules.clone());
-        for path in submodule_paths(&base, &gitmodules) {
-            let checkout = base.join(&path);
-            // Watched while missing too, so a submodule initialized later
-            // is read then.
-            watched.push(checkout.join(".git"));
-            if !checkout.join(".git").exists() {
-                continue;
-            }
-            let Some(found) = read_repository(&checkout, depth + 1)?
-            else {
-                continue;
-            };
-            watched.extend(found.watched);
-            settings.extend(found.settings.into_iter().map(|setting| {
-                                                          let submodule = match setting.submodule {
-                                                              Some(inner) => {
-                                                                  format!("{path}/{inner}")
-                                                              }
-                                                              None => path.clone(),
-                                                          };
-                                                          ProgramSetting { submodule:
-                                                                               Some(submodule),
-                                                                           ..setting }
-                                                      }));
+    let gitmodules = base.join(GITMODULES_FILE);
+    watched.push(gitmodules.clone());
+    // `status` enters a populated gitlink whether `.gitmodules` names it or
+    // not, so the index's gitlinks count too, and a change to them is read.
+    watched.push(git_dir.join("index"));
+    let mut paths = submodule_paths(&base, &gitmodules);
+    paths.extend(gitlink_paths(&base)?);
+    paths.sort();
+    paths.dedup();
+    for path in paths {
+        let checkout = base.join(&path);
+        // Watched while missing too, so a submodule initialized later is
+        // read then.
+        watched.push(checkout.join(".git"));
+        if !checkout.join(".git").exists() {
+            continue;
         }
+        if depth >= max_depth {
+            // Too deep to read, so what it configures is unknown: it counts
+            // as naming a program rather than as naming none.
+            settings.push(ProgramSetting { submodule: Some(path),
+                                           key:       UNREAD_SUBMODULE_KEY.to_owned(),
+                                           value:     UNREAD_SUBMODULE_VALUE.to_owned(), });
+            continue;
+        }
+        let Some(found) = read_repository(&checkout, depth + 1, max_depth)?
+        else {
+            continue;
+        };
+        watched.extend(found.watched);
+        settings.extend(found.settings.into_iter().map(|setting| {
+                                                      let submodule = match setting.submodule {
+                                                          Some(inner) => format!("{path}/{inner}"),
+                                                          None => path.clone(),
+                                                      };
+                                                      ProgramSetting { submodule: Some(submodule),
+                                                                       ..setting }
+                                                  }));
     }
     Ok(Some(Found { common_dir,
                     settings,
@@ -188,15 +199,39 @@ fn submodule_paths(base: &Path, gitmodules: &Path) -> Vec<String> {
     };
     listing.split('\0')
            .filter_map(|entry| entry.split_once('\n').map(|(_, path)| path))
-           .filter(|path| {
-               let path = Path::new(path);
-               !path.as_os_str().is_empty()
-               && path.is_relative()
-               && !path.components()
-                       .any(|part| matches!(part, std::path::Component::ParentDir))
-           })
+           .filter(|path| is_inside(path))
            .map(str::to_owned)
            .collect()
+}
+
+/// The paths of the index's gitlinks - submodules, whether `.gitmodules`
+/// names them or not - relative to the repository's top. A repository whose
+/// index git cannot read has none that `status` would enter.
+fn gitlink_paths(base: &Path) -> Result<Vec<String>> {
+    let runner = Runner::new(base).without_trust_check();
+    let listing = match runner.run_raw(LS_FILES_STAGE) {
+        Ok(listing) => listing,
+        Err(GitError::Command { .. }) => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    // `<mode> <object> <stage>\t<path>`, NUL-ended.
+    Ok(listing.split('\0')
+              .filter_map(|entry| entry.split_once('\t'))
+              .filter(|(meta, _)| meta.split(' ').next() == Some(GITLINK_MODE))
+              .map(|(_, path)| path)
+              .filter(|path| is_inside(path))
+              .map(str::to_owned)
+              .collect())
+}
+
+/// Whether `path` names somewhere inside the repository: relative, not
+/// empty, and not climbing out with `..`.
+fn is_inside(path: &str) -> bool {
+    let path = Path::new(path);
+    !path.as_os_str().is_empty()
+    && path.is_relative()
+    && !path.components()
+            .any(|part| matches!(part, std::path::Component::ParentDir))
 }
 
 struct Entry<'a> {
@@ -259,36 +294,4 @@ fn repository_folder(common_dir: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_listing_parses_into_scoped_entries() {
-        let listing =
-            "global\0file:/home/u/.gitconfig\0user.name\nU\0local\0file:.git/config\0core.bare\0";
-
-        let entries = parse_listing(listing).unwrap();
-
-        assert_eq!(entries.len(), 2);
-        assert_eq!((entries[0].scope, entries[0].key, entries[0].value),
-                   ("global", "user.name", "U"));
-        assert_eq!((entries[1].scope, entries[1].key, entries[1].value),
-                   ("local", "core.bare", ""));
-    }
-
-    #[test]
-    fn a_truncated_listing_is_an_error() {
-        assert!(parse_listing("local\0file:.git/config\0").is_err());
-    }
-
-    #[test]
-    fn includes_are_recognised_and_resolved_beside_their_file() {
-        assert!(is_include("include.path"));
-        assert!(is_include("includeIf.gitdir:~/src/.path"));
-        assert!(!is_include("filter.x.clean"));
-        assert_eq!(include_target(Path::new("/r/.git/config"), "../x.cfg"),
-                   Path::new("/r/.git/../x.cfg"));
-        assert_eq!(include_target(Path::new("/r/.git/config"), "/abs.cfg"),
-                   Path::new("/abs.cfg"));
-    }
-}
+mod tests;

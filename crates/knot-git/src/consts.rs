@@ -121,3 +121,11 @@ pub const SUBMODULE_PATH_PATTERN: &str = r"^submodule\..*\.path$";
 /// How deep repository trust follows submodules inside submodules. Deeper
 /// nesting than this is not read.
 pub const MAX_SUBMODULE_DEPTH: usize = 8;
+
+/// The entry standing for a submodule nested past [`MAX_SUBMODULE_DEPTH`]:
+/// its configuration was not read, so it is treated as naming a program and
+/// the repository needs trust. Shown and saved as `[path] key=value`.
+pub const UNREAD_SUBMODULE_KEY: &str = "submodule";
+
+/// [`UNREAD_SUBMODULE_KEY`]'s value.
+pub const UNREAD_SUBMODULE_VALUE: &str = "nested too deep for Knot to read its settings";

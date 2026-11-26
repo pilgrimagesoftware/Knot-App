@@ -6,6 +6,7 @@
 - [x] 1.4 Integration tests: untrusted clean filter, trusted filter, program added after trust, configured hook, included filter, repository with no programs
 - [x] 1.5 Submodules' configuration checked with the repository's (nested, depth-limited), with an integration test
 - [x] 1.6 Keys Knot already turns off on its own calls do not prompt; husky-only and textconv-only tests
+- [x] 1.7 Index gitlinks missing from `.gitmodules` checked too; past the depth limit a submodule needs trust (fail closed); tests for both
 
 ## 2. knot-core
 

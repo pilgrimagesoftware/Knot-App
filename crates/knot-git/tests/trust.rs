@@ -185,15 +185,11 @@ fn a_folder_outside_any_repository_has_no_repository_programs() {
     assert_eq!(repository_programs(dir.path()).unwrap(), None);
 }
 
-/// A submodule's configuration lives in its own git folder, outside the
-/// repository's `local` scope, yet the repository's `status` runs git in
-/// the submodule: its clean filter is the repository's to answer for.
-#[test]
-fn a_submodules_clean_filter_does_not_run_until_trusted() {
+/// `app`, a repository with `vendor/library` checked out as a submodule
+/// whose `f.txt` goes through filter `x` and is changed since its commit.
+/// Returns the submodule's checkout. Nothing configures filter `x` yet.
+fn app_with_submodule(dir: &Path) -> PathBuf {
     install_policy();
-    let dir = tempfile::tempdir().unwrap();
-    let tools = tempfile::tempdir().unwrap();
-    let ran = marker(&tools);
     let git = |folder: &Path, args: &[&str]| {
         Runner::new(folder).run(args).unwrap();
     };
@@ -204,7 +200,7 @@ fn a_submodules_clean_filter_does_not_run_until_trusted() {
         git(folder, &["config", "user.name", "Test"]);
         git(folder, &["config", "commit.gpgsign", "false"]);
     };
-    let (library, app) = (dir.path().join("library"), dir.path().join("app"));
+    let (library, app) = (dir.join("library"), dir.join("app"));
     init(&library);
     fs::write(library.join(".gitattributes"), "f.txt filter=x\n").unwrap();
     fs::write(library.join("f.txt"), "one\n").unwrap();
@@ -226,6 +222,19 @@ fn a_submodules_clean_filter_does_not_run_until_trusted() {
     let checkout = app.join("vendor/library");
     // Same size, new content: git has to read the file to compare it.
     fs::write(checkout.join("f.txt"), "two\n").unwrap();
+    checkout
+}
+
+/// A submodule's configuration lives in its own git folder, outside the
+/// repository's `local` scope, yet the repository's `status` runs git in
+/// the submodule: its clean filter is the repository's to answer for.
+#[test]
+fn a_submodules_clean_filter_does_not_run_until_trusted() {
+    let dir = tempfile::tempdir().unwrap();
+    let tools = tempfile::tempdir().unwrap();
+    let ran = marker(&tools);
+    let checkout = app_with_submodule(dir.path());
+    let app = dir.path().join("app");
     configure_clean_filter(&checkout, &ran);
 
     let error = Repository::open(&app).status().unwrap_err();
@@ -240,6 +249,28 @@ fn a_submodules_clean_filter_does_not_run_until_trusted() {
     Repository::open(&app).status().unwrap();
 
     assert!(ran.exists(), "once trusted, the submodule's filter runs");
+}
+
+/// `status` enters a populated gitlink whether `.gitmodules` names it or
+/// not, so one the index alone knows about is read too.
+#[test]
+fn a_submodule_missing_from_gitmodules_is_still_checked() {
+    let dir = tempfile::tempdir().unwrap();
+    let tools = tempfile::tempdir().unwrap();
+    let ran = marker(&tools);
+    let checkout = app_with_submodule(dir.path());
+    let app = dir.path().join("app");
+    Runner::new(&app).run(&["rm", "-q", "--cached", ".gitmodules"])
+                     .unwrap();
+    fs::remove_file(app.join(".gitmodules")).unwrap();
+    Runner::new(&app).run(&["commit", "-qm", "drop .gitmodules"])
+                     .unwrap();
+    configure_clean_filter(&checkout, &ran);
+
+    let error = Repository::open(&app).status().unwrap_err();
+
+    assert!(matches!(error, GitError::Untrusted { .. }), "{error}");
+    assert!(!ran.exists(), "the unlisted submodule's clean filter ran");
 }
 
 /// A hooks folder (husky, say) is turned off on every call Knot makes on

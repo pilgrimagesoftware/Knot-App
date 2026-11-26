@@ -43,7 +43,10 @@ filter, Knot asks again.
 ## Settings checked
 
 Only the repository's own settings are checked, including those of its
-checked-out submodules: Knot's status and diff reads run git inside them too.
+checked-out submodules, whether or not `.gitmodules` lists them: Knot's status
+and diff reads run git inside them too. A submodule nested more than eight
+levels deep isn't read, so it counts as naming a program and the repository
+needs trust.
 The banner shows a submodule's settings with its path in front, such as
 `[vendor/lib] filter.x.clean=…`. Your global `~/.gitconfig` and
 the system configuration are yours, so a filter installed with
