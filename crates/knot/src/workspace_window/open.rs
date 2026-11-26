@@ -242,6 +242,7 @@ impl WorkspaceWindow {
                     sidebar_resize,
                     root_focus: cx.focus_handle(),
                     key_hints: Default::default(),
+                    shift_held: false,
                     terminal_font: TerminalFont::default(),
                     panel_sessions: BTreeMap::new(),
                     subagents: Arc::clone(&subagents),

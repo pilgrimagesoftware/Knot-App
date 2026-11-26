@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use gpui_kit::{App, Global};
-use jiff::{Timestamp, Zoned};
+use jiff::{Timestamp, ZonedDateTime};
 use knot_core::schedule::{RunDecision, Schedule, SkipReason, decide};
 use parking_lot::Mutex;
 use uuid::Uuid;
@@ -49,7 +49,7 @@ pub(crate) fn install(store: Arc<Mutex<knot_agents::AgentStore>>,
           // For the app's lifetime, like the adapter update check.
           loop {
               cx.background_executor().timer(SCHEDULE_TICK_INTERVAL).await;
-              cx.update(|cx| tick(&store, &messages, &Zoned::now(), cx));
+              cx.update(|cx| tick(&store, &messages, &ZonedDateTime::now(), cx));
           }
       })
       .detach();
@@ -66,7 +66,7 @@ struct Scheduled {
 /// One pass over every scheduled agent, at `now` (the clock is a parameter
 /// so the tests can choose it).
 pub(crate) fn tick(store: &Arc<Mutex<knot_agents::AgentStore>>,
-                   messages: &Arc<Mutex<knot_messaging::MessageStore>>, now: &Zoned,
+                   messages: &Arc<Mutex<knot_messaging::MessageStore>>, now: &ZonedDateTime,
                    cx: &mut App) {
     // Snapshotted first, in its own statement: a guard in a `for` loop's
     // iterator expression lives until the loop ends, and the body takes the

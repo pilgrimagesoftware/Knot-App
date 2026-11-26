@@ -51,7 +51,8 @@ fn two_open_workspaces(cx: &mut TestAppContext) -> Fixture {
                                                           workspace_id: Some(source_id),
                                                           ..Default::default() });
     store.set_session_id(agent, "session-0".to_string());
-    store.set_acp_session_id(agent, "acp-0".to_string());
+    let token = store.agent(agent).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(agent, token, "acp-0".to_string()));
     let store = Arc::new(Mutex::new(store));
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
     let dir = TempDir::new().expect("a temporary settings root");

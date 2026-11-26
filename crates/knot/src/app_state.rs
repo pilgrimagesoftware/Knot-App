@@ -58,6 +58,11 @@ pub(crate) enum AgentListBackgroundEntry {
     CloseAll,
     DeactivateAll,
     Broadcast,
+    /// Restart All's Shift alternate (#475). Never a line of its own: it is
+    /// what the Restart All line shows and runs while Shift is held.
+    RestartAllNewConversations,
+    /// Deactivate All's Shift alternate (#475), shown as Restart All's is.
+    DeactivateAllNewSessions,
 }
 
 impl AgentListBackgroundEntry {
@@ -73,7 +78,33 @@ impl AgentListBackgroundEntry {
             Self::CloseAll => Some(knot_core::l10n::t("menu.sidebar.close_all")),
             Self::DeactivateAll => Some(knot_core::l10n::t("menu.sidebar.deactivate_all")),
             Self::Broadcast => Some(knot_core::l10n::t("menu.sidebar.broadcast")),
+            Self::RestartAllNewConversations => {
+                Some(knot_core::l10n::t("menu.sidebar.restart_all_new_conversations"))
+            }
+            Self::DeactivateAllNewSessions => {
+                Some(knot_core::l10n::t("menu.sidebar.deactivate_all_new_sessions"))
+            }
         }
+    }
+
+    /// This entry's Shift alternate, offered only while
+    /// `restore-conversation-on-launch` is on: with it off, Restart All
+    /// and a later start already begin new conversations (`agent-list-ui`:
+    /// "Shift alternates in the sidebar background menu"). The line keeps
+    /// its primary's enablement, so an alternate is disabled with it.
+    pub(crate) fn shift_alternate(self, restores_conversations: bool) -> Option<Self> {
+        let alternate = match self {
+            Self::RestartAll => Self::RestartAllNewConversations,
+            Self::DeactivateAll => Self::DeactivateAllNewSessions,
+            Self::Separator
+            | Self::NewAgent
+            | Self::NewFromBench
+            | Self::CloseAll
+            | Self::Broadcast
+            | Self::RestartAllNewConversations
+            | Self::DeactivateAllNewSessions => return None,
+        };
+        restores_conversations.then_some(alternate)
     }
 }
 

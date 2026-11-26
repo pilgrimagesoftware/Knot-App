@@ -166,6 +166,9 @@ pub(crate) struct WorkspaceWindow {
     /// Whether ⌘ is held, and the sidebar's key hints once it has been held
     /// long enough (`agent-list-ui`).
     pub(super) key_hints:                        super::key_hints::KeyHintHold,
+    /// Whether Shift was held at the last modifier change, so the window
+    /// redraws only on a Shift edge (`menus::alternate_line`).
+    pub(super) shift_held:                       bool,
     /// The family the terminal draws and measures in, resolved from the
     /// installed families once per configured name rather than once per
     /// frame - see `terminal_font`.

@@ -39,17 +39,21 @@ fn window_with_conversations(count: usize, cx: &mut TestAppContext) -> Fixture {
     let space = crate::tests::workspace("Only");
     let workspace_id = space.id;
     store.add_workspace(space);
-    let agents: Vec<Uuid> = (0..count).map(|index| {
-                                          let id = store.create(format!("~/agent-{index}"),
+    let agents: Vec<Uuid> =
+        (0..count).map(|index| {
+                      let id = store.create(format!("~/agent-{index}"),
                                   knot_agents::CreateOptions { agent_type:
                                                                    Some(INERT_AGENT_TYPE.into()),
                                                                workspace_id: Some(workspace_id),
                                                                ..Default::default() });
-                                          store.set_session_id(id, format!("session-{index}"));
-                                          store.set_acp_session_id(id, format!("acp-{index}"));
-                                          id
-                                      })
-                                      .collect();
+                      store.set_session_id(id, format!("session-{index}"));
+                      let token = store.agent(id).expect("the agent exists").restart_token;
+                      assert!(store.set_acp_session_id_if_current(id,
+                                                                  token,
+                                                                  format!("acp-{index}")));
+                      id
+                  })
+                  .collect();
     let store = Arc::new(Mutex::new(store));
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
     let dir = TempDir::new().expect("a temporary settings root");

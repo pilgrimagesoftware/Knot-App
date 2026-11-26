@@ -86,6 +86,10 @@ impl WorkspaceWindow {
         self.panel_sessions.insert(id, Arc::clone(&slot));
         let cwd = agent.folder.clone();
         let prior_session_id = agent.session_to_load().map(str::to_owned);
+        // The session this connection belongs to. A restart or a Deactivate
+        // with New Session replaces it, and the id this connection reports
+        // later is then not written back (`agent-lifecycle`).
+        let restart_token = agent.restart_token;
         // Ids only (#458). Whether it resumes, not what: CodeQL treats a
         // session id as a secret (see the `on_session_id` callback below).
         eprintln!("adapter starting: agent {id} type {} workspace {} window {} resume {}",
@@ -247,7 +251,12 @@ impl WorkspaceWindow {
                             // before it, as `persist_agents` does.
                             let installed = {
                                 let mut store = store.lock();
-                                store.set_acp_session_id(id, session_id.to_string());
+                                if !store.set_acp_session_id_if_current(id,
+                                                                        restart_token,
+                                                                        session_id.to_string())
+                                {
+                                    return;
+                                }
                                 settings.write(|settings| {
                                             settings.saved_agents =
                                         store.saved_agents(settings.restore_conversation_on_launch);

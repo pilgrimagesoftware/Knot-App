@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::consts::{COPILOT_SESSION_STATE_DIR, MAX_SESSIONS};
+use crate::files::{check_session_id, remove_inside};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, first_title, jsonl_entries, maybe_text, resolve_title};
@@ -120,13 +121,18 @@ impl HistoryProvider for CopilotProvider {
         summaries
     }
 
-    fn delete_session(&self, id: &str, _folder: &str) {
-        let Some(base) = base_dir()
-        else {
-            return;
-        };
-        let _ = fs::remove_dir_all(base.join(id));
+    fn delete_session(&self, id: &str, _folder: &str) -> crate::Result<()> {
+        match base_dir() {
+            Some(base) => delete_in(&base, id),
+            None => Ok(()),
+        }
     }
+}
+
+/// Deletes session `id`'s state directory under Copilot's `base`.
+fn delete_in(base: &std::path::Path, id: &str) -> crate::Result<()> {
+    check_session_id(id)?;
+    remove_inside(base, &base.join(id))
 }
 
 #[cfg(test)]
@@ -167,5 +173,42 @@ mod tests {
 
         assert_eq!(title_from_events(&events_path).as_deref(),
                    Some("the real title"));
+    }
+
+    /// A session directory that cannot be removed (its parent is read-only)
+    /// is an error, not a delete reported as done.
+    #[cfg(unix)]
+    #[test]
+    fn a_session_that_cannot_be_removed_is_an_error() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("session-state");
+        fs::create_dir_all(base.join("s1")).unwrap();
+        fs::set_permissions(&base, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = delete_in(&base, "s1");
+
+        fs::set_permissions(&base, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(result.is_err());
+        assert!(base.join("s1").exists());
+    }
+
+    /// An id that is not one plain path component is refused before anything
+    /// is joined onto the directory, and nothing outside it is removed.
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("root");
+        fs::create_dir(&base).unwrap();
+        fs::create_dir(tmp.path().join("victim")).unwrap();
+        fs::write(tmp.path().join("victim.jsonl"), "x").unwrap();
+
+        for id in ["../victim", "sub/../../victim", "a/b", "", "..", "a\\b"] {
+            assert!(matches!(delete_in(&base, id),
+                             Err(crate::HistoryError::InvalidSessionId(_))),
+                    "{id:?}");
+        }
+        assert!(tmp.path().join("victim").exists());
+        assert!(tmp.path().join("victim.jsonl").exists());
     }
 }

@@ -12,13 +12,15 @@ use std::sync::Arc;
 use gpui_kit::Context;
 use gpui_kit::InteractiveElement;
 
-use super::agent_row::{move_agent_to_workspace, run_agent_menu_action, show_agent_markdown_file};
+use super::agent_row::{move_agent_to_workspace, show_agent_markdown_file};
+use super::agent_row_actions::run_agent_menu_action;
 use crate::agent_menu::AgentMenuAgentInfo;
 use crate::agent_menu::AgentMenuAutopilotOff;
 use crate::agent_menu::AgentMenuAutopilotOn;
 use crate::agent_menu::AgentMenuBenchAgent;
 use crate::agent_menu::AgentMenuConfigFiles;
 use crate::agent_menu::AgentMenuDeactivate;
+use crate::agent_menu::AgentMenuDeactivateWithNewSession;
 use crate::agent_menu::AgentMenuDuplicateAgent;
 use crate::agent_menu::AgentMenuEditAgent;
 use crate::agent_menu::AgentMenuForkAgent;
@@ -165,7 +167,9 @@ impl WorkspaceWindow {
         let (facts, move_targets, markdown_history) = agent_menu_facts(&store, id);
         let config_files = crate::agent_config::for_agent(&store, id);
         drop(store);
-        let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
+        let settings = crate::settings_global::read(cx);
+        let facts = facts.with_autopilot(settings.autopilot_enabled)
+                         .with_restored_conversations(settings.restore_conversation_on_launch);
         Some(SelectedAgentMenu { targets:  AgentMenuTargets { store: Arc::clone(&self.store),
                                                               window_entity: cx.entity(),
                                                               workspace_id: self.workspace_id,
@@ -235,6 +239,7 @@ pub(in crate::workspace_window) fn with_agents_menu_actions(el: gpui_kit::Div,
                                     AutopilotOff => AgentMenuAutopilotOff,
                                     AutopilotOn => AgentMenuAutopilotOn,
                                     Deactivate => AgentMenuDeactivate,
+                                    DeactivateWithNewSession => AgentMenuDeactivateWithNewSession,
                                     RestartAgent => AgentMenuRestartAgent,
                                     RestartWithNewConversation => AgentMenuRestartWithNewConversation,
                                     RemoveAgent => AgentMenuRemoveAgent]);
