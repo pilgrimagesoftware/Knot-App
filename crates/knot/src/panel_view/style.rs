@@ -98,18 +98,41 @@ pub(crate) enum RiskLevel {
     Neutral,
 }
 
+/// Permission modes known to run without asking: Claude Code's
+/// `bypassPermissions`, Codex's full access (`agent-full-access`, and its
+/// sandbox's `danger-full-access`), Gemini's `yolo` - by id or display name.
+const DANGER_MODES: &[&str] = &["bypasspermissions",
+                                "bypass permissions",
+                                "agent full access",
+                                "danger full access",
+                                "full access",
+                                "yolo"];
+
+/// Permission modes known to change nothing: Claude Code's `plan` and
+/// Codex's `read-only`.
+const SAFE_MODES: &[&str] = &["plan", "plan mode", "read only", "readonly"];
+
+/// How risky a permission mode is, from its `value` (the id the agent
+/// declares) or else its display `name`.
+///
+/// Matched whole against the modes Knot knows, never by part: a mode named
+/// "Read and write all files" contains "read" and is not read-only. Anything
+/// not on either list is neutral - a colour has to be earned, not guessed.
+/// Case and `-`/`_` separators are ignored, so `Read-Only` and `read_only`
+/// match too.
 pub(crate) fn permission_risk_level(value: &str, name: &str) -> RiskLevel {
-    // Separators are folded to spaces so one keyword covers an id
-    // (`agent-full-access`, Codex's counterpart to `bypassPermissions`)
-    // and its display name ("Full access") alike.
-    let value = format!("{value} {name}").to_ascii_lowercase()
-                                         .replace(['-', '_'], " ");
-    if ["bypass", "yolo", "danger", "full access"].iter()
-                                                  .any(|word| value.contains(word))
-    {
+    match mode_risk(value) {
+        RiskLevel::Neutral => mode_risk(name),
+        known => known,
+    }
+}
+
+fn mode_risk(text: &str) -> RiskLevel {
+    let normalized = text.trim().to_ascii_lowercase().replace(['-', '_'], " ");
+    if DANGER_MODES.contains(&normalized.as_str()) {
         RiskLevel::Danger
     }
-    else if ["plan", "read"].iter().any(|word| value.contains(word)) {
+    else if SAFE_MODES.contains(&normalized.as_str()) {
         RiskLevel::Safe
     }
     else {
