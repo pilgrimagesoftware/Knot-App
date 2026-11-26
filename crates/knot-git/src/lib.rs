@@ -21,6 +21,7 @@ pub mod repository;
 pub mod runner;
 pub mod stats;
 pub mod status;
+pub mod trust;
 pub mod worktree;
 
 pub use diff::{DiffLine, FileDiff, Hunk, LineKind};
@@ -30,4 +31,5 @@ pub use repository::Repository;
 pub use runner::{CallOrigin, Runner};
 pub use stats::{DiffStats, parse_numstat};
 pub use status::{ChangeType, FileEntry, RepoStatus};
+pub use trust::{ProgramSetting, RepositoryPrograms, TrustPolicy, configure_trust};
 pub use worktree::{is_working_tree, suggest_worktree_path};

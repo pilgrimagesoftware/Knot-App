@@ -87,3 +87,23 @@ pub const BRANCH_SHOW_CURRENT: &[&str] = &["branch", "--show-current"];
 pub const SHORT_HEAD: &[&str] = &["rev-parse", "--short", "HEAD"];
 pub const LOG_UNPUSHED: &[&str] = &["log", "@{u}..", "--oneline"];
 pub const AHEAD_BEHIND: &[&str] = &["rev-list", "--left-right", "--count", "@{u}...HEAD"];
+
+/// Where a repository keeps its configuration: the common git folder (its
+/// `config`) and this worktree's git folder (its `config.worktree`).
+pub const REV_PARSE_GIT_DIRS: &[&str] = &["rev-parse",
+                                          "--path-format=absolute",
+                                          "--git-common-dir",
+                                          "--git-dir"];
+
+/// The worktree's top folder, which `config --show-origin` names files
+/// relative to.
+pub const REV_PARSE_TOPLEVEL: &[&str] = &["rev-parse", "--path-format=absolute", "--show-toplevel"];
+
+/// Every configuration entry with its scope and the file it came from,
+/// following includes, NUL-separated.
+pub const CONFIG_LIST_WITH_ORIGIN: &[&str] = &["config",
+                                               "--list",
+                                               "--show-scope",
+                                               "--show-origin",
+                                               "--includes",
+                                               "-z"];
