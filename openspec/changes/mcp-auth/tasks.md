@@ -64,9 +64,11 @@ references (D1–D10) point to design.md.
   credential in the adapter environment.
   - Keep the header-feasibility probe as `scripts/acp-header-probe.py` (no
     credentials, a dummy value only).
-  - Re-run it for Claude, Codex and agy. Run it for Copilot (unverified
-    2026-11-25) before Copilot gets a tool credential; until then Copilot
-    uses the `External` path.
+  - Re-run it for Claude, Codex and agy. Run it for Copilot before Copilot
+    gets a tool credential. Done 2026-11-26: Copilot CLI 1.0.116 sends the
+    header on every request and puts no credential on a command line (probe
+    run by the maintainer locally), so Copilot is wired like the others
+    (`sends_mcp_headers`).
   - Check that agy keeps working when its header-less stream GET gets 401.
   - Update the design.md table with the versions used.
 
