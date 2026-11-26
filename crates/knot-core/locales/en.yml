@@ -1313,3 +1313,15 @@ finder:
   matching: "Matching files…"
   no_matches: "No matching files"
   too_many: "Too many files to list (50,000+ limit)"
+# Trusting a repository whose own git configuration names programs for git
+# to run. `repository` is the repository's folder. The banner lists the
+# configured programs below the sentence.
+repository_trust:
+  banner: "%{repository} has git settings that run programs. Knot won't run git there until you trust this repository."
+  trust: "Trust"
+  not_now: "Not now"
+  settings_group: "Trusted repositories"
+  settings_hint: "Knot runs git in these repositories, including the programs their git settings name. Remove one to be asked again."
+  settings_empty: "No repositories trusted."
+  revoke: "Remove trust"
+  revoke_confirm: "Stop trusting %{repository}? Knot won't run git there until you trust it again."

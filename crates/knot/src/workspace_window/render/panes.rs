@@ -54,9 +54,13 @@ impl WorkspaceWindow {
         // to the layout area. Single mode returns `panes` as is.
         let panes = self.with_layout_dividers(panes, cx);
         let panes = self.with_side_panels(panes, window, cx);
+        // A repository waiting to be trusted is the window's question, not
+        // one agent's, so it sits over every pane.
+        let trust_banner = self.trust_banner(cx);
         v_flex().flex_1()
                 .min_h_0()
                 .w_full()
+                .children(trust_banner)
                 .child(panes)
                 .into_any_element()
     }

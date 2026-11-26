@@ -195,8 +195,14 @@ impl WorkspaceWindow {
         // Idling is checked on its own slower interval (#404). A local, so it
         // runs every tick whatever the chain below decides.
         let idle_changed = self.idle_tick(cx);
+        // A git call refused in an untrusted repository is reported from
+        // whichever thread made it, with no context to notify from; the
+        // banner asking about it reaches a frame through this. A local, so
+        // the mark is updated every tick.
+        let trust_queue_moved = self.trust_queue_moved();
         if panel_states_moved
            || idle_changed
+           || trust_queue_moved
            || fresh_contexts_started
            || session_limits_landed
            || panel_status_landed

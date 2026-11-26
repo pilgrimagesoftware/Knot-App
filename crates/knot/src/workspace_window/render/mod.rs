@@ -42,4 +42,5 @@ mod sidebar_compact;
 mod sidebar_row;
 mod status_dot;
 mod title_bar;
+mod trust_banner;
 mod usage_banner;

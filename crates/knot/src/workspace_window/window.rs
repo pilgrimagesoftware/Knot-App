@@ -69,6 +69,13 @@ pub(crate) struct WorkspaceWindow {
     /// The reset the user dismissed the usage banner for: hidden until the
     /// window resets, then shown again if the next one fills up.
     pub(super) codex_usage_dismissed:            Option<Option<std::time::SystemTime>>,
+    /// The repository trust registry this window asks about and answers
+    /// into: the process's, taken when the window opens. A field rather than
+    /// a global read so a test can give a window its own.
+    pub(super) repository_trust: Option<std::sync::Arc<crate::repository_trust::RepositoryTrust>>,
+    /// The trust queue's generation this window last repainted for
+    /// (`crate::repository_trust`).
+    pub(super) trust_generation_drawn:           u64,
     /// How Codex's usage is read: `codex_usage::read_current` - this
     /// machine's own `~/.codex` - everywhere but a test, which swaps in a
     /// stub rather than read the developer's files.
