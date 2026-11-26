@@ -18,9 +18,24 @@ impl McpToolCatalog {
     /// refused if it changed: what runs is exactly what the user saw - a
     /// bench template edited while the dialog was open does not slip a
     /// different command through.
+    ///
+    /// Before asking, a call that would fail anyway is refused, and so is a
+    /// second call from an agent that already has one waiting: one dialog per
+    /// agent at a time, so an agent cannot bury the user in them (review of
+    /// #522).
     pub(crate) async fn unconfirmed(&self, tool: &str, arguments: &serde_json::Value)
                                     -> Option<ToolCallResult> {
         let request = self.confirmation_request(tool, arguments)?;
+        if let Some(invalid) = super::validate::invalid(tool, arguments) {
+            return Some(invalid);
+        }
+        let Some(_waiting) = Waiting::claim(&self.awaiting_confirmation, request.requester)
+        else {
+            return Some(ToolCallResult::error(
+                "Refused: another call from this agent is already waiting for the user's \
+                 confirmation. Wait for that answer before asking again.",
+            ));
+        };
         // Copied out first: a guard alive across the await would hold the
         // lock until the user answers.
         let queue = self.confirmations.lock().clone();
@@ -69,5 +84,31 @@ impl McpToolCatalog {
                        .agent(id)
                        .map_or_else(|| id.to_string(), |agent| agent.name.clone());
         (id, name)
+    }
+}
+
+/// An agent's place in line for a confirmation, released when the call
+/// stops waiting however it stops - answered, timed out, or the tool call
+/// itself dropped.
+struct Waiting<'a> {
+    waiting:   &'a parking_lot::Mutex<std::collections::HashSet<Uuid>>,
+    requester: Uuid,
+}
+
+impl<'a> Waiting<'a> {
+    /// The place for `requester`, or `None` when it already has one.
+    fn claim(waiting: &'a parking_lot::Mutex<std::collections::HashSet<Uuid>>, requester: Uuid)
+             -> Option<Self> {
+        // The insert's guard is released before a `Waiting` exists: one
+        // built for a refused claim would be dropped at once, and its `Drop`
+        // would take this lock again and free the holder's place.
+        let claimed = waiting.lock().insert(requester);
+        claimed.then(|| Self { waiting, requester })
+    }
+}
+
+impl Drop for Waiting<'_> {
+    fn drop(&mut self) {
+        self.waiting.lock().remove(&self.requester);
     }
 }

@@ -236,3 +236,62 @@ fn a_path_climbing_out_of_the_parent_is_distant() {
     assert!(rule::is_distant(&repo, &dir.path().join("../escape")));
     assert!(rule::is_distant(&repo, Path::new("/")));
 }
+
+/// Review of #522: a call that would fail anyway is refused before the
+/// user is asked.
+#[tokio::test]
+async fn an_invalid_call_is_refused_without_a_dialog() {
+    let fixture = fixture(Duration::from_secs(30));
+    let elsewhere = tempfile::tempdir().expect("another directory");
+    let not_a_repo = elsewhere.path().join("plain");
+    std::fs::create_dir(&not_a_repo).unwrap();
+
+    for arguments in [json!({ "agentId": fixture.caller.to_string(), "repoPath": not_a_repo,
+                              "branchName": "feature", "path": elsewhere.path().join("wt") }),
+                      json!({ "agentId": fixture.caller.to_string(), "repoPath": fixture.repo(),
+                              "branchName": "", "path": elsewhere.path().join("wt") })]
+    {
+        let (result, shown) = fixture.call("create-worktree", arguments.clone(), Some(true))
+                                     .await;
+        assert_eq!(result.is_error, Some(true), "{arguments}");
+        assert!(shown.is_none(),
+                "asked about a call that cannot succeed: {arguments}");
+    }
+}
+
+/// Review of #522: one dialog per agent at a time. A second call while the
+/// first waits is refused; once the first is answered, the agent may ask
+/// again.
+#[tokio::test]
+async fn an_agent_has_at_most_one_call_waiting() {
+    let fixture = fixture(Duration::from_secs(30));
+    let catalog = Arc::clone(&fixture.catalog);
+    let first_arguments = fixture.shell_agent(Some("make test"));
+    let first = tokio::spawn(async move { catalog.call("create-agent", first_arguments).await });
+    // Wait for the first to be queued.
+    let pending = loop {
+        if let Some(pending) = fixture.queue.lock().pop() {
+            break pending;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    };
+
+    let second = fixture.catalog
+                        .call("create-agent", fixture.shell_agent(Some("make lint")))
+                        .await;
+    assert_eq!(second.is_error, Some(true));
+    assert!(second.content[0].text.contains("already waiting"),
+            "{:?}",
+            second.content);
+    assert!(fixture.queue.lock().is_empty(),
+            "no second dialog was queued");
+
+    pending.answer(false);
+    assert_eq!(first.await.unwrap().is_error, Some(true));
+    let (result, shown) = fixture.call("create-agent",
+                                       fixture.shell_agent(Some("make lint")),
+                                       Some(true))
+                                 .await;
+    assert!(shown.is_some(), "asking again after an answer is allowed");
+    assert_eq!(result.is_error, None, "{:?}", result.content);
+}

@@ -15,6 +15,7 @@
 mod gate;
 mod queue;
 mod rule;
+mod validate;
 
 pub use queue::{ConfirmationQueue, PendingConfirmation, await_confirmation};
 pub use rule::ConfirmationRequest;
