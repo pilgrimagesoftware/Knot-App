@@ -70,6 +70,11 @@ impl WorkspaceWindow {
         };
         // Codex nearing its usage limit (#291).
         let pane = self.with_usage_banner(pane, cx);
+        // Its MCP requests are being refused (`mcp-auth` D10).
+        let pane = match self.selected_agent {
+            Some(id) => self.with_mcp_banner(id, pane, cx),
+            None => pane,
+        };
         // Typing, clicking or scrolling in the pane restarts the agent's idle
         // period (#404).
         match self.selected_agent {
@@ -105,6 +110,8 @@ impl WorkspaceWindow {
                             .relative();
         for (index, (id, rect)) in ui.active_agent_ids.iter().copied().zip(rects).enumerate() {
             let content = self.render_agent_pane(id, window, cx);
+            // Per pane: it speaks for that pane's own agent.
+            let content = self.with_mcp_banner(id, content, cx);
             // The banner speaks for the selected agent, so one pane carries
             // it, not every pane.
             let content = if self.selected_agent == Some(id) {

@@ -98,3 +98,24 @@ fn a_flush_waits_for_the_marker_and_gives_up_after_its_timeout() {
         assert!(drained.wait_past(0, std::time::Duration::from_secs(5)));
     });
 }
+
+/// Security review of #521: an adapter's stderr line that carries an MCP
+/// credential reaches the log file without it.
+#[test]
+fn a_credential_in_a_logged_line_is_replaced() {
+    for kind in [knot_mcp::CredentialKind::AgentTool,
+                 knot_mcp::CredentialKind::AgentHooks,
+                 knot_mcp::CredentialKind::Client]
+    {
+        let secret = knot_mcp::Secret::generate(kind);
+        let line = format!("[claude-agent-acp 42] invalid mcp config: {{\"headers\":[{{\"value\":\"Bearer {}\"}}]}}",
+                           secret.expose());
+        let out = String::from_utf8(super::stamped(time::OffsetDateTime::UNIX_EPOCH,
+                                                   line.as_bytes())).unwrap();
+        assert!(!out.contains(secret.expose()), "{out}");
+        assert!(out.contains("<knot-credential>"), "{out}");
+    }
+    let plain = super::redact_credentials(b"knot-acp: [claude 1] -> session/new (id 2)");
+    assert!(matches!(plain, std::borrow::Cow::Borrowed(_)),
+            "an ordinary line is not copied");
+}

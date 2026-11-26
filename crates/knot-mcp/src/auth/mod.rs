@@ -16,7 +16,7 @@ mod registry;
 
 pub use credential::{CredentialKind, Secret};
 pub use principal::{Principal, Route};
-pub use refusals::{RefusalLog, RefusalSource};
+pub use refusals::{RefusalKind, RefusalLog, RefusalSource};
 pub use registry::{AgentCredentials, CredentialRegistry};
 
 #[cfg(test)]

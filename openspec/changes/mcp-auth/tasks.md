@@ -87,19 +87,19 @@ references (D1–D10) point to design.md.
 
 ## 5. Confirmation (`knot-mcp-tools`, `knot`)
 
-- [ ] 5.1 `create-agent` with a shell `shellCommand`, and worktree creation
+- [x] 5.1 `create-agent` with a shell `shellCommand`, and worktree creation
   with a canonical destination outside the repository's parent, wait on a
   confirmation request to the UI (D9), with a timeout constant in
   `consts.rs`. A denial or timeout is a tool error with nothing created.
   Verify: tool tests for confirm, deny and timeout, and for a plain shell and
   a sibling worktree going through with no prompt.
-- [ ] 5.2 Confirmation dialog naming the requesting agent, the command and
+- [x] 5.2 Confirmation dialog naming the requesting agent, the command and
   the folder. Verify: a gpui test that confirm and deny resolve the request.
   Assert l10n keys.
 
 ## 6. Settings, panel and docs (`knot`, `docs/site`)
 
-- [ ] 6.1 MCP tab:
+- [x] 6.1 MCP tab:
   - masked token with copy, and regenerate with a confirmation;
   - install commands with the header per client, each CLI's syntax checked
     against its current version;
@@ -108,9 +108,9 @@ references (D1–D10) point to design.md.
 
   Verify: gpui tests for mask and copy, regenerate (the old token refused),
   and the command text per type. Assert l10n keys.
-- [ ] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
+- [x] 6.2 Agent panel notice "Knot tools unavailable" when that agent's MCP
   connection was refused (D10). Verify: a panel test.
-- [ ] 6.3 Docs: the MCP setup page (token, client configuration storage,
+- [x] 6.3 Docs: the MCP setup page (token, client configuration storage,
   re-running the install command after upgrading) and `coordination.md`.
   Add a release-notes line through the changelog flow.
 

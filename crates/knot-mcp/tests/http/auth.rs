@@ -333,3 +333,36 @@ async fn made_up_hints_do_not_grow_the_refusal_table() {
             fixture.refusals.snapshot());
     fixture.server.stop();
 }
+
+/// D10: an agent's tools read as unavailable when its requests are refused
+/// after it was given a credential - not for agy's header-less SSE stream,
+/// and no longer once a request authenticates.
+#[tokio::test]
+async fn a_refused_request_marks_the_agents_tools_unavailable_until_one_succeeds() {
+    let mut fixture = fixture().await;
+    let agent = Uuid::new_v4();
+    let pair = fixture.credentials.issue_agent_pair(agent);
+    let url = format!("{}/mcp?agent={agent}", fixture.base);
+    let client = reqwest::Client::new();
+
+    client.get(&url).send().await.unwrap();
+    assert!(!fixture.refusals.tools_unavailable(agent),
+            "a refused stream alone");
+
+    client.post(&url)
+          .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+          .send()
+          .await
+          .unwrap();
+    assert!(fixture.refusals.tools_unavailable(agent));
+
+    let served = client.post(&url)
+                       .bearer_auth(pair.tool.expose())
+                       .json(&json!({ "jsonrpc": "2.0", "id": 2, "method": "initialize" }))
+                       .send()
+                       .await
+                       .unwrap();
+    assert!(served.status().is_success());
+    assert!(!fixture.refusals.tools_unavailable(agent));
+    fixture.server.stop();
+}

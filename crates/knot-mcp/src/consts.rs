@@ -124,6 +124,14 @@ pub const TRANSCRIPT_TAIL_BYTES: u64 = 8 * 1024 * 1024;
 /// `transcript_path` is read only inside it.
 pub const CLAUDE_TRANSCRIPTS_DIR: &str = "projects";
 
+/// How far back the refusal counts reach: the MCP tab reports refusals "in
+/// the last hour" (`settings-ui`).
+pub const REFUSAL_WINDOW: std::time::Duration = std::time::Duration::from_secs(60 * 60);
+
+/// The most refusal times kept per source. A source refused faster than this
+/// per hour is counted as at least this many, and costs no more memory.
+pub const REFUSAL_EVENTS_MAX: usize = 10_000;
+
 /// How many agents the refusal table counts by name. Only agents holding a
 /// pair are named, so this is a backstop; past it, refusals are counted
 /// under one overflow entry.
