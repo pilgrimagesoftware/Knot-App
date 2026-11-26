@@ -190,8 +190,10 @@ Restore conversation on launch enabled (with it disabled, Restart and the next s
 a new conversation), and not for a shell or a companion, which have no conversation to start over.
 The ⇧ marker looks the same on macOS, Windows and Linux.
 
-In the menu bar's Agents menu, each alternate is listed as its own item directly below its
-primary.
+In the menu bar's Agents menu on macOS, the alternates work the same way: hold Shift with the menu
+open and Restart Agent (⌘R) reads Restart with New Conversation (⇧⌘R), and Deactivate reads
+Deactivate with New Session. On Windows and Linux the menu bar shows only the primary items; the
+alternates are in the context menus.
 
 ## Activity status
 

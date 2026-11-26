@@ -62,14 +62,14 @@ Sections 1-5 ship in #506. Section 6 ships in a stacked draft PR.
 
 ## 6. Native menu-bar alternates (stacked PR)
 
-- [ ] 6.1 Create `pilgrimagesoftware/gpui-pre`: import the published
+- [x] 6.1 Create `pilgrimagesoftware/gpui-pre`: import the published
   `gpui-pre` and `gpui-pre-macos` 0.3.7 sources, then branch
   `knot/menu-alternates-0.3.7`.
-- [ ] 6.2 Patch: an alternate marker on `MenuItem::Action` with a builder;
+- [x] 6.2 Patch: an alternate marker on `MenuItem::Action` with a builder;
   `setAlternate:` and `setKeyEquivalentModifierMask:` in gpui-pre-macos.
-- [ ] 6.3 `[patch.crates-io]` beside `gpui-base`, with a comment; ADR
+- [x] 6.3 `[patch.crates-io]` beside `gpui-base`, with a comment; ADR
   `docs/adr/0009-gpui-pre-menu-alternates.md` (commits, exit plan, drafted
   upstream PR text).
-- [ ] 6.4 The Agents menu emits each alternate as a native alternate of its
+- [x] 6.4 The Agents menu emits each alternate as a native alternate of its
   primary on macOS and the primary only elsewhere; tests for both shapes.
 - [ ] 6.5 Docs, gate, CI green on all jobs.

@@ -113,7 +113,8 @@ fn workspace_item(workspace: &NumberedWorkspace, current: Option<Uuid>) -> MenuI
                        action,
                        os_action: None,
                        checked: current == Some(workspace.id),
-                       disabled: false }
+                       disabled: false,
+                       alternate: None }
 }
 
 const SELECT_WORKSPACE_ACTIONS: [fn() -> Box<dyn Action>; NUMBERED_SHORTCUTS] =
