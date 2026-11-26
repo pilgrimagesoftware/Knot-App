@@ -1,6 +1,6 @@
 //! The confirmation dialog resolves the request it shows (`mcp-auth` task
-//! 5.2): Allow answers yes, Deny or dismissing answers no, and the window
-//! leaves another workspace's requests queued.
+//! 5.2): only a click on Allow answers yes; Enter, Escape and dismissing
+//! answer no; and the window leaves another workspace's requests queued.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -41,8 +41,10 @@ fn shown(fixture: &mut Fixture) -> bool {
            .update(|window, cx| window.has_active_dialog(cx))
 }
 
+/// Review of #522: the dialog can appear while the user is typing, so a
+/// stray Enter must deny, never allow.
 #[gpui_kit::test]
-fn allowing_answers_yes(cx: &mut TestAppContext) {
+fn enter_denies(cx: &mut TestAppContext) {
     let (mut fixture, queue, mut answered) = queued(cx);
     assert!(shown(&mut fixture), "the dialog opens");
     assert!(queue.lock().is_empty(),
@@ -51,7 +53,24 @@ fn allowing_answers_yes(cx: &mut TestAppContext) {
     fixture.window.simulate_keystrokes("enter");
     fixture.window.run_until_parked();
 
+    assert_eq!(answered.try_recv(), Ok(false));
+}
+
+#[gpui_kit::test]
+fn only_a_click_on_allow_answers_yes(cx: &mut TestAppContext) {
+    let (mut fixture, _queue, mut answered) = queued(cx);
+    assert!(shown(&mut fixture));
+    let allow = fixture.window
+                       .debug_bounds("mcp-confirm-allow")
+                       .expect("the Allow button is drawn");
+
+    fixture.window
+           .simulate_click(allow.center(), gpui_kit::Modifiers::none());
+    fixture.window.run_until_parked();
+
     assert_eq!(answered.try_recv(), Ok(true));
+    assert!(!fixture.window
+                    .update(|window, cx| window.has_active_dialog(cx)));
 }
 
 #[gpui_kit::test]

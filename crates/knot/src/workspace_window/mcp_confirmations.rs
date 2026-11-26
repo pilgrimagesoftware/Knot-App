@@ -12,8 +12,10 @@ use std::sync::Arc;
 
 use gpui_kit::Context;
 use gpui_kit::component::WindowExt;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariant;
-use gpui_kit::component::dialog::DialogButtonProps;
+use gpui_kit::component::button::ButtonVariants as _;
+use gpui_kit::{InteractiveElement as _, ParentElement as _, Styled as _, div};
 use knot_mcp_tools::{ConfirmationRequest, PendingConfirmation};
 use parking_lot::Mutex;
 
@@ -58,8 +60,8 @@ impl WorkspaceWindow {
 
 /// The dialog's text for `request`.
 ///
-/// Every value from the call is shown through [`visible`], so a command or
-/// path cannot hide part of itself from the person approving it.
+/// Every value from the call is shown through [`visible::visible`], so a
+/// command or path cannot hide part of itself from the person approving it.
 pub(in crate::workspace_window) fn body(request: &ConfirmationRequest) -> String {
     let folder = visible(&request.folder.display().to_string());
     let agent = visible(&request.requester_name);
@@ -81,58 +83,56 @@ pub(in crate::workspace_window) fn body(request: &ConfirmationRequest) -> String
     }
 }
 
-/// `text` with every character that could hide or rearrange what is shown
-/// written out as `\u{..}`: C0 controls and DEL (a carriage return or a run
-/// of backspaces can overwrite the visible command), C1 controls, and the
-/// Unicode format characters that reorder or hide text - bidirectional
-/// overrides and isolates, zero-width characters, and the byte-order mark
-/// (security review of #516).
-pub(in crate::workspace_window) fn visible(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for character in text.chars() {
-        if hides_text(character) {
-            out.push_str(&format!("\\u{{{:x}}}", u32::from(character)));
-        }
-        else {
-            out.push(character);
-        }
-    }
-    out
-}
-
-fn hides_text(character: char) -> bool {
-    character.is_control()
-    || matches!(character,
-                '\u{200b}'..='\u{200f}'
-                | '\u{2028}'..='\u{202e}'
-                | '\u{2060}'..='\u{2069}'
-                | '\u{feff}')
-}
-
 /// Shows `pending`'s dialog in `window`. The answer is taken once: the
 /// dialog's builder runs on every frame, so the request sits behind a shared
-/// slot that the first of Allow or Deny empties.
+/// slot that the first answer empties.
+///
+/// Only a click on **Allow** allows. The dialog's own Enter (its Confirm
+/// action) and Escape (its Cancel action) both deny, and so does closing it
+/// any other way: an agent can raise this dialog while the user is typing,
+/// and a keystroke meant for something else must not approve a command
+/// (review of #522).
 fn open(pending: PendingConfirmation, window: &mut gpui_kit::Window, cx: &mut gpui_kit::App) {
     let text = body(&pending.request);
     let slot = Arc::new(Mutex::new(Some(pending)));
     window.open_alert_dialog(cx, move |alert, _, _| {
-              let (allow, deny) = (Arc::clone(&slot), Arc::clone(&slot));
+              let (on_enter, on_escape) = (Arc::clone(&slot), Arc::clone(&slot));
               alert.title(knot_core::l10n::t("mcp_confirm.title"))
                    .description(text.clone())
-                   .button_props(DialogButtonProps::default()
-                       .ok_text(knot_core::l10n::t("mcp_confirm.allow"))
-                       .ok_variant(ButtonVariant::Danger)
-                       .cancel_text(knot_core::l10n::t("mcp_confirm.deny"))
-                       .show_cancel(true))
+                   .footer(footer(Arc::clone(&slot)))
                    .on_ok(move |_, _, _| {
-                       answer(&allow, true);
+                       answer(&on_enter, false);
                        true
                    })
                    .on_cancel(move |_, _, _| {
-                       answer(&deny, false);
+                       answer(&on_escape, false);
                        true
                    })
           });
+}
+
+/// Deny and Allow, Deny first and the default; Allow answers only to a
+/// click.
+fn footer(slot: Arc<Mutex<Option<PendingConfirmation>>>) -> impl gpui_kit::IntoElement {
+    let deny = Arc::clone(&slot);
+    gpui_kit::base::h_flex().w_full()
+                            .justify_end()
+                            .gap_2()
+                            .child(Button::new("mcp-confirm-deny")
+                                       .label(knot_core::l10n::t("mcp_confirm.deny"))
+                                       .with_variant(ButtonVariant::Primary)
+                                       .on_click(move |_, window, cx| {
+                                           answer(&deny, false);
+                                           window.close_dialog(cx);
+                                       }))
+                            .child(div().debug_selector(|| "mcp-confirm-allow".into())
+                                        .child(Button::new("mcp-confirm-allow")
+                                                   .label(knot_core::l10n::t("mcp_confirm.allow"))
+                                                   .with_variant(ButtonVariant::Danger)
+                                                   .on_click(move |_, window, cx| {
+                                                       answer(&slot, true);
+                                                       window.close_dialog(cx);
+                                                   })))
 }
 
 /// Answers the request in `slot`, if it is still unanswered.
@@ -141,6 +141,10 @@ fn answer(slot: &Mutex<Option<PendingConfirmation>>, confirmed: bool) {
         pending.answer(confirmed);
     }
 }
+
+mod visible;
+
+use visible::visible;
 
 #[cfg(test)]
 mod tests;
