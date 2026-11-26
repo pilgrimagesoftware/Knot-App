@@ -23,8 +23,6 @@ pub(crate) struct LoadedClientToken {
     /// Why this token is not the stored one, or will not outlast this
     /// launch: the store could not be read, or the token could not be
     /// saved. For the MCP tab to show; `None` when all is well.
-    // UNWIRED(mcp-auth task 6.1): the MCP tab shows it; tests read it now.
-    #[allow(dead_code)]
     pub(crate) problem: Option<String>,
 }
 
@@ -57,8 +55,6 @@ pub(crate) fn load_or_create(store: &dyn ClientTokenStore, registry: &Credential
 
 /// A new client token, saved and made the registry's, which revokes the
 /// previous one in the same step.
-// UNWIRED(mcp-auth task 6.1): called from the MCP tab's regenerate button.
-#[allow(dead_code)]
 pub(crate) fn regenerate(store: &dyn ClientTokenStore, registry: &CredentialRegistry)
                          -> LoadedClientToken {
     let loaded = fresh(store);
@@ -110,8 +106,16 @@ impl ClientTokenStore for FileTokenStore {
                             .ok_or_else(|| "the token file has no directory".to_owned())?;
         std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
         let staging = self.path.with_extension("tmp");
+        // Removed first and then created anew: `mode` applies only when a
+        // file is created, so a staging file left by an interrupted save
+        // would otherwise keep whatever permissions it had.
+        match std::fs::remove_file(&staging) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
+        }
         let mut options = std::fs::OpenOptions::new();
-        options.write(true).create(true).truncate(true);
+        options.write(true).create_new(true);
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;

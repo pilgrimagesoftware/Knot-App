@@ -169,3 +169,22 @@ fn an_unreadable_token_file_is_an_error_not_an_absence() {
     let store = FileTokenStore { path: dir.path().to_path_buf(), };
     assert!(store.load().is_err());
 }
+
+/// Review of #521: a staging file left by an interrupted save, with wider
+/// permissions, does not pass them on to the saved token.
+#[cfg(unix)]
+#[test]
+fn a_leftover_staging_file_does_not_widen_the_tokens_permissions() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let store = FileTokenStore { path: dir.path().join("mcp-client-token"), };
+    let staging = store.path.with_extension("tmp");
+    std::fs::write(&staging, "stale").unwrap();
+    std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+    load_or_create(&store, &CredentialRegistry::new());
+
+    let mode = std::fs::metadata(&store.path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+    assert!(!staging.exists());
+}

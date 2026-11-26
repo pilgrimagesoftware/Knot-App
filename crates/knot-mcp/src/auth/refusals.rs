@@ -7,8 +7,9 @@
 //! say so. A refusal with no hint is counted against its `User-Agent`,
 //! trimmed, and never against anything it presented.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
+use std::time::Instant;
 
 use parking_lot::Mutex;
 use uuid::Uuid;
@@ -55,11 +56,48 @@ fn looks_like_a_credential(value: &str) -> bool {
                                  .any(|prefix| value.contains(prefix))
 }
 
-/// The refusal counts since Knot started. Cheap to clone; clones share one
-/// table, read by the MCP tab and the agent panel.
+/// What one refusal counts towards.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefusalKind {
+    /// A request a working client needs answered: a refusal here means the
+    /// client is losing Knot's tools.
+    Request,
+    /// `GET /mcp`, the optional SSE stream. agy opens it without the
+    /// header it sends on every POST, so a refused stream alone says nothing
+    /// about whether the agent's tools work.
+    Stream,
+}
+
+/// Refusals over the last [`consts::REFUSAL_WINDOW`], by source, and for
+/// each launched agent, the refused requests since its last authenticated
+/// one (D10). Cheap to clone; clones share one table, read by the MCP tab
+/// and the agent panel.
 #[derive(Clone, Default)]
 pub struct RefusalLog {
-    counts: Arc<Mutex<BTreeMap<RefusalSource, u64>>>,
+    table: Arc<Mutex<Table>>,
+}
+
+#[derive(Default)]
+struct Table {
+    /// When each refusal happened, oldest first, per source; pruned to the
+    /// window and capped at [`consts::REFUSAL_EVENTS_MAX`] per source.
+    events:   BTreeMap<RefusalSource, VecDeque<Instant>>,
+    /// Refused [`RefusalKind::Request`]s per agent since that agent last
+    /// authenticated.
+    since_ok: BTreeMap<Uuid, u64>,
+}
+
+impl Table {
+    fn prune(&mut self, now: Instant) {
+        for events in self.events.values_mut() {
+            while events.front()
+                        .is_some_and(|at| now.duration_since(*at) > consts::REFUSAL_WINDOW)
+            {
+                events.pop_front();
+            }
+        }
+        self.events.retain(|_, events| !events.is_empty());
+    }
 }
 
 impl RefusalLog {
@@ -67,54 +105,110 @@ impl RefusalLog {
         Self::default()
     }
 
-    /// Counts one refusal against `source`.
-    pub fn record(&self, source: RefusalSource) {
-        let mut counts = self.counts.lock();
-        let user_agents = counts.keys()
-                                .filter(|key| matches!(key, RefusalSource::UserAgent(_)))
-                                .count();
+    /// Counts one refusal of `kind` against `source`, now.
+    pub fn record(&self, source: RefusalSource, kind: RefusalKind) {
+        self.record_at(source, kind, Instant::now());
+    }
+
+    fn record_at(&self, source: RefusalSource, kind: RefusalKind, now: Instant) {
+        let mut table = self.table.lock();
+        table.prune(now);
+        let user_agents = table.events
+                               .keys()
+                               .filter(|key| matches!(key, RefusalSource::UserAgent(_)))
+                               .count();
         // Agents are counted only while they hold a pair (the caller filters
         // the hint), which bounds them by the agents running; the cap is the
         // backstop if that ever stops holding.
-        let agents = counts.keys()
-                           .filter(|key| matches!(key, RefusalSource::Agent(_)))
-                           .count();
+        let agents = table.events
+                          .keys()
+                          .filter(|key| matches!(key, RefusalSource::Agent(_)))
+                          .count();
         let source = match source {
             RefusalSource::UserAgent(_)
-                if !counts.contains_key(&source) && user_agents >= consts::REFUSAL_SOURCES_MAX =>
+                if !table.events.contains_key(&source)
+                   && user_agents >= consts::REFUSAL_SOURCES_MAX =>
             {
                 RefusalSource::Other
             }
             RefusalSource::Agent(_)
-                if !counts.contains_key(&source) && agents >= consts::REFUSAL_AGENTS_MAX =>
+                if !table.events.contains_key(&source) && agents >= consts::REFUSAL_AGENTS_MAX =>
             {
                 RefusalSource::Other
             }
             source => source,
         };
-        *counts.entry(source).or_default() += 1;
+        if let (RefusalSource::Agent(agent), RefusalKind::Request) = (&source, kind) {
+            *table.since_ok.entry(*agent).or_default() += 1;
+        }
+        let events = table.events.entry(source).or_default();
+        if events.len() >= consts::REFUSAL_EVENTS_MAX {
+            events.pop_front();
+        }
+        events.push_back(now);
     }
 
-    /// How many requests naming `agent` were refused.
+    /// `agent` just authenticated: its earlier refusals no longer say its
+    /// tools are unavailable.
+    pub fn authenticated(&self, agent: Uuid) {
+        self.table.lock().since_ok.remove(&agent);
+    }
+
+    /// Forgets `agent`'s run of refusals: its credentials were revoked, so a
+    /// refusal from its old adapter says nothing about the next one.
+    pub fn forget(&self, agent: Uuid) {
+        self.table.lock().since_ok.remove(&agent);
+    }
+
+    /// Whether `agent`'s requests have been refused since it last
+    /// authenticated - its adapter is not presenting the credential Knot
+    /// gave it, and its panel says so (D10).
+    pub fn tools_unavailable(&self, agent: Uuid) -> bool {
+        self.table
+            .lock()
+            .since_ok
+            .get(&agent)
+            .is_some_and(|count| *count > 0)
+    }
+
+    /// How many requests naming `agent` were refused in the last hour.
     pub fn refused_for(&self, agent: Uuid) -> u64 {
-        self.counts
-            .lock()
-            .get(&RefusalSource::Agent(agent))
-            .copied()
-            .unwrap_or_default()
+        self.snapshot()
+            .into_iter()
+            .find(|(source, _)| *source == RefusalSource::Agent(agent))
+            .map_or(0, |(_, count)| count)
     }
 
-    /// Every source and its count, in a stable order.
+    /// Every source refused in the last hour and how often, in a stable
+    /// order.
     pub fn snapshot(&self) -> Vec<(RefusalSource, u64)> {
-        self.counts
-            .lock()
-            .iter()
-            .map(|(source, count)| (source.clone(), *count))
-            .collect()
+        self.snapshot_at(Instant::now())
     }
 
-    /// Every refusal, whoever it was counted against.
+    fn snapshot_at(&self, now: Instant) -> Vec<(RefusalSource, u64)> {
+        let mut table = self.table.lock();
+        table.prune(now);
+        table.events
+             .iter()
+             .map(|(source, events)| (source.clone(), events.len() as u64))
+             .collect()
+    }
+
+    /// Every refusal in the last hour, whoever it was counted against.
     pub fn total(&self) -> u64 {
-        self.counts.lock().values().sum()
+        self.snapshot().iter().map(|(_, count)| count).sum()
+    }
+}
+
+#[cfg(test)]
+impl RefusalLog {
+    /// [`Self::record`] at `at`, for the window tests.
+    pub(super) fn record_for_test(&self, source: RefusalSource, kind: RefusalKind, at: Instant) {
+        self.record_at(source, kind, at);
+    }
+
+    /// [`Self::snapshot`] at `at`.
+    pub(super) fn snapshot_for_test(&self, at: Instant) -> Vec<(RefusalSource, u64)> {
+        self.snapshot_at(at)
     }
 }

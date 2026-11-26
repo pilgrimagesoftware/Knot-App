@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use super::AppState;
 use super::routes::agent_from_query;
-use crate::auth::{Principal, RefusalSource, Route};
+use crate::auth::{Principal, RefusalKind, RefusalSource, Route};
 use crate::consts;
 use crate::log::Subject;
 use crate::rpc::{JsonRpcId, JsonRpcResponse};
@@ -109,6 +109,11 @@ pub(super) async fn authenticate(State(state): State<AppState>, mut request: Req
         return refusal(status, message);
     }
     if let Some(principal) = principal {
+        // Served: whatever was refused for this agent before, its tools work
+        // now (D10).
+        if let Principal::Agent(agent) = principal {
+            state.refusals.authenticated(agent);
+        }
         request.extensions_mut().insert(principal);
     }
     next.run(request).await
@@ -128,7 +133,14 @@ fn record_refusal(state: &AppState, request: &Request, principal: Option<Princip
     // comes from an unauthenticated URL, and anything else would let a
     // caller grow the table with made-up ids.
     let hint = hint.filter(|agent| state.credentials.has_agent_pair(*agent));
-    state.refusals.record(RefusalSource::of(hint, user_agent));
+    let kind = if request.method() == Method::GET && request.uri().path() == "/mcp" {
+        RefusalKind::Stream
+    }
+    else {
+        RefusalKind::Request
+    };
+    state.refusals
+         .record(RefusalSource::of(hint, user_agent), kind);
     let who = principal.map_or_else(|| "none".to_owned(), |principal| principal.to_string());
     let line = format!("[{who}] {} {} refused {}",
                        request.method(),

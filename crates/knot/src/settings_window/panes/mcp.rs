@@ -61,22 +61,6 @@ impl SettingsWindow {
         knot_agent_launch::mcp_url_for_port(port)
     }
 
-    /// The command to copy for registering `agent_type` against Knot's MCP
-    /// server, ported from the Swift reference's
-    /// `MCPCommandView.mcpCommandCopy` (Skwad -> Knot renamed).
-    pub(crate) fn mcp_install_command(agent_type: &str, url: &str) -> String {
-        match agent_type {
-            "claude" => format!("claude mcp add --transport http --scope user knot {url}"),
-            "codex" => format!("codex mcp add knot --url {url}"),
-            "opencode" => "opencode mcp add".to_string(),
-            "gemini" => format!("gemini mcp add --transport http knot {url} --scope user"),
-            // `agy mcp add <name> <url>`; http is detected from the URL
-            // (checked against agy 1.5.8).
-            "antigravity" => format!("agy mcp add knot {url}"),
-            _ => String::new(),
-        }
-    }
-
     pub(crate) fn save_mcp_port(&mut self, cx: &mut Context<Self>) {
         let value = self.mcp_port_input.read(cx).value().to_string();
         if let Ok(port) = value.parse::<u16>() {
@@ -95,7 +79,18 @@ impl SettingsWindow {
         let mcp_server_enabled = crate::settings_global::read(cx).mcp_server_enabled;
         let server_url = Self::mcp_server_url(crate::settings_global::read(cx).mcp_server_port);
         let agent_type_label = Self::agent_type_label(&self.mcp_selected_agent_type);
+        // The same text shown and copied: it names the token's variable, not
+        // the token.
         let install_command = Self::mcp_install_command(&self.mcp_selected_agent_type, &server_url);
+        let shown_command = install_command.clone();
+        let variable = [("variable", super::mcp_access::CLIENT_TOKEN_ENV)];
+        let token_note = match self.mcp_selected_agent_type.as_str() {
+            "codex" => Some(knot_core::l10n::t_with("settings.mcp.codex_token_env", &variable)),
+            "copilot" => Some(knot_core::l10n::t_with("settings.mcp.copilot_manual", &variable)),
+            "opencode" => Some(knot_core::l10n::t_with("settings.mcp.opencode_manual", &variable)),
+            _ if !install_command.is_empty() => Some(super::mcp_access::token_env_hint()),
+            _ => None,
+        };
 
         v_flex()
             .gap_3()
@@ -167,6 +162,7 @@ impl SettingsWindow {
                             .child(Self::mcp_state_text(&self.last_mcp_state)),
                     )),
             )
+            .child(self.render_mcp_access(cx))
             .child(
                 crate::controls::group(knot_core::l10n::t("settings.mcp.install_command"))
                     .child(Self::row(
@@ -195,7 +191,7 @@ impl SettingsWindow {
                             .min_w_0()
                             .gap_2()
                             .items_start()
-                            .child(if install_command.is_empty() {
+                            .child(if shown_command.is_empty() {
                                 div()
                                     .flex_1()
                                     .min_w_0()
@@ -203,7 +199,7 @@ impl SettingsWindow {
                                     .child(knot_core::l10n::t("settings.mcp.no_setup"))
                                     .into_any_element()
                             } else {
-                                Self::mono_text(cx, install_command.clone())
+                                Self::mono_text(cx, shown_command.clone())
                                     .flex_1()
                                     .min_w_0()
                                     .whitespace_normal()
@@ -224,7 +220,9 @@ impl SettingsWindow {
                                     }
                                 }),
                             ),
-                    )),
+                    ))
+                    .children(token_note.map(|note| Self::hint(cx, note)))
+                    .child(Self::hint(cx, knot_core::l10n::t("settings.mcp.rerun_hint"))),
             )
     }
 }

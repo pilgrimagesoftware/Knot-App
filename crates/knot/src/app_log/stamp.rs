@@ -134,8 +134,11 @@ pub(super) fn copy_stamped(input: impl Read, mut output: impl Write, drained: &D
 }
 
 #[cfg(unix)]
-/// `line`, without its newline, as the log holds it: `<time> <line>\n`.
+/// `line`, without its newline, as the log holds it: `<time> <line>\n`,
+/// with any Knot MCP credential in it replaced (see [`redact_credentials`]).
 pub(super) fn stamped(at: OffsetDateTime, line: &[u8]) -> Vec<u8> {
+    let line = redact_credentials(line);
+    let line = line.as_ref();
     let time = at.format(&Rfc3339)
                  .unwrap_or_else(|_| at.unix_timestamp().to_string());
     let mut out = Vec::with_capacity(time.len() + line.len() + 2);
@@ -144,6 +147,27 @@ pub(super) fn stamped(at: OffsetDateTime, line: &[u8]) -> Vec<u8> {
     out.extend_from_slice(line);
     out.push(b'\n');
     out
+}
+
+/// `line` with every Knot MCP credential (`knot_a_`, `knot_h_`, `knot_c_`)
+/// replaced by `<knot-credential>`.
+///
+/// Knot never prints one, but this file also takes adapters' stderr and the
+/// errors they return. An adapter that echoes its MCP configuration in a
+/// validation error or a debug line would otherwise write the agent's
+/// credential into the log on disk (security review of #521). The
+/// bug-report scrubber covers what is published; this covers the file.
+#[cfg(unix)]
+pub(super) fn redact_credentials(line: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    static CREDENTIAL: std::sync::LazyLock<regex::bytes::Regex> = std::sync::LazyLock::new(|| {
+        regex::bytes::Regex::new(r"knot_[ahc]_[A-Za-z0-9_-]{16,}")
+                .expect("the credential pattern is fixed and valid")
+    });
+    // Most lines name no credential; skip the regex for them.
+    if !line.windows(5).any(|window| window == b"knot_") {
+        return std::borrow::Cow::Borrowed(line);
+    }
+    CREDENTIAL.replace_all(line, &b"<knot-credential>"[..])
 }
 
 /// Waits, briefly, until everything written to stderr so far is in the log.

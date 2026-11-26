@@ -7,6 +7,7 @@ mod args;
 mod autopilot;
 mod catalog;
 mod checklist;
+mod confirm;
 mod consts;
 mod error;
 mod identity;
@@ -44,6 +45,7 @@ pub use crate::autopilot::{
     AutopilotEffect, AutopilotQueue, AutopilotSinks, land, spawn_autopilot,
 };
 pub use crate::catalog::tool_catalog;
+pub use crate::confirm::{ConfirmationQueue, ConfirmationRequest, PendingConfirmation};
 pub use crate::error::{Result, ToolError};
 use crate::lookup::state_string;
 pub use crate::tasks::{GraphStore, plan_mermaid, plan_tasks};
@@ -66,19 +68,19 @@ pub type SubagentRegistryHandle = Arc<Mutex<SubagentRegistry>>;
 /// `openspec/specs/mcp-tools/spec.md`. Holds every piece of shared state a
 /// handler needs; each `call` locks only what that tool touches.
 pub struct McpToolCatalog {
-    agents:         Arc<Mutex<AgentStore>>,
-    messages:       Arc<Mutex<MessageStore>>,
-    notifier:       Arc<dyn DeliveryNotifier + Send + Sync>,
-    repos:          watch::Receiver<Vec<RepoInfo>>,
-    bench_agents:   Mutex<Vec<BenchAgent>>,
-    settings:       Mutex<Option<SharedSettings>>,
-    trackers:       Mutex<HashMap<Uuid, Tracker>>,
-    awaiting_input: Mutex<Option<AwaitingInputQueue>>,
-    activation:     Mutex<Option<ActivationQueue>>,
-    autopilot:      Mutex<Option<crate::autopilot::AutopilotQueue>>,
+    agents:                Arc<Mutex<AgentStore>>,
+    messages:              Arc<Mutex<MessageStore>>,
+    notifier:              Arc<dyn DeliveryNotifier + Send + Sync>,
+    repos:                 watch::Receiver<Vec<RepoInfo>>,
+    bench_agents:          Mutex<Vec<BenchAgent>>,
+    settings:              Mutex<Option<SharedSettings>>,
+    trackers:              Mutex<HashMap<Uuid, Tracker>>,
+    awaiting_input:        Mutex<Option<AwaitingInputQueue>>,
+    activation:            Mutex<Option<ActivationQueue>>,
+    autopilot:             Mutex<Option<crate::autopilot::AutopilotQueue>>,
     /// Committed task plans, one per owning agent. Runtime state, like the
     /// message queue: not persisted, gone with the process.
-    graphs:         Mutex<tasks::GraphStore>,
+    graphs:                Mutex<tasks::GraphStore>,
     /// Where hook-reported subagents are recorded, shared with the windows
     /// that draw them and with the ACP feed that writes to it too.
     ///
@@ -87,7 +89,14 @@ pub struct McpToolCatalog {
     /// acknowledged but recorded nowhere. That is deliberate: the route's
     /// contract with the poster is about the payload, not about whether
     /// anything downstream happens to be listening.
-    subagents:      Option<SubagentRegistryHandle>,
+    subagents:             Option<SubagentRegistryHandle>,
+    /// Where calls that need the user's confirmation are sent (D9). `None`
+    /// with no UI to ask, and then those calls are refused.
+    confirmations:         Mutex<Option<ConfirmationQueue>>,
+    /// How long such a call waits for an answer before it is refused.
+    confirmation_timeout:  Mutex<std::time::Duration>,
+    /// The agents with a call waiting on the user, at most one each.
+    awaiting_confirmation: Mutex<std::collections::HashSet<Uuid>>,
 }
 
 impl McpToolCatalog {
@@ -108,7 +117,10 @@ impl McpToolCatalog {
                activation: Mutex::new(None),
                autopilot: Mutex::new(None),
                graphs: Mutex::new(tasks::GraphStore::new()),
-               subagents: None }
+               subagents: None,
+               confirmations: Mutex::new(None),
+               confirmation_timeout: Mutex::new(consts::CONFIRMATION_TIMEOUT),
+               awaiting_confirmation: Mutex::new(std::collections::HashSet::new()) }
     }
 
     pub fn with_message_store(mut self, messages: Arc<Mutex<MessageStore>>) -> Self {
@@ -123,6 +135,19 @@ impl McpToolCatalog {
 
     pub fn with_activation_queue(self, queue: ActivationQueue) -> Self {
         *self.activation.lock() = Some(queue);
+        self
+    }
+
+    /// Sends calls that need the user's confirmation to `queue` (D9).
+    pub fn with_confirmation_queue(self, queue: ConfirmationQueue) -> Self {
+        *self.confirmations.lock() = Some(queue);
+        self
+    }
+
+    /// Waits `timeout` for a confirmation instead of the default
+    /// [`consts::CONFIRMATION_TIMEOUT`] - for tests.
+    pub fn with_confirmation_timeout(self, timeout: std::time::Duration) -> Self {
+        *self.confirmation_timeout.lock() = timeout;
         self
     }
 

@@ -1,10 +1,9 @@
 # Design
 
-> **Decision record candidate.** Adding authentication to the MCP control
-> plane, with separately scoped credentials (a tool credential and a hook
-> credential per agent, plus a persistent client token) rather than a single
-> per-launch token, is a lasting architectural decision. Record it as such
-> when the change is accepted.
+> **Recorded as ADR-0010** (`docs/adr/0010-scoped-mcp-credentials.md`):
+> separately scoped credentials (a tool credential and a hook credential per
+> agent, plus a persistent client token) rather than a single per-launch
+> token.
 
 ## Context
 
@@ -156,6 +155,10 @@ environment marker is unchanged.
   another live session" error. This keeps the manual-registration flow for
   Gemini, OpenCode and unverified adapters.
 - `External` never evicts a session.
+- Every client-token connection is the same `External` principal, so one
+  external client could resume a session id another external client was
+  given. They are the same trust level - whoever holds the client token -
+  so this is accepted rather than tracked per client.
 
 **Residual:** anyone holding the client token can act as an agent that has no
 live tool-credential session. The token is user-scoped and handed to clients
@@ -217,6 +220,15 @@ named in its `?agent=` hint (non-secret). That agent's panel then shows "Knot
 tools unavailable: the MCP connection was refused", and the MCP tab's refused
 counter lists it. `User-Agent` grouping for unattributed refusals keeps no
 credential material.
+
+The panel notice is decided per agent by refusals **since its last
+successfully authenticated request**, not by session liveness: a successful
+request clears it, and a refused request after that sets it again, so an
+adapter that sends the header on `initialize` and drops it later is still
+caught. A refused `GET /mcp` (the optional SSE stream, which agy opens
+without the header) does not set it. Only agents that hold an issued pair
+are counted by name, so made-up `?agent=` hints cannot grow the table, and
+the MCP tab's counts cover the last hour.
 
 ## Migration
 

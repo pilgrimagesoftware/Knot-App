@@ -14,9 +14,6 @@ mod shared;
 // Named here for the tests; the platform store builds its own off macOS.
 #[cfg(test)]
 pub(crate) use client_token::FileTokenStore;
-// UNWIRED(mcp-auth task 6.1): the MCP tab's regenerate button is the
-// caller; until it lands, only the tests use these.
-#[allow(unused_imports)]
 pub(crate) use client_token::{ClientTokenStore, regenerate};
 pub(crate) use client_token::{LoadedClientToken, PlatformTokenStore, load_or_create};
 pub(crate) use shared::{ClientToken, McpCredentials};
