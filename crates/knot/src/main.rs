@@ -62,6 +62,7 @@ mod pull_request_state;
 mod quit_guard;
 mod read_folders;
 mod refresh_cache;
+mod repository_trust;
 mod schedule_text;
 mod scheduled_starts;
 mod settings_global;

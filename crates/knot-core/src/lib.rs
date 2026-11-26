@@ -32,6 +32,6 @@ pub use settings::{
     ActivationMode, AiProvider, AppearanceMode, AutopilotAction, BenchAgent, Capabilities,
     CostTier, KeybindingSettings, LayoutMode, Persona, PersonaState, PersonaType, Prompt,
     PromptReferences, SavedAgent, SavedPullRequest, SavedWindowBounds, Settings, SharedSettings,
-    ShortcutModifiers, StartupPrompt, UnknownVariant, ViewMode, Workspace, WorkspaceUiState,
-    detect_source_base_folder,
+    ShortcutModifiers, StartupPrompt, TrustedRepository, UnknownVariant, ViewMode, Workspace,
+    WorkspaceUiState, detect_source_base_folder,
 };

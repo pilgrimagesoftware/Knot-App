@@ -212,6 +212,9 @@ pub(crate) fn run() {
     if let Err(err) = settings.install_default_personas() {
         eprintln!("failed to install default personas: {err}");
     }
+    // Before anything runs git: a repository whose own configuration names
+    // programs runs no git until the user trusts it.
+    crate::repository_trust::install(settings.trusted_repositories.clone());
     quit_on_terminal_signals();
     // The one settings surface for the process, built before anything that
     // reads it. The MCP server thread starts below and outlives every window,
