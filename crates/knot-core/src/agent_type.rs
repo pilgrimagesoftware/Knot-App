@@ -278,7 +278,7 @@ pub const ALL: &[AgentTypeInfo] =
                       is_custom:           false,
                       inline_registration: true,
                       keeps_mcp_query:     false,
-                      sends_mcp_headers:   false,
+                      sends_mcp_headers:   true,
                       hook_activity:       false,
                       mcp_program:         "copilot",
                       mcp_list_args:       &[],
