@@ -246,6 +246,8 @@ impl WorkspaceWindow {
                     terminal_font: TerminalFont::default(),
                     panel_sessions: BTreeMap::new(),
                     subagents: Arc::clone(&subagents),
+                    mcp_credentials: crate::mcp_credentials::McpCredentials::global(cx),
+                    mcp_unavailable: Default::default(),
                     last_spinner_frame: 0,
                     focused_pane: None,
                     panel_phases: BTreeMap::new(),

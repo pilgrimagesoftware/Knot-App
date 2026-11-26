@@ -9,6 +9,9 @@ pub const PREFERENCES_FILE: &str = "preferences.json";
 
 /// The saved-agents collection, one of the durable data documents.
 pub const AGENTS_FILE: &str = "agents.json";
+/// The MCP client token's file where there is no Keychain (`mcp-auth` D1).
+/// Created with owner-only permissions.
+pub const MCP_CLIENT_TOKEN_FILE: &str = "mcp-client-token";
 
 /// The saved-workspaces collection.
 pub const WORKSPACES_FILE: &str = "workspaces.json";

@@ -29,6 +29,7 @@ use tokio::sync::{oneshot, watch};
 use tokio::task::{AbortHandle, JoinError, JoinHandle};
 use tokio::time::{Instant, Interval, MissedTickBehavior, interval_at};
 
+use crate::auth::{CredentialRegistry, RefusalLog};
 use crate::backoff::delay_for;
 use crate::consts;
 use crate::hooks::AgentHookHandler;
@@ -98,6 +99,10 @@ pub struct Supervisor {
     /// behind it. Owned at this level so one writer spans every restart.
     log:         Option<Logger>,
     log_task:    Option<JoinHandle<()>>,
+    /// Shared with every server built here, so a restarted server accepts
+    /// the credentials the running agents already hold.
+    credentials: CredentialRegistry,
+    refusals:    RefusalLog,
 }
 
 impl Supervisor {
@@ -117,7 +122,22 @@ impl Supervisor {
                state_tx,
                serve_abort: Arc::new(Mutex::new(None)),
                log: None,
-               log_task: None }
+               log_task: None,
+               credentials: CredentialRegistry::new(),
+               refusals: RefusalLog::new() }
+    }
+
+    /// The registry every supervised server authenticates against. See
+    /// [`McpServer::with_credentials`].
+    pub fn with_credentials(mut self, credentials: CredentialRegistry) -> Self {
+        self.credentials = credentials;
+        self
+    }
+
+    /// Where every supervised server counts refused requests.
+    pub fn with_refusals(mut self, refusals: RefusalLog) -> Self {
+        self.refusals = refusals;
+        self
     }
 
     pub fn with_hook_handler(mut self, handler: Arc<dyn AgentHookHandler>) -> Self {
@@ -289,7 +309,9 @@ impl Supervisor {
     fn build_server(&self) -> McpServer {
         let server = McpServer::new(self.port,
                                     Arc::clone(&self.catalog),
-                                    Arc::clone(&self.agents));
+                                    Arc::clone(&self.agents)).with_credentials(self.credentials
+                                                                                   .clone())
+                                                             .with_refusals(self.refusals.clone());
         let server = match &self.hooks {
             Some(handler) => server.with_hook_handler(Arc::clone(handler)),
             None => server,

@@ -6,6 +6,7 @@ use routes::build_router;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
+use crate::auth::{CredentialRegistry, RefusalLog};
 use crate::consts;
 use crate::hooks::AgentHookHandler;
 use crate::log::{Logger, Subject, Vitals, spawn_heartbeat};
@@ -17,17 +18,25 @@ pub type AgentsSnapshotFn = Arc<dyn Fn() -> Vec<knot_agents::Agent> + Send + Syn
 
 #[derive(Clone)]
 struct AppState {
-    catalog:  Arc<dyn ToolCatalog>,
-    agents:   AgentsSnapshotFn,
-    hooks:    Option<Arc<dyn AgentHookHandler>>,
-    sessions: McpSessionManager,
+    catalog:     Arc<dyn ToolCatalog>,
+    agents:      AgentsSnapshotFn,
+    hooks:       Option<Arc<dyn AgentHookHandler>>,
+    sessions:    McpSessionManager,
     /// Requests served since the heartbeat last reported. Read with
     /// `swap(0)`, so a request arriving mid-tick is counted in exactly one
     /// interval rather than in both or neither.
-    served:   Arc<AtomicU64>,
+    served:      Arc<AtomicU64>,
     /// `None` when the server was built without a log path - the crate's own
     /// tests, which assert on responses rather than on a file.
-    log:      Option<Logger>,
+    log:         Option<Logger>,
+    /// The credentials a request may present. Shared with whoever issues
+    /// them; a server given none authenticates nobody.
+    credentials: CredentialRegistry,
+    /// Refused requests, by who they appear to come from (D10).
+    refusals:    RefusalLog,
+    /// The port bound, for the `Host` check. Set by `start` before the
+    /// router is built, so a server asked for port 0 checks the port it got.
+    port:        u16,
 }
 
 /// The local MCP HTTP server: health/info, JSON-RPC `/mcp`, SSE `/mcp`, and
@@ -62,7 +71,10 @@ impl McpServer {
                                  hooks: None,
                                  sessions: McpSessionManager::new(),
                                  served: Arc::new(AtomicU64::new(0)),
-                                 log: None },
+                                 log: None,
+                                 credentials: CredentialRegistry::new(),
+                                 refusals: RefusalLog::new(),
+                                 port },
                handle: None,
                bound_addr: None,
                started_at: None,
@@ -72,6 +84,21 @@ impl McpServer {
 
     pub fn with_hook_handler(mut self, handler: Arc<dyn AgentHookHandler>) -> Self {
         self.state.hooks = Some(handler);
+        self
+    }
+
+    /// Authenticates requests against `credentials`, the registry the
+    /// launch path issues agent credentials into and the client token is
+    /// set in. Without it the server refuses every request but `/health`.
+    pub fn with_credentials(mut self, credentials: CredentialRegistry) -> Self {
+        self.state.credentials = credentials;
+        self
+    }
+
+    /// Counts refused requests into `refusals`, shared with the UI that
+    /// shows them.
+    pub fn with_refusals(mut self, refusals: RefusalLog) -> Self {
+        self.state.refusals = refusals;
         self
     }
 
@@ -126,7 +153,6 @@ impl McpServer {
     }
 
     pub async fn start(&mut self) -> crate::Result<()> {
-        let router = build_router(self.state.clone());
         let addr: std::net::SocketAddr = ([127, 0, 0, 1], self.port).into();
         if let Some(log) = self.log() {
             log.info(Subject::Lifecycle, format!("binding {addr}"));
@@ -140,7 +166,10 @@ impl McpServer {
                 return Err(crate::McpError::Bind(addr, error));
             }
         };
-        self.bound_addr = Some(listener.local_addr().map_err(crate::McpError::Serve)?);
+        let bound = listener.local_addr().map_err(crate::McpError::Serve)?;
+        self.bound_addr = Some(bound);
+        self.state.port = bound.port();
+        let router = build_router(self.state.clone());
         self.started_at = Some(Instant::now());
         if let Some(log) = self.log()
            && let Some(bound) = self.bound_addr
@@ -222,6 +251,7 @@ impl McpServer {
     }
 }
 
+mod guard;
 mod routes;
 
 #[cfg(test)]

@@ -73,7 +73,7 @@ pub(crate) struct Autopilot(pub(crate) knot_mcp_tools::AutopilotQueue);
 
 impl gpui_kit::Global for Autopilot {}
 
-/// The three cross-thread queues `start_mcp_server` hands the tool catalog,
+/// The cross-thread queues `start_mcp_server` hands the tool catalog,
 /// bundled into one value so that function stays within the repo's "keep
 /// functions to <= 5-6 args" convention (`CLAUDE.md`) as queues are added.
 #[derive(Clone)]
@@ -81,6 +81,27 @@ pub(crate) struct McpQueues {
     pub(crate) awaiting_input: AwaitingInputQueue,
     pub(crate) activation:     ActivationQueue,
     pub(crate) autopilot:      knot_mcp_tools::AutopilotQueue,
+    /// MCP calls waiting for the user to confirm them
+    /// (`openspec/changes/mcp-auth/design.md` D9).
+    pub(crate) confirmations:  knot_mcp_tools::ConfirmationQueue,
+}
+
+/// The MCP confirmation queue, reachable from any window, for the same
+/// reason [`Activation`] is a global: the tool layer pushes from the MCP
+/// server's thread, and whichever window owns the requesting agent shows
+/// the dialog.
+#[derive(Clone)]
+pub(crate) struct Confirmations(pub(crate) knot_mcp_tools::ConfirmationQueue);
+
+impl gpui_kit::Global for Confirmations {}
+
+/// What `start_mcp_server` shares with the windows besides the queues: the
+/// subagent registry and the MCP credentials. Bundled for the same
+/// argument-count reason as [`McpQueues`].
+#[derive(Clone)]
+pub(crate) struct McpShared {
+    pub(crate) subagents:   SubagentRegistryHandle,
+    pub(crate) credentials: crate::mcp_credentials::McpCredentials,
 }
 
 /// Which setting a font panel session is editing. Plain data, referenced

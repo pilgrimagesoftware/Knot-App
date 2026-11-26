@@ -12,4 +12,5 @@ pub(super) mod coding_adapter;
 pub(super) mod general;
 pub(super) mod keyboard;
 pub(super) mod mcp;
+pub(super) mod mcp_access;
 pub(super) mod voice;

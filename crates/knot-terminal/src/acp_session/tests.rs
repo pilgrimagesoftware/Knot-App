@@ -122,12 +122,12 @@ async fn a_refused_load_falls_back_to_a_fresh_session_that_is_not_a_resume() {
     session.stop().await;
 }
 
-/// The agent's own MCP URL (`?agent=<id>`, #544) has to reach both the
-/// load and the fresh session a refused load falls back to - a fallback
-/// on the bare URL would leave the agent unable to call knot tools as
-/// itself.
+/// The agent's own MCP URL (`?agent=<id>`, #544) and its tool credential
+/// (`mcp-auth` D3) have to reach both the load and the fresh session a
+/// refused load falls back to - a fallback without them would leave the
+/// agent unable to call knot tools as itself.
 #[tokio::test]
-async fn the_mcp_url_reaches_the_load_and_its_fallback() {
+async fn the_mcp_endpoint_reaches_the_load_and_its_fallback() {
     let dir = tempfile::TempDir::new().expect("a temporary directory");
     let log = dir.path().join("requests.log");
     let launch = AdapterConfig { args: &[
@@ -152,7 +152,8 @@ done"#,
     let env = [("KNOT_TEST_LOG".to_owned(), log.display().to_string())];
     let url = "http://127.0.0.1:9/mcp?agent=agent-7";
     let target = SessionTarget { prior_session_id: Some("thread-7"),
-                                 mcp_url: Some(url),
+                                 mcp: Some(knot_acp::McpEndpoint { url,
+                                                                   bearer: Some("knot_a_test") }),
                                  env: &env,
                                  ..project() };
 
@@ -164,12 +165,10 @@ done"#,
     let requests = std::fs::read_to_string(&log).expect("the adapter logged its requests");
     let lines: Vec<&str> = requests.lines().collect();
     assert_eq!(lines.len(), 2, "a load, then its fallback: {requests}");
-    assert!(lines[0].contains("session/load") && lines[0].contains(url),
-            "{}",
-            lines[0]);
-    assert!(lines[1].contains("session/new") && lines[1].contains(url),
-            "{}",
-            lines[1]);
+    for (line, method) in lines.iter().zip(["session/load", "session/new"]) {
+        assert!(line.contains(method) && line.contains(url), "{line}");
+        assert!(line.contains("Bearer knot_a_test"), "{line}");
+    }
 }
 
 #[tokio::test]

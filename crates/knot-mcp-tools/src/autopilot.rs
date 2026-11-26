@@ -237,7 +237,10 @@ fn last_message_for_trigger(catalog: &McpToolCatalog, id: Uuid, agent_type: &str
                                          .metadata
                                          .get("transcript_path")?
                                          .clone();
-            knot_mcp::last_assistant_message_from_transcript(transcript_path)
+            // Only inside Claude's own transcript directory, and only the
+            // tail: the path came from a hook request body.
+            let root = knot_mcp::TranscriptRoot::claude()?;
+            knot_mcp::last_assistant_message_from_transcript(&root, transcript_path)
         }
         "codex" => payload.get("last-assistant-message")
                           .and_then(Value::as_str)

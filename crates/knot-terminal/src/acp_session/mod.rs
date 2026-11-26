@@ -79,8 +79,9 @@ pub struct SessionTarget<'a> {
     pub cwd:              &'a str,
     /// The session to `session/load` first, when the adapter can resume.
     pub prior_session_id: Option<&'a str>,
-    /// Knot's own MCP HTTP server, when MCP is enabled.
-    pub mcp_url:          Option<&'a str>,
+    /// Knot's own MCP HTTP server and the agent's credential for it, when
+    /// MCP is enabled.
+    pub mcp:              Option<knot_acp::McpEndpoint<'a>>,
     /// The `_meta` the session opens with - the agent's user options, for
     /// an adapter that takes them there.
     pub meta:             Option<&'a serde_json::Value>,
@@ -131,7 +132,7 @@ impl AcpSession {
         -> AcpResult<(Self, Vec<ConfigOption>, mpsc::UnboundedReceiver<SessionEvent>)> {
         let SessionTarget { cwd,
                             prior_session_id,
-                            mcp_url,
+                            mcp,
                             meta,
                             env,
                             args, } = target;
@@ -178,17 +179,17 @@ impl AcpSession {
         let (session, resumed) = match prior_session_id {
             Some(prior) if client.capabilities().supports_resume => {
                 report(progress, ConnectStep::Resuming);
-                match client.session_load(prior, cwd, mcp_url).await {
+                match client.session_load(prior, cwd, mcp).await {
                     Ok(session) => (session, true),
                     Err(_) => {
                         report(progress, ConnectStep::OpeningSession);
-                        (client.session_new(cwd, mcp_url).await?, false)
+                        (client.session_new(cwd, mcp).await?, false)
                     }
                 }
             }
             _ => {
                 report(progress, ConnectStep::OpeningSession);
-                (client.session_new(cwd, mcp_url).await?, false)
+                (client.session_new(cwd, mcp).await?, false)
             }
         };
 

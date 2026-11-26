@@ -57,7 +57,7 @@ async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
                                    config:                     &stalling_prompt_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           None,
-                                   mcp_url:                    None,
+                                   mcp:                        None,
                                    registration_prompt:        Some("register".to_string()),
                                    resume_registration_prompt: None,
                                    session_config:             BTreeMap::new(),
@@ -69,7 +69,8 @@ async fn the_slot_goes_ready_before_the_registration_turn_finishes() {
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      None, };
+                                   times:                      None,
+                                   notices:                    Vec::new(), };
 
     let watched = Arc::clone(&slot);
     // The phase the slot was in when the prompt arrived, or `Failed` as soon
@@ -170,7 +171,7 @@ async fn connect_naming_a_prior_session(load: &str, resume_prompt: Option<&str>)
                                    config:                     &logging_loading_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           Some("thread-7"),
-                                   mcp_url:                    None,
+                                   mcp:                        None,
                                    registration_prompt:        Some("register".to_string()),
                                    resume_registration_prompt: resume_prompt.map(str::to_owned),
                                    session_config:             BTreeMap::new(),
@@ -184,7 +185,8 @@ async fn connect_naming_a_prior_session(load: &str, resume_prompt: Option<&str>)
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      None, };
+                                   times:                      None,
+                                   notices:                    Vec::new(), };
     let mut persisted = String::new();
     connect_into(&slot, request, &progress, |id| persisted = id.to_string()).await;
     if let PanelSessionSlot::Ready(handle) = &*slot.lock() {
@@ -289,7 +291,7 @@ async fn a_restored_session_keeps_its_entries_times() {
                                    config:                     &replaying_adapter(),
                                    cwd:                        "/tmp/project",
                                    prior_session_id:           Some("thread-7"),
-                                   mcp_url:                    None,
+                                   mcp:                        None,
                                    registration_prompt:        None,
                                    resume_registration_prompt: None,
                                    session_config:             BTreeMap::new(),
@@ -300,7 +302,8 @@ async fn a_restored_session_keeps_its_entries_times() {
                                    args:                       Vec::new(),
                                    subagents:                  None,
                                    startup_prompt:             None,
-                                   times:                      Some(store.clone()), };
+                                   times:                      Some(store.clone()),
+                                   notices:                    Vec::new(), };
     connect_into(&slot, request, &progress, |_| {}).await;
     let (state, session) = match &*slot.lock() {
         PanelSessionSlot::Ready(handle) => (handle.state(), handle.session()),
@@ -374,7 +377,7 @@ async fn restore_thread_7(store: &TimesStore, env: Vec<(String, String)>)
                                    config: &replaying_adapter(),
                                    cwd: "/tmp/project",
                                    prior_session_id: Some("thread-7"),
-                                   mcp_url: None,
+                                   mcp: None,
                                    registration_prompt: None,
                                    resume_registration_prompt: None,
                                    session_config: BTreeMap::new(),
@@ -385,7 +388,8 @@ async fn restore_thread_7(store: &TimesStore, env: Vec<(String, String)>)
                                    args: Vec::new(),
                                    subagents: None,
                                    startup_prompt: None,
-                                   times: Some(store.clone()) };
+                                   times: Some(store.clone()),
+                                   notices: Vec::new() };
     connect_into(&slot, request, &progress, |_| {}).await;
     let (state, session) = match &*slot.lock() {
         PanelSessionSlot::Ready(handle) => (handle.state(), handle.session()),

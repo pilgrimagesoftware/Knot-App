@@ -148,3 +148,10 @@ pub const RESUME_REGISTRATION_PROMPT: &str =
 /// small enough to need no scrolling. Re-exported as
 /// `user_inputs::MAX_PROMPT_INPUTS`.
 pub const MAX_PROMPT_INPUTS: usize = 5;
+
+/// The environment variable that makes `claude-agent-acp` pass MCP servers
+/// to the Claude CLI as a `--mcp-config` argument (`mcp-auth` D3).
+pub const CLAUDE_ARGV_DELIVERY_ENV: &str = "CLAUDE_CODE_EXECUTABLE";
+
+/// The Claude options that do the same when present in `extraArgs`.
+pub const CLAUDE_ARGV_DELIVERY_OPTIONS: &[&str] = &["settings", "sdk-url"];

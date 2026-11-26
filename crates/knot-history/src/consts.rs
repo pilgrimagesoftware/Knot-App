@@ -30,3 +30,11 @@ pub const COMMAND_NAME_OPEN: &str = "<command-name>";
 pub const COMMAND_NAME_CLOSE: &str = "</command-name>";
 pub const COMMAND_ARGS_OPEN: &str = "<command-args>";
 pub const COMMAND_ARGS_CLOSE: &str = "</command-args>";
+
+/// The extension of the sibling file a provider writes before renaming it
+/// over a history file it rewrites (`files::write_atomically`).
+pub const REWRITE_TEMP_EXTENSION: &str = "knot-tmp";
+
+/// Where Codex keeps its rollout files, under the home directory. A rollout
+/// path read from Codex's database is removed only if it lies inside it.
+pub const CODEX_SESSIONS_DIR: &str = ".codex/sessions";

@@ -44,6 +44,9 @@ pub enum Subject {
     Heartbeat,
     /// The log reporting on itself - a write that failed, and its recovery.
     Log,
+    /// A request's credential: who it authenticated as, or why it was
+    /// refused. Never the credential itself.
+    Auth,
 }
 
 impl fmt::Display for Subject {
@@ -55,6 +58,7 @@ impl fmt::Display for Subject {
             Self::Tool => "tool",
             Self::Heartbeat => "heartbeat",
             Self::Log => "log",
+            Self::Auth => "auth",
         };
         f.write_str(text)
     }

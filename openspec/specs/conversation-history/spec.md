@@ -103,9 +103,39 @@ reloading.
 ### Requirement: Delete then backfill
 
 Deleting a session SHALL remove its files via the provider and then refresh the
-`(agent type, folder)` cache so the list reflects the removal.
+`(agent type, folder)` cache so the list reflects the removal. A delete that
+fails SHALL return its error rather than report success; files already gone
+SHALL count as deleted. A file another tool owns and that holds other
+sessions (Gemini's `logs.json`) SHALL be rewritten whole or left as it was,
+and Codex's database row SHALL be archived before its rollout file is removed.
 
 #### Scenario: List shrinks after delete
 
 - **WHEN** a session is deleted
 - **THEN** a subsequent read of that key no longer includes it
+
+#### Scenario: A delete that fails
+
+- **WHEN** a session's files cannot be removed or rewritten
+- **THEN** the delete returns an error, the files it could not change are as
+  they were, and the list still shows the session
+
+### Requirement: A delete stays inside the agent's history
+
+A delete SHALL refuse a session id that is not one plain path component, and
+SHALL remove only paths inside the agent's own history directory once
+resolved. A Codex rollout file named by Codex's database SHALL be removed only
+if it is a regular file inside Codex's sessions directory, and is checked
+before the row is archived.
+
+#### Scenario: A session id that reaches outside
+
+- **WHEN** a delete is asked for the session id `../other`
+- **THEN** it is refused and nothing is removed
+
+#### Scenario: A rollout path that is not a session file
+
+- **WHEN** Codex's database names a directory, or a file outside its sessions
+  directory, as a session's rollout
+- **THEN** the delete is refused, the row is not archived and nothing is
+  removed
