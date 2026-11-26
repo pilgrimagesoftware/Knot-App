@@ -106,8 +106,16 @@ impl ClientTokenStore for FileTokenStore {
                             .ok_or_else(|| "the token file has no directory".to_owned())?;
         std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
         let staging = self.path.with_extension("tmp");
+        // Removed first and then created anew: `mode` applies only when a
+        // file is created, so a staging file left by an interrupted save
+        // would otherwise keep whatever permissions it had.
+        match std::fs::remove_file(&staging) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
+        }
         let mut options = std::fs::OpenOptions::new();
-        options.write(true).create(true).truncate(true);
+        options.write(true).create_new(true);
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
