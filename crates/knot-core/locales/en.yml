@@ -363,7 +363,8 @@ settings:
     install_command: "Installation Command"
     agent: "Agent"
     command: "Command"
-    no_setup: "No manual setup needed."
+    # A client with no checked command; the note below says what to add.
+    no_setup: "No checked command for this client yet; see below."
     status: "Status"
     status_disabled: "Disabled"
     status_starting: "Starting…"
@@ -392,7 +393,13 @@ settings:
     refused_agent_other: "%{agent}: %{count} requests refused"
     # Codex reads the token from an environment variable rather than taking
     # it on the command line.
-    codex_token_env: "Codex reads the token from %{variable}. Set it in your shell profile to the client token, then restart Codex."
+    # The commands name the token's environment variable rather than the
+    # token, so it is neither shown here nor written to shell history.
+    token_env: "Set %{variable} to the client token (Copy token above) in the terminal you run this in."
+    codex_token_env: "Codex reads the token from %{variable} each time it connects. Set it to the client token in your shell profile, then restart Codex."
+    # No checked command for these: what to add by hand.
+    copilot_manual: "Copilot's command has not been checked yet. Add Knot in Copilot's MCP settings with the URL above and the header \"Authorization: Bearer <client token>\" (%{variable} if it offers environment variables)."
+    opencode_manual: "opencode asks for the server interactively. Give it the URL above and the header \"Authorization: Bearer <client token>\" (%{variable} if it offers environment variables)."
     # After upgrading to a Knot that requires the token, clients registered
     # without one get refused until the command is run again.
     rerun_hint: "Registered a client before Knot required a token? Run its command again."

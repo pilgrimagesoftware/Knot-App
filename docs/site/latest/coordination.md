@@ -38,7 +38,7 @@ Every request except `GET /health` must carry a credential Knot issued, as `Auth
 
 Knot gives each agent it launches a fresh pair when the agent starts, restarts or resumes, and revokes it when the agent stops: a request from an agent's previous process is refused. The tool credential travels in the MCP request headers Knot hands the agent's adapter, never in a URL. Agents Knot launches need no setup.
 
-The client token is for clients you register yourself - an agent CLI running outside Knot, say. Copy it, or the ready-made command for your CLI, from **Settings > MCP**. The CLI keeps the token in its own configuration file in plain text; if it leaks, regenerate it on the same tab, and run the command again for every client you registered. The token is kept in your macOS Keychain and stays the same across restarts.
+The client token is for clients you register yourself - an agent CLI running outside Knot, say. Copy it, and the ready-made command for your CLI, from **Settings > MCP**; the command reads the token from the `KNOT_MCP_CLIENT_TOKEN` environment variable, so set that first. Most CLIs keep the token in their own configuration file in plain text; if it leaks, regenerate it on the same tab, and run the command again for every client you registered. The token is kept in your macOS Keychain and stays the same across restarts.
 
 **Upgrading:** a client you registered before Knot required a token is refused until you run its installation command again.
 

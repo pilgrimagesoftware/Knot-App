@@ -79,20 +79,20 @@ impl SettingsWindow {
         let mcp_server_enabled = crate::settings_global::read(cx).mcp_server_enabled;
         let server_url = Self::mcp_server_url(crate::settings_global::read(cx).mcp_server_port);
         let agent_type_label = Self::agent_type_label(&self.mcp_selected_agent_type);
-        // Shown with the token masked, copied with the token itself.
-        let token = cx.try_global::<crate::mcp_credentials::ClientToken>()
-                      .map(|global| global.0.token.expose().to_owned())
-                      .unwrap_or_default();
-        let shown_command = Self::mcp_install_command(&self.mcp_selected_agent_type,
-                                                      &server_url,
-                                                      &Self::masked_token(&token));
-        let install_command =
-            Self::mcp_install_command(&self.mcp_selected_agent_type, &server_url, &token);
-        let codex_note = (self.mcp_selected_agent_type == "codex").then(|| {
-                             knot_core::l10n::t_with("settings.mcp.codex_token_env",
-                                                     &[("variable",
-                                                        super::mcp_access::CODEX_TOKEN_ENV)])
-                         });
+        // The same text shown and copied: it names the token's variable, not
+        // the token.
+        let install_command = Self::mcp_install_command(&self.mcp_selected_agent_type, &server_url);
+        let shown_command = install_command.clone();
+        let variable = [("variable", super::mcp_access::CLIENT_TOKEN_ENV)];
+        let token_note = match self.mcp_selected_agent_type.as_str() {
+            "codex" => Some(knot_core::l10n::t_with("settings.mcp.codex_token_env", &variable)),
+            "copilot" => Some(knot_core::l10n::t_with("settings.mcp.copilot_manual", &variable)),
+            "opencode" => Some(knot_core::l10n::t_with("settings.mcp.opencode_manual", &variable)),
+            _ if !install_command.is_empty() => {
+                Some(knot_core::l10n::t_with("settings.mcp.token_env", &variable))
+            }
+            _ => None,
+        };
 
         v_flex()
             .gap_3()
@@ -223,7 +223,7 @@ impl SettingsWindow {
                                 }),
                             ),
                     ))
-                    .children(codex_note.map(|note| Self::hint(cx, note)))
+                    .children(token_note.map(|note| Self::hint(cx, note)))
                     .child(Self::hint(cx, knot_core::l10n::t("settings.mcp.rerun_hint"))),
             )
     }

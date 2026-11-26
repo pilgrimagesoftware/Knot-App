@@ -25,25 +25,32 @@ use crate::mcp_credentials::{
 };
 use crate::settings_window::SettingsWindow;
 
-/// The environment variable Codex's command names for the token: Codex
-/// takes a bearer token only through one (`codex mcp add
-/// --bearer-token-env-var`, checked against codex-cli 0.172.0).
-pub(crate) const CODEX_TOKEN_ENV: &str = "KNOT_MCP_CLIENT_TOKEN";
+/// The environment variable every installation command reads the client
+/// token from, so the token is never displayed in a command, never copied
+/// with one, and never written to shell history. The shell expands it when
+/// the command runs; Codex reads it itself each time it connects
+/// (`codex mcp add --bearer-token-env-var`, codex-cli 0.172.0), so for
+/// Codex it has to stay set.
+pub(crate) const CLIENT_TOKEN_ENV: &str = "KNOT_MCP_CLIENT_TOKEN";
 
 impl SettingsWindow {
     /// The command to copy for registering `agent_type` against Knot's MCP
-    /// server at `url`, presenting `token`. Ported from the Swift
-    /// reference's `MCPCommandView.mcpCommandCopy`; each header flag was
-    /// checked against the CLI's own `mcp add --help` (Claude Code 2.1.326,
-    /// codex-cli 0.172.0, Gemini CLI 0.71.0, agy 1.5.17).
-    pub(crate) fn mcp_install_command(agent_type: &str, url: &str, token: &str) -> String {
-        let header = format!("\"Authorization: Bearer {token}\"");
+    /// server at `url`, sending the client token from [`CLIENT_TOKEN_ENV`].
+    /// Ported from the Swift reference's `MCPCommandView.mcpCommandCopy`;
+    /// each header flag was checked against the CLI's own `mcp add --help`
+    /// (Claude Code 2.1.326, codex-cli 0.172.0, Gemini CLI 0.71.0, agy
+    /// 1.5.17). Empty for a CLI with no verified command - Copilot, whose
+    /// CLI has not been checked.
+    pub(crate) fn mcp_install_command(agent_type: &str, url: &str) -> String {
+        // Double quotes, so the shell substitutes the token when the command
+        // runs; only the variable's name is in the text and the history.
+        let header = format!("\"Authorization: Bearer ${CLIENT_TOKEN_ENV}\"");
         match agent_type {
             "claude" => {
                 format!("claude mcp add --transport http --scope user knot {url} --header {header}")
             }
             "codex" => {
-                format!("codex mcp add knot --url {url} --bearer-token-env-var {CODEX_TOKEN_ENV}")
+                format!("codex mcp add knot --url {url} --bearer-token-env-var {CLIENT_TOKEN_ENV}")
             }
             // Interactive: it asks for the URL and headers itself.
             "opencode" => "opencode mcp add".to_string(),
