@@ -1,4 +1,66 @@
 
+## 1.44.0 - 2026-11-26
+
+### Added
+- Shift alternates in the agent row and sidebar menus
+- Native Shift alternates in the Agents menu bar
+- Collapse every tool call in the conversation at once
+- Authenticate every MCP request
+- Deliver MCP credentials to launched agents
+- Say when an agent's MCP credential is on a command line
+- Give the MCP credential only to adapters checked to send it
+- Confirm MCP-created commands and distant worktrees
+- Count refusals over the last hour and since the last success
+- Manage the MCP client token and show refused connections
+- Give Copilot the MCP credential
+- Check a repository's configured programs before running git
+- Ask before running git in a repository whose settings run programs
+
+
+### Changed
+- Remove the unguarded ACP session id setter
+
+
+### Documentation
+- Describe Shift alternates in the agent and sidebar menus
+- Describe MCP authentication, the client token and confirmations
+- Say which hooks run for worktrees agents create
+
+
+### Fixed
+- Keep a late session id from undoing a new session
+- Rename to Collapse All Tool Calls and reopen a failed call
+- Open the MCP handover terminal as a user's companion
+- Save the layout the MCP handover terminal opens
+- Confine hook transcript reads
+- Keep the client token off launched agents
+- Never overwrite a client token the Keychain could not read
+- Refuse a FIFO transcript without blocking
+- Keep MCP credentials out of the application log
+- Give no MCP server to an adapter that gets no credential
+- Keep the MCP client token across launches off macOS
+- Put a hard cap on agents in the refusal table
+- Show hidden characters in the MCP confirmation dialog
+- Only a click allows an MCP confirmation
+- Validate before asking, one confirmation per agent
+- Keep the client token out of installation commands
+- Start the token's staging file fresh on every save
+- Show invisible letters and backslashes in MCP confirmations
+- Return a failed session delete, and rewrite logs.json whole
+- Colour a permission mode only when it is a known one
+- Keep a session delete inside the agent's history directory
+- Quote the folder in a shell agent's start command
+- Pin the settings git runs Knot's calls with
+- Read a hook's transcript only from the agent's transcript directory
+- Pass a shell agent's folder in its environment
+- Pass who started a git call instead of reading it off argv
+- Let a repository answered "Not now" be reviewed again
+- Drop the unused declined-list accessor
+- Check submodules and stop asking about settings Knot turns off
+- Check index gitlinks and treat too-deep submodules as untrusted
+
+
+
 ## 1.43.0 - 2026-11-25
 
 ### Added
