@@ -286,3 +286,26 @@ fn set_status_clears_to_empty() {
     assert_eq!(store.agent(id).unwrap().state,
                knot_agents::AgentState::Idle);
 }
+
+/// A folder path with a control character is refused before any agent
+/// exists: its terminal would otherwise start there, and a terminal's line
+/// editor acts on those characters.
+#[test]
+fn create_agent_refuses_a_folder_path_with_a_control_character() {
+    let mut store = AgentStore::new();
+    let caller = store.create("/tmp/caller", CreateOptions::default());
+    for (key, arguments) in [("repoPath",
+                              json!({"agentId": caller.to_string(), "name": "worker", "agentType": "shell", "repoPath": "/tmp/a\u{15}touch x\rb"})),
+                             ("worktreePath",
+                              json!({"agentId": caller.to_string(), "name": "worker", "agentType": "shell", "repoPath": "/tmp/repo", "createWorktree": true, "branchName": "b", "worktreePath": "/tmp/w\u{7f}"}))]
+    {
+        let result = create_agent(&mut store, &arguments, &[]);
+
+        assert_eq!(result.is_error, Some(true), "{key}");
+        assert!(result.content[0].text.contains(key),
+                "{}",
+                result.content[0].text);
+        assert!(!store.agents().iter().any(|agent| agent.name == "worker"),
+                "no agent is created for {key}");
+    }
+}

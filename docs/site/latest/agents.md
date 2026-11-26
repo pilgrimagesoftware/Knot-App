@@ -60,14 +60,17 @@ capabilities, cost tier, or startup prompt, does not restart it.
 
 Restart Agent and the sidebar's Restart All ask for confirmation, name whether the conversation is
 kept, then restart the agent with its id preserved and its state reset to Idle. With Restore
-conversation on launch enabled it reloads the conversation it had; disabled, it starts fresh, and
-Restart with New Conversation always starts fresh. Changing an agent's folder, type, or persona also
+conversation on launch enabled it reloads the conversation it had, and Restart with New Conversation
+starts fresh instead; disabled, Restart always starts fresh. Changing an agent's folder, type, or persona also
 restarts it fresh. An agent can be resumed into a prior conversation, which reloads it rather than
 starting fresh.
 
 Deactivate stops a running agent without removing it: its session is torn down and its pane shows it
 stopped, while the agent keeps its name, folder, position, persona, and activation mode. It then
 stays stopped, except that selecting it or a direct message from another agent starts it again.
+With Restore conversation on launch enabled, that start resumes its conversation; Deactivate with
+New Session asks for confirmation, stops the agent the same way and forgets its conversation, so
+the next start is a new session.
 Remove Agent and Close All ask for confirmation, then remove the agents and any companions they own,
 unregister them, and tear down their sessions. Save to Bench stores an agent as a reusable template;
 Bench Agent… saves it and then closes it. Deactivate All stops every running agent, and a shell
@@ -136,12 +139,11 @@ for its context menu.
 
 The context menu offers companion creation (New Companion…, New Shell Companion), editing (Edit
 Agent…, Fork Agent, Duplicate Agent), placement (Move to Workspace, Save to Bench, Bench Agent…),
-opening (Open In…, Markdown Files, Config Files), and session actions (Deactivate, Register Agent, Lock Agent or
-Unlock Agent, Restart Agent,
-Restart with New Conversation, Remove Agent), showing the items that apply. A companion shows only
-Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent and Restart with New
-Conversation. Fork carries the source's conversation into a new agent, Duplicate copies the agent
-without it, and Register Agent re-sends the registration prompt by hand.
+opening (Open In…, Markdown Files, Config Files), and session actions (Deactivate, Register Agent,
+Lock Agent or Unlock Agent, Restart Agent, Remove Agent), showing the items that apply. A companion
+shows only Edit Agent…, Open In…, and Remove Agent; a shell agent hides Register Agent. Fork carries
+the source's conversation into a new agent, Duplicate copies the agent without it, and Register Agent
+re-sends the registration prompt by hand.
 
 **Config Files** lists where the agent's type keeps its configuration: the user-level files first
 (for Claude, `~/.claude.json` and `~/.claude/settings.json`; for Codex, `config.toml` under
@@ -169,6 +171,29 @@ ones that do not apply disabled; New from Bench deploys a saved template.
 Drag the sidebar narrower than 160px and it turns compact: each agent is just its avatar, with its
 state dot on the corner. Rest the pointer on an avatar to see the agent's name, its state (such as
 "Awaiting input" and why) and what it says it is doing.
+
+### Shift alternates
+
+A line marked with a muted **⇧** has a second action. Hold Shift while the menu is open and the
+line's title changes to it; choose the line (click, Return, or Shift-Return) and the action whose
+title is showing runs:
+
+| Line | With Shift held |
+| --- | --- |
+| Restart Agent | Restart with New Conversation |
+| Deactivate | Deactivate with New Session |
+| Restart All (sidebar) | Restart All with New Conversations |
+| Deactivate All (sidebar) | Deactivate All with New Sessions |
+
+Each alternate asks for confirmation, because it forgets conversations. They are offered only with
+Restore conversation on launch enabled (with it disabled, Restart and the next start already begin
+a new conversation), and not for a shell or a companion, which have no conversation to start over.
+The ⇧ marker looks the same on macOS, Windows and Linux.
+
+In the menu bar's Agents menu on macOS, the alternates work the same way: hold Shift with the menu
+open and Restart Agent (⌘R) reads Restart with New Conversation (⇧⌘R), and Deactivate reads
+Deactivate with New Session. On Windows and Linux the menu bar shows only the primary items; the
+alternates are in the context menus.
 
 ## Activity status
 
@@ -217,7 +242,10 @@ A non-shell agent's pane is a conversation panel: the messages you and the agent
 stream, each tool call as its own card - with an icon for the tool and, for a file edit, an
 added/removed line diff - and the shell commands you run from the prompt. A completed tool call
 collapses to its header, while failed and running calls stay open and any call can be opened or
-closed by hand.
+closed by hand. View > Collapse All Tool Calls (Option-Cmd+C; Ctrl+Alt+C on Linux and Windows) closes
+them all at once: every open card goes back to its header, running and failed ones included, and
+with Collapse tool calls on in Settings every run you opened goes back to its summary line. It
+changes only what is open; nothing in the conversation is removed, and you can open any call again.
 
 When the agent hands work to a subagent, what the subagent does stays inside the card of the call
 that launched it, so a subagent working beside the agent never cuts into the agent's own reply.

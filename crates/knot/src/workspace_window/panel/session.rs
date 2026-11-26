@@ -49,8 +49,13 @@ impl WorkspaceWindow {
             return;
         };
         // The agent's own URL, so the server binds the connection to it and
-        // refuses a call that names another agent (#539).
-        let mcp_url = crate::settings_global::read(cx).mcp_server_enabled.then(|| {
+        // refuses a call that names another agent (#539). Only for an adapter
+        // that will present the credential Knot issues it (D3): any other
+        // would be refused on every request, so it is handed no server.
+        let mcp_url = super::mcp_launch::wires_mcp(crate::settings_global::read(cx)
+                                                       .mcp_server_enabled,
+                                                   &agent.agent_type)
+                      .then(|| {
                           knot_agent_launch::agent_mcp_url(&crate::settings_global::read(cx),
                                                            agent.id)
                       });
@@ -64,10 +69,27 @@ impl WorkspaceWindow {
         if !panel_session::claim_adapter(id, &slot) {
             return;
         }
+        // Issued only now that this window owns the start: issuing revokes
+        // the agent's previous pair, and an agent another window is running
+        // must keep its own. Before the spawn, so no adapter of this agent
+        // ever runs on a pair that is not current (D8).
+        let credentials = mcp_url.is_some().then(|| self.mcp_credentials.issue(id));
+        let wired = mcp_url.is_some();
+        let hook_env = credentials.as_ref()
+                                  .map(|pair| {
+                                      super::mcp_launch::hook_environment(id,
+                                            pair,
+                                            crate::settings_global::read(cx).mcp_server_port)
+                                  })
+                                  .unwrap_or_default();
         let handoff = self.panel_handoffs.remove(&id);
         self.panel_sessions.insert(id, Arc::clone(&slot));
         let cwd = agent.folder.clone();
         let prior_session_id = agent.session_to_load().map(str::to_owned);
+        // The session this connection belongs to. A restart or a Deactivate
+        // with New Session replaces it, and the id this connection reports
+        // later is then not written back (`agent-lifecycle`).
+        let restart_token = agent.restart_token;
         // Ids only (#458). Whether it resumes, not what: CodeQL treats a
         // session id as a secret (see the `on_session_id` callback below).
         eprintln!("adapter starting: agent {id} type {} workspace {} window {} resume {}",
@@ -95,6 +117,15 @@ impl WorkspaceWindow {
                                                              .agent_options
                                                              .get(&agent.agent_type)
                                                              .map_or("", String::as_str));
+        // Decided before `options` moves into the launch, and only with MCP
+        // on: without a server there is no credential to expose.
+        let notices: Vec<String> =
+            mcp_url.as_ref()
+                   .and_then(|_| {
+                       super::mcp_launch::command_line_notice(id, &agent.agent_type, &options)
+                   })
+                   .into_iter()
+                   .collect();
         if !options.ignored.is_empty() {
             eprintln!("agent {id}: {} options not passed to its adapter: {:?}",
                       agent.agent_type, options.ignored);
@@ -179,13 +210,9 @@ impl WorkspaceWindow {
                         // A fresh session only: `connect_into` sends this
                         // prompt only when nothing was resumed (#405).
                         let registration_prompt =
-                            knot_agent_launch::acp_registration_prompt(false,
-                                                                       delivery.first_turn
-                                                                               .as_deref())
-                                .map(|prompt| match &handoff {
-                                    Some(note) => format!("{prompt} {note}"),
-                                    None => prompt,
-                                });
+                            super::mcp_launch::first_turn(wired,
+                                                          delivery.first_turn.as_deref(),
+                                                          handoff.as_deref());
                         let session_meta =
                             knot_agent_launch::merge_session_meta(options.session_meta,
                                                                   delivery.session_meta);
@@ -195,7 +222,12 @@ impl WorkspaceWindow {
                                                             cwd: &cwd,
                                                             prior_session_id:
                                                                 prior_session_id.as_deref(),
-                                                            mcp_url: mcp_url.as_deref(),
+                                                            mcp: mcp_url.as_deref().map(|url| {
+                                                                knot_acp::McpEndpoint {
+                                                                    url,
+                                                                    bearer: credentials.as_ref().map(|pair| pair.tool.expose()),
+                                                                }
+                                                            }),
                                                             registration_prompt,
                                                             resume_registration_prompt,
                                                             session_config,
@@ -203,10 +235,11 @@ impl WorkspaceWindow {
                                                             option_mode: options.mode,
                                                             session_meta,
                                                             args: options.args,
-                                                            env: delivery.env,
+                                                            env: [delivery.env, hook_env].concat(),
                                                             subagents,
                                                             startup_prompt,
-                                                            times };
+                                                            times,
+                                                            notices };
                         panel_session::connect_into(&slot, request, &progress, |session_id| {
                             // Written out straight away, not left for the next
                             // roster change: with conversations restored, this
@@ -218,7 +251,12 @@ impl WorkspaceWindow {
                             // before it, as `persist_agents` does.
                             let installed = {
                                 let mut store = store.lock();
-                                store.set_acp_session_id(id, session_id.to_string());
+                                if !store.set_acp_session_id_if_current(id,
+                                                                        restart_token,
+                                                                        session_id.to_string())
+                                {
+                                    return;
+                                }
                                 settings.write(|settings| {
                                             settings.saved_agents =
                                         store.saved_agents(settings.restore_conversation_on_launch);

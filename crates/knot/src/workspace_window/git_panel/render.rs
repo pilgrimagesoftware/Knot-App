@@ -137,6 +137,7 @@ impl WorkspaceWindow {
             PanelContent::NotARepository => {
                 centered(knot_core::l10n::t("git_panel.not_a_repository"), cx)
             }
+            PanelContent::Untrusted(repository) => self.untrusted_notice(repository, cx),
             PanelContent::Failed(reason) => {
                 let text =
                     knot_core::l10n::t_with("git_panel.status_failed", &[("reason", &reason)]);
@@ -155,6 +156,37 @@ impl WorkspaceWindow {
                         .into_any_element()
             }
         }
+    }
+
+    /// Why the panel is empty for a repository waiting for trust, and a way
+    /// to be asked again after "Not now" - without it, a declined repository
+    /// could not be trusted until Knot restarted.
+    fn untrusted_notice(&self, repository: std::path::PathBuf, cx: &mut Context<Self>)
+                        -> gpui_kit::AnyElement {
+        let text = knot_core::l10n::t_with("git_panel.untrusted",
+                                           &[("repository", &repository.to_string_lossy())]);
+        v_flex().id("git-panel-untrusted")
+                .debug_selector(|| "git-panel-untrusted".into())
+                .flex_1()
+                .items_center()
+                .justify_center()
+                .gap_2()
+                .p_3()
+                .child(div().text_sm()
+                            .text_center()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(text))
+                .child(Button::new("git-panel-review-trust")
+                       .child(div().debug_selector(|| "git-panel-review-trust".into())
+                                   .child(knot_core::l10n::t("git_panel.review_trust")))
+                       .small()
+                       .on_click(cx.listener(move |view, _: &ClickEvent, _window, cx| {
+                           if let Some(registry) = &view.repository_trust {
+                               registry.reconsider(&repository);
+                           }
+                           cx.notify();
+                       })))
+                .into_any_element()
     }
 
     fn tree_column(&self, id: uuid::Uuid, folder: &str, tree: TreeView,

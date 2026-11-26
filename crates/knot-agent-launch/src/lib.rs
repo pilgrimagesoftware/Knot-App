@@ -10,6 +10,7 @@ mod agent_options;
 mod builders;
 mod capabilities;
 mod consts;
+mod credential_exposure;
 mod default_mode;
 mod escape;
 mod handoff;
@@ -23,9 +24,11 @@ pub use adapter::{AdapterConfig, InstallMethod, acp_adapter, adapter_path, adapt
 pub use agent_options::{AdapterOptions, adapter_options};
 pub use builders::{
     LaunchPlan, LaunchRequest, agent_mcp_url, build_agent_command, build_initialization_command,
-    mcp_url, mcp_url_for_port, plan_launch,
+    mcp_url, mcp_url_for_port, plan_launch, server_url_for_port,
 };
 pub use capabilities::{keeps_mcp_query, supports_inline_registration};
+pub use consts::AGENT_FOLDER_ENV;
+pub use credential_exposure::{CommandLineDelivery, command_line_delivery};
 pub use default_mode::{DefaultMode, unconfigured_default_mode};
 pub use escape::persona_prompt;
 pub use handoff::{OpenThread, handoff_note, reset_notice};

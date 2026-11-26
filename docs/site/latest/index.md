@@ -31,5 +31,6 @@ MCP server. This is the latest documentation.
 - [Agent CLI arguments]({{ '/latest/reference/agent-cli-arguments/' | relative_url }}) - the flags each supported coding-agent CLI takes.
 - [Agent shells]({{ '/latest/reference/agent-shells/' | relative_url }}) - shell agents and the `KNOT_AGENT` environment.
 - [Keybindings]({{ '/latest/reference/keybindings/' | relative_url }}) - the keyboard shortcuts and how to change them.
+- [Repository trust]({{ '/latest/reference/repository-trust/' | relative_url }}) - when Knot asks before running git in a repository.
 
 Select a release from the version picker when working with an earlier build.

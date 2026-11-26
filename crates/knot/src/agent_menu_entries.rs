@@ -31,6 +31,9 @@ pub(crate) enum AgentMenuEntry {
     AutopilotOff,
     AutopilotOn,
     Deactivate,
+    /// Deactivate's Shift alternate (#475): deactivates and forgets the
+    /// conversation, so the next start is a new session.
+    DeactivateWithNewSession,
     RestartAgent,
     RestartWithNewConversation,
     RemoveAgent,
@@ -46,7 +49,7 @@ impl AgentMenuEntry {
     /// and `tests::every_agent_menu_entry_is_in_all` walks this list against
     /// an exhaustive match, so a variant added here without an action - or
     /// added to the enum without reaching this list - fails the build.
-    pub(crate) const ALL: [Self; 22] = [Self::Separator,
+    pub(crate) const ALL: [Self; 23] = [Self::Separator,
                                         Self::NewCompanion,
                                         Self::NewShellCompanion,
                                         Self::EditAgent,
@@ -65,6 +68,7 @@ impl AgentMenuEntry {
                                         Self::AutopilotOff,
                                         Self::AutopilotOn,
                                         Self::Deactivate,
+                                        Self::DeactivateWithNewSession,
                                         Self::RestartAgent,
                                         Self::RestartWithNewConversation,
                                         Self::RemoveAgent];
@@ -94,6 +98,9 @@ impl AgentMenuEntry {
             Self::AutopilotOff => Some(knot_core::l10n::t("menu.agent.autopilot_off")),
             Self::AutopilotOn => Some(knot_core::l10n::t("menu.agent.autopilot_on")),
             Self::Deactivate => Some(knot_core::l10n::t("menu.agent.deactivate")),
+            Self::DeactivateWithNewSession => {
+                Some(knot_core::l10n::t("menu.agent.deactivate_new_session"))
+            }
             Self::RestartAgent => Some(knot_core::l10n::t("menu.agent.restart_agent")),
             Self::RestartWithNewConversation => {
                 Some(knot_core::l10n::t("menu.agent.restart_new_conversation"))
@@ -110,37 +117,43 @@ impl AgentMenuEntry {
 pub(crate) struct AgentMenuFacts {
     /// A companion can't own companions, be forked, duplicated, moved or
     /// restarted independently of its owner (`agent-lifecycle`).
-    pub(crate) is_companion:         bool,
+    pub(crate) is_companion:           bool,
     /// A shell agent has no coding agent to register with MCP.
-    pub(crate) is_shell:             bool,
+    pub(crate) is_shell:               bool,
     /// Whether any attached workspace other than this agent's own exists.
-    pub(crate) has_move_targets:     bool,
+    pub(crate) has_move_targets:       bool,
     /// Whether the agent has ever shown a markdown file.
-    pub(crate) has_markdown_history: bool,
+    pub(crate) has_markdown_history:   bool,
     /// Whether Knot knows where this agent type keeps its configuration
     /// (#27). A shell or a custom type has none to list.
-    pub(crate) has_config_files:     bool,
+    pub(crate) has_config_files:       bool,
     /// Whether the agent is running, i.e. has a session to stop. Deactivate
     /// is absent rather than disabled when it is not, matching how this
     /// menu hides every other item that does not apply.
-    pub(crate) is_running:           bool,
+    pub(crate) is_running:             bool,
     /// Whether the agent runs in Panel mode, i.e. over ACP. Only an ACP
     /// session has an `initialize` response naming the agent and its
     /// version, so Agent Info is absent for a Terminal-mode agent.
-    pub(crate) is_panel_mode:        bool,
+    pub(crate) is_panel_mode:          bool,
     /// Whether Lock Agent applies: the agent is unlocked (#310).
-    pub(crate) can_lock:             bool,
+    pub(crate) can_lock:               bool,
     /// Whether Unlock Agent applies: the agent is locked. Two facts rather
     /// than one `is_locked`, because the menu bar's every-item shape needs
     /// both items in place at once.
-    pub(crate) can_unlock:           bool,
+    pub(crate) can_unlock:             bool,
     /// Whether Turn Off Autopilot applies: Autopilot would act on this
     /// agent (#323). False until [`Self::with_autopilot`] says it is on at
     /// all.
-    pub(crate) can_autopilot_off:    bool,
+    pub(crate) can_autopilot_off:      bool,
     /// Whether Turn On Autopilot applies: the agent has it turned off. Two
     /// facts for the same reason as Lock and Unlock.
-    pub(crate) can_autopilot_on:     bool,
+    pub(crate) can_autopilot_on:       bool,
+    /// Whether `restore-conversation-on-launch` is on. With it off, Restart
+    /// and a later start already begin a new conversation, so the "with New
+    /// Conversation/Session" alternates would repeat their primaries and
+    /// are not offered (#475). False until
+    /// [`Self::with_restored_conversations`] says it is on.
+    pub(crate) restores_conversations: bool,
 }
 
 impl AgentMenuFacts {
@@ -151,17 +164,18 @@ impl AgentMenuFacts {
     /// omitting it (`app-menu`). Reading the shape from
     /// [`agent_context_menu_entries`] rather than listing it again is what
     /// keeps the two menus in the same order and grouping.
-    pub(crate) const EVERY_ITEM: Self = Self { is_companion:         false,
-                                               is_shell:             false,
-                                               has_move_targets:     true,
-                                               has_markdown_history: true,
-                                               has_config_files:     true,
-                                               is_running:           true,
-                                               is_panel_mode:        true,
-                                               can_lock:             true,
-                                               can_unlock:           true,
-                                               can_autopilot_off:    true,
-                                               can_autopilot_on:     true, };
+    pub(crate) const EVERY_ITEM: Self = Self { is_companion:           false,
+                                               is_shell:               false,
+                                               has_move_targets:       true,
+                                               has_markdown_history:   true,
+                                               has_config_files:       true,
+                                               is_running:             true,
+                                               is_panel_mode:          true,
+                                               can_lock:               true,
+                                               can_unlock:             true,
+                                               can_autopilot_off:      true,
+                                               can_autopilot_on:       true,
+                                               restores_conversations: true, };
 
     /// These facts with the agent's Autopilot entries kept only while
     /// Autopilot is on in Settings: with it off, there is nothing for one
@@ -172,9 +186,91 @@ impl AgentMenuFacts {
                can_autopilot_on: self.can_autopilot_on && enabled,
                ..self }
     }
+
+    /// These facts with the Shift alternates offered only while
+    /// `restore-conversation-on-launch` is `enabled`.
+    #[must_use]
+    pub(crate) fn with_restored_conversations(self, enabled: bool) -> Self {
+        Self { restores_conversations: enabled,
+               ..self }
+    }
+
+    /// Whether this agent is offered the Shift alternates: an owner with a
+    /// conversation to start over, while conversations are restored.
+    pub(crate) fn offers_alternates(self) -> bool {
+        !self.is_companion && !self.is_shell && self.restores_conversations
+    }
 }
 
-/// The agent-row context menu's entries, in order, with dividers.
+/// `entry`'s Shift alternate for an agent with these facts, if it has one
+/// and the agent is offered it (`agent-list-ui`: "Shift alternates in the
+/// agent row context menu").
+pub(crate) fn shift_alternate(entry: AgentMenuEntry, facts: AgentMenuFacts)
+                              -> Option<AgentMenuEntry> {
+    let alternate = match entry {
+        AgentMenuEntry::RestartAgent => AgentMenuEntry::RestartWithNewConversation,
+        AgentMenuEntry::Deactivate => AgentMenuEntry::DeactivateWithNewSession,
+        AgentMenuEntry::Separator
+        | AgentMenuEntry::NewCompanion
+        | AgentMenuEntry::NewShellCompanion
+        | AgentMenuEntry::EditAgent
+        | AgentMenuEntry::ForkAgent
+        | AgentMenuEntry::DuplicateAgent
+        | AgentMenuEntry::MoveToWorkspace
+        | AgentMenuEntry::SaveToBench
+        | AgentMenuEntry::BenchAgent
+        | AgentMenuEntry::OpenIn
+        | AgentMenuEntry::MarkdownFiles
+        | AgentMenuEntry::ConfigFiles
+        | AgentMenuEntry::AgentInfo
+        | AgentMenuEntry::RegisterAgent
+        | AgentMenuEntry::LockAgent
+        | AgentMenuEntry::UnlockAgent
+        | AgentMenuEntry::AutopilotOff
+        | AgentMenuEntry::AutopilotOn
+        | AgentMenuEntry::DeactivateWithNewSession
+        | AgentMenuEntry::RestartWithNewConversation
+        | AgentMenuEntry::RemoveAgent => return None,
+    };
+    facts.offers_alternates().then_some(alternate)
+}
+
+/// Whether `entry` is some entry's Shift alternate, as opposed to a primary
+/// or an entry with no alternate.
+pub(crate) fn is_shift_alternate(entry: AgentMenuEntry) -> bool {
+    matches!(entry,
+             AgentMenuEntry::DeactivateWithNewSession | AgentMenuEntry::RestartWithNewConversation)
+}
+
+/// One line of the agent row's context menu: an entry, and the Shift
+/// alternate the line shows instead while Shift is held.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AgentMenuLine {
+    pub(crate) entry:     AgentMenuEntry,
+    pub(crate) alternate: Option<AgentMenuEntry>,
+}
+
+/// The agent row context menu's lines: [`agent_context_menu_entries`] with
+/// each Shift alternate folded into its primary's line rather than listed
+/// on its own.
+pub(crate) fn agent_context_menu_lines(facts: AgentMenuFacts) -> Vec<AgentMenuLine> {
+    let entries = agent_context_menu_entries(facts);
+    let alternates = entries.iter()
+                            .filter_map(|entry| shift_alternate(*entry, facts))
+                            .collect::<Vec<_>>();
+    entries.into_iter()
+           .filter(|entry| !alternates.contains(entry))
+           .map(|entry| AgentMenuLine { entry,
+                                        alternate: shift_alternate(entry, facts) })
+           .collect()
+}
+
+/// Every action the agent row offers for an agent, in order, with dividers:
+/// each Shift alternate directly below its primary.
+///
+/// This is the menu bar's item list and the set of actions a window answers
+/// for its selected agent. The context menu shows it folded, through
+/// [`agent_context_menu_lines`].
 ///
 /// Dividers are emitted between non-empty groups only: a row whose whole
 /// group is hidden must not leave a doubled or leading separator behind,
@@ -204,10 +300,8 @@ pub(crate) fn agent_context_menu_entries(facts: AgentMenuFacts) -> Vec<AgentMenu
          // Deactivate sits with the other session actions, and
          // immediately above Restart Agent: both act on the
          // session rather than on the agent, and Deactivate is
-         // the reversible one of the pair. Restart with New
-         // Conversation follows Restart Agent, whose other half it
-         // is; a shell has no conversation, so for one it would
-         // only repeat Restart Agent.
+         // the reversible one of the pair. Each is followed by its
+         // Shift alternate, when the agent is offered one.
          //
          // Agent Info heads the session group: it reports on the
          // session the actions below it act on.
@@ -228,9 +322,13 @@ pub(crate) fn agent_context_menu_entries(facts: AgentMenuFacts) -> Vec<AgentMenu
                     .chain([AutopilotOn].into_iter()
                                         .filter(|_| !facts.is_shell && facts.can_autopilot_on))
                     .chain([Deactivate].into_iter().filter(|_| facts.is_running))
+                    .chain([DeactivateWithNewSession].into_iter().filter(|_| {
+                                                                     facts.is_running
+                                                                     && facts.offers_alternates()
+                                                                 }))
                     .chain([RestartAgent].into_iter().filter(|_| owner_only))
                     .chain([RestartWithNewConversation].into_iter()
-                                                       .filter(|_| owner_only && !facts.is_shell))
+                                                       .filter(|_| facts.offers_alternates()))
                     .chain([RemoveAgent])
                     .collect()];
 

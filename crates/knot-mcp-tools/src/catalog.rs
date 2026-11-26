@@ -361,6 +361,11 @@ impl ToolCatalog for McpToolCatalog {
     }
 
     async fn call(&self, name: &str, arguments: serde_json::Value) -> ToolCallResult {
+        // Before any lock is taken for the tool itself: the wait can last
+        // until the user answers.
+        if let Some(refused) = self.unconfirmed(name, &arguments).await {
+            return refused;
+        }
         let result = match name {
             consts::REGISTER_AGENT => agents::register_agent(&mut self.agents.lock(), &arguments),
             consts::LIST_AGENTS => agents::list_agents(&self.agents.lock(), &arguments),

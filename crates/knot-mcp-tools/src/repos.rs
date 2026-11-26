@@ -2,10 +2,10 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use knot_discovery::RepoInfo;
-use knot_git::{Repository, worktree::is_working_tree};
+use knot_git::{CallOrigin, Repository, worktree::is_working_tree};
 use knot_mcp::ToolCallResult;
 
-use crate::args::{optional_str, require_str};
+use crate::args::{optional_str, path_text, require_path, require_str};
 use crate::responses::{
     CreateWorktreeResponse, ListReposResponse, ListWorktreesResponse, RepoInfoResponse,
     WorktreeInfoResponse, success,
@@ -50,7 +50,7 @@ pub fn list_worktrees(repos: &[RepoInfo], arguments: &serde_json::Value) -> Tool
 }
 
 pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
-    let repo_path = match require_str(arguments, "repoPath") {
+    let repo_path = match require_path(arguments, "repoPath") {
         Ok(v) => v,
         Err(err) => return err,
     };
@@ -60,6 +60,9 @@ pub fn create_worktree(arguments: &serde_json::Value) -> ToolCallResult {
     };
 
     let requested = optional_str(arguments, "path").filter(|path| !path.is_empty());
+    if let Some(Err(error)) = requested.map(|path| path_text("path", path)) {
+        return error;
+    }
     match create_worktree_path(repo_path, branch_name, requested) {
         Ok(path) => {
             let path = path.display().to_string();
@@ -89,7 +92,9 @@ pub fn create_worktree_path(repo_path: &str, branch_name: &str, requested: Optio
         Some(path) => requested_destination(path, std::env::home_dir().as_deref())?,
         None => knot_git::suggest_worktree_path(repo_path_ref, branch_name),
     };
-    Repository::open(repo_path_ref).create_worktree(branch_name, &destination)?;
+    Repository::open(repo_path_ref).create_worktree(branch_name,
+                                                    &destination,
+                                                    CallOrigin::Automated)?;
     Ok(destination)
 }
 
@@ -168,6 +173,20 @@ mod tests {
     }
 
     #[test]
+    fn create_worktree_refuses_a_path_with_a_control_character() {
+        for (key, arguments) in [("repoPath", json!({"repoPath": "/tmp/a\rb", "branchName": "b"})),
+                                 ("path",
+                                  json!({"repoPath": "/tmp/x", "branchName": "b", "path": "/tmp/\u{15}w"}))]
+        {
+            let result = create_worktree(&arguments);
+            assert_eq!(result.is_error, Some(true), "{key}");
+            assert!(result.content[0].text.contains("control character"),
+                    "{}",
+                    result.content[0].text);
+        }
+    }
+
+    #[test]
     fn create_worktree_empty_branch_name_errors() {
         let result = create_worktree(&json!({"repoPath": "/tmp/x", "branchName": ""}));
         assert_eq!(result.is_error, Some(true));
@@ -201,6 +220,31 @@ mod tests {
         let expected = dir.path().join("repo-feature");
         assert!(is_working_tree(&expected));
         assert!(result.content[0].text.contains("repo-feature"));
+    }
+
+    /// A worktree an agent asks for runs none of the repository's hooks: the
+    /// agent started it, not the user.
+    #[cfg(unix)]
+    #[test]
+    fn create_worktree_runs_no_repository_hook() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let repo_path = dir.path().join("repo");
+        std::fs::create_dir(&repo_path).unwrap();
+        init_repo(&repo_path);
+        let ran = dir.path().join("hook-ran");
+        let hook = repo_path.join(".git/hooks/post-checkout");
+        std::fs::write(&hook, format!("#!/bin/sh\ntouch '{}'\n", ran.display())).unwrap();
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let result = create_worktree(&json!({
+                                         "repoPath": repo_path.to_str().unwrap(),
+                                         "branchName": "feature",
+                                     }));
+
+        assert_eq!(result.is_error, None, "{}", result.content[0].text);
+        assert!(!ran.exists(), "the post-checkout hook ran");
     }
 
     /// #37: a location the agent's instructions name is where the worktree

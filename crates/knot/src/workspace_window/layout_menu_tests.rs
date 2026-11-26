@@ -84,6 +84,25 @@ fn every_mode_has_its_own_icon() {
     }
 }
 
+/// Every glyph the menu draws is in the bundled asset set, so a name that
+/// resolves to no SVG fails here rather than drawing a blank button: each
+/// mode's icon, and the check mark the menu draws beside the current one.
+#[test]
+fn every_glyph_the_menu_draws_is_bundled() {
+    use gpui_kit::AssetSource as _;
+    use gpui_kit::component::IconNamed as _;
+
+    let check = gpui_kit::component::IconName::Check.path();
+    let paths = LayoutMode::ALL.iter()
+                               .map(|mode| icon(*mode).path())
+                               .chain(std::iter::once(check));
+    for path in paths {
+        let bytes = crate::app_support::KnotAssets.load(&path).ok().flatten();
+        assert!(bytes.is_some_and(|bytes| !bytes.is_empty()),
+                "{path} is not in the bundled assets");
+    }
+}
+
 /// The tooltip resolves and names the current mode.
 #[test]
 fn the_tooltip_names_the_current_mode() {

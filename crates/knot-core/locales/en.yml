@@ -128,6 +128,14 @@ panel:
   # Failures the panel records into the conversation itself, where the
   # user reads them beside the turn they belong to.
   error_first_turn: "The agent could not start its first turn: %{error}"
+  # `mcp-auth` D3: the Claude adapter, in this configuration, passes Knot's
+  # MCP server - with this agent's credential - on the Claude CLI's command
+  # line, where other processes on the machine can read it. %{trigger} is
+  # what selects that path: an environment variable or an option name.
+  # `mcp-auth` D10: the agent's adapter is not presenting the credential
+  # Knot gave it, so its calls to Knot's tools are refused.
+  mcp_refused: "Knot tools unavailable: the MCP connection was refused. Restart the agent; if this keeps happening, its adapter is not sending the credential Knot gives it."
+  mcp_command_line_notice: "Knot's MCP credential for this agent is passed on the Claude CLI's command line, because %{trigger} is set. Other processes on this Mac can read it there. Remove it from the agent's options or environment to keep the credential off the command line."
   # What a replayed conversation shows in place of a message the agent's
   # harness injected, rather than rendering it as the user's prompt.
   harness:
@@ -355,13 +363,49 @@ settings:
     install_command: "Installation Command"
     agent: "Agent"
     command: "Command"
-    no_setup: "No manual setup needed."
+    # A client with no checked command; the note below says what to add.
+    no_setup: "No checked command for this client yet; see below."
     status: "Status"
     status_disabled: "Disabled"
     status_starting: "Starting…"
     status_running: "Running on %{address}"
     status_retrying: "Retrying - attempt %{attempt} failed: %{error}"
     status_stopped: "Stopped"
+    # The client token (`mcp-auth` D1): what clients the user registers by
+    # hand present. Knot-launched agents get their own credentials.
+    access: "Access"
+    token: "Client token"
+    token_hint: "Clients you register with the command below send this token. It is stored in each client's own configuration in plain text; regenerate it if it leaks. Agents Knot starts get their own credentials and are not affected."
+    copy_token: "Copy token"
+    regenerate: "Regenerate token"
+    regenerate_title: "Regenerate Client Token?"
+    regenerate_body: "Clients registered with the current token stop connecting until you run the installation command again. Agents Knot starts are not affected."
+    regenerate_confirm: "Regenerate"
+    # The Keychain could not be read or written, so this launch's token is
+    # not saved and will change next launch. %{error} is the system's reason.
+    token_unsaved: "This token could not be saved to the Keychain and will change when Knot restarts: %{error}"
+    # Requests refused for a missing or wrong credential in the last hour,
+    # and per Knot-launched agent among them.
+    refused_none: "No connection attempts were refused in the last hour."
+    refused_total_one: "1 connection attempt in the last hour had no valid token."
+    refused_total_other: "%{count} connection attempts in the last hour had no valid token."
+    refused_agent_one: "%{agent}: 1 request refused"
+    refused_agent_other: "%{agent}: %{count} requests refused"
+    # Codex reads the token from an environment variable rather than taking
+    # it on the command line.
+    # The commands name the token's environment variable rather than the
+    # token, so it is neither shown here nor written to shell history.
+    token_env: "First set %{variable} to the client token in the terminal you run this in; left unset, the command registers an empty token and the client is refused."
+    # macOS: paste the copied token from the clipboard, so it is not typed
+    # into the shell history either.
+    token_env_paste: "Copy the token above, then run %{command} in the same terminal before this command; left unset, the command registers an empty token and the client is refused."
+    codex_token_env: "Codex reads the token from %{variable} each time it connects. Set it to the client token in your shell profile, then restart Codex."
+    # No checked command for these: what to add by hand.
+    copilot_manual: "Copilot's command has not been checked yet. Add Knot in Copilot's MCP settings with the URL above and the header \"Authorization: Bearer <client token>\" (%{variable} if it offers environment variables)."
+    opencode_manual: "opencode asks for the server interactively. Give it the URL above and the header \"Authorization: Bearer <client token>\" (%{variable} if it offers environment variables)."
+    # After upgrading to a Knot that requires the token, clients registered
+    # without one get refused until the command is run again.
+    rerun_hint: "Registered a client before Knot required a token? Run its command again."
   appearance:
     fonts: "Fonts"
     ui: "UI"
@@ -485,6 +529,9 @@ menu:
     pull_requests: "Changes"
     focus_agent_input: "Focus Agent Input"
     jump_to_bottom: "Jump to Bottom"
+    # Every tool call in the selected agent's conversation back to its
+    # collapsed form (#488).
+    collapse_all_tool_calls: "Collapse All Tool Calls"
     # Shows or hides the selected agent's artifact panel; checked while it is
     # shown.
     artifacts: "Artifacts"
@@ -519,16 +566,23 @@ menu:
     autopilot_off: "Turn Off Autopilot"
     autopilot_on: "Turn On Autopilot"
     deactivate: "Deactivate"
+    deactivate_new_session: "Deactivate with New Session"
     restart_agent: "Restart Agent"
     restart_new_conversation: "Restart with New Conversation"
     remove_agent: "Remove Agent"
-    # What the two confirming row actions ask before they run.
+    # The muted marker on a line whose title changes while Shift is held.
+    # A glyph on every platform, not the word: it marks the line, it is not
+    # a key hint to read out.
+    shift_marker: "⇧"
+    # What the confirming row actions ask before they run.
     confirm:
       restart_title: "Restart Agent"
       restart_body: "Restart \"%{name}\"? Its session will be cleared."
       restart_keep_body: "Restart \"%{name}\"? It will resume its current conversation."
       restart_new_title: "Restart with New Conversation"
       restart_new_body: "Restart \"%{name}\" in a new conversation? Its current conversation will not be resumed."
+      deactivate_new_title: "Deactivate with New Session"
+      deactivate_new_body: "Deactivate \"%{name}\" and start a new session next time? Its current conversation will not be resumed."
       remove_title: "Remove Agent"
       remove_body: "Remove \"%{name}\"? This closes its session and cannot be undone."
       bench_title: "Bench Agent"
@@ -542,6 +596,8 @@ menu:
     restart_all: "Restart All"
     close_all: "Close All"
     deactivate_all: "Deactivate All"
+    restart_all_new_conversations: "Restart All with New Conversations"
+    deactivate_all_new_sessions: "Deactivate All with New Sessions"
     broadcast: "Broadcast to All Agents…"
     # The bulk actions' confirmations. %{agents} is a localized count and
     # noun together ("1 agent", "3 agents"), so the sentence can put them
@@ -550,6 +606,10 @@ menu:
       restart_all_title: "Restart All"
       restart_all_body: "Restart %{agents}? Every session is cleared and cannot be recovered."
       restart_all_keep_body: "Restart %{agents}? Each will resume its current conversation."
+      restart_all_new_title: "Restart All with New Conversations"
+      restart_all_new_body: "Restart %{agents} in new conversations? No current conversation will be resumed."
+      deactivate_all_new_title: "Deactivate All with New Sessions"
+      deactivate_all_new_body: "Deactivate %{agents} and start new sessions next time? No current conversation will be resumed."
       close_all_title: "Close All"
       close_all_body: "Close %{agents}? This closes every session and cannot be undone."
 
@@ -1170,6 +1230,8 @@ git_panel:
   loading: "Loading…"
   clean: "Working tree clean"
   not_a_repository: "This folder is not a git repository."
+  untrusted: "Knot isn't running git in %{repository} because its git settings run programs and it isn't trusted yet."
+  review_trust: "Review"
   status_failed: "The repository status could not be read: %{reason}"
   action_failed: "That change could not be made: %{reason}"
   interrupted: "That operation did not finish. The panel has been left as it was."
@@ -1313,3 +1375,28 @@ finder:
   matching: "Matching files…"
   no_matches: "No matching files"
   too_many: "Too many files to list (50,000+ limit)"
+# Trusting a repository whose own git configuration names programs for git
+# to run. `repository` is the repository's folder. The banner lists the
+# configured programs below the sentence.
+repository_trust:
+  banner: "%{repository} has git settings that run programs. Knot won't run git there until you trust this repository."
+  trust: "Trust"
+  not_now: "Not now"
+  settings_group: "Trusted repositories"
+  settings_hint: "Knot runs git in these repositories, including the programs their git settings name. Remove one to be asked again."
+  settings_empty: "No repositories trusted."
+  revoke: "Remove trust"
+  revoke_confirm: "Stop trusting %{repository}? Knot won't run git there until you trust it again."
+# The dialog an MCP call waits on when it would run a command the user did
+# not write, or put a worktree outside its repository's parent folder
+# (`openspec/changes/mcp-auth/design.md` D9). %{agent} is the requesting
+# agent's name, %{command} the shell command, %{folder} where it would run.
+mcp_confirm:
+  title: "Allow this agent's request?"
+  command_body: "%{agent} wants to start a shell agent that runs:\n\n%{command}\n\nin %{folder}"
+  worktree_body: "%{agent} wants to create a worktree in %{folder}, outside the repository's folder."
+  # Added under the command when that agent's folder is also a distant
+  # worktree.
+  distant_note: "This folder is a new worktree outside the repository's folder."
+  allow: "Allow"
+  deny: "Deny"

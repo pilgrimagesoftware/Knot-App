@@ -1,6 +1,6 @@
 [package]
 name = "knot-mcp"
-version = "1.43.0"
+version = "1.44.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -17,9 +17,19 @@ tokio.workspace = true
 tokio-stream.workspace = true
 axum.workspace = true
 async-trait.workspace = true
+base64.workspace = true
+getrandom.workspace = true
+sha2.workspace = true
+subtle.workspace = true
 knot-agents = { path = "../knot-agents" }
 # `MCP_AGENT_QUERY`, the agent a connection's URL names.
 knot-core = { path = "../knot-core" }
+
+# `O_NONBLOCK` for opening a hook-named transcript: a FIFO planted inside
+# the transcript directory must not block the open (security review of
+# #521). Already in the lock file.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["json"] }

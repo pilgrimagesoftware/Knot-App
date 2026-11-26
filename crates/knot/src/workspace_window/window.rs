@@ -69,6 +69,13 @@ pub(crate) struct WorkspaceWindow {
     /// The reset the user dismissed the usage banner for: hidden until the
     /// window resets, then shown again if the next one fills up.
     pub(super) codex_usage_dismissed:            Option<Option<std::time::SystemTime>>,
+    /// The repository trust registry this window asks about and answers
+    /// into: the process's, taken when the window opens. A field rather than
+    /// a global read so a test can give a window its own.
+    pub(super) repository_trust: Option<std::sync::Arc<crate::repository_trust::RepositoryTrust>>,
+    /// The trust queue's generation this window last repainted for
+    /// (`crate::repository_trust`).
+    pub(super) trust_generation_drawn:           u64,
     /// How Codex's usage is read: `codex_usage::read_current` - this
     /// machine's own `~/.codex` - everywhere but a test, which swaps in a
     /// stub rather than read the developer's files.
@@ -166,6 +173,9 @@ pub(crate) struct WorkspaceWindow {
     /// Whether ⌘ is held, and the sidebar's key hints once it has been held
     /// long enough (`agent-list-ui`).
     pub(super) key_hints:                        super::key_hints::KeyHintHold,
+    /// Whether Shift was held at the last modifier change, so the window
+    /// redraws only on a Shift edge (`menus::alternate_line`).
+    pub(super) shift_held:                       bool,
     /// The family the terminal draws and measures in, resolved from the
     /// installed families once per configured name rather than once per
     /// frame - see `terminal_font`.
@@ -184,6 +194,13 @@ pub(crate) struct WorkspaceWindow {
     /// `repaint_poll_tick` to drain - the same shape `pull_request_states`
     /// uses, and for the same reason.
     pub(super) subagents: Arc<Mutex<knot_subagents::registry::SubagentRegistry>>,
+    /// The process's MCP credentials: panel launches issue an agent's pair
+    /// into it and retiring the panel session revokes it (D8).
+    pub(super) mcp_credentials:                  crate::mcp_credentials::McpCredentials,
+    /// This workspace's agents whose MCP requests have been refused since
+    /// they last authenticated, as the repaint poll last read them; drawn
+    /// as a notice over their panes (D10).
+    pub(super) mcp_unavailable:                  std::collections::BTreeSet<Uuid>,
     /// The lifecycle phase each panel session was in the last time the
     /// repaint poll looked, so a slot moving between phases repaints - see
     /// `panel_needs_repaint`.

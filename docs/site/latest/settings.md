@@ -21,11 +21,22 @@ when it opens. Switching tabs preserves in-progress text.
 | Coding | Source Folder (current folder, folder picker, clear with confirmation); a tab per agent type, each with one group holding that agent's options field and, for Claude and Codex, its adapter's command, version and Update action |
 | Autopilot | Enable autopilot, AI Provider picker, API key, Action picker, and custom prompt configuration (see [Autopilot]({{ '/latest/autopilot/' | relative_url }})) |
 | Voice | "Enable voice input"; engine picker (Apple SpeechAnalyzer only, disabled); read-only push-to-talk key, not changeable here; "Auto-insert transcription"; controls disabled while voice input is off |
-| MCP | "Enable MCP server"; port field (default 8766); read-only `/mcp` URL, updated with the port; installation-command generator with copy (offers Claude, Codex, OpenCode, Gemini and Copilot, not Shell) |
+| MCP | "Enable MCP server"; port field (default 8766); read-only `/mcp` URL, updated with the port; Access (the client token, masked, with copy and a confirmed "Regenerate token"; how many connection attempts in the last hour had no valid token, and which agents they named); installation-command generator with copy, each command sending the client token from `KNOT_MCP_CLIENT_TOKEN` in that CLI's syntax (offers Claude, Codex, OpenCode, Gemini and Copilot, not Shell) |
 | Appearance | Fonts: one row each for UI, Title and Terminal |
 | Keyboard | The workspace and navigation shortcuts |
 
-Copy actions put the exact displayed text on the clipboard. The Appearance
+Copy actions put the exact displayed text on the clipboard; the client token is
+shown masked and its copy action copies it in full. The installation commands
+read the token from the `KNOT_MCP_CLIENT_TOKEN` environment variable instead of
+containing it, so it is not shown in them or kept in your shell history: set
+the variable to the copied token before running one - on macOS, copy the token
+and run `export KNOT_MCP_CLIENT_TOKEN="$(pbpaste)"` in the same terminal, so the
+token is pasted rather than typed. If the variable is unset, the command
+registers an empty token, and Knot refuses the client. Codex reads the variable
+each time it connects, so set it in your shell profile. Copilot's command has
+not been checked yet; the tab says what to configure by hand. See
+[Coordination]({{ '/latest/coordination/' | relative_url }}) for what the token
+is for and when to regenerate it. The Appearance
 tab's Fonts section has one row per font, each opening the OS font panel to its
 current family and size, governing only the text its label names: UI the
 interface and body text, Title titles and headers, Terminal terminal text only.
@@ -209,7 +220,7 @@ on other platforms.
 | Knot | About Knot, Settings… (Cmd+,), Hide Knot (Cmd+H), Hide Others (Option-Cmd+H), Show All, Quit Knot (Cmd+Q) |
 | File | New Workspace (Cmd+N), New Agent… (Cmd+T), Close Window (Cmd+W), Import… |
 | Edit | Undo (Cmd+Z), Redo (Shift-Cmd+Z), Cut (Cmd+X), Copy (Cmd+C), Paste (Cmd+V) |
-| View | Dashboard (Option-Cmd+O), Pull Requests (Option-Cmd+P), Focus Agent Input (Cmd+L), Jump to Bottom (Ctrl-Cmd+Down), Artifacts (Option-Cmd+A), Select Agent, Enter Full Screen (Ctrl-Cmd+F) |
+| View | Dashboard (Option-Cmd+O), Pull Requests (Option-Cmd+P), Focus Agent Input (Cmd+L), Jump to Bottom (Ctrl-Cmd+Down), Artifacts (Option-Cmd+A), Collapse All Tool Calls (Option-Cmd+C), Select Agent, Enter Full Screen (Ctrl-Cmd+F) |
 | Agents | The same items as the selected agent's row menu, acting on the selected agent |
 | Window | Command Center (Option-Cmd+0), Workspaces (Cmd+0), Personas (Option-Shift-Cmd+P), Prompts (Option-Shift-Cmd+I), Bench (Option-Cmd+B), Minimize (Cmd+M), Zoom, then macOS's list of open windows |
 | Help | Knot Help (Cmd+?), Report an Issue… |

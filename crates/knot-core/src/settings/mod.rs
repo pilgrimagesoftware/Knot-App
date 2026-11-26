@@ -6,6 +6,7 @@ mod prompts;
 mod records;
 mod shared;
 mod store;
+mod trusted_repository;
 mod vocabulary;
 
 pub use capabilities::Capabilities;
@@ -17,6 +18,7 @@ pub use records::{
 };
 pub use shared::SharedSettings;
 pub use store::{PromptReferences, Settings, detect_source_base_folder};
+pub use trusted_repository::TrustedRepository;
 pub use vocabulary::{
     AiProvider, AppearanceMode, AutopilotAction, CostTier, LayoutMode, UnknownVariant,
 };

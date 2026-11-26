@@ -10,6 +10,7 @@ use crate::agent_menu::AgentMenuSnapshot;
 use crate::agent_menu::agent_menu_action;
 use crate::agent_menu::agent_menu_entry_for_action;
 use crate::agent_menu::agents_menu;
+use crate::agent_menu::agents_menu_items;
 use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::AgentMenuFacts;
 use crate::agent_menu_entries::agent_context_menu_entries;
@@ -39,9 +40,10 @@ fn entry_ordinal(entry: AgentMenuEntry) -> usize {
         AgentMenuEntry::AutopilotOff => 16,
         AgentMenuEntry::AutopilotOn => 17,
         AgentMenuEntry::Deactivate => 18,
-        AgentMenuEntry::RestartAgent => 19,
-        AgentMenuEntry::RestartWithNewConversation => 20,
-        AgentMenuEntry::RemoveAgent => 21,
+        AgentMenuEntry::DeactivateWithNewSession => 19,
+        AgentMenuEntry::RestartAgent => 20,
+        AgentMenuEntry::RestartWithNewConversation => 21,
+        AgentMenuEntry::RemoveAgent => 22,
     }
 }
 
@@ -79,16 +81,22 @@ fn every_labelled_entry_has_exactly_one_menu_action() {
 /// The label each item carries, separators rendered as `"-"`, so ordering
 /// *and* divider placement are both asserted - the same shape
 /// `tests::menu_labels` produces for the context menu.
+///
+/// Built with native alternates, the macOS shape, on every platform: that
+/// shape is the context menu's item for item. Without them (Windows and
+/// Linux) the Shift variants are left out, which `tests::menu_alternates`
+/// pins.
 fn agents_menu_labels(snapshot: &AgentMenuSnapshot) -> Vec<String> {
-    agents_menu(snapshot).items
-                         .iter()
-                         .map(|item| match item {
-                             MenuItem::Separator => "-".to_string(),
-                             MenuItem::Action { name, .. } => name.to_string(),
-                             MenuItem::Submenu(submenu) => submenu.name.to_string(),
-                             MenuItem::SystemMenu(_) => unreachable!("no OS submenu here"),
-                         })
-                         .collect()
+    agents_menu_items(snapshot, true).iter()
+                                     .map(|item| match item {
+                                         MenuItem::Separator => "-".to_string(),
+                                         MenuItem::Action { name, .. } => name.to_string(),
+                                         MenuItem::Submenu(submenu) => submenu.name.to_string(),
+                                         MenuItem::SystemMenu(_) => {
+                                             unreachable!("no OS submenu here")
+                                         }
+                                     })
+                                     .collect()
 }
 
 /// The Agents menu's shape is the context menu's, taken from the same

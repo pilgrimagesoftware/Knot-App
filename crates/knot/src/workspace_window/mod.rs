@@ -25,6 +25,7 @@ mod creation_tests;
 mod dashboard_prompts;
 mod file_finder;
 mod fresh_context;
+mod fresh_sessions;
 #[cfg(test)]
 mod git_folder_tests;
 mod git_panel;
@@ -60,9 +61,14 @@ mod layout_select_tests;
 mod layout_test_support;
 #[cfg(test)]
 mod layout_tests;
+mod mcp_confirmations;
+#[cfg(test)]
+mod mcp_credentials_tests;
 #[cfg(test)]
 mod mcp_handover_tests;
 pub(crate) mod mcp_panel;
+#[cfg(test)]
+mod menu_alternates_tests;
 mod menus;
 mod notifications;
 mod open;

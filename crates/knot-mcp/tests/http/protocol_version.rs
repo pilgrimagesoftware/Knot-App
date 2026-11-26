@@ -12,7 +12,7 @@ use super::*;
 #[tokio::test]
 async fn a_sessionless_probe_before_initialize_is_given_no_session() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let discover = client.post(format!("{base}/mcp"))
                          .header("Mcp-Protocol-Version", "2026-07-28")
@@ -52,7 +52,7 @@ async fn a_sessionless_probe_before_initialize_is_given_no_session() {
 /// The version `initialize` answers with, for a client asking for
 /// `requested`.
 async fn negotiated(base: &str, requested: &str) -> Value {
-    let body: Value = reqwest::Client::new().post(format!("{base}/mcp"))
+    let body: Value = support::client().post(format!("{base}/mcp"))
                                             .json(&json!({ "jsonrpc": "2.0", "id": 1,
                                                            "method": "initialize",
                                                            "params": { "protocolVersion": requested,
@@ -89,7 +89,7 @@ async fn initialize_echoes_a_supported_version_and_otherwise_offers_the_newest()
 #[tokio::test]
 async fn a_session_naming_an_unknown_protocol_version_is_refused() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
     let init = client.post(format!("{base}/mcp"))
                      .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
                                     "params": { "protocolVersion": "2025-06-18" } }))

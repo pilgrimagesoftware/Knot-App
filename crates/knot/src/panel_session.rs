@@ -42,8 +42,8 @@ pub struct PanelSessionHandle {
 impl PanelSessionHandle {
     /// Starts the adapter connection and spawns a background task (on the
     /// current tokio runtime) draining its event stream into `state` until
-    /// the session ends. `mcp_url` is Knot's own MCP HTTP server URL, wired
-    /// into the session when MCP is enabled.
+    /// the session ends. `target.mcp` is Knot's own MCP HTTP server and the
+    /// agent's credential for it, wired into the session when MCP is enabled.
     pub async fn start(config: &AdapterConfig, target: SessionTarget<'_>,
                        progress: &ConnectProgress, subagents: Option<SubagentSink>,
                        times: Option<TimesStore>)
@@ -258,6 +258,13 @@ impl PanelSessionHandle {
         self.dirty.store(true, Ordering::SeqCst);
     }
 
+    /// Collapses every tool call in the conversation (#488); see
+    /// `PanelState::collapse_all_tool_calls`.
+    pub fn collapse_all_tool_calls(&self) {
+        self.state.lock().collapse_all_tool_calls();
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
     /// Opens or closes one compact summary's run of tool calls.
     pub fn toggle_tool_run(&self, head_id: String) {
         self.state.lock().toggle_tool_run(head_id);
@@ -340,6 +347,8 @@ impl PanelRecorder {
     }
 }
 
+#[cfg(test)]
+mod notice_tests;
 #[cfg(test)]
 mod retire_tests;
 #[cfg(test)]

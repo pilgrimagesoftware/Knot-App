@@ -99,6 +99,18 @@ the tool runs in Knot, not in the agent's folder. `create-agent` refuses
 `worktreePath` without `createWorktree`, rather than creating the agent in the
 repository and ignoring the location.
 
+### Hooks
+
+A worktree an agent creates runs none of the repository's hooks, because the
+agent started it, not you. Commits from the commit window do run the
+repository's hooks, as they would in a terminal.
+
+For Git LFS, this skips the `post-checkout` hook, which only makes files that
+`git lfs track --lockable` marks read-only. The file contents still arrive,
+because the LFS filter is configured separately and still runs on checkout. In
+a worktree an agent created, lockable files stay writable until the next
+checkout that runs the hook, for example `git checkout` in a terminal.
+
 ## Pull request tracking
 
 Knot watches each agent's output for GitHub pull request URLs and records every

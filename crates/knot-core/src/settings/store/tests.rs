@@ -11,6 +11,7 @@ mod preferences;
 mod prompts;
 mod pull_requests;
 mod session_scheduling;
+mod trusted_repositories;
 
 use std::fs;
 

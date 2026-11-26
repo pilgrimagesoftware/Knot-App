@@ -49,14 +49,20 @@ impl HistoryCache {
     }
 
     /// Delete a session via its provider, then refresh the entry so the
-    /// list reflects the removal. No-op for an unsupported agent type.
-    pub fn delete_session(&self, agent_type: &str, id: &str, folder: &str) {
+    /// list reflects what is on disk. No-op for an unsupported agent type.
+    ///
+    /// Refreshed even when the delete failed part way, so the list shows what
+    /// is left; the error still comes back.
+    pub fn delete_session(&self, agent_type: &str, id: &str, folder: &str) -> crate::Result<()> {
         let Some(p) = provider(agent_type)
         else {
-            return;
+            return Ok(());
         };
-        p.delete_session(id, folder);
+        // Before any provider joins it onto a directory.
+        crate::files::check_session_id(id)?;
+        let deleted = p.delete_session(id, folder);
         self.refresh(agent_type, folder);
+        deleted
     }
 }
 
@@ -94,7 +100,16 @@ mod tests {
     #[test]
     fn delete_session_unsupported_agent_type_is_noop() {
         let cache = HistoryCache::new();
-        cache.delete_session("shell", "id", "/proj");
+        cache.delete_session("shell", "id", "/proj").unwrap();
         assert_eq!(cache.get("shell", "/proj"), Vec::new());
+    }
+
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused_before_any_provider() {
+        let cache = HistoryCache::new();
+        for id in ["../x", "a/b"] {
+            assert!(matches!(cache.delete_session("claude", id, "/proj"),
+                             Err(crate::HistoryError::InvalidSessionId(_))));
+        }
     }
 }

@@ -7,8 +7,8 @@ use super::*;
 /// `initialize` on `/mcp`, sent with `origin` as its `Origin` header, or with
 /// none.
 async fn initialize_from(base: &str, origin: Option<&str>) -> reqwest::Response {
-    let mut request = reqwest::Client::new().post(format!("{base}/mcp"))
-                                            .json(&json!({ "jsonrpc": "2.0", "id": 1,
+    let mut request = support::client().post(format!("{base}/mcp"))
+                                       .json(&json!({ "jsonrpc": "2.0", "id": 1,
                                                            "method": "initialize" }));
     if let Some(origin) = origin {
         request = request.header("Origin", origin);
@@ -57,7 +57,7 @@ async fn a_request_from_any_other_origin_is_refused() {
 #[tokio::test]
 async fn the_hook_endpoints_refuse_a_foreign_origin() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     for path in ["/api/v1/agent/status", "/api/v1/agent/register"] {
         let refused = client.post(format!("{base}{path}"))

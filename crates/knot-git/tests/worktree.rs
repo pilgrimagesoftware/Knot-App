@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use knot_git::{GitError, Repository, Runner, is_working_tree};
+use knot_git::{CallOrigin, GitError, Repository, Runner, is_working_tree};
 
 fn init_repo(dir: &Path) {
     let run = |args: &[&str]| {
@@ -23,7 +23,7 @@ fn create_worktree_makes_a_linked_working_tree() {
     init_repo(&repo_path);
 
     let dest = dir.path().join("repo-feature");
-    Repository::open(&repo_path).create_worktree("feature", &dest)
+    Repository::open(&repo_path).create_worktree("feature", &dest, CallOrigin::User)
                                 .unwrap();
 
     assert!(is_working_tree(&dest));
@@ -39,11 +39,12 @@ fn existing_branch_name_fails_and_creates_nothing() {
     init_repo(&repo_path);
     let repo = Repository::open(&repo_path);
 
-    repo.create_worktree("dup", &dir.path().join("repo-dup-1"))
+    repo.create_worktree("dup", &dir.path().join("repo-dup-1"), CallOrigin::User)
         .unwrap();
 
     let dest = dir.path().join("repo-dup-2");
-    let err = repo.create_worktree("dup", &dest).unwrap_err();
+    let err = repo.create_worktree("dup", &dest, CallOrigin::User)
+                  .unwrap_err();
 
     match err {
         GitError::Command { code, .. } => assert_ne!(code, 0),

@@ -65,6 +65,38 @@ handed rather than in the one the application was launched with.
   nothing, so no two runners in one process disagree about which git they
   mean
 
+### Requirement: Repository-configured programs on Knot's calls
+
+Every git call SHALL run with `core.fsmonitor=false`, and diffs Knot reads
+SHALL run with `--no-ext-diff --no-textconv`, so a repository's configured
+monitor, external diff or textconv program does not run when Knot reads it.
+
+#### Scenario: A configured filesystem monitor
+
+- **WHEN** a repository configures `core.fsmonitor` to a program and Knot
+  reads its status
+- **THEN** the program does not run
+
+### Requirement: Hooks run only for calls the user starts
+
+Each call SHALL carry its origin, given by the caller and not inferred from
+its arguments: user-initiated (the commit window, a dialog) or automated
+(Knot on its own, or an agent through a tool). Automated calls SHALL run with
+`core.hooksPath=/dev/null`; user-initiated calls SHALL run the repository's
+hooks.
+
+#### Scenario: A worktree an agent asks for
+
+- **WHEN** an agent creates a worktree through a tool in a repository with a
+  `post-checkout` hook
+- **THEN** the hook does not run
+
+#### Scenario: A worktree the user adds
+
+- **WHEN** the user adds a worktree in a repository with a `post-checkout`
+  hook
+- **THEN** the hook runs
+
 ### Requirement: Repository status
 
 The system SHALL derive repository status from `git status --porcelain=v2
