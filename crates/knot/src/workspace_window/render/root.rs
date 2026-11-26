@@ -121,7 +121,8 @@ impl Render for WorkspaceWindow {
             // the window - the composer and the terminal both let modifier
             // changes and key-downs through. Capture phase for the key-down:
             // a focused input handles most keys and stops them bubbling.
-            .on_modifiers_changed(cx.listener(|view, event, _, cx| {
+            .on_modifiers_changed(cx.listener(|view, event, window, cx| {
+                view.shift_changed(event, window);
                 view.key_hints_modifiers_changed(event, cx)
             }))
             .capture_key_down(cx.listener(|view, event, _, cx| view.key_hints_key_down(event, cx)))

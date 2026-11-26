@@ -63,6 +63,7 @@ actions!(knot_app,
           AgentMenuAutopilotOff,
           AgentMenuAutopilotOn,
           AgentMenuDeactivate,
+          AgentMenuDeactivateWithNewSession,
           AgentMenuRestartAgent,
           AgentMenuRestartWithNewConversation,
           AgentMenuRemoveAgent]);
@@ -160,6 +161,9 @@ pub(crate) fn agent_menu_action(entry: AgentMenuEntry) -> Option<Box<dyn Action>
              AgentMenuEntry::AutopilotOff => Box::new(AgentMenuAutopilotOff),
              AgentMenuEntry::AutopilotOn => Box::new(AgentMenuAutopilotOn),
              AgentMenuEntry::Deactivate => Box::new(AgentMenuDeactivate),
+             AgentMenuEntry::DeactivateWithNewSession => {
+                 Box::new(AgentMenuDeactivateWithNewSession)
+             }
              AgentMenuEntry::RestartAgent => Box::new(AgentMenuRestartAgent),
              AgentMenuEntry::RestartWithNewConversation => {
                  Box::new(AgentMenuRestartWithNewConversation)

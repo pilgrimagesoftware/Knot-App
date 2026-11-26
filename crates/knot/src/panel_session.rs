@@ -258,6 +258,13 @@ impl PanelSessionHandle {
         self.dirty.store(true, Ordering::SeqCst);
     }
 
+    /// Collapses every tool call in the conversation (#488); see
+    /// `PanelState::collapse_all_tool_calls`.
+    pub fn collapse_all_tool_calls(&self) {
+        self.state.lock().collapse_all_tool_calls();
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
     /// Opens or closes one compact summary's run of tool calls.
     pub fn toggle_tool_run(&self, head_id: String) {
         self.state.lock().toggle_tool_run(head_id);

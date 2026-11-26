@@ -70,6 +70,11 @@ impl WorkspaceWindow {
         if let McpHandoverTerminal::Created(_) = terminal {
             self.persist_agents(cx);
         }
+        // Opening it laid it out beside its owner, new or reused (#500), and
+        // that layout is in the store only: the reveal that follows finds the
+        // terminal already in a pane and changes nothing, so nothing else
+        // would save it, and a quit would restore the layout from before.
+        self.persist_workspace_ui(cx);
 
         Some(terminal.id())
     }

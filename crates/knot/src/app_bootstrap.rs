@@ -77,6 +77,10 @@ pub(crate) fn install_actions_and_keys(settings: &knot_core::Settings,
     // bindings rather than fixed app shortcuts: Up or Space mean something
     // only inside it (#430).
     cx.bind_keys(crate::panel_view::question_card_key_bindings());
+    // Shift-Return in a menu, so a line's Shift alternate is reachable from
+    // the keyboard (#475). Bound after `gpui_kit::init`, beside
+    // gpui-component's own `enter`.
+    cx.bind_keys(crate::workspace_window::alternate_line_key_bindings());
     crate::keymap::apply(&crate::keymap::Resolved::from_settings(&settings.keybindings),
                          cx);
     let settings_window: Rc<RefCell<Option<AnyWindowHandle>>> = Rc::new(RefCell::new(None));

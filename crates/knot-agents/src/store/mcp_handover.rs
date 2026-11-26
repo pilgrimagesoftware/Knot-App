@@ -13,6 +13,7 @@
 
 use uuid::Uuid;
 
+use super::layout::CompanionOrigin;
 use super::{AgentStore, CreateOptions, RemovedAgent};
 use crate::agent::Agent;
 use crate::error::{AgentError, Result};
@@ -53,6 +54,9 @@ impl AgentStore {
     /// A created terminal is a shell companion in the owner's folder that
     /// inherits the owner's activation, the same shape
     /// [`Self::create_shell_companion`] builds, plus the command and marker.
+    /// New or reused, it is laid out as a companion the user created
+    /// (`workspace-layouts`, "The MCP handover terminal is a user's
+    /// companion"): beside a shown owner, or as an owner-and-terminal split.
     pub fn open_mcp_handover(&mut self, request: McpHandoverRequest<'_>)
                              -> Result<McpHandoverTerminal> {
         let McpHandoverRequest { owner,
@@ -65,6 +69,12 @@ impl AgentStore {
         }
 
         if let Some(existing) = self.mcp_handover_terminal(owner, server) {
+            // Opened again: shown the way a new one is, so a terminal the
+            // user took out of the layout comes back beside its owner rather
+            // than replacing the layout when it is revealed (#500).
+            if let Some(workspace) = self.workspace_of(existing) {
+                self.show_companion(workspace, owner, existing, CompanionOrigin::User);
+            }
             return Ok(McpHandoverTerminal::Reused(existing));
         }
 
@@ -80,6 +90,11 @@ impl AgentStore {
                                              insert_after: Some(owner),
                                              activation_mode,
                                              mcp_handover: Some(server.to_owned()),
+                                             // The user asked for it from the
+                                             // MCP pane, so it opens beside its
+                                             // owner like any companion the
+                                             // user creates (#500).
+                                             companion_origin: Some(CompanionOrigin::User),
                                              ..Default::default() });
         self.set_activated(id, activated);
 

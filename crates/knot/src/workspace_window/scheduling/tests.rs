@@ -43,7 +43,8 @@ fn fixture(cx: &mut TestAppContext) -> Fixture {
                                                                Some(INERT_AGENT_TYPE.into()),
                                                            workspace_id: Some(workspace_id),
                                                            ..Default::default() });
-        store.set_acp_session_id(id, format!("acp-{name}"));
+        let token = store.agent(id).expect("the agent exists").restart_token;
+        assert!(store.set_acp_session_id_if_current(id, token, format!("acp-{name}")));
         id
     };
     let agent = make("scripted");

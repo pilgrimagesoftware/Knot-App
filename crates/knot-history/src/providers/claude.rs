@@ -9,6 +9,7 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 
 use crate::consts::{CLAUDE_PROJECTS_DIR, MAX_SESSIONS};
+use crate::files::{check_session_id, remove_inside};
 use crate::paths::home_dir;
 use crate::provider::{HistoryProvider, SessionSummary};
 use crate::providers::{Maybe, jsonl_entries, maybe_text};
@@ -161,14 +162,25 @@ impl HistoryProvider for ClaudeProvider {
         summaries
     }
 
-    fn delete_session(&self, id: &str, folder: &str) {
-        let Some(dir) = dashed_dir(folder)
-        else {
-            return;
-        };
-        let _ = fs::remove_file(dir.join(format!("{id}.jsonl")));
-        let _ = fs::remove_file(dir.join(id));
+    fn delete_session(&self, id: &str, folder: &str) -> crate::Result<()> {
+        match dashed_dir(folder) {
+            Some(dir) => delete_in(&dir, id),
+            None => Ok(()),
+        }
     }
+}
+
+/// Deletes session `id` from the Claude project directory `dir`: its
+/// transcript, and the directory of the same name Claude keeps beside it.
+/// That one is a directory, which `remove_file` never removed.
+///
+/// `id` must be one plain path component, and both removals stay inside
+/// `dir` once resolved.
+fn delete_in(dir: &Path, id: &str) -> crate::Result<()> {
+    check_session_id(id)?;
+    remove_inside(dir, &dir.join(format!("{id}.jsonl")))?;
+    remove_inside(dir, &dir.join(id))?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -217,5 +229,55 @@ mod tests {
         write_session(tmp.path(), "abc", &["not json at all"]);
 
         assert!(parse_session_file(&tmp.path().join("abc.jsonl")).is_none());
+    }
+
+    #[test]
+    fn delete_removes_the_transcript_and_its_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("abc.jsonl"), "{}").unwrap();
+        fs::create_dir_all(tmp.path().join("abc/subagents")).unwrap();
+
+        delete_in(tmp.path(), "abc").unwrap();
+
+        assert!(!tmp.path().join("abc.jsonl").exists());
+        assert!(!tmp.path().join("abc").exists());
+    }
+
+    /// A transcript that cannot be removed (its directory is read-only)
+    /// is an error, not a delete reported as done.
+    #[cfg(unix)]
+    #[test]
+    fn a_transcript_that_cannot_be_removed_is_an_error() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("project");
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("abc.jsonl"), "{}").unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = delete_in(&dir, "abc");
+
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(result.is_err());
+        assert!(dir.join("abc.jsonl").exists());
+    }
+
+    /// An id that is not one plain path component is refused before anything
+    /// is joined onto the directory, and nothing outside it is removed.
+    #[test]
+    fn an_id_that_is_not_one_path_component_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("root");
+        fs::create_dir(&dir).unwrap();
+        fs::create_dir(tmp.path().join("victim")).unwrap();
+        fs::write(tmp.path().join("victim.jsonl"), "x").unwrap();
+
+        for id in ["../victim", "sub/../../victim", "a/b", "", "..", "a\\b"] {
+            assert!(matches!(delete_in(&dir, id),
+                             Err(crate::HistoryError::InvalidSessionId(_))),
+                    "{id:?}");
+        }
+        assert!(tmp.path().join("victim").exists());
+        assert!(tmp.path().join("victim.jsonl").exists());
     }
 }
