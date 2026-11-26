@@ -235,6 +235,11 @@ impl WorkspaceWindow {
         else {
             return;
         };
+        // The adapter is going, so its credentials go first: a request it
+        // makes while shutting down is refused. Only a slot this window
+        // held reaches here, and one agent has one claimed slot at a time,
+        // so this cannot revoke a pair another window's adapter runs on.
+        self.mcp_credentials.revoke(id);
         // Bound first, so the slot's guard is dropped before the spawn.
         let handle = slot.lock().retire();
         if let Some(handle) = handle {

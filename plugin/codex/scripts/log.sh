@@ -8,7 +8,7 @@ skwad_log() {
   local hook_name="$1"
   shift
   local log_dir="/tmp/skwad-hooks"
-  local agent="${SKWAD_AGENT_ID:-unknown}"
+  local agent="${KNOT_AGENT_ID:-unknown}"
   mkdir -p "$log_dir"
   echo "[$(date '+%H:%M:%S')] $hook_name: $*" >> "$log_dir/$agent.log"
 }

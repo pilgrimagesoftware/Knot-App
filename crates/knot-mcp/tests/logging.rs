@@ -17,6 +17,9 @@ use knot_mcp::{
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
+#[path = "support/mod.rs"]
+mod support;
+
 fn no_agents() -> Arc<dyn Fn() -> Vec<Agent> + Send + Sync> {
     Arc::new(Vec::new)
 }
@@ -39,7 +42,8 @@ impl ToolCatalog for EchoCatalog {
 async fn start(catalog: Arc<dyn ToolCatalog>) -> (McpServer, String, TempDir, PathBuf) {
     let root = TempDir::new().expect("temp dir");
     let path = root.path().join("logs").join(LOG_FILE_NAME);
-    let mut server = McpServer::new(0, catalog, no_agents()).with_log(path.clone());
+    let mut server = McpServer::new(0, catalog, no_agents()).with_credentials(support::registry())
+                                                            .with_log(path.clone());
     server.start().await.expect("server starts");
     let addr = server.bound_addr().expect("bound address");
     (server, format!("http://{addr}"), root, path)
@@ -126,7 +130,7 @@ async fn a_bind_failure_is_logged_with_its_error() {
     let taken = holder.bound_addr().expect("bound address").port();
 
     let mut blocked =
-        McpServer::new(taken, Arc::new(EmptyCatalog), no_agents()).with_log(path.clone());
+        McpServer::new(taken, Arc::new(EmptyCatalog), no_agents()).with_credentials(support::registry()).with_log(path.clone());
     let result = blocked.start().await;
     assert!(result.is_err(), "the port is already held");
     settle(&mut blocked).await;
@@ -145,11 +149,11 @@ async fn a_bind_failure_is_logged_with_its_error() {
 async fn a_method_round_trip_is_logged_both_ways() {
     let (mut server, base, _root, path) = start(Arc::new(EmptyCatalog)).await;
 
-    reqwest::Client::new().post(format!("{base}/mcp"))
-                          .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }))
-                          .send()
-                          .await
-                          .unwrap();
+    support::client().post(format!("{base}/mcp"))
+                     .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }))
+                     .send()
+                     .await
+                     .unwrap();
     settle(&mut server).await;
 
     let logged = entries(&path);
@@ -182,11 +186,11 @@ async fn a_method_round_trip_is_logged_both_ways() {
 async fn an_errored_response_is_logged_as_an_error_outcome() {
     let (mut server, base, _root, path) = start(Arc::new(EmptyCatalog)).await;
 
-    reqwest::Client::new().post(format!("{base}/mcp"))
-                          .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "nonexistent" }))
-                          .send()
-                          .await
-                          .unwrap();
+    support::client().post(format!("{base}/mcp"))
+                     .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "nonexistent" }))
+                     .send()
+                     .await
+                     .unwrap();
     settle(&mut server).await;
 
     let logged = entries(&path);
@@ -200,11 +204,11 @@ async fn an_errored_response_is_logged_as_an_error_outcome() {
 async fn the_tool_catalog_size_is_logged() {
     let (mut server, base, _root, path) = start(Arc::new(EchoCatalog)).await;
 
-    reqwest::Client::new().post(format!("{base}/mcp"))
-                          .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
-                          .send()
-                          .await
-                          .unwrap();
+    support::client().post(format!("{base}/mcp"))
+                     .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+                     .send()
+                     .await
+                     .unwrap();
     settle(&mut server).await;
 
     assert!(find(&entries(&path), "tool", "tools/list -> 1 tools").is_some());
@@ -220,21 +224,22 @@ async fn an_unwritable_log_path_does_not_stop_the_server() {
     std::fs::write(&blocker, "not a directory").expect("blocker");
 
     let mut server =
-        McpServer::new(0, Arc::new(EchoCatalog), no_agents()).with_log(blocker.join(LOG_FILE_NAME));
+        McpServer::new(0, Arc::new(EchoCatalog), no_agents()).with_credentials(support::registry())
+                                                             .with_log(blocker.join(LOG_FILE_NAME));
     server.start()
           .await
           .expect("the server starts with no usable log");
     let base = format!("http://{}", server.bound_addr().expect("bound address"));
 
-    let response = reqwest::Client::new().post(format!("{base}/mcp"))
-                                         .json(&json!({
-                                                   "jsonrpc": "2.0",
-                                                   "id": 1,
-                                                   "method": "tools/list",
-                                               }))
-                                         .send()
-                                         .await
-                                         .expect("the request is served");
+    let response = support::client().post(format!("{base}/mcp"))
+                                    .json(&json!({
+                                              "jsonrpc": "2.0",
+                                              "id": 1,
+                                              "method": "tools/list",
+                                          }))
+                                    .send()
+                                    .await
+                                    .expect("the request is served");
     assert_eq!(response.status(), 200);
     let body: Value = response.json().await.expect("a JSON body");
     assert_eq!(body["result"]["tools"][0]["name"], "send-message",
@@ -250,19 +255,19 @@ async fn a_tool_call_records_its_shape_and_not_its_arguments() {
     let (mut server, base, _root, path) = start(Arc::new(EchoCatalog)).await;
     let secret = "the whole prompt the user typed, and /Users/someone/secret.txt";
 
-    reqwest::Client::new().post(format!("{base}/mcp"))
-                          .json(&json!({
-                                    "jsonrpc": "2.0",
-                                    "id": 1,
-                                    "method": "tools/call",
-                                    "params": {
-                                        "name": "send-message",
-                                        "arguments": { "agentId": "a1", "message": secret },
-                                    },
-                                }))
-                          .send()
-                          .await
-                          .unwrap();
+    support::client().post(format!("{base}/mcp"))
+                     .json(&json!({
+                               "jsonrpc": "2.0",
+                               "id": 1,
+                               "method": "tools/call",
+                               "params": {
+                                   "name": "send-message",
+                                   "arguments": { "agentId": "a1", "message": secret },
+                               },
+                           }))
+                     .send()
+                     .await
+                     .unwrap();
     settle(&mut server).await;
 
     let contents = read(&path);
@@ -276,4 +281,50 @@ async fn a_tool_call_records_its_shape_and_not_its_arguments() {
     assert!(!contents.contains(secret),
             "the argument values must not reach a durable file: {contents}");
     assert!(!contents.contains("/Users/someone/secret.txt"));
+}
+
+/// `mcp-server` "Credentials are not logged": every request, served or
+/// refused, is logged by principal and outcome, and no line carries a
+/// credential of any kind - including an unknown one a client presented.
+#[tokio::test]
+async fn no_credential_reaches_the_log() {
+    let root = TempDir::new().expect("temp dir");
+    let path = root.path().join(LOG_FILE_NAME);
+    let credentials = support::registry();
+    let agent = uuid::Uuid::new_v4();
+    let pair = credentials.issue_agent_pair(agent);
+    let unknown = knot_mcp::Secret::generate(knot_mcp::CredentialKind::AgentTool);
+    let mut server =
+        McpServer::new(0, Arc::new(EmptyCatalog), no_agents()).with_credentials(credentials)
+                                                              .with_log(path.clone());
+    server.start().await.expect("server starts");
+    let base = format!("http://{}", server.bound_addr().expect("bound address"));
+
+    let client = reqwest::Client::new();
+    for credential in [pair.tool.expose(),
+                       pair.hooks.expose(),
+                       support::TOKEN.expose(),
+                       unknown.expose()]
+    {
+        client.post(format!("{base}/mcp?agent={agent}"))
+              .bearer_auth(credential)
+              .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }))
+              .send()
+              .await
+              .unwrap();
+    }
+    settle(&mut server).await;
+
+    let text = read(&path);
+    for prefix in ["knot_a_", "knot_h_", "knot_c_"] {
+        assert!(!text.contains(prefix),
+                "a {prefix} credential in the log:\n{text}");
+    }
+    let logged = entries(&path);
+    assert!(find(&logged, "request", &format!("[agent {agent}]")).is_some(),
+            "a served request names its principal: {logged:?}");
+    assert!(find(&logged, "auth", "[agent-hooks").is_some(),
+            "a refusal names the credential's principal: {logged:?}");
+    assert!(find(&logged, "auth", "[none]").is_some(),
+            "an unknown credential is logged as none: {logged:?}");
 }

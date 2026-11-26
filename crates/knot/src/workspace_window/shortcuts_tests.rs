@@ -293,6 +293,27 @@ fn jump_to_bottom_is_unavailable_behind_a_panel(cx: &mut TestAppContext) {
     assert!(!available(&mut fixture, &JumpToBottom));
 }
 
+/// Collapse All Tool Calls (#488) is available on Jump to Bottom's terms:
+/// not with nothing selected.
+#[gpui_kit::test]
+fn collapse_all_tool_calls_is_unavailable_with_nothing_selected(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(0, cx);
+    assert!(!available(&mut fixture, &crate::app_bootstrap::CollapseAllToolCalls));
+}
+
+/// ...and not behind a panel, which has no conversation on screen.
+#[gpui_kit::test]
+fn collapse_all_tool_calls_is_unavailable_behind_a_panel(cx: &mut TestAppContext) {
+    let mut fixture = window_with_agents(1, cx);
+    let id = fixture.agents[0];
+    fixture.press(SelectAgent1);
+    scrolled_up_list(&mut fixture, id);
+    assert!(available(&mut fixture, &crate::app_bootstrap::CollapseAllToolCalls));
+
+    fixture.set_view_mode(WorkspaceViewMode::Dashboard);
+    assert!(!available(&mut fixture, &crate::app_bootstrap::CollapseAllToolCalls));
+}
+
 /// The composer that held focus is not drawn behind a panel. Unless focus
 /// moves to the window's root element, gpui resolves the stale handle to the
 /// tree root - above every shortcut handler - and the menu goes dead.

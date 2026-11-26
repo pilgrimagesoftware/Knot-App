@@ -155,3 +155,10 @@ pub const MAX_PROMPT_INPUTS: usize = 5;
 /// editor acts on control characters before the shell sees any quoting, so
 /// no folder name may be part of it. Set by `knot-terminal` on the PTY.
 pub const AGENT_FOLDER_ENV: &str = "KNOT_AGENT_FOLDER";
+
+/// The environment variable that makes `claude-agent-acp` pass MCP servers
+/// to the Claude CLI as a `--mcp-config` argument (`mcp-auth` D3).
+pub const CLAUDE_ARGV_DELIVERY_ENV: &str = "CLAUDE_CODE_EXECUTABLE";
+
+/// The Claude options that do the same when present in `extraArgs`.
+pub const CLAUDE_ARGV_DELIVERY_OPTIONS: &[&str] = &["settings", "sdk-url"];

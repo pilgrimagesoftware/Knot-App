@@ -88,6 +88,12 @@ pub struct PanelState {
     /// user has never touched follows the mode's default, and a run that
     /// grows another call afterwards does not forget it was opened.
     tool_run_expanded:              HashSet<String>,
+    /// The overrides in `tool_call_collapsed` that Collapse All Tool Calls
+    /// set rather than the user's own toggle. Kept apart because a failure
+    /// has to stay visible (`collapsed-tool-call-summary`, "Failures stay
+    /// visible"): a call collapse-all closed while it ran reopens if it
+    /// fails, where one the user closed stays closed.
+    pub(super) collapsed_by_all:    HashSet<String>,
     /// Pull request URLs seen in this session's tool-call text, canonical
     /// and de-duplicated, waiting to be drained by the window that owns the
     /// agent store.
@@ -382,7 +388,50 @@ impl PanelState {
         else {
             return;
         };
+        // The user's choice now, not collapse-all's: a later failure leaves it.
+        self.collapsed_by_all.remove(id);
         self.tool_call_collapsed.insert(id.to_string(), !collapsed);
+    }
+
+    /// Puts every tool call back to its collapsed form (#488,
+    /// `collapsed-tool-call-summary`, "Collapsing every tool call at once"):
+    /// each summary run the user opened returns to its line, and each card
+    /// drawn open - by the user, or by default because it is running or
+    /// failed - collapses, nested subagent cards included.
+    ///
+    /// Only the user's open/closed choices change, as recorded overrides; the
+    /// conversation itself does not. A card that arrives afterwards follows
+    /// its own default, and each card or run can be opened again by hand.
+    pub fn collapse_all_tool_calls(&mut self) {
+        self.tool_run_expanded.clear();
+        let mut open = Vec::new();
+        for message in &self.messages {
+            if let PanelMessage::ToolCall(card) = message {
+                self.collect_open_cards(card, &mut open);
+            }
+        }
+        for id in open {
+            self.tool_call_collapsed.insert(id.clone(), true);
+            self.collapsed_by_all.insert(id);
+        }
+    }
+
+    /// A call that has just failed: drops a collapse-all override, so the
+    /// card follows its default and opens. The user's own choice stays.
+    pub(super) fn failure_reopens(&mut self, id: &str) {
+        if self.collapsed_by_all.remove(id) {
+            self.tool_call_collapsed.remove(id);
+        }
+    }
+
+    /// The ids of `card` and the cards nested under it that draw open.
+    fn collect_open_cards(&self, card: &ToolCallCard, open: &mut Vec<String>) {
+        if !self.is_collapsed(card) {
+            open.push(card.id.clone());
+        }
+        for child in card.subagent_tool_calls() {
+            self.collect_open_cards(child, open);
+        }
     }
 
     /// Whether the run headed by `head_id` is drawn as its individual

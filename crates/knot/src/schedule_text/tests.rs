@@ -1,7 +1,7 @@
 //! The schedule and idle-countdown lines, checked against the catalog's own
 //! entries rather than English copy.
 
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 use jiff::civil::date;
 use jiff::tz::TimeZone;
 use knot_core::l10n::{t, t_with};
@@ -12,9 +12,9 @@ use crate::scheduled_starts::ScheduleOutcome;
 use crate::workspace_window::idle::IdleCountdown;
 
 /// Friday 2026-11-13.
-fn la(day: i8, hour: i8, minute: i8) -> Zoned {
+fn la(day: i8, hour: i8, minute: i8) -> ZonedDateTime {
     date(2026, 11, day).at(hour, minute, 0, 0)
-                       .to_zoned(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
+                       .to_zoned_datetime(TimeZone::get("America/Los_Angeles").expect("tzdb has LA"))
                        .expect("a valid local time")
 }
 

@@ -13,6 +13,13 @@ use knot_mcp::{
 use serde_json::{Value, json};
 use uuid::Uuid;
 
+#[path = "support/mod.rs"]
+mod support;
+
+#[path = "http/auth.rs"]
+mod auth;
+#[path = "http/hook_scripts.rs"]
+mod hook_scripts;
 #[path = "http/origin.rs"]
 mod origin;
 #[path = "http/protocol_version.rs"]
@@ -23,7 +30,7 @@ fn no_agents() -> Arc<dyn Fn() -> Vec<Agent> + Send + Sync> {
 }
 
 async fn start_server(catalog: Arc<dyn ToolCatalog>) -> (McpServer, String) {
-    let mut server = McpServer::new(0, catalog, no_agents());
+    let mut server = McpServer::new(0, catalog, no_agents()).with_credentials(support::registry());
     server.start().await.expect("server starts");
     let addr = server.bound_addr()
                      .expect("bound address known after start");
@@ -32,7 +39,7 @@ async fn start_server(catalog: Arc<dyn ToolCatalog>) -> (McpServer, String) {
 
 #[tokio::test]
 async fn default_bind_uses_documented_port() {
-    let server = McpServer::new(DEFAULT_PORT, Arc::new(EmptyCatalog), no_agents());
+    let server = McpServer::new(DEFAULT_PORT, Arc::new(EmptyCatalog), no_agents()).with_credentials(support::registry());
     assert_eq!(server.port(), DEFAULT_PORT);
 }
 
@@ -40,7 +47,10 @@ async fn default_bind_uses_documented_port() {
 async fn health_check_reports_ok() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
 
-    let resp = reqwest::get(format!("{base}/health")).await.unwrap();
+    let resp = support::client().get(format!("{base}/health"))
+                                .send()
+                                .await
+                                .unwrap();
     assert_eq!(resp.status(), 200);
     assert_eq!(resp.text().await.unwrap(), "OK");
 
@@ -51,7 +61,7 @@ async fn health_check_reports_ok() {
 async fn info_endpoint_responds_without_initialization() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
 
-    let resp = reqwest::get(&base).await.unwrap();
+    let resp = support::client().get(&base).send().await.unwrap();
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
     assert_eq!(body["name"], "knot-mcp");
@@ -62,7 +72,7 @@ async fn info_endpoint_responds_without_initialization() {
 #[tokio::test]
 async fn initialize_handshake_over_http() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let resp = client.post(format!("{base}/mcp"))
                      .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }))
@@ -82,7 +92,7 @@ async fn initialize_handshake_over_http() {
 #[tokio::test]
 async fn unknown_mcp_session_self_heals_with_a_fresh_session() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let resp = client.post(format!("{base}/mcp"))
                      .header("Mcp-Session-Id", "missing-session")
@@ -105,7 +115,7 @@ async fn unknown_mcp_session_self_heals_with_a_fresh_session() {
 #[tokio::test]
 async fn unknown_method_over_http_is_method_not_found() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let resp = client.post(format!("{base}/mcp"))
                      .json(&json!({ "jsonrpc": "2.0", "id": 7, "method": "not-a-method" }))
@@ -124,7 +134,7 @@ async fn unknown_method_over_http_is_method_not_found() {
 #[tokio::test]
 async fn sse_accept_header_wraps_response_as_sse() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let resp = client.post(format!("{base}/mcp"))
                      .header("Accept", "text/event-stream")
@@ -145,7 +155,10 @@ async fn sse_accept_header_wraps_response_as_sse() {
 async fn get_mcp_opens_sse_stream_with_connected_event() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
 
-    let resp = reqwest::get(format!("{base}/mcp")).await.unwrap();
+    let resp = support::client().get(format!("{base}/mcp"))
+                                .send()
+                                .await
+                                .unwrap();
     assert_eq!(resp.headers().get("content-type").unwrap(),
                "text/event-stream");
     let body = resp.text().await.unwrap();
@@ -206,12 +219,15 @@ async fn status_endpoint_reflects_live_agents() {
     let agents = vec![test_agent("one", true), test_agent("two", false)];
     let snapshot: Arc<dyn Fn() -> Vec<Agent> + Send + Sync> = Arc::new(move || agents.clone());
 
-    let mut server = McpServer::new(0, Arc::new(EmptyCatalog), snapshot);
+    let mut server =
+        McpServer::new(0, Arc::new(EmptyCatalog), snapshot).with_credentials(support::registry());
     server.start().await.unwrap();
     let base = format!("http://{}", server.bound_addr().unwrap());
 
-    let resp = reqwest::get(format!("{base}/api/v1/agent/status")).await
-                                                                  .unwrap();
+    let resp = support::client().get(format!("{base}/api/v1/agent/status"))
+                                .send()
+                                .await
+                                .unwrap();
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
     let entries = body.as_array().unwrap();
@@ -236,11 +252,11 @@ impl AgentHookHandler for HookRecorder {
 
 #[tokio::test]
 async fn hook_routes_validate_and_dispatch_requests() {
-    let mut server = McpServer::new(0, Arc::new(EmptyCatalog), no_agents())
+    let mut server = McpServer::new(0, Arc::new(EmptyCatalog), no_agents()).with_credentials(support::registry())
         .with_hook_handler(Arc::new(HookRecorder));
     server.start().await.unwrap();
     let base = format!("http://{}", server.bound_addr().unwrap());
-    let client = reqwest::Client::new();
+    let client = support::client();
     let agent_id = Uuid::new_v4();
 
     let register = client.post(format!("{base}/api/v1/agent/register"))
@@ -286,7 +302,7 @@ impl ToolCatalog for OneToolCatalog {
 #[tokio::test]
 async fn tools_list_and_call_over_http() {
     let (mut server, base) = start_server(Arc::new(OneToolCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     let list_resp = client.post(format!("{base}/mcp"))
                           .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
@@ -316,14 +332,14 @@ async fn stop_closes_the_listener() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
     server.stop();
 
-    let result = reqwest::get(format!("{base}/health")).await;
+    let result = support::client().get(format!("{base}/health")).send().await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn vitals_track_uptime_sessions_and_requests_per_interval() {
     let (mut server, base) = start_server(Arc::new(EmptyCatalog)).await;
-    let client = reqwest::Client::new();
+    let client = support::client();
 
     assert!(server.uptime().is_some(), "a serving server has an uptime");
     assert_eq!(server.live_sessions(), 0);

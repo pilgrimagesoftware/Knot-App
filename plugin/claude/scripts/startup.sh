@@ -1,13 +1,14 @@
 #!/bin/bash
 
 source "$(dirname "$0")/log.sh"
+source "$(dirname "$0")/post.sh"
 
 input=$(cat)
 source_type=$(echo "$input" | jq -r '.source')
 session_id=$(echo "$input" | jq -r '.session_id')
 cwd=$(pwd)
 
-skwad_log "SessionStart" "agent_id=$SKWAD_AGENT_ID session_id=$session_id source=$source_type cwd=$cwd"
+skwad_log "SessionStart" "agent_id=$KNOT_AGENT_ID session_id=$session_id source=$source_type cwd=$cwd"
 skwad_log "SessionStart" "payload=$input"
 
 # Process startup and resume events (others are ignored)
@@ -15,23 +16,19 @@ if [ "$source_type" != "startup" ] && [ "$source_type" != "resume" ]; then
   exit 0
 fi
 
-SKWAD_URL="${SKWAD_URL:-http://127.0.0.1:8766}"
-
-# Need agent ID to register
-if [ -z "$SKWAD_AGENT_ID" ]; then
+# Need the agent ID and Knot's server to register
+if [ -z "$KNOT_AGENT_ID" ] || [ -z "$KNOT_MCP_URL" ]; then
   exit 0
 fi
 
-# Check if Skwad MCP server is running
-health=$(curl -s -o /dev/null -w "%{http_code}" "$SKWAD_URL/health" 2>/dev/null)
+# Check if Knot's MCP server is running (`/health` needs no credential)
+health=$(curl -s -o /dev/null -w "%{http_code}" "$KNOT_MCP_URL/health" 2>/dev/null)
 
 if [ "$health" = "200" ]; then
 
   # Register agent — forward raw hook payload + source for server-side handling
-  register_response=$(curl -s -X POST \
-    -H "Content-Type: application/json" \
-    -d "{\"agent_id\":\"${SKWAD_AGENT_ID}\",\"agent\":\"claude\",\"source\":\"${source_type}\",\"session_id\":\"${session_id}\",\"payload\":${input:-\{\}}}" \
-    "${SKWAD_URL}/api/v1/agent/register" 2>/dev/null)
+  register_response=$(knot_post /api/v1/agent/register \
+    "{\"agent_id\":\"${KNOT_AGENT_ID}\",\"agent\":\"claude\",\"source\":\"${source_type}\",\"session_id\":\"${session_id}\",\"payload\":${input:-\{\}}}")
 
   skwad_log "SessionStart" "register_response=$register_response"
 
@@ -40,7 +37,7 @@ if [ "$health" = "200" ]; then
     # Build context from register response (skwad members)
     members=$(echo "$register_response" | jq -r '.skwadMembers // [] | map("\(.name) (\(.id)) - \(.folder) [\(.status)]") | join(", ")' 2>/dev/null)
 
-    context="Skwad agent manager detected at $SKWAD_URL. You are registered with the skwad. Your agent ID is: ${SKWAD_AGENT_ID}."
+    context="Knot detected at $KNOT_MCP_URL. You are registered with the knot. Your agent ID is: ${KNOT_AGENT_ID}."
     if [ -n "$members" ] && [ "$members" != "" ]; then
       context="$context Your skwad members: $members."
     fi

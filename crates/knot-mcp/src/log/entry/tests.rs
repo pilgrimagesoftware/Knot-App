@@ -34,6 +34,7 @@ fn every_subject_renders_its_own_word() {
     assert_eq!(Subject::Tool.to_string(), "tool");
     assert_eq!(Subject::Heartbeat.to_string(), "heartbeat");
     assert_eq!(Subject::Log.to_string(), "log");
+    assert_eq!(Subject::Auth.to_string(), "auth");
 }
 
 #[test]
@@ -43,7 +44,8 @@ fn no_two_subjects_share_a_word() {
                Subject::Response,
                Subject::Tool,
                Subject::Heartbeat,
-               Subject::Log];
+               Subject::Log,
+               Subject::Auth];
     let mut words: Vec<String> = all.iter().map(ToString::to_string).collect();
     words.sort();
     let count = words.len();

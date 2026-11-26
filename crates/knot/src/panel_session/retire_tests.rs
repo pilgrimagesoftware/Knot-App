@@ -47,7 +47,7 @@ fn request<'a>(config: &'a AdapterConfig, env: Vec<(String, String)>) -> Connect
                      config,
                      cwd: "/tmp",
                      prior_session_id: None,
-                     mcp_url: None,
+                     mcp: None,
                      registration_prompt: Some("register".to_string()),
                      resume_registration_prompt: None,
                      session_config: BTreeMap::new(),
@@ -58,7 +58,8 @@ fn request<'a>(config: &'a AdapterConfig, env: Vec<(String, String)>) -> Connect
                      args: Vec::new(),
                      subagents: None,
                      startup_prompt: None,
-                     times: None }
+                     times: None,
+                     notices: Vec::new() }
 }
 
 /// The adapter's pid, once it has written it.

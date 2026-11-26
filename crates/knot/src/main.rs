@@ -43,6 +43,7 @@ mod library_window;
 mod link_tooltip;
 mod macos;
 mod markdown_view;
+mod mcp_credentials;
 mod mcp_lifetime;
 mod mcp_status;
 mod menu_bar;

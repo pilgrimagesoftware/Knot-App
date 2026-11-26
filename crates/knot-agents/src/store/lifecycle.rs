@@ -234,12 +234,7 @@ impl AgentStore {
     /// `restore-conversation-on-launch` off (`agent-lifecycle`: "Restart").
     pub fn restart(&mut self, id: Uuid) -> Result<()> {
         let agent = self.agent_mut(id).ok_or(AgentError::NotFound(id))?;
-        agent.session_id = None;
-        agent.acp_session_id = None;
-        agent.resume_session_id = None;
-        agent.fork_session = false;
-        // A fresh conversation is what a dispatched task asked for (#331).
-        agent.fresh_context_requested = false;
+        super::fresh_session::forget_conversation(agent);
         self.recreate_terminal(id)
     }
 

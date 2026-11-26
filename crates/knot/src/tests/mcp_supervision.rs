@@ -53,12 +53,14 @@ fn a_disabled_server_binds_nothing_and_supervises_nothing() {
     let queues = crate::app_support::McpQueues { awaiting_input: Arc::new(Mutex::new(Vec::new())),
                                                  activation:     Arc::new(Mutex::new(Vec::new())),
                                                  autopilot:      Arc::new(Mutex::new(Vec::new())), };
-    let (_stop, status) = start_mcp_server(store,
-                                           knot_core::SharedSettings::new(settings),
-                                           Arc::new(knot_messaging::QueuedNotifier::new()),
-                                           Arc::new(Mutex::new(knot_messaging::MessageStore::new())),
-                                           queues,
-                                           Arc::default());
+    let (_stop, status) =
+        start_mcp_server(store,
+                         knot_core::SharedSettings::new(settings),
+                         Arc::new(knot_messaging::QueuedNotifier::new()),
+                         Arc::new(Mutex::new(knot_messaging::MessageStore::new())),
+                         queues,
+                         crate::app_support::McpShared { subagents:   Arc::default(),
+                                                         credentials: Default::default(), });
 
     // Long enough for a supervisor that was going to start to have bound.
     std::thread::sleep(Duration::from_millis(300));

@@ -39,9 +39,10 @@ fn entry_ordinal(entry: AgentMenuEntry) -> usize {
         AgentMenuEntry::AutopilotOff => 16,
         AgentMenuEntry::AutopilotOn => 17,
         AgentMenuEntry::Deactivate => 18,
-        AgentMenuEntry::RestartAgent => 19,
-        AgentMenuEntry::RestartWithNewConversation => 20,
-        AgentMenuEntry::RemoveAgent => 21,
+        AgentMenuEntry::DeactivateWithNewSession => 19,
+        AgentMenuEntry::RestartAgent => 20,
+        AgentMenuEntry::RestartWithNewConversation => 21,
+        AgentMenuEntry::RemoveAgent => 22,
     }
 }
 

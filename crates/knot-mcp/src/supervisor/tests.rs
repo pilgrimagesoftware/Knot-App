@@ -150,8 +150,14 @@ async fn an_ended_serve_task_is_restarted_on_the_same_port() {
 #[tokio::test]
 async fn a_restart_serves_the_same_tools() {
     let port = free_port().await;
+    // The token is set once, before the failure: the restarted server has
+    // to accept the credential clients already hold.
+    let token = crate::Secret::generate(crate::CredentialKind::Client);
+    let credentials = crate::CredentialRegistry::new();
+    credentials.set_client_token(&token);
     let supervisor =
-        Supervisor::new(port, Arc::new(NamedCatalog), no_agents()).with_tuning(fast_tuning());
+        Supervisor::new(port, Arc::new(NamedCatalog), no_agents()).with_tuning(fast_tuning())
+                                                                  .with_credentials(credentials);
     let mut states = supervisor.state();
     let aborter = supervisor.serve_aborter();
 
@@ -159,7 +165,7 @@ async fn a_restart_serves_the_same_tools() {
     let supervising = tokio::spawn(supervisor.run(stop_rx));
 
     let before = wait_for_running(&mut states).await;
-    let listed_before = tools_listed(before).await;
+    let listed_before = tools_listed(before, &token).await;
     assert_eq!(listed_before,
                vec![NamedCatalog::TOOL],
                "the catalog is served before the failure");
@@ -168,7 +174,7 @@ async fn a_restart_serves_the_same_tools() {
     wait_for_retrying(&mut states).await;
     let after = wait_for_running(&mut states).await;
 
-    assert_eq!(tools_listed(after).await,
+    assert_eq!(tools_listed(after, &token).await,
                listed_before,
                "the restarted server serves the catalog it was constructed with");
 
@@ -199,10 +205,11 @@ impl ToolCatalog for NamedCatalog {
 }
 
 /// The tool names the server at `addr` answers `tools/list` with, asked the
-/// way an agent asks.
-async fn tools_listed(addr: SocketAddr) -> Vec<String> {
+/// way an agent asks, presenting `token`.
+async fn tools_listed(addr: SocketAddr, token: &crate::Secret) -> Vec<String> {
     let body = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" });
     let response: serde_json::Value = reqwest::Client::new().post(format!("http://{addr}/mcp"))
+                                                            .bearer_auth(token.expose())
                                                             .json(&body)
                                                             .send()
                                                             .await

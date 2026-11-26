@@ -40,7 +40,8 @@ fn restart_keeps_identity_and_drops_session() {
 fn restart_drops_the_acp_session_too() {
     let mut store = AgentStore::new();
     let id = store.create("/tmp/a", CreateOptions::default());
-    store.set_acp_session_id(id, "acp".to_string());
+    let token = store.agent(id).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(id, token, "acp".to_string()));
     store.restart(id).unwrap();
     assert!(store.agent(id).unwrap().acp_session_id.is_none());
 }
@@ -50,7 +51,8 @@ fn restart_keeping_conversation_keeps_the_sessions() {
     let mut store = AgentStore::new();
     let id = store.create("/tmp/a", CreateOptions::default());
     store.set_session_id(id, "session".to_string());
-    store.set_acp_session_id(id, "acp".to_string());
+    let token = store.agent(id).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(id, token, "acp".to_string()));
     store.set_registered(id, true);
     let token = store.agent(id).unwrap().restart_token;
 
@@ -77,7 +79,9 @@ fn session_to_load_prefers_the_live_acp_session_over_the_resolved_one() {
     store.agent_mut(id).unwrap().resume_session_id = Some("restored".to_string());
     assert_eq!(store.agent(id).unwrap().session_to_load(), Some("restored"));
 
-    store.set_acp_session_id(id, "live".to_string());
+    let token = store.agent(id).expect("the agent exists").restart_token;
+
+    assert!(store.set_acp_session_id_if_current(id, token, "live".to_string()));
     assert_eq!(store.agent(id).unwrap().session_to_load(), Some("live"));
 
     store.restart(id).unwrap();

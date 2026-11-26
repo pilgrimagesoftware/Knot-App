@@ -8,7 +8,7 @@
 
 use std::time::Duration;
 
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 use knot_core::l10n::{t, t_with};
 use knot_core::schedule::{IdleAction, Schedule, SkipReason, next_run};
 
@@ -19,7 +19,7 @@ use crate::workspace_window::idle::IdleCountdown;
 pub(crate) const OUTCOME_SHOWN_FOR: Duration = Duration::from_secs(60 * 60);
 
 /// `run` as a reader wants it: the time alone today, or a day and a time.
-pub(crate) fn when_text(run: &Zoned, now: &Zoned) -> String {
+pub(crate) fn when_text(run: &ZonedDateTime, now: &ZonedDateTime) -> String {
     let time = format!("{:02}:{:02}", run.hour(), run.minute());
     if run.date() == now.date() {
         return t_with("schedule.when_today", &[("time", &time)]);
@@ -41,13 +41,13 @@ pub(crate) fn when_text(run: &Zoned, now: &Zoned) -> String {
 /// The schedule's detail line: a recent missed or skipped run, else the
 /// next run. `None` for no schedule, or one that cannot run.
 pub(crate) fn schedule_line(schedule: Option<&Schedule>, outcome: Option<ScheduleOutcome>,
-                            now: &Zoned)
+                            now: &ZonedDateTime)
                             -> Option<String> {
     let schedule = schedule.filter(|schedule| schedule.is_runnable())?;
     let recent = |at: jiff::Timestamp| {
         now.timestamp().duration_since(at).unsigned_abs() <= OUTCOME_SHOWN_FOR
     };
-    let local = |at: jiff::Timestamp| at.to_zoned(now.time_zone().clone());
+    let local = |at: jiff::Timestamp| at.to_zoned_datetime(now.time_zone().clone());
     match outcome {
         Some(ScheduleOutcome::Missed(at)) if recent(at) => {
             return Some(t_with("agent.schedule_missed",

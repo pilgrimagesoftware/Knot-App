@@ -106,12 +106,14 @@ impl SessionLimit {
         let (hour, minute) = parse_clock(clock.trim())?;
         let zone = jiff::tz::TimeZone::get(zone).ok()?;
         let refused = jiff::Timestamp::try_from(refused_at).ok()?
-                                                           .to_zoned(zone.clone());
+                                                           .to_zoned_datetime(zone.clone());
         let same_day = refused.date()
                               .at(hour, minute, 0, 0)
-                              .to_zoned(zone.clone())
+                              .to_zoned_datetime(zone.clone())
                               .ok()?;
-        let same_day = SystemTime::from(same_day.timestamp());
+        // Fallible since jiff 1.0: an instant `SystemTime` cannot hold is no
+        // time to send at either.
+        let same_day = SystemTime::try_from(same_day.timestamp()).ok()?;
         if same_day > refused_at {
             return Some(same_day);
         }
@@ -126,9 +128,9 @@ impl SessionLimit {
                               .tomorrow()
                               .ok()?
                               .at(hour, minute, 0, 0)
-                              .to_zoned(zone)
+                              .to_zoned_datetime(zone)
                               .ok()?;
-        Some(tomorrow.timestamp().into())
+        SystemTime::try_from(tomorrow.timestamp()).ok()
     }
 }
 

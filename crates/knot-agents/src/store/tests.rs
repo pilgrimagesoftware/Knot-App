@@ -2,6 +2,7 @@ mod arrange;
 mod autopilot;
 mod awaiting_reason;
 mod duplicate;
+mod fresh_session;
 mod idle_since;
 mod layout;
 mod lifecycle;
