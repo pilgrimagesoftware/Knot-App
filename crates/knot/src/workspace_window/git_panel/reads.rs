@@ -148,6 +148,9 @@ fn read_status(folder: &str) -> GitStatusSnapshot {
 
     match Repository::open(folder).status() {
         Ok(status) => GitStatusSnapshot::Loaded(Box::new(status)),
+        Err(knot_git::GitError::Untrusted { repository }) => {
+            GitStatusSnapshot::Untrusted(repository)
+        }
         Err(error) => GitStatusSnapshot::Failed(error.to_string()),
     }
 }

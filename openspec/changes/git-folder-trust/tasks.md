@@ -16,3 +16,4 @@
 - [x] 3.3 Settings > Coding "Trusted repositories" with confirmed removal
 - [x] 3.4 l10n keys under `repository_trust`
 - [x] 3.5 Docs: `docs/site/latest/reference/repository-trust.md`
+- [x] 3.6 Git panel: an untrusted repository shows why, with Review to ask again after Not now

@@ -11,9 +11,10 @@
 //! answer is the user's: trusting saves the entries the repository named at
 //! that moment ([`knot_core::TrustedRepository`]), and the trust holds only
 //! while the repository still names exactly those. "Not now" stops asking
-//! until Knot is next started; git stays refused there meanwhile.
+//! until Knot is next started; git stays refused there meanwhile, and the
+//! git panel and Settings both offer to review it again.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -28,8 +29,9 @@ pub(crate) struct RepositoryTrust {
     trusted:    Mutex<Vec<TrustedRepository>>,
     /// Refused and not yet answered, in the order they were refused.
     pending:    Mutex<Vec<RepositoryPrograms>>,
-    /// Answered "Not now" this session.
-    declined:   Mutex<BTreeSet<PathBuf>>,
+    /// Answered "Not now" this session, with what each named when last
+    /// refused, so it can be put back in the queue ([`Self::reconsider`]).
+    declined:   Mutex<BTreeMap<PathBuf, RepositoryPrograms>>,
     /// Bumped whenever the queue changes. A counter rather than a clearing
     /// flag, so every open window sees the change, not just the first to
     /// look.
@@ -67,10 +69,40 @@ impl RepositoryTrust {
         entry
     }
 
-    /// Stops asking about `repository` until the next launch.
+    /// Stops asking about `repository` until the next launch, or until the
+    /// user asks to [`Self::reconsider`] it.
     pub(crate) fn decline(&self, repository: &Path) {
-        self.declined.lock().insert(repository.to_path_buf());
+        let queued = self.pending
+                         .lock()
+                         .iter()
+                         .find(|programs| programs.repository == repository)
+                         .cloned();
+        if let Some(programs) = queued {
+            self.declined
+                .lock()
+                .insert(repository.to_path_buf(), programs);
+        }
         self.answered(repository);
+    }
+
+    /// The repositories answered "Not now" this session, by path.
+    pub(crate) fn declined(&self) -> Vec<RepositoryPrograms> {
+        self.declined.lock().values().cloned().collect()
+    }
+
+    /// Puts a repository answered "Not now" back in the queue, so the
+    /// banner asks about it again. Nothing happens for one not declined.
+    pub(crate) fn reconsider(&self, repository: &Path) {
+        let Some(programs) = self.declined.lock().remove(repository)
+        else {
+            return;
+        };
+        let mut pending = self.pending.lock();
+        if !pending.iter().any(|queued| queued.repository == repository) {
+            pending.push(programs);
+        }
+        drop(pending);
+        self.generation.fetch_add(1, Ordering::AcqRel);
     }
 
     /// Withdraws trust for the repository at `path`; the next git call
@@ -99,7 +131,9 @@ impl TrustPolicy for RepositoryTrust {
     }
 
     fn refused(&self, programs: &RepositoryPrograms) {
-        if self.declined.lock().contains(&programs.repository) {
+        if let Some(declined) = self.declined.lock().get_mut(&programs.repository) {
+            // Not asked again, but kept current for a later reconsider.
+            declined.clone_from(programs);
             return;
         }
         let mut pending = self.pending.lock();

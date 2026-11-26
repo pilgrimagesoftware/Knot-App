@@ -149,3 +149,44 @@ fn the_banner_and_settings_text_resolve() {
                 "{key} names the repository: {text}");
     }
 }
+
+/// "Not now" is not a dead end (#523 review): the git panel says why it is
+/// empty, and its Review button brings the banner back.
+#[gpui_kit::test]
+fn a_declined_repository_is_reviewed_again_from_the_git_panel(cx: &mut TestAppContext) {
+    use gpui_kit::Modifiers;
+
+    use crate::git_panel::state::GitStatusSnapshot;
+
+    let mut fixture = window(cx);
+    fixture.registry.refused(&lfs());
+    fixture.tick();
+    fixture.registry.decline(&lfs().repository);
+    fixture.tick();
+    assert!(!fixture.banner_drawn(), "Not now closes the banner");
+
+    // The status read a refused call produces, recorded before the panel
+    // opens so the panel draws it rather than reading the folder itself.
+    fixture.view.update(&mut fixture.window, |view, cx| {
+                    let id = view.store.lock().agents()[0].id;
+                    let folder = view.agent_folder(id).expect("the agent's folder");
+                    view.git
+                        .git_status
+                        .claim_refresh(id, crate::consts::GIT_STATUS_MAX_AGE)
+                        .expect("nothing read yet")
+                        .record(GitStatusSnapshot::Untrusted(lfs().repository));
+                    view.toggle_git_panel(id, &folder, cx);
+                });
+    fixture.window.run_until_parked();
+    assert!(fixture.window.debug_bounds("git-panel-untrusted").is_some());
+
+    let review = fixture.window
+                        .debug_bounds("git-panel-review-trust")
+                        .expect("the Review button")
+                        .center();
+    fixture.window.simulate_click(review, Modifiers::none());
+    fixture.window.run_until_parked();
+
+    assert!(fixture.tick(), "the queue moved");
+    assert!(fixture.banner_drawn(), "the banner asks again");
+}

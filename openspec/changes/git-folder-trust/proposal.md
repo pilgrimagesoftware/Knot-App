@@ -23,7 +23,8 @@ chose to run.
   names the repository and each configured program, with control characters
   shown visibly, and offers **Trust** and **Not now**. Trust is saved per
   repository with the entries it was given, so a repository whose entries
-  change is asked about again. "Not now" stops asking until the next launch.
+  change is asked about again. "Not now" stops asking until the next launch;
+  the git panel explains why it is empty and offers **Review** to ask again.
 - Settings > Coding lists trusted repositories, each with a confirmed
   **Remove trust** action.
 - A repository that names no programs, and a folder outside any repository,

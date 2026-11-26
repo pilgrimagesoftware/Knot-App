@@ -32,8 +32,9 @@ are shown as `\xNN`.
 - **Trust** saves the repository together with the settings shown, and git
   runs there from then on.
 - **Not now** stops asking until Knot is next started. Until you trust the
-  repository, Knot doesn't run git there: the git panel and change counts stay
-  empty, and an agent's `create-worktree` call fails.
+  repository, Knot doesn't run git there: change counts stay empty, and an
+  agent's `create-worktree` call fails. The git panel explains why it's empty,
+  and its **Review** button shows the banner again.
 
 Trust covers exactly the settings that were shown. If the repository's settings
 change later, for example a pulled file that the repository includes adds a

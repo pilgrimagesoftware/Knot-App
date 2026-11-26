@@ -86,3 +86,47 @@ fn revoking_withdraws_trust_and_asks_again() {
     assert!(!trust.is_trusted(&lfs));
     assert_eq!(trust.next_pending(), Some(lfs));
 }
+
+/// "Not now" is not final: the declined repository is listed, and asking
+/// to review it puts it back in front of the user.
+#[test]
+fn a_declined_repository_can_be_reconsidered() {
+    let trust = RepositoryTrust::default();
+    let lfs = programs("/src/a", &[("filter.lfs.clean", "git-lfs clean")]);
+    trust.refused(&lfs);
+    trust.decline(&lfs.repository);
+    assert_eq!(trust.declined(), vec![lfs.clone()]);
+    let before = trust.generation();
+
+    trust.reconsider(&lfs.repository);
+
+    assert_eq!(trust.next_pending(), Some(lfs));
+    assert!(trust.declined().is_empty());
+    assert_ne!(trust.generation(), before, "windows repaint for it");
+}
+
+/// While declined, the repository's latest programs are kept, so a review
+/// asks about what it names now.
+#[test]
+fn a_reconsidered_repository_is_asked_about_as_it_is_now() {
+    let trust = RepositoryTrust::default();
+    trust.refused(&programs("/src/a", &[("filter.lfs.clean", "git-lfs clean")]));
+    trust.decline(Path::new("/src/a"));
+    let now = programs("/src/a", &[("diff.x.textconv", "cat")]);
+    trust.refused(&now);
+
+    trust.reconsider(Path::new("/src/a"));
+
+    assert_eq!(trust.next_pending(), Some(now));
+}
+
+#[test]
+fn reconsidering_a_repository_never_declined_does_nothing() {
+    let trust = RepositoryTrust::default();
+    let before = trust.generation();
+
+    trust.reconsider(Path::new("/src/a"));
+
+    assert_eq!(trust.next_pending(), None);
+    assert_eq!(trust.generation(), before);
+}

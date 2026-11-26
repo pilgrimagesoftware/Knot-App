@@ -1170,6 +1170,8 @@ git_panel:
   loading: "Loading…"
   clean: "Working tree clean"
   not_a_repository: "This folder is not a git repository."
+  untrusted: "Knot isn't running git in %{repository} because its git settings run programs and it isn't trusted yet."
+  review_trust: "Review"
   status_failed: "The repository status could not be read: %{reason}"
   action_failed: "That change could not be made: %{reason}"
   interrupted: "That operation did not finish. The panel has been left as it was."

@@ -61,13 +61,19 @@ The keys checked SHALL include `filter.*.{clean,smudge,process}`,
 The workspace window SHALL show the first repository waiting for an answer,
 listing each configured program with control characters shown as `\xNN`,
 with Trust and Not now. Trust SHALL be saved per repository with the
-entries it was given. Not now SHALL stop asking until the next launch.
-Settings SHALL list trusted repositories, each removable after confirmation.
+entries it was given. Not now SHALL stop asking until the next launch,
+and the git panel SHALL offer to review such a repository again. Settings
+SHALL list trusted repositories, each removable after confirmation.
 
 #### Scenario: Trusting from the banner
 
 - **WHEN** the user chooses Trust on the banner
 - **THEN** the repository and its entries are saved and the banner closes
+
+#### Scenario: Reviewing a repository after Not now
+
+- **WHEN** the user chose Not now and then chooses Review in the git panel
+- **THEN** the banner asks about the repository again
 
 #### Scenario: Removing trust
 
