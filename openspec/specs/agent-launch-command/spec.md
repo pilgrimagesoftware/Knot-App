@@ -93,22 +93,44 @@ launch path for that agent type.
 
 ### Requirement: Shell agent initialization wrapper
 
-The final terminal command SHALL be `<space>cd '<folder>' && clear` (a shell
-agent's custom command, if any, appended after `clear && `). The leading
-space suppresses shell history (given `ignorespace` / zsh default). Since
-this path now only launches shell agents, no `KNOT_AGENT_ID` environment
-variable is set (shell agents do not register with MCP).
+The final terminal command SHALL be `<space>cd -- "$KNOT_AGENT_FOLDER" && clear`
+(a shell agent's custom command, if any, appended after `clear && `), with
+`KNOT_AGENT_FOLDER` set to the folder in the terminal's environment. The
+folder's name SHALL NOT appear in the typed line. The leading space
+suppresses shell history. No `KNOT_AGENT_ID` is set (shell agents do not
+register with MCP).
 
 #### Scenario: Shell agent wrapper with no custom command
 
 - **WHEN** a shell agent with no custom command is launched
-- **THEN** the command is `cd '<folder>' && clear` (leading space) and sets no
-  `KNOT_AGENT_ID`
+- **THEN** the command is `cd -- "$KNOT_AGENT_FOLDER" && clear` (leading
+  space) and sets no `KNOT_AGENT_ID`
 
 #### Scenario: Shell agent wrapper with a custom command
 
 - **WHEN** a shell agent has a custom command `htop`
-- **THEN** the command is `cd '<folder>' && clear && htop` (leading space)
+- **THEN** the command is `cd -- "$KNOT_AGENT_FOLDER" && clear && htop`
+  (leading space)
+
+#### Scenario: A folder name with line-editing characters
+
+- **WHEN** a shell agent's folder name holds `Ctrl-U`, a command and a
+  carriage return
+- **THEN** the shell starts in that folder and the command in its name does
+  not run
+
+### Requirement: Folder paths from tool calls hold no control characters
+
+The `create-agent` (`repoPath`, `worktreePath`) and `create-worktree`
+(`repoPath`, `path`) tools SHALL refuse a path containing an ASCII control
+character (U+0000 to U+001F, U+007F) with an error naming the parameter,
+before creating anything.
+
+#### Scenario: A repoPath with a carriage return
+
+- **WHEN** `create-agent` is called with a `repoPath` containing `\r`
+- **THEN** the call fails with an error naming `repoPath` and no agent is
+  created
 
 ### Requirement: MCP configuration for ACP-launched agents
 

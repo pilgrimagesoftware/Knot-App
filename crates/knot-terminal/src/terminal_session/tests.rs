@@ -87,7 +87,11 @@ async fn start_sends_the_initialization_command_and_its_return() {
     session.start(&plan).unwrap();
 
     assert!(session.is_started());
-    assert!(plan.initialization_command.contains("/tmp/project"));
+    // The folder reaches the shell through the environment; its name is
+    // never typed.
+    assert!(plan.initialization_command
+                .contains(knot_agent_launch::AGENT_FOLDER_ENV));
+    assert!(!plan.initialization_command.contains("/tmp/project"));
     assert_eq!(log.lock().written,
                format!("{}\r", plan.initialization_command).into_bytes());
 
@@ -281,8 +285,13 @@ async fn pty_session_output_is_scanned_for_a_usage_limit() {
 /// `expected` in its output, failing after [`PTY_TIMEOUT`].
 fn assert_agent_shell_prints(initialization_command: String, expected: &str) {
     let (agent, _folder) = agent_in_temp_dir();
+    assert_shell_prints_in(&agent, initialization_command, expected);
+}
+
+/// [`assert_agent_shell_prints`] for a given `agent`, in its folder.
+fn assert_shell_prints_in(agent: &Agent, initialization_command: String, expected: &str) {
     let settings = Settings::default();
-    let config = config(&settings, &agent);
+    let config = config(&settings, agent);
     let (output_tx, output_rx) = mpsc::channel();
     let mut session = TerminalSession::spawn_pty(&config,
                                                  EventSink::default(),
@@ -330,4 +339,29 @@ async fn the_agent_shell_declares_its_terminal_type() {
 
     assert_agent_shell_prints("printf 'term=[%s/%s]\\n' \"$TERM\" \"$COLORTERM\"".to_string(),
                               &format!("term=[{AGENT_TERM}/{AGENT_COLORTERM}]"));
+}
+
+/// A folder's name can hold any byte but `/` and NUL, including the ones a
+/// terminal's line editor acts on. The initialization line is typed into the
+/// shell, so a name with `Ctrl-U` (erase the line), a command and a carriage
+/// return (enter it) would run that command if the name were part of the
+/// line. The shell must end up in the folder with nothing else run.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_folder_name_with_line_editing_characters_runs_nothing() {
+    let root = tempfile::tempdir().expect("a temp dir");
+    let folder = root.path().join("a\u{15}touch injected\rb");
+    std::fs::create_dir(&folder).expect("the folder");
+    let mut agent = agent();
+    agent.folder = folder.to_string_lossy().into_owned();
+    let plan = SessionPlan::build(&config(&Settings::default(), &agent));
+    // The format string keeps the echoed line from matching the output.
+    let check = "[ \"$PWD\" = \"$KNOT_AGENT_FOLDER\" ] && printf 'in-%s\\n' folder";
+
+    assert_shell_prints_in(&agent,
+                           format!("{} && {check}", plan.initialization_command),
+                           "in-folder");
+
+    assert!(!folder.join("injected").exists() && !root.path().join("injected").exists(),
+            "a command from the folder's name ran");
 }

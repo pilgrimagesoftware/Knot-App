@@ -39,15 +39,28 @@ pub const LS_FILES_STAGE: &[&str] = &["ls-files", "--stage", "-z"];
 /// The index mode of a submodule (a "gitlink").
 pub const GITLINK_MODE: &str = "160000";
 
-pub const DIFF: &[&str] = &["diff", "--no-color"];
+/// Config every git call runs with: no filesystem monitor, which git would
+/// otherwise start as a configured program on a plain `status`.
+pub const CALL_CONFIG: &[&str] = &["-c", "core.fsmonitor=false"];
+/// Config for every call the user did not start
+/// ([`CallOrigin::Automated`](crate::runner::CallOrigin)): no hooks.
+pub const NO_HOOKS_CONFIG: &[&str] = &["-c", "core.hooksPath=/dev/null"];
+
+/// Diffs Knot reads are git's own: no external diff program, no textconv
+/// filter, whatever the repository configures.
+pub const DIFF: &[&str] = &["diff", "--no-color", "--no-ext-diff", "--no-textconv"];
 pub const DIFF_STAGED_FLAG: &str = "--staged";
 /// Separates revisions from paths. Not optional on a path-scoped diff: a path
 /// that also names a branch is otherwise ambiguous, and git resolves it as the
 /// revision.
 pub const PATHSPEC_SEP: &str = "--";
 
-pub const NUMSTAT: &[&str] = &["diff", "--numstat"];
-pub const NUMSTAT_STAGED: &[&str] = &["diff", "--staged", "--numstat"];
+pub const NUMSTAT: &[&str] = &["diff", "--numstat", "--no-ext-diff", "--no-textconv"];
+pub const NUMSTAT_STAGED: &[&str] = &["diff",
+                                      "--staged",
+                                      "--numstat",
+                                      "--no-ext-diff",
+                                      "--no-textconv"];
 
 pub const ADD: &[&str] = &["add"];
 pub const ADD_ALL: &[&str] = &["add", "-A"];
