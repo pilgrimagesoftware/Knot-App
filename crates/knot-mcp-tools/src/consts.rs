@@ -19,3 +19,8 @@ pub const PLAN_TASKS: &str = "plan-tasks";
 pub const DISPATCH_TASK: &str = "dispatch-task";
 pub const COMPLETE_TASK: &str = "complete-task";
 pub const TASK_STATUS: &str = "task-status";
+
+/// How long an MCP call waits for the user to confirm it (D9) before it is
+/// refused. Long enough to read the dialog; short enough that an agent
+/// whose user is away gets an answer it can act on.
+pub const CONFIRMATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);

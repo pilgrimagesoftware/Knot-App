@@ -115,6 +115,7 @@ pub(crate) fn open_settings_window(handle: &Rc<RefCell<Option<AnyWindowHandle>>>
                                                   autopilot_custom_prompt_input,
                                                   mcp_port_input,
                                                   last_mcp_state: mcp_state,
+                                                  last_mcp_refusals: Vec::new(),
                                                   _agent_options_subscription:
                                                       agent_options_subscription,
                                                   _ai_api_key_subscription:
@@ -210,9 +211,9 @@ fn current_mcp_state(cx: &App) -> knot_mcp::ServerState {
 ///
 /// The supervisor publishes its state over a channel on its own thread and
 /// GPUI cannot await one, so the row follows a change by re-reading the
-/// mirror. It asks for a repaint only when the state differs from the one
-/// last drawn: a window left open on another tab would otherwise repaint
-/// twice a second for nothing.
+/// mirror, and the refused-request counts with it. It asks for a repaint
+/// only when either differs from what was last drawn: a window left open on
+/// another tab would otherwise repaint twice a second for nothing.
 fn spawn_mcp_state_poll(view: Entity<SettingsWindow>, cx: &mut App) {
     cx.spawn(async move |cx| {
           loop {
@@ -221,8 +222,14 @@ fn spawn_mcp_state_poll(view: Entity<SettingsWindow>, cx: &mut App) {
                 .await;
               cx.update(|app| {
                     let state = current_mcp_state(app);
+                    let refusals = crate::mcp_credentials::McpCredentials::global(app).refusals
+                                                                                      .snapshot();
                     view.update(app, |view, cx| {
-                            if SettingsWindow::mcp_state_changed(&mut view.last_mcp_state, state) {
+                            let state_changed =
+                                SettingsWindow::mcp_state_changed(&mut view.last_mcp_state, state);
+                            let refusals_changed = view.last_mcp_refusals != refusals;
+                            view.last_mcp_refusals = refusals;
+                            if state_changed || refusals_changed {
                                 cx.notify();
                             }
                         });
@@ -243,6 +250,9 @@ pub(crate) struct SettingsWindow {
     /// The MCP server's state as the MCP tab last drew it. The poll
     /// compares against this rather than repainting every tick.
     pub(super) last_mcp_state:                        knot_mcp::ServerState,
+    /// The refused-request counts the MCP tab last drew, refreshed by the
+    /// same poll as the state so render never takes the log's lock.
+    pub(super) last_mcp_refusals:                     Vec<(knot_mcp::RefusalSource, u64)>,
     pub(super) _agent_options_subscription:           Subscription,
     pub(super) _ai_api_key_subscription:              Subscription,
     pub(super) _autopilot_custom_prompt_subscription: Subscription,

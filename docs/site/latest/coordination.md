@@ -26,7 +26,25 @@ Once started, the server runs until Knot quits. Closing a window, including the 
 
 The status endpoint exists for external tooling. Each entry carries the agent id, name, folder, state, agent-set status text, registered flag, agent type, session id when present, and hook metadata when non-empty, with keys in a stable order.
 
-Each agent connects on a URL that names it (`…/mcp?agent=<id>`), which Knot places in the URL it gives the agent at launch. A connection is bound to that agent, so a tool call naming a different caller fails and changes nothing, and a new connection for an agent replaces the previous one. A request on a bound connection marks its agent registered without any tool call, which is how a resumed agent reappears registered before it does anything.
+### Authentication
+
+Every request except `GET /health` must carry a credential Knot issued, as `Authorization: Bearer <credential>`. A request without one, or with one Knot did not issue, gets `401`; a credential used on a route it does not cover gets `403`. Either way nothing changes. The server also answers only requests whose `Host` is `127.0.0.1:<port>` or `localhost:<port>`.
+
+| Credential | Who holds it | Accepted on |
+| --- | --- | --- |
+| Agent tool credential (`knot_a_…`) | One agent Knot launched, for that launch only | `/mcp` and `GET /api/v1/agent/status` |
+| Agent hook credential (`knot_h_…`) | The same agent's hook scripts, in its environment | The two hook routes, for that agent only |
+| Client token (`knot_c_…`) | MCP clients you register yourself | Every route |
+
+Knot gives each agent it launches a fresh pair when the agent starts, restarts or resumes, and revokes it when the agent stops: a request from an agent's previous process is refused. The tool credential travels in the MCP request headers Knot hands the agent's adapter, never in a URL. Agents Knot launches need no setup.
+
+The client token is for clients you register yourself - an agent CLI running outside Knot, say. Copy it, and the ready-made command for your CLI, from **Settings > MCP**; the command reads the token from the `KNOT_MCP_CLIENT_TOKEN` environment variable, so set that first. Most CLIs keep the token in their own configuration file in plain text; if it leaks, regenerate it on the same tab, and run the command again for every client you registered. The token is kept in your macOS Keychain and stays the same across restarts.
+
+**Upgrading:** a client you registered before Knot required a token is refused until you run its installation command again.
+
+Each agent's URL names it (`…/mcp?agent=<id>`). Who a connection is comes from its credential, and the name in the URL must agree with it. A connection presenting an agent's tool credential is bound to that agent: a tool call naming a different caller fails and changes nothing, and only a new connection with that agent's credential replaces it. A connection with the client token is bound to no agent, may not act for any agent Knot launched, and registers an agent only by calling `register-agent` for one no live connection holds. A request on a bound connection marks its agent registered without any tool call, which is how a resumed agent reappears registered before it does anything.
+
+If an agent's adapter stops sending its credential, its calls to Knot's tools are refused and its pane shows **Knot tools unavailable**; the MCP tab counts the refused attempts. When a Claude agent's options or environment make its adapter put the MCP configuration on the Claude CLI's command line (`--settings`, `--sdk-url` or `CLAUDE_CODE_EXECUTABLE`), the agent's conversation says so at launch.
 
 ## Tool catalog
 
@@ -57,6 +75,8 @@ Each agent connects on a URL that names it (`…/mcp?agent=<id>`), which Knot pl
 | `create-agent` | Create an agent from explicit fields, or deploy a bench template; the new agent is attributed to the caller. |
 | `close-agent` | Close an agent, allowed only for an agent the caller created. |
 | `create-worktree` | Create a worktree on a new branch and return its path; `path` puts it where the project says worktrees go. |
+
+Two kinds of call wait for you to confirm a dialog that names the agent asking, the command and the folder: `create-agent` for a shell agent that runs a command, and a worktree (from `create-worktree`, or `create-agent` with `createWorktree: true`) placed outside the repository's parent folder. **Deny**, closing the dialog, or no answer within two minutes fails the call and creates nothing. A plain shell, and a worktree beside its repository, go ahead without asking.
 
 ### Status and display
 
@@ -168,11 +188,11 @@ Committing a graph while one exists preserves the state of tasks present in both
 
 ## Agent hooks
 
-Knot ingests plugin hook events from Claude and Codex agents over `POST /api/v1/agent/register` and `POST /api/v1/agent/status`. Every body is JSON carrying at least `agent_id`; a missing or unparseable id returns 400. The body may also name the agent type (`agent`, defaulting to `claude`), a `session_id`, a `source`, a `hook`, a `status`, and a nested `payload`. The routes dispatch on the agent type: `claude` uses the Claude handler, `codex` uses the Codex handler on the status route, and any other type is rejected.
+Knot ingests plugin hook events from Claude and Codex agents over `POST /api/v1/agent/register` and `POST /api/v1/agent/status`. A hook request needs the agent's hook credential, and may then report only for that agent, or the client token, and then only for an agent Knot did not launch. The hook scripts Knot ships read the server's address, the agent's id and its credential from `KNOT_MCP_URL`, `KNOT_AGENT_ID` and `KNOT_MCP_TOKEN`. Every body is JSON carrying at least `agent_id`; a missing or unparseable id returns 400. The body may also name the agent type (`agent`, defaulting to `claude`), a `session_id`, a `source`, a `hook`, a `status`, and a nested `payload`. The routes dispatch on the agent type: `claude` uses the Claude handler, `codex` uses the Codex handler on the status route, and any other type is rejected.
 
 For Claude, a `source` of `startup` is full registration and `source` of `resume` is a session-id update; successful registration marks the agent registered and returns the member list. On the status route, `running` maps to Working, `idle` to Idle, and `input` to Awaiting input, and any other value is 400; an `input` status also raises a desktop notification carrying `payload.message` when present. Codex acts on a `payload.type` of `agent-turn-complete`, setting the agent Idle and recording `payload.thread-id` as its session id; any other event is 400.
 
-Hooks also merge known non-empty fields into the agent's metadata: for Claude `transcript_path`, `cwd`, `model`, and `session_id`; for Codex `cwd`, `thread-id`, and `turn-id`. The status route additionally accepts subagent lifecycle events identified by their `hook` field. A dispatch records a running subagent with its task, and its kind when given; a completion marks it finished or failed with its reason. Reporting a subagent never moves the agent's own activity status. An event missing a required subagent identifier is rejected, while a completion for an identifier Knot never dispatched is accepted and ignored.
+Hooks also merge known non-empty fields into the agent's metadata: for Claude `transcript_path`, `cwd`, `model`, and `session_id`; for Codex `cwd`, `thread-id`, and `turn-id`. Knot reads a Claude `transcript_path` only when it is a regular file inside Claude's transcript folder (`projects` under `CLAUDE_CONFIG_DIR`, or `~/.claude`), and then only its last 8 MiB. The status route additionally accepts subagent lifecycle events identified by their `hook` field. A dispatch records a running subagent with its task, and its kind when given; a completion marks it finished or failed with its reason. Reporting a subagent never moves the agent's own activity status. An event missing a required subagent identifier is rejected, while a completion for an identifier Knot never dispatched is accepted and ignored.
 
 For a Terminal-mode agent, a Claude `Stop` hook or a Codex turn-complete event also triggers Autopilot classification of the agent's last message, when Autopilot is enabled and an API key is configured. Agents in the agent panel post no hooks; their workspace window triggers Autopilot when a turn ends. See [Autopilot]({{ '/latest/autopilot/' | relative_url }}) for what Autopilot does with that classification.
 

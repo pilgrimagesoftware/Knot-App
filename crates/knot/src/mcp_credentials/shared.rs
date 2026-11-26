@@ -29,9 +29,11 @@ impl McpCredentials {
         self.registry.issue_agent_pair(agent)
     }
 
-    /// Revokes `agent`'s pair: its adapter has stopped.
+    /// Revokes `agent`'s pair: its adapter has stopped. Its run of
+    /// refusals goes too, so the next adapter starts with a clean slate.
     pub(crate) fn revoke(&self, agent: Uuid) {
         self.registry.revoke_agent(agent);
+        self.refusals.forget(agent);
     }
 }
 
@@ -39,8 +41,6 @@ impl McpCredentials {
 /// settings tab to show, copy and regenerate. Replaced by
 /// [`super::regenerate`]'s result when the user regenerates it.
 #[derive(Clone)]
-// UNWIRED(mcp-auth task 6.1): read by the MCP tab, which shows the token.
-#[allow(dead_code)]
 pub(crate) struct ClientToken(pub(crate) super::LoadedClientToken);
 
 impl gpui_kit::Global for ClientToken {}

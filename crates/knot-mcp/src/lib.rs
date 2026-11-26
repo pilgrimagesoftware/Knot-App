@@ -21,8 +21,8 @@ mod tools;
 mod transcript;
 
 pub use auth::{
-    AgentCredentials, CredentialKind, CredentialRegistry, Principal, RefusalLog, RefusalSource,
-    Route, Secret,
+    AgentCredentials, CredentialKind, CredentialRegistry, Principal, RefusalKind, RefusalLog,
+    RefusalSource, Route, Secret,
 };
 pub use backoff::backoff_delay;
 pub use consts::{DEFAULT_PORT, LOG_FILE_NAME};

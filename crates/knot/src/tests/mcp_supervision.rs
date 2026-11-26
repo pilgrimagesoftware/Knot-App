@@ -52,7 +52,8 @@ fn a_disabled_server_binds_nothing_and_supervises_nothing() {
     let store = Arc::new(Mutex::new(crate::app_state::build_agent_store(&settings)));
     let queues = crate::app_support::McpQueues { awaiting_input: Arc::new(Mutex::new(Vec::new())),
                                                  activation:     Arc::new(Mutex::new(Vec::new())),
-                                                 autopilot:      Arc::new(Mutex::new(Vec::new())), };
+                                                 autopilot:      Arc::new(Mutex::new(Vec::new())),
+                                                 confirmations:  Default::default(), };
     let (_stop, status) =
         start_mcp_server(store,
                          knot_core::SharedSettings::new(settings),

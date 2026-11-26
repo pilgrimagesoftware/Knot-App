@@ -227,9 +227,11 @@ pub(crate) fn run() {
     let awaiting_input = Arc::new(Mutex::new(Vec::new()));
     let activation = Arc::new(Mutex::new(Vec::new()));
     let autopilot = Arc::new(Mutex::new(Vec::new()));
+    let confirmations = knot_mcp_tools::ConfirmationQueue::default();
     let queues = crate::app_support::McpQueues { awaiting_input: Arc::clone(&awaiting_input),
                                                  activation:     Arc::clone(&activation),
-                                                 autopilot:      Arc::clone(&autopilot), };
+                                                 autopilot:      Arc::clone(&autopilot),
+                                                 confirmations:  Arc::clone(&confirmations), };
     // One registry for the process, built before the MCP server because both
     // it and every workspace window write to the same one.
     let subagents: crate::app_support::SubagentRegistryHandle = Arc::default();
@@ -295,6 +297,7 @@ pub(crate) fn run() {
                                // window claims it once one is.
                                cx.set_global(AwaitingInput(Arc::clone(&awaiting_input)));
                                cx.set_global(Activation(Arc::clone(&activation)));
+                               cx.set_global(crate::app_support::Confirmations(Arc::clone(&confirmations)));
                                cx.set_global(crate::app_support::Autopilot(Arc::clone(&autopilot)));
                                cx.set_global(crate::app_support::Subagents(Arc::clone(&subagents)));
                                cx.set_global(mcp_credentials.clone());

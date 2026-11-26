@@ -77,6 +77,7 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
                     .with_message_store(messages)
                     .with_awaiting_input_queue(queues.awaiting_input)
                     .with_activation_queue(queues.activation)
+                    .with_confirmation_queue(queues.confirmations)
                     .with_autopilot_queue(queues.autopilot)
                     .with_settings(settings),
             );

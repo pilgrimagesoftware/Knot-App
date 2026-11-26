@@ -3,7 +3,8 @@
 ### Requirement: MCP tab manages the client token
 
 The MCP tab SHALL show the client token (see `mcp-server` "Credential
-kinds") masked, with copy and regenerate actions. Regenerating SHALL ask for
+kinds") masked, with copy and regenerate actions: the display is masked and
+the copy action copies the full token. Regenerating SHALL ask for
 confirmation, say that clients registered with the old token stop
 connecting, and leave Knot-launched agents unaffected. When the server
 refused requests for a missing or invalid credential in the last hour, the
@@ -36,7 +37,11 @@ server URL with a copy action, and an installation-command generator: an
 agent-type picker offering Claude, Codex, OpenCode, Gemini and Copilot (not
 Shell), the exact command for that type, and a copy action. Each persists on
 change. Each command SHALL send the client token as a bearer `Authorization`
-header in that client's syntax. The URL SHALL carry the `/mcp` path.
+header in that client's syntax, reading it from the `KNOT_MCP_CLIENT_TOKEN`
+environment variable rather than containing it, so the token is neither
+displayed in a command, copied with one, nor kept in shell history. A client
+with no checked command SHALL get a note saying what to configure by hand
+instead of a command. The URL SHALL carry the `/mcp` path.
 
 #### Scenario: Toggling the MCP server persists
 
@@ -59,7 +64,9 @@ header in that client's syntax. The URL SHALL carry the `/mcp` path.
 
 - **WHEN** the user selects "Codex" in the agent-type picker
 - **THEN** the displayed command is the Codex-specific registration
-  command containing the current server URL and the client token header
+  command containing the current server URL and naming
+  `KNOT_MCP_CLIENT_TOKEN` as the token's source, and the token itself
+  appears nowhere in it
 
 #### Scenario: Copy action copies the exact displayed command
 
