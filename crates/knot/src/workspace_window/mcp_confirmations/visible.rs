@@ -12,7 +12,12 @@
 pub(in crate::workspace_window) fn visible(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for character in text.chars() {
-        if hides_text(character) {
+        // A literal backslash is doubled, so text that spells out
+        // `\u{..}` cannot pass for one of the escapes below.
+        if character == '\\' {
+            out.push_str("\\\\");
+        }
+        else if hides_text(character) {
             out.push_str(&format!("\\u{{{:x}}}", u32::from(character)));
         }
         else {
@@ -28,7 +33,25 @@ pub(in crate::workspace_window) fn visible(text: &str) -> String {
 /// bidirectional override, embedding and isolate, the zero-width characters,
 /// the byte-order mark and the tag characters.
 fn hides_text(character: char) -> bool {
-    character.is_control() || matches!(character, '\u{2028}' | '\u{2029}') || is_format(character)
+    character.is_control()
+    || matches!(character, '\u{2028}' | '\u{2029}')
+    || is_format(character)
+    || is_invisible_letter(character)
+}
+
+/// Characters that draw as nothing but are not format characters: the
+/// Hangul fillers, the braille blank, and the variation selectors, which
+/// a font may render as nothing at all (review of #522).
+fn is_invisible_letter(character: char) -> bool {
+    matches!(character,
+             '\u{115f}'
+             | '\u{1160}'
+             | '\u{3164}'
+             | '\u{ffa0}'
+             | '\u{2800}'
+             | '\u{180b}'..='\u{180f}'
+             | '\u{fe00}'..='\u{fe0f}'
+             | '\u{e0100}'..='\u{e01ef}')
 }
 
 /// Unicode general category Cf, as of Unicode 16. Listed rather than taken
@@ -85,7 +108,15 @@ mod tests {
                        ("byte-order mark", '\u{feff}'),
                        ("soft hyphen (Cf)", '\u{ad}'),
                        ("tag character (Cf)", '\u{e0041}'),
-                       ("line separator", '\u{2028}')];
+                       ("line separator", '\u{2028}'),
+                       ("Hangul choseong filler", '\u{115f}'),
+                       ("Hangul jungseong filler", '\u{1160}'),
+                       ("Hangul filler", '\u{3164}'),
+                       ("halfwidth Hangul filler", '\u{ffa0}'),
+                       ("braille blank", '\u{2800}'),
+                       ("Mongolian free variation selector", '\u{180b}'),
+                       ("variation selector 16", '\u{fe0f}'),
+                       ("variation selector supplement", '\u{e0100}')];
         for (class, character) in classes {
             let shown = visible(&format!("a{character}b"));
             assert!(!shown.contains(character),
@@ -94,6 +125,13 @@ mod tests {
                        format!("a\\u{{{:x}}}b", u32::from(character)),
                        "{class}");
         }
+    }
+
+    /// Review of #522: text spelling out an escape is not mistaken for one.
+    #[test]
+    fn a_literal_backslash_is_doubled() {
+        assert_eq!(visible("echo \\u{202e}"), "echo \\\\u{202e}");
+        assert_ne!(visible("a\\u{d}b"), visible("a\rb"));
     }
 
     #[test]

@@ -88,9 +88,7 @@ impl SettingsWindow {
             "codex" => Some(knot_core::l10n::t_with("settings.mcp.codex_token_env", &variable)),
             "copilot" => Some(knot_core::l10n::t_with("settings.mcp.copilot_manual", &variable)),
             "opencode" => Some(knot_core::l10n::t_with("settings.mcp.opencode_manual", &variable)),
-            _ if !install_command.is_empty() => {
-                Some(knot_core::l10n::t_with("settings.mcp.token_env", &variable))
-            }
+            _ if !install_command.is_empty() => Some(super::mcp_access::token_env_hint()),
             _ => None,
         };
 

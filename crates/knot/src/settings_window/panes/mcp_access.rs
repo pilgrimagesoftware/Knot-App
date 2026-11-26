@@ -33,6 +33,21 @@ use crate::settings_window::SettingsWindow;
 /// Codex it has to stay set.
 pub(crate) const CLIENT_TOKEN_ENV: &str = "KNOT_MCP_CLIENT_TOKEN";
 
+/// The note under a command that reads [`CLIENT_TOKEN_ENV`]: on macOS, the
+/// line that sets it from the clipboard - so the token is pasted, never
+/// typed into the shell's history; elsewhere, to set it by hand. Both say
+/// what an unset variable does: the shell substitutes nothing, and the
+/// client registers an empty token that Knot refuses.
+pub(crate) fn token_env_hint() -> String {
+    if cfg!(target_os = "macos") {
+        let command = format!("export {CLIENT_TOKEN_ENV}=\"$(pbpaste)\"");
+        knot_core::l10n::t_with("settings.mcp.token_env_paste", &[("command", &command)])
+    }
+    else {
+        knot_core::l10n::t_with("settings.mcp.token_env", &[("variable", CLIENT_TOKEN_ENV)])
+    }
+}
+
 impl SettingsWindow {
     /// The command to copy for registering `agent_type` against Knot's MCP
     /// server at `url`, sending the client token from [`CLIENT_TOKEN_ENV`].

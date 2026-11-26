@@ -41,3 +41,16 @@ fn regenerating_refuses_the_old_token_and_shows_the_new(cx: &mut TestAppContext)
                Some(Principal::External));
     assert_eq!(store.0.borrow().as_deref(), Some(shown.expose()), "saved");
 }
+
+/// Review of #522: the note says how to set the variable without typing the
+/// token, and what leaving it unset does.
+#[test]
+fn the_variable_hint_pastes_the_token_on_macos() {
+    let hint = super::token_env_hint();
+    assert!(hint.contains("KNOT_MCP_CLIENT_TOKEN"), "{hint}");
+    assert!(!hint.contains("settings.mcp."), "the key resolves: {hint}");
+    if cfg!(target_os = "macos") {
+        assert!(hint.contains("export KNOT_MCP_CLIENT_TOKEN=\"$(pbpaste)\""),
+                "{hint}");
+    }
+}

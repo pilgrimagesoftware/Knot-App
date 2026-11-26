@@ -29,7 +29,10 @@ Copy actions put the exact displayed text on the clipboard; the client token is
 shown masked and its copy action copies it in full. The installation commands
 read the token from the `KNOT_MCP_CLIENT_TOKEN` environment variable instead of
 containing it, so it is not shown in them or kept in your shell history: set
-the variable to the copied token before running one. Codex reads the variable
+the variable to the copied token before running one - on macOS, copy the token
+and run `export KNOT_MCP_CLIENT_TOKEN="$(pbpaste)"` in the same terminal, so the
+token is pasted rather than typed. If the variable is unset, the command
+registers an empty token, and Knot refuses the client. Codex reads the variable
 each time it connects, so set it in your shell profile. Copilot's command has
 not been checked yet; the tab says what to configure by hand. See
 [Coordination]({{ '/latest/coordination/' | relative_url }}) for what the token

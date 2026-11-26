@@ -395,7 +395,10 @@ settings:
     # it on the command line.
     # The commands name the token's environment variable rather than the
     # token, so it is neither shown here nor written to shell history.
-    token_env: "Set %{variable} to the client token (Copy token above) in the terminal you run this in."
+    token_env: "First set %{variable} to the client token in the terminal you run this in; left unset, the command registers an empty token and the client is refused."
+    # macOS: paste the copied token from the clipboard, so it is not typed
+    # into the shell history either.
+    token_env_paste: "Copy the token above, then run %{command} in the same terminal before this command; left unset, the command registers an empty token and the client is refused."
     codex_token_env: "Codex reads the token from %{variable} each time it connects. Set it to the client token in your shell profile, then restart Codex."
     # No checked command for these: what to add by hand.
     copilot_manual: "Copilot's command has not been checked yet. Add Knot in Copilot's MCP settings with the URL above and the header \"Authorization: Bearer <client token>\" (%{variable} if it offers environment variables)."
