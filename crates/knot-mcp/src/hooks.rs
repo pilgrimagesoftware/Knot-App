@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::Value;
 use uuid::Uuid;
+
+use crate::transcript::TranscriptRoot;
 
 const REGISTRATION_PROMPT: &str = "List other agents names and project (no ID) in a table based on context then set your status to indicate you are ready to get going. If you don't see yourself in the table, register with the knot.";
 
@@ -105,9 +105,18 @@ pub fn codex_turn_complete(payload: &Value) -> Result<Option<String>, HookError>
               .map(str::to_string))
 }
 
-pub fn last_assistant_message_from_transcript(path: impl AsRef<Path>) -> Option<String> {
-    let file = File::open(path).ok()?;
-    let lines: Vec<String> = BufReader::new(file).lines().map_while(Result::ok).collect();
+/// The last assistant message in the transcript at `path`, read only if it
+/// is inside `root` (see [`TranscriptRoot`]). `None` when it is not, or has
+/// no assistant message.
+pub fn last_assistant_message_from_transcript(root: &TranscriptRoot, path: impl AsRef<Path>)
+                                              -> Option<String> {
+    last_assistant_message(&root.read_tail(path)?)
+}
+
+/// The last assistant message among a transcript's JSON `lines`, or an
+/// empty one when it answers Knot's registration prompt.
+fn last_assistant_message(text: &str) -> Option<String> {
+    let lines: Vec<&str> = text.lines().collect();
 
     for (index, line) in lines.iter().enumerate().rev() {
         let Ok(entry) = serde_json::from_str::<Value>(line)
@@ -217,7 +226,8 @@ mod tests {
                                                                       .join("\n");
         fs::write(&path, content).unwrap();
 
-        assert_eq!(last_assistant_message_from_transcript(&path),
+        let root = TranscriptRoot::at(std::env::temp_dir()).unwrap();
+        assert_eq!(last_assistant_message_from_transcript(&root, &path),
                    Some("Last".to_string()));
         fs::remove_file(path).unwrap();
     }
@@ -230,7 +240,8 @@ mod tests {
                               json!({"type":"assistant","message":{"content":"Registered"}}),);
         fs::write(&path, content).unwrap();
 
-        assert_eq!(last_assistant_message_from_transcript(&path),
+        let root = TranscriptRoot::at(std::env::temp_dir()).unwrap();
+        assert_eq!(last_assistant_message_from_transcript(&root, &path),
                    Some(String::new()));
         fs::remove_file(path).unwrap();
     }

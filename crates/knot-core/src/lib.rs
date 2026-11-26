@@ -16,6 +16,7 @@ pub mod folder_name;
 pub mod import;
 pub mod l10n;
 pub mod log_dir;
+pub mod mcp_token_path;
 pub mod pull_request_url;
 pub mod schedule;
 pub mod settings;
@@ -26,6 +27,7 @@ pub use exec_path::{resolve_program, search_path};
 pub use folder_name::folder_name;
 pub use l10n::t;
 pub use log_dir::log_dir;
+pub use mcp_token_path::mcp_client_token_path;
 pub use settings::{
     ActivationMode, AiProvider, AppearanceMode, AutopilotAction, BenchAgent, Capabilities,
     CostTier, KeybindingSettings, LayoutMode, Persona, PersonaState, PersonaType, Prompt,

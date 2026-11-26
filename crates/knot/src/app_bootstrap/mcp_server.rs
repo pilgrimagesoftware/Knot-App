@@ -37,8 +37,10 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
                                notifier: Arc<QueuedNotifier>,
                                messages: Arc<Mutex<knot_messaging::MessageStore>>,
                                queues: crate::app_support::McpQueues,
-                               subagents: crate::app_support::SubagentRegistryHandle)
+                               shared: crate::app_support::McpShared)
                                -> (tokio::sync::oneshot::Sender<()>, McpServerStatus) {
+    let crate::app_support::McpShared { subagents,
+                                        credentials, } = shared;
     let (stop, stop_rx) = tokio::sync::oneshot::channel();
     let status = McpServerStatus::new();
     let thread_status = status.clone();
@@ -63,8 +65,8 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
 
                    let (discovery, repos_rx) = knot_discovery::Discovery::new();
                    if !startup.source_base_folder.is_empty()
-                && let Err(err) =
-                    discovery.set_source_folder(Some(PathBuf::from(&startup.source_base_folder)))
+               && let Err(err) =
+                   discovery.set_source_folder(Some(PathBuf::from(&startup.source_base_folder)))
             {
                 eprintln!("failed to watch source folder: {err}");
             }
@@ -86,9 +88,11 @@ pub(crate) fn start_mcp_server(agents: Arc<Mutex<knot_agents::AgentStore>>,
                    };
                    let hook_handler = catalog.clone();
                    let mut supervisor =
-                       knot_mcp::Supervisor::new(startup.mcp_server_port,
-                                                 catalog as Arc<dyn ToolCatalog>,
-                                                 agents_snapshot).with_hook_handler(hook_handler);
+                knot_mcp::Supervisor::new(startup.mcp_server_port,
+                                          catalog as Arc<dyn ToolCatalog>,
+                                          agents_snapshot).with_hook_handler(hook_handler)
+                                                          .with_credentials(credentials.registry)
+                                                          .with_refusals(credentials.refusals);
                    // A packaged `Knot.app` has no stderr anyone reads, so
                    // the file is the only record of what the server did.
                    // With no resolvable home directory there is nowhere to

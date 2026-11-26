@@ -6,12 +6,14 @@
 //! Contract: `openspec/specs/conversation-history/spec.md`.
 //!
 //! Runtime-agnostic: no async runtime; wrap calls in `spawn_blocking` at an
-//! async boundary. Providers swallow their own I/O errors and degrade to an
-//! empty result rather than surfacing them.
+//! async boundary. Reading degrades to an empty result rather than surfacing
+//! an I/O error; deleting returns its error, so a delete that did not happen
+//! is never reported as done.
 
 pub mod cache;
 pub mod consts;
 pub mod error;
+mod files;
 pub mod paths;
 pub mod provider;
 pub mod providers;

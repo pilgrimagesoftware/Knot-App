@@ -83,6 +83,15 @@ pub(crate) struct McpQueues {
     pub(crate) autopilot:      knot_mcp_tools::AutopilotQueue,
 }
 
+/// What `start_mcp_server` shares with the windows besides the queues: the
+/// subagent registry and the MCP credentials. Bundled for the same
+/// argument-count reason as [`McpQueues`].
+#[derive(Clone)]
+pub(crate) struct McpShared {
+    pub(crate) subagents:   SubagentRegistryHandle,
+    pub(crate) credentials: crate::mcp_credentials::McpCredentials,
+}
+
 /// Which setting a font panel session is editing. Plain data, referenced
 /// from platform-independent UI code (button labels/handlers); only the
 /// panel-driving logic that reads/writes it is macOS-only, in

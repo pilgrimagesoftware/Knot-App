@@ -2,6 +2,7 @@
 //!
 //! Implements `openspec/specs/mcp-server/spec.md`.
 
+mod auth;
 mod backoff;
 mod consts;
 mod error;
@@ -17,7 +18,12 @@ mod state;
 mod status;
 mod supervisor;
 mod tools;
+mod transcript;
 
+pub use auth::{
+    AgentCredentials, CredentialKind, CredentialRegistry, Principal, RefusalLog, RefusalSource,
+    Route, Secret,
+};
 pub use backoff::backoff_delay;
 pub use consts::{DEFAULT_PORT, LOG_FILE_NAME};
 pub use error::{McpError, Result};
@@ -37,3 +43,4 @@ pub use tools::{
     Caller, EmptyCatalog, PropertySchema, ToolCallResult, ToolCatalog, ToolContent, ToolDefinition,
     ToolInputSchema,
 };
+pub use transcript::TranscriptRoot;

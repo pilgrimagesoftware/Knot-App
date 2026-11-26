@@ -78,3 +78,53 @@ pub const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 /// than one, so a single dropped connection does not bounce a healthy
 /// server.
 pub const PROBE_FAILURE_THRESHOLD: u32 = 3;
+
+/// How many random bytes each credential carries: 256 bits from the
+/// operating system's CSPRNG (`mcp-server` "Credential kinds").
+pub const CREDENTIAL_BYTES: usize = 32;
+
+/// A launched agent's tool credential: `/mcp` and the status GET (D1).
+pub const AGENT_TOOL_PREFIX: &str = "knot_a_";
+
+/// A launched agent's hook credential: the two hook POSTs only (D1).
+pub const AGENT_HOOK_PREFIX: &str = "knot_h_";
+
+/// The client token users hand to MCP clients they register by hand (D1).
+pub const CLIENT_TOKEN_PREFIX: &str = "knot_c_";
+
+/// The `WWW-Authenticate` challenge on a 401 (RFC 6750, section 3).
+pub const AUTH_CHALLENGE: &str = "Bearer realm=\"knot\"";
+
+/// The host names a request's `Host` header may carry, with the listening
+/// port (`mcp-server` "Host validation").
+pub const LOOPBACK_HOSTS: &[&str] = &["127.0.0.1", "localhost"];
+
+/// The longest `User-Agent` a refusal is attributed to. Anything after it is
+/// dropped, so a client cannot grow the refusal table without bound.
+pub const REFUSAL_USER_AGENT_MAX: usize = 64;
+
+/// How many distinct unattributed sources the refusal table keeps. Past it,
+/// new ones are counted under one overflow entry.
+pub const REFUSAL_SOURCES_MAX: usize = 32;
+
+/// The status endpoint: a GET reads every agent's status, a POST is a hook.
+pub const STATUS_PATH: &str = "/api/v1/agent/status";
+
+/// The hook that registers an agent.
+pub const REGISTER_PATH: &str = "/api/v1/agent/register";
+
+/// The most of a transcript a hook makes Knot read: its last 8 MiB. The
+/// last assistant message and the user turn before it are at the end, and a
+/// path that names something huge, or something that never ends, costs at
+/// most this much.
+pub const TRANSCRIPT_TAIL_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Where Claude Code keeps its session transcripts, under its config
+/// directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`). A hook's
+/// `transcript_path` is read only inside it.
+pub const CLAUDE_TRANSCRIPTS_DIR: &str = "projects";
+
+/// How many agents the refusal table counts by name. Only agents holding a
+/// pair are named, so this is a backstop; past it, refusals are counted
+/// under one overflow entry.
+pub const REFUSAL_AGENTS_MAX: usize = 256;

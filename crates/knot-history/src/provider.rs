@@ -23,14 +23,15 @@ pub struct SessionSummary {
 
 /// Reads and deletes sessions for one coding-agent's on-disk history format.
 ///
-/// Implementations swallow their own I/O and parse errors: an unreadable
-/// session is dropped (or, for the most recent file, listed with an empty
-/// title) rather than surfaced, and a failed delete is a no-op.
+/// Reading swallows I/O and parse errors: an unreadable session is dropped
+/// (or, for the most recent file, listed with an empty title) rather than
+/// surfaced. Deleting returns them: a session whose files are already gone
+/// is deleted, and anything else that stops the delete is an error.
 pub trait HistoryProvider {
     /// Load up to `MAX_SESSIONS` sessions for `folder`, most recent first.
     fn load_sessions(&self, folder: &str) -> Vec<SessionSummary>;
     /// Delete a session's on-disk files.
-    fn delete_session(&self, id: &str, folder: &str);
+    fn delete_session(&self, id: &str, folder: &str) -> crate::Result<()>;
 }
 
 /// Resolve a history provider by agent type. `None` for any type without a

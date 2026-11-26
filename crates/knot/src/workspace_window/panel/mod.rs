@@ -18,11 +18,14 @@
 //! not by type.
 
 mod attachments;
+#[cfg(test)]
+mod collapse_tests;
 pub(super) mod find_bar;
 pub(crate) mod input;
 mod limit_hold;
 pub(crate) mod lookup;
 pub(in crate::workspace_window) mod marked;
+mod mcp_launch;
 pub(crate) mod mentions;
 mod pane;
 pub(crate) mod prompt;
@@ -32,6 +35,8 @@ pub(super) mod question;
 pub(crate) mod reply;
 mod scroll_to_latest;
 mod session;
+#[cfg(test)]
+pub(super) use mcp_launch::hook_environment;
 pub(super) mod shell;
 mod startup;
 pub(crate) mod steer;

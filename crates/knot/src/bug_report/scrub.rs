@@ -12,8 +12,8 @@
 //!   - [`knot_mcp::describe_call`], the shape the MCP log file records;
 //! - MCP and ACP session ids, `Mcp-Session-Id` values included;
 //! - credentials: auth headers, `Bearer` tokens, `key=`/`token=`-style values,
-//!   GitHub, Anthropic, OpenAI, Slack and AWS key formats, and passwords in
-//!   URLs;
+//!   GitHub, Anthropic, OpenAI, Slack and AWS key formats, Knot's own MCP
+//!   credentials, and passwords in URLs;
 //! - email addresses;
 //! - the user's home directory, which becomes `~`.
 //!
@@ -66,6 +66,9 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
          Rule::new(r"\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}", "<api-key>"),
          Rule::new(r"\bxox[abprs]-[A-Za-z0-9-]{10,}", "<api-key>"),
          Rule::new(r"\bA(?:KIA|SIA)[0-9A-Z]{16}\b", "<api-key>"),
+         // Knot's own MCP credentials (`mcp-auth` D2): agent tool and hook
+         // credentials and the client token, recognisable by their prefix.
+         Rule::new(r"\bknot_[ahc]_[A-Za-z0-9_-]{16,}", "<knot-credential>"),
          // A named secret: the name stays, its value goes. Covers headers
          // (`Authorization: Bearer ...`), query strings and JSON fields.
          Rule::new(r#"(?i)(?P<name>\b(?:proxy-)?authorization|\bx-api-key|\bapi[_-]?key|\baccess[_-]?token|\brefresh[_-]?token|\bauth[_-]?token|\bid[_-]?token|\bclient[_-]?secret|\bsecret|\bpassword|\bpasswd|\btoken)(?P<sep>"?\s*[:=]\s*"?)(?:(?:bearer|basic|token)\s+)?[^\s"',;}&]+"#,

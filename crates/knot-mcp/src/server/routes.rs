@@ -7,16 +7,17 @@ use std::sync::atomic::Ordering;
 
 use axum::Router;
 use axum::body::Bytes;
-use axum::extract::{RawQuery, State};
+use axum::extract::{Extension, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use uuid::Uuid;
 
-use super::AppState;
+use super::{AppState, guard};
+use crate::auth::Principal;
 use crate::consts;
 use crate::hooks::{AgentHookHandler, HookRequest};
-use crate::log::{Subject, describe_caller};
+use crate::log::Subject;
 use crate::origin;
 use crate::protocol_version;
 use crate::rpc::{self, JsonRpcId, JsonRpcRequest, JsonRpcResponse};
@@ -28,15 +29,26 @@ const SESSION_HEADER: &str = "Mcp-Session-Id";
 /// served.
 const INVALID_REQUEST: i64 = -32600;
 
+/// The router, with its checks in the order D4 fixes. A layer added later
+/// runs earlier, so the list below reads bottom-up: `Host`, then `Origin`,
+/// then the credential.
 pub(super) fn build_router(state: AppState) -> Router {
     Router::new().route("/health", get(health))
                  .route("/", get(info))
                  .route("/mcp", post(mcp_rpc).get(mcp_sse))
-                 .route("/api/v1/agent/status",
+                 .route(consts::STATUS_PATH,
                         get(agent_status_endpoint).post(agent_status_hook_endpoint))
-                 .route("/api/v1/agent/register", post(agent_register_endpoint))
+                 .route(consts::REGISTER_PATH, post(agent_register_endpoint))
+                 .fallback(not_found)
+                 .layer(axum::middleware::from_fn_with_state(state.clone(), guard::authenticate))
                  .layer(axum::middleware::from_fn(refuse_foreign_origin))
+                 .layer(axum::middleware::from_fn_with_state(state.clone(),
+                                                             guard::refuse_foreign_host))
                  .with_state(state)
+}
+
+async fn not_found() -> StatusCode {
+    StatusCode::NOT_FOUND
 }
 
 /// Answers a request whose `Origin` names anything but this machine's
@@ -74,12 +86,16 @@ async fn agent_status_endpoint(State(state): State<AppState>) -> axum::Json<Vec<
     axum::Json(status::agent_status(&agents))
 }
 
-async fn agent_register_endpoint(State(state): State<AppState>, body: Bytes) -> Response {
-    hook_response(state.hooks.as_deref(), &body, HookAction::Register)
+async fn agent_register_endpoint(State(state): State<AppState>,
+                                 Extension(principal): Extension<Principal>, body: Bytes)
+                                 -> Response {
+    hook_response(&state, principal, &body, HookAction::Register)
 }
 
-async fn agent_status_hook_endpoint(State(state): State<AppState>, body: Bytes) -> Response {
-    hook_response(state.hooks.as_deref(), &body, HookAction::Status)
+async fn agent_status_hook_endpoint(State(state): State<AppState>,
+                                    Extension(principal): Extension<Principal>, body: Bytes)
+                                    -> Response {
+    hook_response(&state, principal, &body, HookAction::Status)
 }
 
 enum HookAction {
@@ -87,16 +103,24 @@ enum HookAction {
     Status,
 }
 
-fn hook_response(handler: Option<&dyn AgentHookHandler>, body: &[u8], action: HookAction)
+fn hook_response(state: &AppState, principal: Principal, body: &[u8], action: HookAction)
                  -> Response {
     let request: HookRequest = match serde_json::from_slice(body) {
         Ok(request) => request,
         Err(error) => return (StatusCode::BAD_REQUEST, error.to_string()).into_response(),
     };
-    if let Err(error) = request.agent_id().and(request.validate_agent()) {
-        return (StatusCode::BAD_REQUEST, error.to_string()).into_response();
+    let agent = match request.agent_id()
+                             .and_then(|agent| request.validate_agent().map(|()| agent))
+    {
+        Ok(agent) => agent,
+        Err(error) => return (StatusCode::BAD_REQUEST, error.to_string()).into_response(),
+    };
+    if !may_post_hooks_for(state, principal, agent) {
+        return (StatusCode::FORBIDDEN, "Forbidden: this credential cannot report for that agent")
+            .into_response();
     }
 
+    let handler: Option<&dyn AgentHookHandler> = state.hooks.as_deref();
     let Some(handler) = handler
     else {
         return (StatusCode::SERVICE_UNAVAILABLE, "Agent hooks are not configured").into_response();
@@ -108,6 +132,22 @@ fn hook_response(handler: Option<&dyn AgentHookHandler>, body: &[u8], action: Ho
     match result {
         Ok(value) => axum::Json(value).into_response(),
         Err(error) => (StatusCode::BAD_REQUEST, error.to_string()).into_response(),
+    }
+}
+
+/// Whether `principal` may post a hook event for `agent` (D6): an agent's
+/// hook credential only for that agent, and the client token only for an
+/// agent Knot did not launch - one with no issued pair and no session opened
+/// with its own credential.
+fn may_post_hooks_for(state: &AppState, principal: Principal, agent: Uuid) -> bool {
+    match principal {
+        Principal::AgentHooks(own) => own == agent,
+        // Not for an agent Knot launched, even before its adapter connects
+        // or after its connection lapses: holding a pair is what counts.
+        Principal::External => {
+            !state.credentials.has_agent_pair(agent) && !state.sessions.held_by_credential(agent)
+        }
+        Principal::Agent(_) => false,
     }
 }
 
@@ -175,11 +215,15 @@ pub(crate) fn agent_from_query(query: Option<&str>) -> Option<Uuid> {
 /// the agent that session is bound to - and the session id to answer with,
 /// if any.
 ///
-/// A URL naming an agent binds the session to it, which also drops a
-/// session the agent held before: a restarted agent's new connection takes
-/// over from its old one. A session is only reported to the tools as kept
-/// when the client will send it again - one from `initialize`, or one it
-/// sent and the server still knows.
+/// Who the connection is comes from `principal`, never from the URL (D5).
+/// An agent's tool credential opens a session bound to that agent, which
+/// replaces one it held before: a restarted agent's new connection takes
+/// over from its old one. The client token opens an unbound session. A
+/// session id the client sends is honoured only when the same principal
+/// opened it; any other id is treated as unknown, so presenting someone
+/// else's session id gets a fresh session of one's own. A session is only
+/// reported to the tools as kept when the client will send it again - one
+/// from `initialize`, or one it sent and the server still knows.
 ///
 /// A request that is not `initialize` and carries no session id is answered
 /// with none (#431). Streamable HTTP assigns a session at initialization
@@ -187,23 +231,21 @@ pub(crate) fn agent_from_query(query: Option<&str>) -> Option<Uuid> {
 /// before initializing - agy's Go client sends `server/discover` first - and
 /// handed an id there sends it on `initialize`, gets a different one back,
 /// and abandons the connection without ever listing tools.
-fn connection(state: &AppState, is_initialize: bool, sent: Option<String>, agent: Option<Uuid>)
+fn connection(state: &AppState, is_initialize: bool, sent: Option<String>, principal: Principal)
               -> (Caller, Option<String>) {
     let sessions = &state.sessions;
-    let opened = || sessions.create_session(agent.unwrap_or_else(Uuid::nil)).id;
+    let opened = || sessions.create_session(principal).id;
     let (session_id, kept) = match sent {
         _ if is_initialize => (Some(opened()), true),
-        Some(id) if sessions.session(&id).is_some() => {
+        Some(id) if sessions.session_for(&id, principal).is_some() => {
             sessions.touch(&id);
-            if let Some(agent) = agent {
-                sessions.bind(&id, agent);
-            }
             (Some(id), true)
         }
         // The client's session outlived the server's TTL (e.g. a paused
-        // session resuming after `DEFAULT_SESSION_TIMEOUT`). Reissue a fresh
-        // session instead of erroring so the client self-heals without a
-        // manual `/mcp reconnect` or restart.
+        // session resuming after `DEFAULT_SESSION_TIMEOUT`), or was never
+        // this principal's. Reissue a fresh session instead of erroring so
+        // the client self-heals without a manual `/mcp reconnect` or
+        // restart.
         Some(_) => (Some(opened()), false),
         None => (None, false),
     };
@@ -211,14 +253,19 @@ fn connection(state: &AppState, is_initialize: bool, sent: Option<String>, agent
                           .and_then(|id| sessions.session(id))
                           .map(|session| session.agent_id)
                           .filter(|agent| !agent.is_nil());
-    let caller = Caller { agent:      bound.or(agent),
-                          session_id: session_id.clone().filter(|_| kept),
-                          sessions:   sessions.clone(), };
+    let own = match principal {
+        Principal::Agent(agent) => Some(agent),
+        Principal::AgentHooks(_) | Principal::External => None,
+    };
+    let caller = Caller { agent:       own.or(bound),
+                          session_id:  session_id.clone().filter(|_| kept),
+                          sessions:    sessions.clone(),
+                          credentials: state.credentials.clone(), };
     (caller, session_id)
 }
 
-async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, headers: HeaderMap,
-                 body: Bytes)
+async fn mcp_rpc(State(state): State<AppState>, Extension(principal): Extension<Principal>,
+                 headers: HeaderMap, body: Bytes)
                  -> Response {
     // Counted before parsing: a request that arrives malformed still
     // arrived, and a heartbeat reporting zero while a client hammers the
@@ -245,14 +292,15 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
         return refused;
     }
 
-    let named = agent_from_query(query.as_deref());
-    let (caller, response_session_id) =
-        connection(&state, request.method == "initialize", session_id, named);
-    // The URL is Knot's own statement of who this is, so it registers the
+    let (caller, response_session_id) = connection(&state,
+                                                   request.method == "initialize",
+                                                   session_id,
+                                                   principal);
+    // An agent's own credential is proof of who this is, so it registers the
     // agent with no turn of its own. Repeated on every request rather than
     // once, so an agent the registry did not hold yet is registered as soon
-    // as it does.
-    if let Some(agent) = named {
+    // as it does. The client token proves no agent and registers none.
+    if let Principal::Agent(agent) = principal {
         state.catalog.connected(agent);
     }
 
@@ -263,7 +311,7 @@ async fn mcp_rpc(State(state): State<AppState>, RawQuery(query): RawQuery, heade
     // Named by the caller's agent, not by `response_session_id`: the id is
     // the credential a client sends back as `Mcp-Session-Id`, and the logs
     // end up in public bug reports (see `log::redact`).
-    let who = describe_caller(&caller);
+    let who = principal;
     eprintln!("knot-mcp: [{who}] -> {}", request.method);
     if let Some(log) = state.log.as_ref() {
         log.info(Subject::Request, format!("[{who}] {}", request.method));

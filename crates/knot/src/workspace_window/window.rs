@@ -166,6 +166,9 @@ pub(crate) struct WorkspaceWindow {
     /// Whether ⌘ is held, and the sidebar's key hints once it has been held
     /// long enough (`agent-list-ui`).
     pub(super) key_hints:                        super::key_hints::KeyHintHold,
+    /// Whether Shift was held at the last modifier change, so the window
+    /// redraws only on a Shift edge (`menus::alternate_line`).
+    pub(super) shift_held:                       bool,
     /// The family the terminal draws and measures in, resolved from the
     /// installed families once per configured name rather than once per
     /// frame - see `terminal_font`.
@@ -184,6 +187,9 @@ pub(crate) struct WorkspaceWindow {
     /// `repaint_poll_tick` to drain - the same shape `pull_request_states`
     /// uses, and for the same reason.
     pub(super) subagents: Arc<Mutex<knot_subagents::registry::SubagentRegistry>>,
+    /// The process's MCP credentials: panel launches issue an agent's pair
+    /// into it and retiring the panel session revokes it (D8).
+    pub(super) mcp_credentials:                  crate::mcp_credentials::McpCredentials,
     /// The lifecycle phase each panel session was in the last time the
     /// repaint poll looked, so a slot moving between phases repaints - see
     /// `panel_needs_repaint`.

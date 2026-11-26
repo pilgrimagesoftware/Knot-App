@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 use uuid::Uuid;
 
+use crate::auth::Principal;
 use crate::consts;
 
 /// A tracked MCP session for one agent.
@@ -12,17 +13,32 @@ use crate::consts;
 pub struct McpSession {
     pub id:            String,
     pub agent_id:      Uuid,
+    /// The principal that opened it. Only a request authenticated as the
+    /// same principal may carry on with it (D5): a session id is not a
+    /// credential, so presenting another's id gets a fresh session instead.
+    pub owner:         Principal,
     pub created_at:    Instant,
     pub last_activity: Instant,
 }
 
 impl McpSession {
-    fn new(agent_id: Uuid) -> Self {
+    fn new(owner: Principal) -> Self {
         let now = Instant::now();
+        let agent_id = match owner {
+            Principal::Agent(agent) => agent,
+            Principal::AgentHooks(_) | Principal::External => Uuid::nil(),
+        };
         Self { id: Uuid::new_v4().to_string(),
                agent_id,
+               owner,
                created_at: now,
                last_activity: now }
+    }
+
+    /// Whether this session is an agent's own, opened with its tool
+    /// credential, rather than one the client token bound by registering.
+    fn held_by_credential(&self) -> bool {
+        self.owner == Principal::Agent(self.agent_id)
     }
 }
 
@@ -44,15 +60,16 @@ impl McpSessionManager {
         Self::default()
     }
 
-    /// Creates a session for `agent_id`. `Uuid::nil()` marks a
-    /// pre-registration session (the agent isn't identified yet, e.g. during
-    /// the `initialize` handshake) and is exempt from the one-session-per-agent
-    /// dedup below — otherwise every new agent's handshake would evict every
-    /// other still-registering agent's session, since they'd all share the
-    /// nil key.
-    pub fn create_session(&self, agent_id: Uuid) -> McpSession {
+    /// Opens a session for `owner`. An agent's tool credential opens one
+    /// bound to that agent, replacing any session the agent held (D5): its
+    /// restarted adapter takes over. The client token opens one bound to no
+    /// agent (`Uuid::nil()`), exempt from the one-session-per-agent dedup
+    /// below - otherwise every unbound client's handshake would evict every
+    /// other's, since they would all share the nil key.
+    pub fn create_session(&self, owner: Principal) -> McpSession {
         let mut table = self.table.lock();
-        let session = McpSession::new(agent_id);
+        let session = McpSession::new(owner);
+        let agent_id = session.agent_id;
         if agent_id != Uuid::nil() {
             if let Some(old_id) = table.agent_to_session.remove(&agent_id) {
                 table.sessions.remove(&old_id);
@@ -65,6 +82,24 @@ impl McpSessionManager {
 
     pub fn session(&self, id: &str) -> Option<McpSession> {
         self.table.lock().sessions.get(id).cloned()
+    }
+
+    /// Session `id`, if `principal` opened it; `None` for an unknown session
+    /// or one that belongs to another principal.
+    pub fn session_for(&self, id: &str, principal: Principal) -> Option<McpSession> {
+        self.session(id)
+            .filter(|session| session.owner == principal)
+    }
+
+    /// Whether a live session opened with `agent_id`'s tool credential holds
+    /// it. Such an agent is never acted for by the client token's holder,
+    /// on `/mcp` or on the hook routes (D5, D6).
+    pub fn held_by_credential(&self, agent_id: Uuid) -> bool {
+        let table = self.table.lock();
+        table.agent_to_session
+             .get(&agent_id)
+             .and_then(|id| table.sessions.get(id))
+             .is_some_and(McpSession::held_by_credential)
     }
 
     /// How many sessions are live right now - what the heartbeat reports, so
@@ -88,13 +123,24 @@ impl McpSessionManager {
     /// Binds session `id` to `agent_id`, as creating it for that agent
     /// would have: a session the agent held before is dropped, and the
     /// session stops speaking for any agent it was bound to. Does nothing
-    /// for an unknown session.
+    /// for an unknown session, and nothing when a session the client token
+    /// opened would displace one the agent's own credential holds (D5).
     pub fn bind(&self, id: &str, agent_id: Uuid) {
         let mut table = self.table.lock();
-        let Some(previous) = table.sessions.get(id).map(|session| session.agent_id)
+        let Some((previous, owner)) = table.sessions
+                                           .get(id)
+                                           .map(|session| (session.agent_id, session.owner))
         else {
             return;
         };
+        let displaces_credential = table.agent_to_session
+                                        .get(&agent_id)
+                                        .filter(|holder| holder.as_str() != id)
+                                        .and_then(|holder| table.sessions.get(holder))
+                                        .is_some_and(McpSession::held_by_credential);
+        if displaces_credential && owner != Principal::Agent(agent_id) {
+            return;
+        }
         if previous != Uuid::nil()
            && table.agent_to_session.get(&previous).map(String::as_str) == Some(id)
         {
@@ -162,108 +208,4 @@ impl McpSessionManager {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn one_session_per_agent() {
-        let manager = McpSessionManager::new();
-        let agent_id = Uuid::new_v4();
-
-        let first = manager.create_session(agent_id);
-        let second = manager.create_session(agent_id);
-
-        assert!(manager.session(&first.id).is_none());
-        assert!(manager.session(&second.id).is_some());
-        assert_eq!(manager.session_for_agent(agent_id).unwrap().id, second.id);
-    }
-
-    #[test]
-    fn binding_a_session_names_its_agent() {
-        let manager = McpSessionManager::new();
-        let agent = Uuid::new_v4();
-        let session = manager.create_session(Uuid::nil());
-
-        manager.bind(&session.id, agent);
-
-        assert_eq!(manager.session_for_agent(agent).unwrap().id, session.id);
-        assert!(!manager.held_elsewhere(agent, Some(&session.id)));
-        assert!(manager.held_elsewhere(agent, None));
-        assert!(manager.held_elsewhere(agent, Some("another")));
-    }
-
-    #[test]
-    fn rebinding_a_session_releases_its_old_agent() {
-        let manager = McpSessionManager::new();
-        let (old, new) = (Uuid::new_v4(), Uuid::new_v4());
-        let session = manager.create_session(old);
-
-        manager.bind(&session.id, new);
-
-        assert!(manager.session_for_agent(old).is_none());
-        assert!(!manager.held_elsewhere(old, None));
-        assert_eq!(manager.session(&session.id).unwrap().agent_id, new);
-    }
-
-    #[test]
-    fn a_removed_session_holds_nothing() {
-        let manager = McpSessionManager::new();
-        let agent = Uuid::new_v4();
-        let session = manager.create_session(agent);
-        manager.remove(&session.id);
-        assert!(!manager.held_elsewhere(agent, None));
-    }
-
-    #[test]
-    fn nil_agent_sessions_do_not_evict_each_other() {
-        let manager = McpSessionManager::new();
-
-        let first = manager.create_session(Uuid::nil());
-        let second = manager.create_session(Uuid::nil());
-
-        assert!(manager.session(&first.id).is_some());
-        assert!(manager.session(&second.id).is_some());
-    }
-
-    #[test]
-    fn the_live_count_tracks_creation_replacement_and_cleanup() {
-        let manager = McpSessionManager::new();
-        assert_eq!(manager.len(), 0);
-        assert!(manager.is_empty());
-
-        let agent = Uuid::new_v4();
-        manager.create_session(agent);
-        manager.create_session(Uuid::new_v4());
-        assert_eq!(manager.len(), 2);
-        assert!(!manager.is_empty());
-
-        // Replacing an agent's session leaves the count alone: the old one
-        // is removed as the new one lands, so a reconnecting agent must not
-        // read as a second connection.
-        manager.create_session(agent);
-        assert_eq!(manager.len(), 2);
-
-        manager.remove_for_agent(agent);
-        assert_eq!(manager.len(), 1);
-
-        std::thread::sleep(Duration::from_millis(20));
-        manager.cleanup_stale(Duration::from_millis(10));
-        assert_eq!(manager.len(), 0, "a reclaimed session stops being counted");
-    }
-
-    #[test]
-    fn cleanup_stale_removes_only_expired_sessions() {
-        let manager = McpSessionManager::new();
-        let stale_agent = Uuid::new_v4();
-        let fresh_agent = Uuid::new_v4();
-
-        let stale = manager.create_session(stale_agent);
-        std::thread::sleep(Duration::from_millis(30));
-        let fresh = manager.create_session(fresh_agent);
-
-        manager.cleanup_stale(Duration::from_millis(15));
-
-        assert!(manager.session(&stale.id).is_none());
-        assert!(manager.session(&fresh.id).is_some());
-    }
-}
+mod tests;

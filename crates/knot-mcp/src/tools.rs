@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::auth::CredentialRegistry;
 use crate::session::McpSessionManager;
 
 #[derive(Debug, Clone, Serialize)]
@@ -86,12 +87,14 @@ impl ToolCallResult {
 pub struct Caller {
     /// The agent the connection is bound to - named by its URL, or by the
     /// `register-agent` it made. `None` while it is bound to none.
-    pub agent:      Option<Uuid>,
+    pub agent:       Option<Uuid>,
     /// The connection's MCP session, when the client keeps one; `None` for
     /// a client whose every request opens a fresh one.
-    pub session_id: Option<String>,
+    pub session_id:  Option<String>,
     /// Every live connection, for asking which one holds an agent.
-    pub sessions:   McpSessionManager,
+    pub sessions:    McpSessionManager,
+    /// The credentials Knot has issued, for asking which agents it launched.
+    pub credentials: CredentialRegistry,
 }
 
 impl Caller {
@@ -101,8 +104,20 @@ impl Caller {
             .held_elsewhere(agent_id, self.session_id.as_deref())
     }
 
+    /// Whether Knot launched `agent_id` and holds its credentials: then only
+    /// a connection presenting that agent's own credential may act for it,
+    /// whether or not one is connected yet (D5, D6).
+    pub fn launched(&self, agent_id: Uuid) -> bool {
+        self.credentials.has_agent_pair(agent_id)
+    }
+
     /// Binds this connection to `agent_id`, if the client keeps its session.
+    /// Never to an agent Knot launched, unless this connection is that
+    /// agent's own.
     pub fn bind(&self, agent_id: Uuid) {
+        if self.launched(agent_id) && self.agent != Some(agent_id) {
+            return;
+        }
         if let Some(id) = &self.session_id {
             self.sessions.bind(id, agent_id);
         }

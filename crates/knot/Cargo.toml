@@ -73,6 +73,8 @@ objc2-app-kit = { version = "0.3", features = [
 # cannot see - the font panel resolves families through CoreText. Registering
 # them here too is what lets the panel open on the current font.
 objc2-core-text = { version = "0.3", features = ["CTFontManager", "block2"] }
+# The MCP client token's Keychain item (`mcp-auth` D1, task 1.2).
+security-framework.workspace = true
 objc2-core-foundation = { version = "0.3", features = ["CFArray", "CFData"] }
 
 [dev-dependencies]
