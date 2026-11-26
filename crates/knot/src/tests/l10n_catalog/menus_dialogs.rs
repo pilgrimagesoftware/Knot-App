@@ -90,7 +90,7 @@ fn every_sidebar_menu_entry_label_resolves() {
     }
 }
 
-/// The four confirmations, and the values they embed. A body that lost its
+/// The confirmations, and the values they embed. A body that lost its
 /// placeholder would ask "Restart ?" and still pass a resolution check, so
 /// these assert the substitution as well as the key.
 #[test]
@@ -98,7 +98,11 @@ fn menu_confirmation_copy_resolves_and_keeps_its_values() {
     for key in ["menu.agent.confirm.restart_title",
                 "menu.agent.confirm.remove_title",
                 "menu.sidebar.confirm.restart_all_title",
-                "menu.sidebar.confirm.close_all_title"]
+                "menu.sidebar.confirm.close_all_title",
+                "menu.agent.confirm.deactivate_new_title",
+                "menu.sidebar.confirm.restart_all_new_title",
+                "menu.sidebar.confirm.deactivate_all_new_title",
+                "menu.agent.shift_marker"]
     {
         assert_ne!(knot_core::l10n::t(key),
                    key,
@@ -106,7 +110,8 @@ fn menu_confirmation_copy_resolves_and_keeps_its_values() {
     }
 
     for key in ["menu.agent.confirm.restart_body",
-                "menu.agent.confirm.remove_body"]
+                "menu.agent.confirm.remove_body",
+                "menu.agent.confirm.deactivate_new_body"]
     {
         let body = knot_core::l10n::t_with(key, &[("name", "Alpha")]);
         assert!(body.contains("Alpha"), "{key} must name the agent: {body}");
@@ -115,7 +120,9 @@ fn menu_confirmation_copy_resolves_and_keeps_its_values() {
     }
 
     for key in ["menu.sidebar.confirm.restart_all_body",
-                "menu.sidebar.confirm.close_all_body"]
+                "menu.sidebar.confirm.close_all_body",
+                "menu.sidebar.confirm.restart_all_new_body",
+                "menu.sidebar.confirm.deactivate_all_new_body"]
     {
         let agents = knot_core::l10n::pluralize(3, "count.agent", "count.agents");
         let body = knot_core::l10n::t_with(key, &[("agents", &agents)]);

@@ -25,12 +25,14 @@ use crate::agent_editor::open_agent_editor;
 use crate::agent_menu::markdown_label;
 use crate::agent_menu_entries::AgentMenuEntry;
 use crate::agent_menu_entries::AgentMenuFacts;
-use crate::agent_menu_entries::agent_context_menu_entries;
+use crate::agent_menu_entries::AgentMenuLine;
+use crate::agent_menu_entries::agent_context_menu_lines;
 use crate::open_in;
 use crate::window_registry::WindowKey;
 use crate::window_registry::WindowRegistry;
 use crate::workspace_window::WorkspaceWindow;
-use crate::workspace_window::menus::confirm_then;
+use crate::workspace_window::menus::agent_row_actions::run_agent_menu_action;
+use crate::workspace_window::menus::alternate_line::alternate_line;
 
 /// Everything the agent-row context menu's handlers need. Grouped so the
 /// builder takes one argument instead of seven, and so the row render can
@@ -73,26 +75,31 @@ pub(crate) fn agent_menu_facts(store: &knot_agents::AgentStore, id: Uuid)
              .map(|workspace| (workspace.id, workspace.name.clone()))
              .collect::<Vec<_>>();
     let history = agent.markdown_history.clone();
-    let facts =
-        AgentMenuFacts { is_companion:         agent.is_companion,
-                         is_shell:             agent.is_shell(),
-                         has_move_targets:     own_workspace.is_some() && !move_targets.is_empty(),
-                         has_markdown_history: !history.is_empty(),
-                         has_config_files:
-                             crate::agent_config::has_config_files(&agent.agent_type),
-                         is_running:           agent.activated,
-                         is_panel_mode:        agent.view_mode == knot_core::ViewMode::Panel,
-                         can_lock:             !agent.locked,
-                         can_unlock:           agent.locked,
-                         can_autopilot_off:    !agent.autopilot_off,
-                         can_autopilot_on:     agent.autopilot_off, };
+    let facts = AgentMenuFacts { is_companion:           agent.is_companion,
+                                 is_shell:               agent.is_shell(),
+                                 has_move_targets:       own_workspace.is_some()
+                                                         && !move_targets.is_empty(),
+                                 has_markdown_history:   !history.is_empty(),
+                                 has_config_files:
+                                     crate::agent_config::has_config_files(&agent.agent_type),
+                                 is_running:             agent.activated,
+                                 is_panel_mode:          agent.view_mode
+                                                         == knot_core::ViewMode::Panel,
+                                 can_lock:               !agent.locked,
+                                 can_unlock:             agent.locked,
+                                 can_autopilot_off:      !agent.autopilot_off,
+                                 can_autopilot_on:       agent.autopilot_off,
+                                 // A setting, not a fact about the agent: the
+                                 // builders add it from the settings surface.
+                                 restores_conversations: false, };
     (facts, move_targets, history)
 }
 
 /// Opens the agent editor from a menu handler, notifying the workspace
 /// window once the dialog is submitted.
-fn open_editor_from_menu(targets: &AgentMenuTargets, prefill: AgentPrefill,
-                         insert_after: Option<Uuid>, edit_target: Option<Uuid>, app: &mut App) {
+pub(super) fn open_editor_from_menu(targets: &AgentMenuTargets, prefill: AgentPrefill,
+                                    insert_after: Option<Uuid>, edit_target: Option<Uuid>,
+                                    app: &mut App) {
     let window_entity = targets.window_entity.clone();
     // A companion the form creates is one the user asked for, so the window
     // shows it where the store put it. An edit is not a creation.
@@ -136,9 +143,11 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
         let (facts, move_targets, markdown_history) = agent_menu_facts(&store, targets.id);
         (facts, move_targets, markdown_history, crate::agent_config::for_agent(&store, targets.id))
     };
-    let facts = facts.with_autopilot(crate::settings_global::read(cx).autopilot_enabled);
+    let settings = crate::settings_global::read(cx);
+    let facts = facts.with_autopilot(settings.autopilot_enabled)
+                     .with_restored_conversations(settings.restore_conversation_on_launch);
     let mut menu = menu;
-    for entry in agent_context_menu_entries(facts) {
+    for AgentMenuLine { entry, alternate } in agent_context_menu_lines(facts) {
         menu = match entry {
             AgentMenuEntry::Separator => menu.separator(),
             AgentMenuEntry::MoveToWorkspace => {
@@ -223,10 +232,25 @@ pub(crate) fn agent_row_context_menu(targets: &AgentMenuTargets, menu: PopupMenu
                     continue;
                 };
                 let targets = targets.clone();
-                menu.item(PopupMenuItem::new(label).on_click(move |_, window, app| {
-                                                       run_agent_menu_action(entry, &targets,
-                                                                             window, app);
-                                                   }))
+                match alternate {
+                    Some(alternate) => {
+                        let alternate_label = alternate.label().unwrap_or_default();
+                        menu.item(alternate_line(label,
+                                                 alternate_label,
+                                                 move |shift, window, app| {
+                                                     let chosen =
+                                                         if shift { alternate } else { entry };
+                                                     run_agent_menu_action(chosen, &targets,
+                                                                           window, app);
+                                                 }))
+                    }
+                    None => menu.item(PopupMenuItem::new(label).on_click(move |_, window, app| {
+                                                                   run_agent_menu_action(entry,
+                                                                                         &targets,
+                                                                                         window,
+                                                                                         app);
+                                                               })),
+                }
             }
         };
     }
@@ -293,199 +317,4 @@ pub(super) fn show_agent_markdown_file(targets: &AgentMenuTargets, file: &Path, 
         }
     }
     targets.window_entity.update(app, |_, cx| cx.notify());
-}
-
-/// Runs one plain (non-submenu) menu entry.
-pub(super) fn run_agent_menu_action(entry: AgentMenuEntry, targets: &AgentMenuTargets,
-                                    window: &mut Window, app: &mut App) {
-    match entry {
-        AgentMenuEntry::EditAgent => {
-            open_editor_from_menu(targets,
-                                  AgentPrefill::default(),
-                                  None,
-                                  Some(targets.id),
-                                  app);
-        }
-        // The configurable companion: same shape as "New Shell Companion"
-        // but routed through the editor, so the user names it and picks
-        // its folder before it exists.
-        AgentMenuEntry::NewCompanion => {
-            let prefill = AgentPrefill { folder: Some(targets.folder.clone()),
-                                         agent_type:
-                                             Some(knot_core::agent_type::SHELL.to_string()),
-                                         created_by: Some(targets.id),
-                                         is_companion: true,
-                                         ..Default::default() };
-            open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
-        }
-        // No confirmation: unlocking undoes it, and nothing is lost either
-        // way - messages refused while locked were never stored.
-        // Reversible from the same menu, so no confirmation.
-        AgentMenuEntry::AutopilotOff | AgentMenuEntry::AutopilotOn => {
-            let off = entry == AgentMenuEntry::AutopilotOff;
-            targets.store.lock().set_autopilot_off(targets.id, off);
-            targets.window_entity.update(app, |view, cx| {
-                                     view.persist_agents(cx);
-                                     cx.notify();
-                                 });
-        }
-        AgentMenuEntry::LockAgent | AgentMenuEntry::UnlockAgent => {
-            let locked = entry == AgentMenuEntry::LockAgent;
-            targets.store.lock().set_locked(targets.id, locked);
-            targets.window_entity.update(app, |view, cx| {
-                                     view.persist_agents(cx);
-                                     cx.notify();
-                                 });
-        }
-        AgentMenuEntry::Deactivate => {
-            // No confirmation: nothing is lost that selecting the row will
-            // not bring back, which is the test Restart and Remove fail.
-            targets.window_entity.update(app, |view, cx| {
-                                     view.deactivate_agent(targets.id);
-                                     cx.notify();
-                                 });
-        }
-        AgentMenuEntry::NewShellCompanion => {
-            let created = targets.store.lock().create_shell_companion(targets.id);
-            if let Ok(companion) = created {
-                targets.window_entity.update(app, |view, cx| {
-                                         view.persist_agents(cx);
-                                         view.show_created_companion(companion, cx);
-                                         cx.notify();
-                                     });
-            }
-        }
-        // A fork carries the source's session so it picks the conversation
-        // up; a duplicate deliberately does not.
-        AgentMenuEntry::ForkAgent => {
-            let source = targets.store.lock().agent(targets.id).cloned();
-            let Some(source) = source
-            else {
-                return;
-            };
-            let prefill = AgentPrefill::fork_of(&source);
-            open_editor_from_menu(targets, prefill, Some(targets.id), None, app);
-        }
-        // The store copies every setup field and names the copy off the
-        // existing names; the window starts it only if its mode does (#289).
-        AgentMenuEntry::DuplicateAgent => {
-            targets.window_entity.update(app, |view, cx| {
-                                     view.duplicate_agent(targets.id, cx);
-                                 });
-        }
-        // The bench is edited from the settings window too; both write onto
-        // the live settings surface, see `workspace_window::bench`.
-        AgentMenuEntry::SaveToBench => {
-            let saved = targets.window_entity
-                               .read(app)
-                               .save_to_bench(targets.id, app);
-            if let Err(error) = saved {
-                eprintln!("failed to save the agent to the bench: {error}");
-            }
-        }
-        // Asks first, unlike Save to Bench: it closes the agent, and its
-        // conversation is not kept.
-        AgentMenuEntry::BenchAgent => {
-            let targets = targets.clone();
-            let has_companions = !targets.store.lock().companions(targets.id).is_empty();
-            let body_key = if has_companions {
-                "menu.agent.confirm.bench_body_companions"
-            }
-            else {
-                "menu.agent.confirm.bench_body"
-            };
-            let description = knot_core::l10n::t_with(body_key, &[("name", &targets.name)]);
-            confirm_then(window,
-                         app,
-                         knot_core::l10n::t("menu.agent.confirm.bench_title"),
-                         description,
-                         move |app| {
-                             targets.window_entity.update(app, |view, cx| {
-                                                      if let Err(error) =
-                                                          view.bench_agent(targets.id, cx)
-                                                      {
-                                                          eprintln!("failed to bench the agent: {error}");
-                                                      }
-                                                      cx.notify();
-                                                  });
-                         });
-        }
-        AgentMenuEntry::AgentInfo => {
-            let identity = targets.window_entity.read(app).agent_identity(targets.id);
-            crate::workspace_window::agent_info::show_agent_info(window, app, &identity);
-        }
-        AgentMenuEntry::RegisterAgent => {
-            targets.window_entity.update(app, |view, cx| {
-                                     view.send_registration_prompt(targets.id);
-                                     cx.notify();
-                                 });
-        }
-        AgentMenuEntry::RestartAgent => {
-            // Decided now, not on confirm: the prompt says which of the two
-            // it will do, and confirming must do what it said.
-            let keep = crate::settings_global::read(app).restore_conversation_on_launch;
-            let body = if keep {
-                "menu.agent.confirm.restart_keep_body"
-            }
-            else {
-                "menu.agent.confirm.restart_body"
-            };
-            confirm_restart(window,
-                            app,
-                            targets,
-                            "menu.agent.confirm.restart_title",
-                            body,
-                            keep);
-        }
-        AgentMenuEntry::RestartWithNewConversation => {
-            confirm_restart(window,
-                            app,
-                            targets,
-                            "menu.agent.confirm.restart_new_title",
-                            "menu.agent.confirm.restart_new_body",
-                            false);
-        }
-        AgentMenuEntry::RemoveAgent => {
-            let targets = targets.clone();
-            let description = knot_core::l10n::t_with("menu.agent.confirm.remove_body",
-                                                      &[("name", &targets.name)]);
-            confirm_then(window,
-                         app,
-                         knot_core::l10n::t("menu.agent.confirm.remove_title"),
-                         description,
-                         move |app| {
-                             targets.window_entity.update(app, |view, cx| {
-                                                      view.remove_agent(targets.id, cx);
-                                                      cx.notify();
-                                                  });
-                         });
-        }
-        // Handled by the builder, which needs `Window`/`Context` to make
-        // a submenu, or carries no action at all.
-        AgentMenuEntry::Separator
-        | AgentMenuEntry::MoveToWorkspace
-        | AgentMenuEntry::OpenIn
-        | AgentMenuEntry::MarkdownFiles
-        | AgentMenuEntry::ConfigFiles => {}
-    }
-}
-
-/// Asks to restart the row's agent, and restarts it on confirmation,
-/// keeping its conversation or starting a new one as `keep_conversation`
-/// says - the prompt named by `title_key` and `body_key` has told the user
-/// which.
-fn confirm_restart(window: &mut Window, app: &mut App, targets: &AgentMenuTargets,
-                   title_key: &str, body_key: &str, keep_conversation: bool) {
-    let targets = targets.clone();
-    let description = knot_core::l10n::t_with(body_key, &[("name", &targets.name)]);
-    confirm_then(window,
-                 app,
-                 knot_core::l10n::t(title_key),
-                 description,
-                 move |app| {
-                     targets.window_entity.update(app, |view, cx| {
-                                              view.restart_agent(targets.id, keep_conversation, cx);
-                                              cx.notify();
-                                          });
-                 });
 }

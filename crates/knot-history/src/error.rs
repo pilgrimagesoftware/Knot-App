@@ -12,6 +12,19 @@ pub enum HistoryError {
 
     #[error("querying history database failed: {0}")]
     Sqlite(#[from] rusqlite::Error),
+
+    /// A session id that is not one plain path component.
+    #[error("not a session id: {0:?}")]
+    InvalidSessionId(String),
+
+    /// A path a delete would touch that is not inside the agent's own
+    /// history directory.
+    #[error("{} is outside the agent's history directory", .0.display())]
+    OutsideHistory(std::path::PathBuf),
+
+    /// A path a delete expected to be a file that is something else.
+    #[error("{} is not a regular file", .0.display())]
+    NotAFile(std::path::PathBuf),
 }
 
 #[cfg(test)]

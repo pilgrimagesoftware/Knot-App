@@ -95,7 +95,8 @@ fn fixture(policy: IdlePolicy, cx: &mut TestAppContext) -> Fixture {
     let sender = make("sender");
     store.set_activated(agent, true);
     store.set_idle_policy(agent, policy);
-    store.set_acp_session_id(agent, "acp-idler".into());
+    let token = store.agent(agent).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(agent, token, "acp-idler".into()));
     let store = Arc::new(Mutex::new(store));
     let messages = Arc::new(Mutex::new(knot_messaging::MessageStore::new()));
     let dir = TempDir::new().expect("a temporary settings root");

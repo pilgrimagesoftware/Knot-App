@@ -165,7 +165,8 @@ fn recording_a_setup_selection_leaves_the_running_turn_alone() {
     let mut store = AgentStore::new();
     let id = store.create("/tmp/a", CreateOptions::default());
     store.set_session_id(id, "term-1".to_string());
-    store.set_acp_session_id(id, "acp-1".to_string());
+    let token = store.agent(id).expect("the agent exists").restart_token;
+    assert!(store.set_acp_session_id_if_current(id, token, "acp-1".to_string()));
     store.set_state(id, AgentState::Running);
 
     store.set_session_config_option(id, "model".to_string(), "opus".to_string())

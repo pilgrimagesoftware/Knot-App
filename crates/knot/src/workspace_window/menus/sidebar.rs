@@ -22,6 +22,7 @@ use crate::app_state::SidebarMenuFacts;
 use crate::app_state::sidebar_background_menu_entries;
 use crate::broadcast_sheet::open_broadcast_sheet;
 use crate::workspace_window::WorkspaceWindow;
+use crate::workspace_window::menus::alternate_line::alternate_line;
 use crate::workspace_window::menus::confirm_then;
 
 /// What the sidebar's background context menu acts on. The workspace, not
@@ -84,7 +85,9 @@ pub(crate) fn sidebar_menu_facts(store: &knot_agents::AgentStore, workspace_id: 
 pub(crate) fn sidebar_background_context_menu(targets: &SidebarMenuTargets, menu: PopupMenu,
                                               window: &mut Window, cx: &mut Context<PopupMenu>)
                                               -> PopupMenu {
-    let bench = crate::settings_global::read(cx).bench_agents.clone();
+    let settings = crate::settings_global::read(cx);
+    let bench = settings.bench_agents.clone();
+    let restores_conversations = settings.restore_conversation_on_launch;
     let facts = SidebarMenuFacts { bench_count: bench.len(),
                                    ..sidebar_menu_facts(&targets.store.lock(),
                                                         targets.workspace_id) };
@@ -104,11 +107,21 @@ pub(crate) fn sidebar_background_context_menu(targets: &SidebarMenuTargets, menu
             Some(label) => {
                 let targets = targets.clone();
                 let entry = item.entry;
-                menu.item(PopupMenuItem::new(label).disabled(!item.enabled)
-                                                   .on_click(move |_, window, app| {
-                                                       run_sidebar_menu_action(entry, &targets,
-                                                                               window, app);
-                                                   }))
+                if let Some(alternate) = entry.shift_alternate(restores_conversations) {
+                    let alternate_label = alternate.label().unwrap_or_default();
+                    menu.item(alternate_line(label, alternate_label, move |shift, window, app| {
+                                  let chosen = if shift { alternate } else { entry };
+                                  run_sidebar_menu_action(chosen, &targets, window, app);
+                              }).disabled(!item.enabled))
+                }
+                else {
+                    menu.item(PopupMenuItem::new(label).disabled(!item.enabled)
+                                                       .on_click(move |_, window, app| {
+                                                           run_sidebar_menu_action(entry,
+                                                                                   &targets,
+                                                                                   window, app);
+                                                       }))
+                }
             }
         };
     }
@@ -195,6 +208,41 @@ fn run_sidebar_menu_action(entry: AgentListBackgroundEntry, targets: &SidebarMen
                                      view.deactivate_all_agents();
                                      cx.notify();
                                  });
+        }
+        // The Shift alternates confirm, both of them: each forgets every
+        // conversation in the workspace, which nothing brings back.
+        AgentListBackgroundEntry::RestartAllNewConversations => {
+            let targets = targets.clone();
+            let count = workspace_agent_count(&targets);
+            let description = knot_core::l10n::t_with("menu.sidebar.confirm.restart_all_new_body",
+                                                      &[("agents", &agent_count(count))]);
+            confirm_then(window,
+                         app,
+                         knot_core::l10n::t("menu.sidebar.confirm.restart_all_new_title"),
+                         description,
+                         move |app| {
+                             targets.window_entity.update(app, |view, cx| {
+                                                      view.restart_all_agents(false, cx);
+                                                      cx.notify();
+                                                  });
+                         });
+        }
+        AgentListBackgroundEntry::DeactivateAllNewSessions => {
+            let targets = targets.clone();
+            let running =
+                sidebar_menu_facts(&targets.store.lock(), targets.workspace_id).running_count;
+            let description = knot_core::l10n::t_with("menu.sidebar.confirm.deactivate_all_new_body",
+                                                      &[("agents", &agent_count(running))]);
+            confirm_then(window,
+                         app,
+                         knot_core::l10n::t("menu.sidebar.confirm.deactivate_all_new_title"),
+                         description,
+                         move |app| {
+                             targets.window_entity.update(app, |view, cx| {
+                                                      view.deactivate_all_agents_fresh(cx);
+                                                      cx.notify();
+                                                  });
+                         });
         }
         AgentListBackgroundEntry::Broadcast => {
             let targets = targets.clone();

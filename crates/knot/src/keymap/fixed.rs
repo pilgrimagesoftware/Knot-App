@@ -13,6 +13,7 @@ use crate::agent_menu::AgentMenuRestartAgent;
 use crate::agent_menu::AgentMenuRestartWithNewConversation;
 use crate::agent_menu::agent_menu_key_bindings;
 use crate::app_bootstrap::CloseWindow;
+use crate::app_bootstrap::CollapseAllToolCalls;
 use crate::app_bootstrap::HideApp;
 use crate::app_bootstrap::HideOthers;
 use crate::app_bootstrap::KnotHelp;
@@ -84,6 +85,11 @@ pub(crate) fn fixed_bindings() -> Vec<FixedBinding> {
                        // reaches the pane as the input's `Search` instead.
                        fixed(KeyBinding::new("cmd-f", PanelFind, None),
                              "keymap.fixed.find"),
+                       // ⌥⌘C / Ctrl+Alt+C: free in Knot, in the text
+                       // input and in the terminal, unlike ⇧⌘C, whose
+                       // Ctrl+Shift+C off macOS is the terminal's copy.
+                       fixed(KeyBinding::new("secondary-alt-c", CollapseAllToolCalls, None),
+                             "menu.view.collapse_all_tool_calls"),
                        // The reference's Find File… key (#5).
                        fixed(KeyBinding::new("cmd-shift-f", crate::app_bootstrap::FindFile, None),
                              "menu.edit.find_file"),];
