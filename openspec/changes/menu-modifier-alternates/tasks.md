@@ -72,4 +72,5 @@ Sections 1-5 ship in #506. Section 6 ships in a stacked draft PR.
   upstream PR text).
 - [x] 6.4 The Agents menu emits each alternate as a native alternate of its
   primary on macOS and the primary only elsewhere; tests for both shapes.
-- [ ] 6.5 Docs, gate, CI green on all jobs.
+- [x] 6.5 Docs, gate, CI green on all jobs (#515 at `c58ae4c4`, run
+  45735760172: ubuntu, macOS and Windows).
