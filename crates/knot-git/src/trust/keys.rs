@@ -6,6 +6,14 @@
 //! `alias.*`, `difftool.*.cmd`, `mergetool.*.cmd`, `browser.*.cmd`,
 //! `man.*.cmd`, `guitool.*.cmd`, `web.browser`, `submodule.*.update`,
 //! `sendemail.*` - are left out: they cannot run through Knot.
+//!
+//! Also left out are the programs Knot already turns off on every call it
+//! makes on its own (`consts::CALL_CONFIG`, `NO_HOOKS_CONFIG`, and the
+//! diff options): `core.fsmonitor`, `core.hooksPath`, `diff.external` and
+//! `diff.*.textconv`. Asking about them would ask about something that does
+//! not run - a repository whose only such setting is a hooks folder (husky,
+//! say) would prompt for nothing. The user's own commit, which keeps the
+//! repository's hooks, runs them as a terminal would.
 
 use std::fmt;
 
@@ -13,8 +21,12 @@ use std::fmt;
 /// it: section and key lower-cased, a subsection as written.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProgramSetting {
-    pub key:   String,
-    pub value: String,
+    /// The submodule whose configuration holds the entry, as its path from
+    /// the repository's top (`vendor/lib`, `a/b` for one nested in `a`), or
+    /// `None` for the repository's own.
+    pub submodule: Option<String>,
+    pub key:       String,
+    pub value:     String,
 }
 
 impl ProgramSetting {
@@ -24,10 +36,22 @@ impl ProgramSetting {
     pub fn visible_value(&self) -> String {
         visible(&self.value)
     }
+
+    /// The entry as saved with a trust decision: as configured, unescaped,
+    /// with its submodule's path in front when it has one.
+    pub fn fingerprint(&self) -> String {
+        match &self.submodule {
+            Some(submodule) => format!("[{submodule}] {}={}", self.key, self.value),
+            None => format!("{}={}", self.key, self.value),
+        }
+    }
 }
 
 impl fmt::Display for ProgramSetting {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(submodule) = &self.submodule {
+            write!(f, "[{}] ", visible(submodule))?;
+        }
         write!(f, "{}={}", visible(&self.key), self.visible_value())
     }
 }
@@ -60,19 +84,12 @@ pub(crate) fn names_a_program(key: &str, value: &str) -> bool {
         None => (None, rest),
     };
     match (section, subsection, name) {
-        ("core", None, "fsmonitor") | ("pager", None, _) => !is_boolean(value),
+        ("pager", None, _) => !is_boolean(value),
         ("core",
          None,
-         "hookspath"
-         | "sshcommand"
-         | "editor"
-         | "pager"
-         | "askpass"
-         | "gitproxy"
-         | "alternaterefscommand")
+         "sshcommand" | "editor" | "pager" | "askpass" | "gitproxy" | "alternaterefscommand")
         | ("filter", Some(_), "clean" | "smudge" | "process")
-        | ("diff", Some(_), "command" | "textconv")
-        | ("diff", None, "external")
+        | ("diff", Some(_), "command")
         | ("merge", Some(_), "driver")
         | ("credential", _, "helper")
         | ("gpg", _, "program")
@@ -90,8 +107,8 @@ pub(crate) fn names_a_program(key: &str, value: &str) -> bool {
     }
 }
 
-/// git's boolean spellings: for `core.fsmonitor`, `true` selects git's own
-/// built-in monitor rather than a program.
+/// git's boolean spellings: `pager.<cmd>` set to one turns the pager on or
+/// off rather than naming a program.
 fn is_boolean(value: &str) -> bool {
     ["true", "false", "yes", "no", "on", "off", "1", "0", ""].iter()
                                                              .any(|word| {
@@ -108,12 +125,8 @@ mod tests {
         for (key, value) in [("filter.lfs.clean", "git-lfs clean -- %f"),
                              ("filter.x.smudge", "cat"),
                              ("filter.x.process", "x"),
-                             ("diff.x.textconv", "cat"),
                              ("diff.x.command", "x"),
-                             ("diff.external", "x"),
                              ("merge.x.driver", "x"),
-                             ("core.fsmonitor", "/tmp/monitor"),
-                             ("core.hooksPath", "hooks"),
                              ("core.sshCommand", "ssh"),
                              ("core.editor", "vi"),
                              ("core.pager", "less"),
@@ -141,6 +154,11 @@ mod tests {
     #[test]
     fn keys_that_run_nothing_through_knot_are_not() {
         for (key, value) in [("core.fsmonitor", "true"),
+                             // Turned off on every call Knot makes on its own.
+                             ("core.fsmonitor", "/tmp/monitor"),
+                             ("core.hooksPath", ".husky"),
+                             ("diff.external", "x"),
+                             ("diff.x.textconv", "cat"),
                              ("core.fsmonitor", "false"),
                              ("pager.log", "false"),
                              ("core.bare", "false"),
@@ -159,9 +177,20 @@ mod tests {
 
     #[test]
     fn a_value_with_control_characters_is_shown_escaped() {
-        let setting = ProgramSetting { key:   "filter.x.clean".to_owned(),
-                                       value: "safe\u{15}\rrm -rf ~".to_owned(), };
+        let setting = ProgramSetting { submodule: None,
+                                       key:       "filter.x.clean".to_owned(),
+                                       value:     "safe\u{15}\rrm -rf ~".to_owned(), };
 
         assert_eq!(setting.to_string(), "filter.x.clean=safe\\x15\\x0drm -rf ~");
+    }
+
+    #[test]
+    fn a_submodules_entry_is_shown_and_saved_with_its_path() {
+        let setting = ProgramSetting { submodule: Some("vendor/lib".to_owned()),
+                                       key:       "filter.x.clean".to_owned(),
+                                       value:     "cat".to_owned(), };
+
+        assert_eq!(setting.to_string(), "[vendor/lib] filter.x.clean=cat");
+        assert_eq!(setting.fingerprint(), "[vendor/lib] filter.x.clean=cat");
     }
 }

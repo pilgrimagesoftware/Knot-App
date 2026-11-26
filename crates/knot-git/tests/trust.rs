@@ -7,6 +7,7 @@
 #![cfg(unix)]
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -118,7 +119,7 @@ fn a_program_added_after_trust_is_refused_until_trusted_again() {
     trust(dir.path());
     let config = dir.path().join(".git/config");
     let mut text = fs::read_to_string(&config).unwrap();
-    text.push_str("[diff \"x\"]\n\ttextconv = cat\n");
+    text.push_str("[merge \"x\"]\n\tdriver = cat %A\n");
     fs::write(&config, text).unwrap();
 
     let error = Repository::open(dir.path()).stage(&["f.txt"]).unwrap_err();
@@ -182,4 +183,101 @@ fn a_folder_outside_any_repository_has_no_repository_programs() {
     let dir = tempfile::tempdir().unwrap();
 
     assert_eq!(repository_programs(dir.path()).unwrap(), None);
+}
+
+/// A submodule's configuration lives in its own git folder, outside the
+/// repository's `local` scope, yet the repository's `status` runs git in
+/// the submodule: its clean filter is the repository's to answer for.
+#[test]
+fn a_submodules_clean_filter_does_not_run_until_trusted() {
+    install_policy();
+    let dir = tempfile::tempdir().unwrap();
+    let tools = tempfile::tempdir().unwrap();
+    let ran = marker(&tools);
+    let git = |folder: &Path, args: &[&str]| {
+        Runner::new(folder).run(args).unwrap();
+    };
+    let init = |folder: &Path| {
+        fs::create_dir_all(folder).unwrap();
+        git(folder, &["init", "-q", "-b", "main"]);
+        git(folder, &["config", "user.email", "test@example.com"]);
+        git(folder, &["config", "user.name", "Test"]);
+        git(folder, &["config", "commit.gpgsign", "false"]);
+    };
+    let (library, app) = (dir.path().join("library"), dir.path().join("app"));
+    init(&library);
+    fs::write(library.join(".gitattributes"), "f.txt filter=x\n").unwrap();
+    fs::write(library.join("f.txt"), "one\n").unwrap();
+    git(&library, &["add", "."]);
+    git(&library, &["commit", "-qm", "root"]);
+    init(&app);
+    fs::write(app.join("main.txt"), "main\n").unwrap();
+    git(&app, &["add", "."]);
+    git(&app, &["commit", "-qm", "root"]);
+    git(&app,
+        &["-c",
+          "protocol.file.allow=always",
+          "submodule",
+          "add",
+          "-q",
+          library.to_str().unwrap(),
+          "vendor/library"]);
+    git(&app, &["commit", "-qm", "add submodule"]);
+    let checkout = app.join("vendor/library");
+    // Same size, new content: git has to read the file to compare it.
+    fs::write(checkout.join("f.txt"), "two\n").unwrap();
+    configure_clean_filter(&checkout, &ran);
+
+    let error = Repository::open(&app).status().unwrap_err();
+
+    assert!(matches!(error, GitError::Untrusted { .. }), "{error}");
+    assert!(!ran.exists(), "the submodule's clean filter ran");
+    let programs = repository_programs(&app).unwrap().expect("a repository");
+    assert_eq!(programs.settings[0].submodule.as_deref(),
+               Some("vendor/library"));
+
+    trust(&app);
+    Repository::open(&app).status().unwrap();
+
+    assert!(ran.exists(), "once trusted, the submodule's filter runs");
+}
+
+/// A hooks folder (husky, say) is turned off on every call Knot makes on
+/// its own, so it alone asks nothing - and its hooks still do not run.
+#[test]
+fn a_repository_whose_only_program_is_a_hooks_folder_is_not_asked_about() {
+    let (dir, tools) = repository();
+    let ran = tools.path().join("husky-ran");
+    let hooks = dir.path().join(".husky");
+    fs::create_dir_all(&hooks).unwrap();
+    let hook = hooks.join("post-index-change");
+    fs::write(&hook, format!("#!/bin/sh\ntouch '{}'\n", ran.display())).unwrap();
+    fs::set_permissions(&hook, fs::Permissions::from_mode(0o755)).unwrap();
+    Runner::new(dir.path()).run(&["config", "core.hooksPath", ".husky"])
+                           .unwrap();
+
+    Repository::open(dir.path()).stage(&["f.txt"]).unwrap();
+
+    assert_eq!(refusals_for(dir.path()), 0);
+    assert!(!ran.exists(),
+            "the hooks folder is still off for Knot's calls");
+}
+
+/// A textconv is turned off on the diffs Knot reads, so it alone asks
+/// nothing - and the diff is read without running it.
+#[test]
+fn a_repository_whose_only_program_is_a_textconv_is_not_asked_about() {
+    let (dir, tools) = repository();
+    let ran = tools.path().join("textconv-ran");
+    fs::write(dir.path().join(".gitattributes"), "f.txt diff=x\n").unwrap();
+    Runner::new(dir.path()).run(&["config",
+                                  "diff.x.textconv",
+                                  &format!("sh -c 'touch {}; cat \"$1\"' -", ran.display())])
+                           .unwrap();
+
+    let diff = Repository::open(dir.path()).file_diff("f.txt", None, false);
+
+    assert!(diff.is_ok(), "{diff:?}");
+    assert_eq!(refusals_for(dir.path()), 0);
+    assert!(!ran.exists(), "the textconv ran");
 }

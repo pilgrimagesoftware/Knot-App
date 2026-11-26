@@ -8,8 +8,9 @@ fn programs(repository: &str, settings: &[(&str, &str)]) -> RepositoryPrograms {
     RepositoryPrograms { repository: PathBuf::from(repository),
                          settings:   settings.iter()
                                              .map(|(key, value)| {
-                                                 ProgramSetting { key:   (*key).to_owned(),
-                                                                  value: (*value).to_owned(), }
+                                                 ProgramSetting { submodule: None,
+                                                                  key:       (*key).to_owned(),
+                                                                  value:     (*value).to_owned(), }
                                              })
                                              .collect(), }
 }

@@ -13,8 +13,10 @@ chose to run.
 ## What Changes
 
 - Before any git call, `knot-git` reads the repository's own configuration
-  entries (scopes `local` and `worktree`, following includes) and keeps the
-  keys that name programs. The answer is cached per folder until a file it
+  entries (scopes `local` and `worktree`, following includes, and each
+  checked-out submodule's) and keeps the keys that name programs - except
+  those Knot already turns off on its own calls (`core.hooksPath`,
+  `core.fsmonitor`, `diff.external`, `diff.*.textconv`). The answer is cached per folder until a file it
   was read from changes.
 - If the repository names programs and the application's trust policy
   doesn't trust it with exactly those entries, the call runs nothing and

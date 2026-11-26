@@ -4,6 +4,8 @@
 - [x] 1.2 Detection with `rev-parse` and `config --list --show-scope --show-origin --includes -z`, cached per folder and invalidated by the stamps of the config, origin and include-target files
 - [x] 1.3 `TrustPolicy`, `configure_trust`, `repository_programs`, and the `Runner` gate returning `GitError::Untrusted`
 - [x] 1.4 Integration tests: untrusted clean filter, trusted filter, program added after trust, configured hook, included filter, repository with no programs
+- [x] 1.5 Submodules' configuration checked with the repository's (nested, depth-limited), with an integration test
+- [x] 1.6 Keys Knot already turns off on its own calls do not prompt; husky-only and textconv-only tests
 
 ## 2. knot-core
 

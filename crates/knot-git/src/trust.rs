@@ -6,8 +6,9 @@
 //! `status` and `add`, its `smudge` on `worktree add`, a `textconv` on a
 //! diff, and `hook.<name>.command` runs even with `core.hooksPath` set to
 //! `/dev/null`. No single option turns them all off. So before any git call,
-//! the repository's configuration is checked, and if it names a program the
-//! application's [`TrustPolicy`] decides whether the call runs.
+//! the repository's configuration - and each checked-out submodule's, which
+//! `status` and `diff` run git in - is checked, and if it names a program
+//! the application's [`TrustPolicy`] decides whether the call runs.
 //!
 //! Contract: `openspec/specs/git-operations/spec.md`, "Repository trust".
 

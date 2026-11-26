@@ -107,3 +107,17 @@ pub const CONFIG_LIST_WITH_ORIGIN: &[&str] = &["config",
                                                "--show-origin",
                                                "--includes",
                                                "-z"];
+
+/// The file naming a repository's submodules, at its top.
+pub const GITMODULES_FILE: &str = ".gitmodules";
+
+/// `git config -z --file <file>` - followed by the file and a query - for
+/// reading a file such as `.gitmodules` rather than a repository's config.
+pub const CONFIG_FILE_REGEXP_PREFIX: &[&str] = &["config", "-z", "--file"];
+
+/// The `.gitmodules` keys holding each submodule's path.
+pub const SUBMODULE_PATH_PATTERN: &str = r"^submodule\..*\.path$";
+
+/// How deep repository trust follows submodules inside submodules. Deeper
+/// nesting than this is not read.
+pub const MAX_SUBMODULE_DEPTH: usize = 8;

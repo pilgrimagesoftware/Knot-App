@@ -44,17 +44,46 @@ SHALL be reported to the policy.
 ### Requirement: Keys that name programs
 
 The keys checked SHALL include `filter.*.{clean,smudge,process}`,
-`diff.*.{command,textconv}`, `diff.external`, `merge.*.driver`,
-`core.{fsmonitor,hooksPath,sshCommand,editor,pager,askPass,gitProxy,alternateRefsCommand}`,
+`diff.*.command`, `merge.*.driver`,
+`core.{sshCommand,editor,pager,askPass,gitProxy,alternateRefsCommand}`,
 `credential[.*].helper`, `gpg[.*].program`, `gpg.ssh.defaultKeyCommand`,
 `hook.*.command`, `sequence.editor`, `pager.*`,
 `remote.*.{uploadpack,receivepack,vcs}`, `trailer.*.{cmd,command}`,
 `include.path`, `includeIf.*.path`, and `protocol` settings that enable `ext`.
 
-#### Scenario: A boolean fsmonitor
+#### Scenario: A filter driver
 
-- **WHEN** `core.fsmonitor` is `true` or `false`
-- **THEN** it names no program
+- **WHEN** a repository configures `filter.x.smudge`
+- **THEN** it names a program
+
+### Requirement: Keys Knot already turns off do not prompt
+
+Keys Knot turns off on every call it makes on its own - `core.hooksPath`,
+`core.fsmonitor`, `diff.external`, `diff.*.textconv` - SHALL NOT be
+checked.
+
+#### Scenario: A hooks folder alone
+
+- **WHEN** a repository's only such setting is `core.hooksPath`
+- **THEN** git runs there without asking, and the folder's hooks do not run
+  on Knot's own calls
+
+#### Scenario: A textconv alone
+
+- **WHEN** a repository's only such setting is `diff.x.textconv`
+- **THEN** Knot reads its diffs without asking and without running it
+
+### Requirement: Submodules answer with their repository
+
+The configuration of each checked-out submodule, nested ones included,
+SHALL be checked with the repository's own, each entry tagged with the
+submodule's path.
+
+#### Scenario: A submodule's clean filter
+
+- **WHEN** a checked-out submodule configures a clean filter for a changed
+  file and Knot reads the repository's status
+- **THEN** the filter does not run until the repository is trusted
 
 ### Requirement: Asking the user
 

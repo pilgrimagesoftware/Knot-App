@@ -27,8 +27,10 @@ struct Fixture {
 
 fn lfs() -> RepositoryPrograms {
     RepositoryPrograms { repository: PathBuf::from("/src/repo"),
-                         settings:   vec![ProgramSetting { key:   "filter.lfs.clean".to_owned(),
-                                                           value: "git-lfs clean -- %f".to_owned(), }], }
+                         settings:   vec![ProgramSetting { submodule: None,
+                                                           key:       "filter.lfs.clean".to_owned(),
+                                                           value:
+                                                               "git-lfs clean -- %f".to_owned(), }], }
 }
 
 fn window(cx: &mut TestAppContext) -> Fixture {

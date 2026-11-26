@@ -13,7 +13,10 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use super::keys::{ProgramSetting, names_a_program};
-use crate::consts::{CONFIG_LIST_WITH_ORIGIN, REV_PARSE_GIT_DIRS, REV_PARSE_TOPLEVEL};
+use crate::consts::{
+    CONFIG_FILE_REGEXP_PREFIX, CONFIG_LIST_WITH_ORIGIN, GITMODULES_FILE, MAX_SUBMODULE_DEPTH,
+    REV_PARSE_GIT_DIRS, REV_PARSE_TOPLEVEL, SUBMODULE_PATH_PATTERN,
+};
 use crate::error::{GitError, Result};
 use crate::runner::Runner;
 
@@ -52,9 +55,45 @@ fn stamp_of(path: &Path) -> Stamp {
     Some((metadata.modified().ok()?, metadata.len()))
 }
 
-/// The repository `folder` is in and what its configuration names, or
-/// `None` when `folder` is not in a repository.
+/// The repository `folder` is in and what its configuration names - its
+/// checked-out submodules' configuration included - or `None` when
+/// `folder` is not in a repository.
 pub(super) fn detect(folder: &Path) -> Result<Option<Detection>> {
+    let Some(Found { common_dir,
+                     mut settings,
+                     mut watched, }) = read_repository(folder, 0)?
+    else {
+        return Ok(None);
+    };
+    settings.sort();
+    settings.dedup();
+    watched.sort();
+    watched.dedup();
+    let watched = watched.into_iter()
+                         .map(|path| {
+                             let stamp = stamp_of(&path);
+                             (path, stamp)
+                         })
+                         .collect();
+    Ok(Some(Detection { programs:
+                            RepositoryPrograms { repository: repository_folder(&common_dir),
+                                                 settings },
+                        watched }))
+}
+
+/// One repository's reading, before it is sorted and stamped.
+struct Found {
+    common_dir: PathBuf,
+    settings:   Vec<ProgramSetting>,
+    watched:    Vec<PathBuf>,
+}
+
+/// Reads `folder`'s repository, then each checked-out submodule's, down to
+/// [`MAX_SUBMODULE_DEPTH`]. A submodule's configuration lives in its own git
+/// folder (`.git/modules/<name>/config`), outside the repository's `local`
+/// scope, yet `status` and `diff` run git in it - so its programs are the
+/// repository's to answer for too.
+fn read_repository(folder: &Path, depth: usize) -> Result<Option<Found>> {
     let runner = Runner::new(folder).without_trust_check();
     let dirs = match runner.run(REV_PARSE_GIT_DIRS) {
         Ok(dirs) => dirs,
@@ -91,24 +130,73 @@ pub(super) fn detect(folder: &Path) -> Result<Option<Detection>> {
             }
         }
         if names_a_program(entry.key, entry.value) {
-            settings.push(ProgramSetting { key:   entry.key.to_owned(),
-                                           value: entry.value.to_owned(), });
+            settings.push(ProgramSetting { submodule: None,
+                                           key:       entry.key.to_owned(),
+                                           value:     entry.value.to_owned(), });
         }
     }
-    settings.sort();
-    settings.dedup();
-    watched.sort();
-    watched.dedup();
-    let watched = watched.into_iter()
-                         .map(|path| {
-                             let stamp = stamp_of(&path);
-                             (path, stamp)
-                         })
-                         .collect();
-    Ok(Some(Detection { programs:
-                            RepositoryPrograms { repository: repository_folder(&common_dir),
-                                                 settings },
-                        watched }))
+
+    if depth < MAX_SUBMODULE_DEPTH {
+        let gitmodules = base.join(GITMODULES_FILE);
+        watched.push(gitmodules.clone());
+        for path in submodule_paths(&base, &gitmodules) {
+            let checkout = base.join(&path);
+            // Watched while missing too, so a submodule initialized later
+            // is read then.
+            watched.push(checkout.join(".git"));
+            if !checkout.join(".git").exists() {
+                continue;
+            }
+            let Some(found) = read_repository(&checkout, depth + 1)?
+            else {
+                continue;
+            };
+            watched.extend(found.watched);
+            settings.extend(found.settings.into_iter().map(|setting| {
+                                                          let submodule = match setting.submodule {
+                                                              Some(inner) => {
+                                                                  format!("{path}/{inner}")
+                                                              }
+                                                              None => path.clone(),
+                                                          };
+                                                          ProgramSetting { submodule:
+                                                                               Some(submodule),
+                                                                           ..setting }
+                                                      }));
+        }
+    }
+    Ok(Some(Found { common_dir,
+                    settings,
+                    watched }))
+}
+
+/// The submodule paths `.gitmodules` names, relative to the repository's
+/// top. A path that is absolute or climbs out with `..` is not a submodule
+/// of this repository and is skipped.
+fn submodule_paths(base: &Path, gitmodules: &Path) -> Vec<String> {
+    let Some(file) = gitmodules.to_str().filter(|_| gitmodules.is_file())
+    else {
+        return Vec::new();
+    };
+    let runner = Runner::new(base).without_trust_check();
+    let argv = [CONFIG_FILE_REGEXP_PREFIX,
+                &[file, "--get-regexp", SUBMODULE_PATH_PATTERN]].concat();
+    // No match is git's exit 1: no submodules.
+    let Ok(listing) = runner.run_raw(&argv)
+    else {
+        return Vec::new();
+    };
+    listing.split('\0')
+           .filter_map(|entry| entry.split_once('\n').map(|(_, path)| path))
+           .filter(|path| {
+               let path = Path::new(path);
+               !path.as_os_str().is_empty()
+               && path.is_relative()
+               && !path.components()
+                       .any(|part| matches!(part, std::path::Component::ParentDir))
+           })
+           .map(str::to_owned)
+           .collect()
 }
 
 struct Entry<'a> {

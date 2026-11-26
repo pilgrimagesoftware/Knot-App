@@ -149,7 +149,7 @@ impl TrustPolicy for RepositoryTrust {
 fn fingerprint(programs: &RepositoryPrograms) -> Vec<String> {
     programs.settings
             .iter()
-            .map(|setting| format!("{}={}", setting.key, setting.value))
+            .map(knot_git::ProgramSetting::fingerprint)
             .collect()
 }
 
