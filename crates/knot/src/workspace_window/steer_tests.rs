@@ -62,7 +62,7 @@ fn busy_slot(runtime: &tokio::runtime::Runtime, steers: bool, outcome: &str)
                                                              config: &config,
                                                              cwd: "/tmp",
                                                              prior_session_id: None,
-                                                             mcp_url: None,
+                                                             mcp: None,
                                                              registration_prompt:
                                                                  Some("register".into()),
                                                              resume_registration_prompt: None,
@@ -74,7 +74,8 @@ fn busy_slot(runtime: &tokio::runtime::Runtime, steers: bool, outcome: &str)
                                                              args: Vec::new(),
                                                              subagents: None,
                                                              startup_prompt: None,
-                                                             times: None };
+                                                             times: None,
+                                                             notices: Vec::new() };
                panel_session::connect_into(&connecting, request, &progress, |_| {}).await;
            });
     for _ in 0..500 {

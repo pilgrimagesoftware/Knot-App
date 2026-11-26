@@ -138,7 +138,7 @@ fn logging_fake_agent(log_path: &std::path::Path, declares_http: bool) -> Comman
           id=$(echo "$line" | sed -E 's/.*"id":([0-9]+).*/\1/')
           method=$(echo "$line" | sed -nE 's/.*"method":"([^"]+)".*/\1/p')
           case "$method" in
-            initialize) echo "{{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{{\"protocolVersion\":{PROTOCOL_VERSION},\"agentCapabilities\":{{\"mcpCapabilities\":{mcp_capabilities}}}}}}}" ;;
+            initialize) echo "{{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{{\"protocolVersion\":{PROTOCOL_VERSION},\"agentCapabilities\":{{\"loadSession\":true,\"mcpCapabilities\":{mcp_capabilities}}}}}}}" ;;
             session/new) echo "{{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{{\"sessionId\":\"sess-1\"}}}}" ;;
             *) echo "{{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{{}}}}" ;;
           esac
@@ -154,7 +154,7 @@ async fn session_new_carries_the_knot_mcp_server_when_enabled_and_supported() {
     let (client, _events) =
         AcpClient::connect(logging_fake_agent(log.path(), true)).await
                                                                 .expect("connect");
-    client.session_new("/tmp/project", Some("http://127.0.0.1:8767/mcp"))
+    client.session_new("/tmp/project", Some(endpoint(None)))
           .await
           .expect("session");
 
@@ -168,13 +168,51 @@ async fn session_new_carries_the_knot_mcp_server_when_enabled_and_supported() {
     assert!(request_line.contains(r#""headers":[]"#));
 }
 
+fn endpoint(bearer: Option<&str>) -> McpEndpoint<'_> {
+    McpEndpoint { url: "http://127.0.0.1:8767/mcp",
+                  bearer }
+}
+
+/// `mcp-auth` D3: the agent's tool credential rides in the entry's
+/// `headers`, as ACP's `HttpHeader { name, value }`, on both `session/new`
+/// and `session/load` - and never in the URL.
+#[tokio::test]
+async fn the_tool_credential_rides_in_the_mcp_headers_on_new_and_load() {
+    let log = tempfile::NamedTempFile::new().unwrap();
+    let (client, _events) =
+        AcpClient::connect(logging_fake_agent(log.path(), true)).await
+                                                                .expect("connect");
+    let credential = Some("knot_a_test-credential");
+    client.session_new("/tmp/project", Some(endpoint(credential)))
+          .await
+          .expect("session");
+    client.session_load("sess-1", "/tmp/project", Some(endpoint(credential)))
+          .await
+          .expect("load");
+
+    let log = std::fs::read_to_string(log.path()).unwrap();
+    for method in ["session/new", "session/load"] {
+        let request: Value = log.lines()
+                                .find(|line| line.contains(method))
+                                .and_then(|line| serde_json::from_str(line).ok())
+                                .unwrap_or_else(|| panic!("{method} logged"));
+        let server = &request["params"]["mcpServers"][0];
+        assert_eq!(server["headers"],
+                   json!([{ "name": "Authorization", "value": "Bearer knot_a_test-credential" }]),
+                   "{method}");
+        assert_eq!(server["url"], "http://127.0.0.1:8767/mcp", "{method}");
+    }
+    assert!(!format!("{:?}", endpoint(credential)).contains("knot_a_"),
+            "Debug leaves the credential out");
+}
+
 #[tokio::test]
 async fn session_new_omits_the_mcp_server_when_the_agent_does_not_support_http() {
     let log = tempfile::NamedTempFile::new().unwrap();
     let (client, _events) =
         AcpClient::connect(logging_fake_agent(log.path(), false)).await
                                                                  .expect("connect");
-    client.session_new("/tmp/project", Some("http://127.0.0.1:8767/mcp"))
+    client.session_new("/tmp/project", Some(endpoint(Some("knot_a_unused"))))
           .await
           .expect("session");
 
@@ -183,6 +221,8 @@ async fn session_new_omits_the_mcp_server_when_the_agent_does_not_support_http()
                           .find(|line| line.contains("session/new"))
                           .expect("session/new request logged");
     assert!(request_line.contains(r#""mcpServers":[]"#));
+    assert!(!request_line.contains("knot_a_"),
+            "no credential goes to an adapter that takes no HTTP server");
 }
 
 /// The `session/new` request line `client` sent, as `logging_fake_agent`

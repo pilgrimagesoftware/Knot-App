@@ -17,10 +17,12 @@ use crate::transport::{Transport, TransportEvent};
 
 mod events;
 mod inbound;
+mod mcp_endpoint;
 mod pending;
 mod steer;
 pub use events::{NewSession, SessionEvent};
 use inbound::Inbound;
+pub use mcp_endpoint::McpEndpoint;
 use pending::PendingInputs;
 
 /// Cheap to clone - `transport` and `pending` are both `Arc`,
@@ -168,9 +170,9 @@ impl AcpClient {
         self
     }
 
-    pub async fn session_new(&self, cwd: &str, mcp_url: Option<&str>) -> Result<NewSession> {
+    pub async fn session_new(&self, cwd: &str, mcp: Option<McpEndpoint<'_>>) -> Result<NewSession> {
         let params = self.session_params(json!({ "cwd": cwd,
-                                                 "mcpServers": self.mcp_servers(mcp_url) }));
+                                                 "mcpServers": self.mcp_servers(mcp) }));
         let raw = self.transport.request("session/new", Some(params)).await?;
         let session_id = session_id_from(&raw)?;
         self.pending.open_session(&session_id);
@@ -182,13 +184,13 @@ impl AcpClient {
     /// Resumes a prior session. Returns a typed "not supported" error
     /// without sending the request when the agent's capabilities don't
     /// advertise `session/load` support.
-    pub async fn session_load(&self, session_id: &str, cwd: &str, mcp_url: Option<&str>)
+    pub async fn session_load(&self, session_id: &str, cwd: &str, mcp: Option<McpEndpoint<'_>>)
                               -> Result<NewSession> {
         if !self.capabilities.supports_resume {
             return Err(AcpError::ResumeNotSupported);
         }
         let params = self.session_params(json!({ "sessionId": session_id, "cwd": cwd,
-                                                 "mcpServers": self.mcp_servers(mcp_url) }));
+                                                 "mcpServers": self.mcp_servers(mcp) }));
         let raw = self.transport.request("session/load", Some(params)).await?;
         // ACP's `LoadSessionResponse` carries no `sessionId`: a loaded
         // session keeps the id it was asked for. `codex-acp` 2.0.0 answers
@@ -221,12 +223,13 @@ impl AcpClient {
     /// hasn't declared support for it is a protocol violation - confirmed
     /// live: opencode/gemini reject it with `Invalid params`/`Internal
     /// error`). Empty otherwise. `mcpServers` itself is still required by
-    /// at least the Gemini CLI adapter even when empty.
-    fn mcp_servers(&self, mcp_url: Option<&str>) -> Value {
-        match mcp_url {
-            Some(url) if self.capabilities.mcp_capabilities.http => {
-                json!([{ "type": "http", "name": MCP_SERVER_NAME, "url": url,
-                         "headers": [] }])
+    /// at least the Gemini CLI adapter even when empty. The agent's tool
+    /// credential, when it has one, goes in `headers` (see [`McpEndpoint`]).
+    fn mcp_servers(&self, mcp: Option<McpEndpoint<'_>>) -> Value {
+        match mcp {
+            Some(endpoint) if self.capabilities.mcp_capabilities.http => {
+                json!([{ "type": "http", "name": MCP_SERVER_NAME, "url": endpoint.url,
+                         "headers": endpoint.headers() }])
             }
             _ => json!([]),
         }

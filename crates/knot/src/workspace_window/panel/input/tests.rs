@@ -56,7 +56,7 @@ pub(in crate::workspace_window::panel) fn ready_slot(
                                                   config:                     &declaring_adapter(),
                                                   cwd:                        "/tmp",
                                                   prior_session_id:           None,
-                                                  mcp_url:                    None,
+                                                  mcp:                        None,
                                                   registration_prompt:        None,
                                                   resume_registration_prompt: None,
                                                   session_config:             BTreeMap::new(),
@@ -67,7 +67,8 @@ pub(in crate::workspace_window::panel) fn ready_slot(
                                                   args:                       Vec::new(),
                                                   subagents:                  None,
                                                   startup_prompt:             None,
-                                                  times:                      None, };
+                                                  times:                      None,
+                                                  notices:                    Vec::new(), };
     runtime.block_on(panel_session::connect_into(&slot, request, &progress, |_| {}));
     assert_eq!(slot.lock().phase(),
                panel_session::PanelPhase::Ready,

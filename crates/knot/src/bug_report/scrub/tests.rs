@@ -146,3 +146,25 @@ fn every_line_of_a_log_is_scrubbed_and_the_line_count_kept() {
     assert_eq!(out,
                "knot-mcp: [<session>] -> tools/call\nmail me at <email>\nplain");
 }
+
+/// `mcp-auth` task 1.3: each of Knot's credential kinds, bare and in the
+/// places a log line would carry one.
+#[test]
+fn knots_own_mcp_credentials_are_redacted() {
+    for kind in [knot_mcp::CredentialKind::AgentTool,
+                 knot_mcp::CredentialKind::AgentHooks,
+                 knot_mcp::CredentialKind::Client]
+    {
+        let secret = knot_mcp::Secret::generate(kind);
+        let value = secret.expose();
+        for line in [format!("adapter env KNOT_MCP_TOKEN {value} set"),
+                     format!("claude mcp add --header \"X: {value}\""),
+                     format!("{{\"headers\":[{{\"value\":\"{value}\"}}]}}")]
+        {
+            let out = scrubbed(&line);
+            assert!(!out.contains(value), "{kind:?} survived: {out}");
+            assert!(!out.contains(kind.prefix()),
+                    "{kind:?} prefix survived: {out}");
+        }
+    }
+}

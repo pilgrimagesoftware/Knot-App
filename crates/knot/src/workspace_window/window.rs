@@ -187,6 +187,9 @@ pub(crate) struct WorkspaceWindow {
     /// `repaint_poll_tick` to drain - the same shape `pull_request_states`
     /// uses, and for the same reason.
     pub(super) subagents: Arc<Mutex<knot_subagents::registry::SubagentRegistry>>,
+    /// The process's MCP credentials: panel launches issue an agent's pair
+    /// into it and retiring the panel session revokes it (D8).
+    pub(super) mcp_credentials:                  crate::mcp_credentials::McpCredentials,
     /// The lifecycle phase each panel session was in the last time the
     /// repaint poll looked, so a slot moving between phases repaints - see
     /// `panel_needs_repaint`.
