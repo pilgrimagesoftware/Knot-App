@@ -66,7 +66,7 @@ jobs:
 
       - name: Tap token
         id: token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.PSW_CI_APP_ID }}
           private-key: ${{ secrets.PSW_CI_PRIVATE_KEY }}
